@@ -1,0 +1,24 @@
+{
+  "devices": [
+    {
+      "devId": "m7xse",
+      "deviceType": 1,
+      "model": "M7XSE",
+      "deviceAttr": "mouse_m7xse",
+      "supported": true,
+      "interfaceId": 2,
+      "usagePage": "0xFF02",
+      "reportId": 7,
+      "frameSize": 32,
+      "crc": {
+        "offset": 30,
+        "size": 2,
+        "algorithm": "crc16_xmodem"
+      },
+      "modes": [
+        { "mode": 0, "desc": "USB", "vid": "0x248A", "pid": "0x8208" },
+        { "mode": 1, "desc": "2.4G", "vid": "0x248A", "pid": "0x8373" }
+      ]
+    }
+  ]
+}

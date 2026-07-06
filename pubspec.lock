@@ -88,6 +88,14 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
+  flutter_webhid:
+    dependency: "direct main"
+    description:
+      name: flutter_webhid
+      sha256: "82c8e5885f85cc30737fd81c2f83b31c8220ae8acfcd2c8124dea53e5508ee38"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.1.0"
   hid_tool:
     dependency: "direct main"
     description:

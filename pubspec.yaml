@@ -37,6 +37,9 @@ dependencies:
   
   # Install hid tools - for hid service
   hid_tool: ^0.1.1
+  
+  # Install web hid - tool for web hid service
+  flutter_webhid: ^0.1.0
 
 dev_dependencies:
   flutter_test:

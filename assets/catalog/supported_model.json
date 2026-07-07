@@ -1,0 +1,16 @@
+{
+  "devices": [
+    {
+      "devId": "m7xse", 
+      "deviceType": 1,
+      "model": "M7XSE",
+      "deviceAttr": "mouse_m7xse",
+      "interfaceId": 2,
+      "usagePage": "0xFF02",
+      "modes": [
+        { "mode": 0, "desc": "USB", "vid": "0x248A", "pid": "0x8208" },
+        { "mode": 1, "desc": "2.4G", "vid": "0x248A", "pid": "0x8373" }
+      ]
+    }
+  ]
+}

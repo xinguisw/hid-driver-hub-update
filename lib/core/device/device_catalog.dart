@@ -17,6 +17,7 @@ class DeviceCatalogEntry {
   final String deviceAttr;
   final int interfaceId;
   final int usagePage;
+  final DeviceImage image;
   final List<DeviceMode> modes;
 
   const DeviceCatalogEntry({
@@ -26,6 +27,7 @@ class DeviceCatalogEntry {
     required this.deviceAttr,
     required this.interfaceId,
     required this.usagePage,
+    required this.image,
     required this.modes,
   });
 
@@ -37,9 +39,25 @@ class DeviceCatalogEntry {
       deviceAttr: json['deviceAttr'] as String,
       interfaceId: json['interfaceId'] as int,
       usagePage: _parseHex(json['usagePage']),
+      image: DeviceImage.fromJson(json['image'] as Map<String, dynamic>),
       modes: (json['modes'] as List)
           .map((m) => DeviceMode.fromJson(m as Map<String, dynamic>))
           .toList(),
+    );
+  }
+}
+
+/// Device display images, from the registry.
+class DeviceImage {
+  final String small;
+  final String large;
+
+  const DeviceImage({required this.small, required this.large});
+
+  factory DeviceImage.fromJson(Map<String, dynamic> json) {
+    return DeviceImage(
+      small: json['small'] as String,
+      large: json['large'] as String,
     );
   }
 }

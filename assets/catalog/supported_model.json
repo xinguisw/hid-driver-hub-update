@@ -7,6 +7,10 @@
       "deviceAttr": "mouse_m7xse",
       "interfaceId": 2,
       "usagePage": "0xFF02",
+      "image":{
+        "small" : "m7xse_small.png",
+        "large" : "m7xse_large.png"
+      },
       "modes": [
         { "mode": 0, "desc": "USB", "vid": "0x248A", "pid": "0x8208" },
         { "mode": 1, "desc": "2.4G", "vid": "0x248A", "pid": "0x8373" }

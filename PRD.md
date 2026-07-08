@@ -72,10 +72,9 @@ unaffected.
 2. **Match.** Each returned `HidDevice` is matched to a catalog entry by
    `vid`, `pid`, and `usagePage`. Matching is performed by the surface and is
    not repeated here.
-3. **Load detail file.** The orchestrator loads
-   `assets/catalog/<type>/capabilities/<devId>.json` for the device. Loading is
-   lazy: only files for discovered devices are loaded, and each file is loaded
-   at most once and cached by `devId`.
+3. **Load capabilities.** The orchestrator obtains the device's capability
+   definition from `CapabilityStore.forDevice(devId)`. Capabilities are
+   hardcoded in Dart, not read from a data file.
 4. **Handshake.** The orchestrator calls the protocol's handshake operation.
    The protocol returns a device identifier reported by the device.
 5. **Verify identifier.** The orchestrator compares the reported identifier to
@@ -93,19 +92,21 @@ are implemented.
 
 ### 7.1 CapabilityStore
 
-Loads and caches per-device capability files.
+Returns the hardcoded Dart capability definition for a device. Capabilities
+are code, not a data file. The registry (`supported_model.json`) is the only
+catalog data; capabilities and sensor profiles are defined in Dart
+(`lib/core/device/capabilities.dart`, `lib/core/device/sensor_profiles.dart`).
 
 ```
 class CapabilityStore {
-  Future<Capabilities> load(String devId, int deviceType);
+  static DeviceCapabilities? forDevice(String devId);
 }
 ```
 
-- Reads `assets/catalog/<type>/capabilities/<devId>.json`.
-- Caches by `devId`. A second call for the same `devId` returns the cached
-  value and does not re-read the asset.
+- Returns the capabilities for `devId`, or null if unsupported.
+- Reads no JSON. Adding a device's capabilities means adding a Dart entry to
+  the hardcoded map.
 - Performs no HID I/O.
-- Throws if the file is missing or fails to parse.
 
 ### 7.2 DeviceProtocol (seam)
 
@@ -233,7 +234,8 @@ failure on device A stops device A only.
 
 ```
 core/device/
-  capability_store.dart          CapabilityStore
+  capabilities.dart              DeviceCapabilities + CapabilityStore (hardcoded)
+  sensor_profiles.dart           SensorProfiles (hardcoded)
 features/mouse/
   protocol/
     device_protocol.dart         DeviceProtocol, DeviceHandshake, DeviceStatus
@@ -276,7 +278,9 @@ lib/main.dart                    app shell (replaces counter template)
 
 - `Documentation/app/HID_Surface_Specification.docx` — the frozen HID surface
   this layer builds on.
-- `assets/catalog/supported_model.json` — the device registry.
-- `assets/catalog/<type>/capabilities/<devId>.json` — per-device capability
-  files.
+- `assets/catalog/supported_model.json` — the device registry (the only catalog
+  data).
+- `lib/core/device/capabilities.dart` — hardcoded device capability
+  definitions.
+- `lib/core/device/sensor_profiles.dart` — hardcoded sensor encoding tables.
 - RFC 2119 — requirement keywords.

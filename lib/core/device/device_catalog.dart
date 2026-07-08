@@ -6,9 +6,10 @@ import 'package:hid_tool/hid_tool.dart';
 /// Catalog entry for one supported device, parsed from the approved
 /// `assets/catalog/supported_model.json`.
 ///
-/// This is pure data — the single source of "which devices we support".
-/// [DeviceScanner] reads it to build discovery filters and to match raw
-/// [HidDevice]s back to catalog entries. No per-device facts live in code.
+/// The registry is the only catalog data. Device capabilities are defined in
+/// Dart (see [CapabilityStore]); they are not read from a data file.
+/// [DeviceScanner] reads this registry to build discovery filters and to match
+/// raw [HidDevice]s back to catalog entries.
 class DeviceCatalogEntry {
   final String devId;
   final int deviceType;

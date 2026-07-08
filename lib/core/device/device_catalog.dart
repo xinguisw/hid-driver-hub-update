@@ -62,9 +62,9 @@ class DeviceImage {
   }
 }
 
-/// One connection mode of a device (USB / 2.4G / BLE).
+/// One connection mode of a device (USB / 2.4G).
 class DeviceMode {
-  final int mode; // 0=USB, 1=2.4G, 2=BLE
+  final int mode; // 0=USB, 1=2.4G
   final String desc;
   final int vid;
   final int pid;

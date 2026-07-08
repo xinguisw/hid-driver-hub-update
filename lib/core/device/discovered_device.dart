@@ -12,7 +12,7 @@ class DiscoveredDevice {
   /// The catalog entry this device matched.
   final DeviceCatalogEntry entry;
 
-  /// The connection mode (USB / 2.4G / BLE) the device was found on.
+  /// The connection mode (USB / 2.4G) the device was found on.
   final DeviceMode mode;
 
   /// The raw HID handle from hid_tool. Open it via [HidSession].

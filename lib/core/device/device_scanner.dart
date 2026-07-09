@@ -11,42 +11,34 @@ import 'discovered_device.dart';
 /// entries. No feature re-scans or re-matches on its own — it calls
 /// [discover] and receives a list of [DiscoveredDevice]s.
 ///
-/// Matching is pure data comparison (vid/pid/usagePage) and therefore shared
-/// across platforms. The only platform awareness lives in [HidScanner.current],
-/// which this scanner delegates to.
+/// Pre-open matching is by (vid, pid) only. usagePage is unreliable on web
+/// (hid_tool returns 0) and the collections-based usagePage requires the device
+/// open, so interface/usagePage confirmation happens post-open in the verify
+/// step, not here.
 class DeviceScanner {
   final HidScanner _scanner;
 
   DeviceScanner([HidScanner? scanner])
       : _scanner = scanner ?? HidScannerFactory.current();
 
-  /// Discovers all supported devices currently available to the app.
-  ///
-  /// Uses the gesture path ([HidScanner.scan]): on web this may present a
-  /// browser permission picker. Invoke from a user gesture (e.g. a tap).
+  /// Discovers supported devices. Uses the gesture path: on web this may
+  /// present a browser permission picker. Invoke from a user gesture.
   Future<List<DiscoveredDevice>> discover() => _discover(useAuthorized: false);
 
-  /// Discovers supported devices without a user gesture or prompt.
-  ///
-  /// Uses [HidScanner.getAuthorized]: on web returns only previously-granted
-  /// devices (no picker). Used by the reconnect watcher so a replugged device
-  /// is re-acquired without re-asking the user.
+  /// Discovers supported devices without a user gesture. On web returns only
+  /// previously-granted devices (no picker). Used by the reconnect watcher.
   Future<List<DiscoveredDevice>> discoverAuthorized() =>
       _discover(useAuthorized: true);
 
   Future<List<DiscoveredDevice>> _discover({required bool useAuthorized}) async {
     final entries = await DeviceCatalog.load();
 
-    // Build one filter per device×mode — the catalog is the source of which
-    // vid/pid/usagePage combinations we care about.
     final filters = <DeviceFilter>[];
-    final byFilter = <_FilterKey, _Match>{};
+    final byVidPid = <_VidPidKey, _Match>{};
     for (final entry in entries) {
       for (final mode in entry.modes) {
-        final filter = mode.toFilter(entry.usagePage);
-        filters.add(filter);
-        byFilter[_FilterKey(mode.vid, mode.pid, entry.usagePage)] =
-            _Match(entry, mode);
+        filters.add(mode.toFilter(entry.usagePage));
+        byVidPid[_VidPidKey(mode.vid, mode.pid)] = _Match(entry, mode);
       }
     }
 
@@ -56,7 +48,7 @@ class DeviceScanner {
 
     final discovered = <DiscoveredDevice>[];
     for (final dev in devices) {
-      final match = byFilter[_FilterKey(dev.vendorId, dev.productId, dev.usagePage)];
+      final match = byVidPid[_VidPidKey(dev.vendorId, dev.productId)];
       if (match != null) {
         discovered.add(DiscoveredDevice(
           entry: match.entry,
@@ -69,16 +61,16 @@ class DeviceScanner {
   }
 }
 
-class _FilterKey {
-  final int vid, pid, usagePage;
-  const _FilterKey(this.vid, this.pid, this.usagePage);
+class _VidPidKey {
+  final int vid, pid;
+  const _VidPidKey(this.vid, this.pid);
 
   @override
   bool operator ==(Object other) =>
-      other is _FilterKey && vid == other.vid && pid == other.pid && usagePage == other.usagePage;
+      other is _VidPidKey && vid == other.vid && pid == other.pid;
 
   @override
-  int get hashCode => Object.hash(vid, pid, usagePage);
+  int get hashCode => Object.hash(vid, pid);
 }
 
 class _Match {

@@ -20,7 +20,7 @@ typedef DeviceDisconnectCallback = void Function(int vendorId, int productId);
 /// On connect of a supported device: re-acquires it gesture-free via
 /// [DeviceScanner.discoverAuthorized], re-opens, re-runs handshake/verify.
 ///
-/// No retry loop, no backoff — one action per event (the ClickSync pattern).
+/// No retry loop, no backoff — one action per event.
 /// First-ever connect of a web device is NOT handled here; that requires a user
 /// gesture (the [DeviceScanner.discover] path) and stays a manual scan.
 class DeviceWatcher {

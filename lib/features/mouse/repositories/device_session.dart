@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:driver_hub/core/device/discovered_device.dart';
 import 'package:driver_hub/core/device/hid_session.dart';
+import 'package:flutter/foundation.dart';
 
 import '../protocol/device_protocol.dart';
 
@@ -57,21 +58,30 @@ class DeviceSession {
     final mode = device.mode.desc;
 
     _controller.add(DeviceSessionState.connecting(name, mode));
+    debugPrint('[session] start: devId=${device.entry.devId} '
+        'expected deviceType=${device.entry.deviceType} expected devId="${device.entry.devId}"');
 
     try {
+      debugPrint('[session] opening device…');
       await _session.open();
+      debugPrint('[session] opened, running handshake…');
       final hs = await _protocol.handshake(_session);
 
-      final ok = hs.deviceType == device.entry.deviceType &&
-          hs.deviceId == device.entry.devId;
+      final typeMatch = hs.deviceType == device.entry.deviceType;
+      final idMatch = hs.deviceId == device.entry.devId;
+      debugPrint('[session] verify: reported type=${hs.deviceType} (match=$typeMatch), '
+          'reported id="${hs.deviceId}" (match=$idMatch)');
 
-      if (ok) {
+      if (typeMatch && idMatch) {
+        debugPrint('[session] VERIFIED');
         _controller.add(DeviceSessionState.verified(name, mode));
       } else {
+        debugPrint('[session] REJECTED — closing');
         await _session.close();
         _controller.add(DeviceSessionState.rejected(name, mode));
       }
     } catch (e) {
+      debugPrint('[session] ERROR: $e');
       await _safeClose();
       _controller.add(DeviceSessionState.error(name, mode, e.toString()));
     }

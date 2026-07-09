@@ -1,122 +1,195 @@
+import 'dart:convert';
+
+import 'package:driver_hub/core/device/device_scanner.dart';
+import 'package:driver_hub/core/device/discovered_device.dart';
+import 'package:driver_hub/core/device/hid_session.dart';
+import 'package:driver_hub/core/hid/local_storage.dart';
+import 'package:driver_hub/features/mouse/protocol/device_protocol.dart';
+import 'package:driver_hub/features/mouse/repositories/device_session.dart';
+import 'package:driver_hub/features/mouse/repositories/device_watcher.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(const DriverHubApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class DriverHubApp extends StatelessWidget {
+  const DriverHubApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: .fromSeed(seedColor: Colors.deepPurple),
-      ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      title: 'driver_hub',
+      theme: ThemeData(colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue)),
+      home: const ScanTestScreen(),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
+class ScanTestScreen extends StatefulWidget {
+  const ScanTestScreen({super.key});
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  State<ScanTestScreen> createState() => _ScanTestScreenState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+class _ScanTestScreenState extends State<ScanTestScreen> {
+  final _scanner = DeviceScanner();
+  late final DeviceWatcher _watcher;
+  final _log = <String>[];
+  bool _busy = false;
 
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
+  /// Whether a remembered+verified device is currently active. On web this
+  /// hides the "Add device" button once we're connected.
+  bool _verifiedActive = false;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _watcher = DeviceWatcher(
+      scanner: _scanner,
+      protocolFactory: () => const MouseProtocol(),
+      sessionFactory: (d) => HidSession(d.hidDevice),
+      sessionCtor: DeviceSession.new,
+    );
+
+    _watcher.start(
+      onConnect: (session) {
+        _addLog('  [watcher] connected+verified: ${session.device.entry.devId} '
+            '(${session.device.mode.desc})');
+        _saveLastDevice(session.device);
+        if (mounted) setState(() => _verifiedActive = true);
+      },
+      onDisconnect: (vid, pid) {
+        _addLog('  [watcher] disconnected: 0x${vid.toRadixString(16)}/0x${pid.toRadixString(16)}');
+        if (mounted) setState(() => _verifiedActive = false);
+      },
+    );
+    _addLog('watcher started');
+
+    // Startup probe. On both platforms we look for an already-present device;
+    // the watcher's connect event only fires on a NEW plug, not for devices
+    // present at launch.
+    // Web uses the gesture-free authorized path (getDevices); desktop has no
+    // grant model so it enumerates directly.
+    _probeExisting();
+  }
+
+  Future<void> _probeExisting() async {
+    setState(() => _busy = true);
+    try {
+      final devices = await _scanner.discoverAuthorized();
+      _addLog('probe (authorized): found ${devices.length} device(s)');
+      for (final d in devices) {
+        await _startAndRegister(d);
+      }
+    } catch (e) {
+      _addLog('probe FAILED: $e');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  /// Web: the first-ever connect needs a user gesture (browser rule). Tap
+  /// "Add device" → picker → grant → open → handshake → verify → register with
+  /// the watcher so subsequent unplug/replug and page reload are automatic.
+  Future<void> _addDevice() async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      final devices = await _scanner.discover();
+      for (final d in devices) {
+        await _startAndRegister(d);
+      }
+    } catch (e) {
+      _addLog('add device FAILED: $e');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _startAndRegister(DiscoveredDevice d) async {
+    _addLog('  -> opening ${d.entry.devId} (${d.mode.desc})…');
+    final session = DeviceSession(
+      device: d,
+      session: HidSession(d.hidDevice),
+      protocol: const MouseProtocol(),
+    );
+    final sub = session.state.listen((s) {
+      _addLog('    state: ${s.status} (${s.name} / ${s.mode})'
+          '${s.error != null ? " err=${s.error}" : ""}');
     });
+    await session.start();
+    await sub.cancel();
+    _watcher.register(session);
+  }
+
+  void _addLog(String msg) {
+    debugPrint('[flow] $msg');
+    if (mounted) setState(() => _log.add(msg));
+  }
+
+  @override
+  void dispose() {
+    _watcher.stop();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
+    // Web: show "Add device" only when nothing is verified+active. Once a
+    // remembered device reconnects and verifies, hide it.
+    final showAddButton = kIsWeb && !_verifiedActive;
+
     return Scaffold(
-      appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
-      ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: .center,
-          children: [
-            const Text('You have pushed the button this many times:'),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
+      appBar: AppBar(title: const Text('driver_hub — verify test')),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: showAddButton
+                ? FilledButton.icon(
+                    onPressed: _busy ? null : _addDevice,
+                    icon: const Icon(Icons.add),
+                    label: Text(_busy ? 'Working…' : 'Add device'),
+                  )
+                : Text(_verifiedActive
+                    ? 'Connected (verified)'
+                    : _busy
+                        ? 'Working…'
+                        : 'Watching for devices'),
+          ),
+          const Divider(height: 1),
+          Expanded(
+            child: ListView.builder(
+              itemCount: _log.length,
+              itemBuilder: (_, i) => Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                child: Text(_log[i],
+                    style: const TextStyle(fontFamily: 'monospace', fontSize: 12)),
+              ),
             ),
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
+          ),
+        ],
       ),
     );
   }
+}
+
+// --- last-device hint (web localStorage; no-op on non-web) ---
+
+const _lastHidKey = 'driver_hub.lastHid';
+
+void _saveLastDevice(DiscoveredDevice d) {
+  if (!kIsWeb) return;
+  try {
+    final payload = jsonEncode({
+      'vendorId': d.mode.vid,
+      'productId': d.mode.pid,
+      'productName': d.entry.model,
+    });
+    writeLocalStorage(_lastHidKey, payload);
+  } catch (_) {}
 }

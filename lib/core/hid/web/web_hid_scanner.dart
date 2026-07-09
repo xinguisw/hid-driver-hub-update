@@ -23,6 +23,31 @@ class WebHidScanner implements HidScanner {
     }
     // requestDevice requires a user gesture in the browser. Callers should
     // invoke discover() from a tap handler; otherwise the browser rejects it.
-    return Hid.requestDevice(filters: filters);
+    final devices = await Hid.requestDevice(filters: filters);
+    return _filter(devices, filters);
+  }
+
+  @override
+  Future<List<HidDevice>> getAuthorized(List<DeviceFilter> filters) async {
+    // Gesture-free: returns only previously-granted devices. No prompt.
+    // Used by the reconnect path so a replugged device is re-acquired without
+    // re-asking the user. A never-granted device is not returned here.
+    final devices = await Hid.getDevices();
+    return _filter(devices, filters);
+  }
+
+  List<HidDevice> _filter(List<HidDevice> devices, List<DeviceFilter> filters) {
+    if (filters.isEmpty) return devices;
+    return devices.where((d) {
+      for (final f in filters) {
+        if ((f.vendorId == null || d.vendorId == f.vendorId) &&
+            (f.productId == null || d.productId == f.productId) &&
+            (f.usagePage == null || d.usagePage == f.usagePage) &&
+            (f.usage == null || d.usage == f.usage)) {
+          return true;
+        }
+      }
+      return false;
+    }).toList();
   }
 }

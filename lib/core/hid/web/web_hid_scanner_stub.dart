@@ -13,4 +13,9 @@ class WebHidScanner implements HidScanner {
   Future<List<HidDevice>> scan(List<DeviceFilter> filters) {
     throw UnsupportedError('WebHidScanner is only available on web.');
   }
+
+  @override
+  Future<List<HidDevice>> getAuthorized(List<DeviceFilter> filters) {
+    throw UnsupportedError('WebHidScanner is only available on web.');
+  }
 }

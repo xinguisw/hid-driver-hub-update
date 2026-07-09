@@ -22,13 +22,19 @@ class DeviceScanner {
 
   /// Discovers all supported devices currently available to the app.
   ///
-  /// Reads the approved catalog, builds a [DeviceFilter] per device×mode,
-  /// scans via the platform scanner, then matches each returned [HidDevice]
-  /// back to its catalog entry by vid/pid/usagePage.
+  /// Uses the gesture path ([HidScanner.scan]): on web this may present a
+  /// browser permission picker. Invoke from a user gesture (e.g. a tap).
+  Future<List<DiscoveredDevice>> discover() => _discover(useAuthorized: false);
+
+  /// Discovers supported devices without a user gesture or prompt.
   ///
-  /// On web this may present a browser permission picker; callers should
-  /// invoke it from a user gesture (e.g. a button tap).
-  Future<List<DiscoveredDevice>> discover() async {
+  /// Uses [HidScanner.getAuthorized]: on web returns only previously-granted
+  /// devices (no picker). Used by the reconnect watcher so a replugged device
+  /// is re-acquired without re-asking the user.
+  Future<List<DiscoveredDevice>> discoverAuthorized() =>
+      _discover(useAuthorized: true);
+
+  Future<List<DiscoveredDevice>> _discover({required bool useAuthorized}) async {
     final entries = await DeviceCatalog.load();
 
     // Build one filter per device×mode — the catalog is the source of which
@@ -44,7 +50,9 @@ class DeviceScanner {
       }
     }
 
-    final devices = await _scanner.scan(filters);
+    final devices = useAuthorized
+        ? await _scanner.getAuthorized(filters)
+        : await _scanner.scan(filters);
 
     final discovered = <DiscoveredDevice>[];
     for (final dev in devices) {

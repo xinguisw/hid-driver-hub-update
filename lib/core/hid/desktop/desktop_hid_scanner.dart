@@ -12,9 +12,17 @@ class DesktopHidScanner implements HidScanner {
 
   @override
   Future<List<HidDevice>> scan(List<DeviceFilter> filters) async {
-    // hid_tool's getDevices accepts a single filter; enumerate broadly then
-    // narrow by the catalog-driven filters. Most desktop HID stacks return
-    // the full device set, so we filter in Dart to honor every catalog mode.
+    // Desktop has no grant model: enumerate silently and filter.
+    return _enumerate(filters);
+  }
+
+  @override
+  Future<List<HidDevice>> getAuthorized(List<DeviceFilter> filters) async {
+    // On desktop there is no authorization state, so this is identical to scan.
+    return _enumerate(filters);
+  }
+
+  Future<List<HidDevice>> _enumerate(List<DeviceFilter> filters) async {
     final devices = await Hid.getDevices();
 
     final matches = <HidDevice>[];

@@ -22,4 +22,16 @@ abstract class HidScanner {
   /// permission picker; devices the user previously authorized are returned
   /// without re-prompting.
   Future<List<HidDevice>> scan(List<DeviceFilter> filters);
+
+  /// Returns previously-authorized devices matching [filters], with no user
+  /// gesture and no prompt.
+  ///
+  /// On web this calls `navigator.hid.getDevices()` — only devices the user
+  /// already granted (via [scan]) are returned. A never-granted device is not
+  /// returned here; it requires [scan] (a user gesture) first.
+  ///
+  /// Used for reconnect: a device unplugged and replugged is re-acquired here
+  /// without re-prompting. On desktop this is equivalent to [scan] (no grant
+  /// model), since the OS exposes all connected devices.
+  Future<List<HidDevice>> getAuthorized(List<DeviceFilter> filters);
 }

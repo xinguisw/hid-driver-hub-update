@@ -125,6 +125,10 @@ class _ScanTestScreenState extends State<ScanTestScreen> {
     await sub.cancel();
     if (!verified) return;
     _watcher.register(session);
+    // Mirror the watcher onConnect: mark verified so the button hides and the
+    // status reflects the active session.
+    _saveLastDevice(session.device);
+    if (mounted) setState(() => _verifiedActive = true);
   }
 
   void _addLog(String msg) {

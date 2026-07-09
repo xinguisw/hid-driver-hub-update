@@ -38,12 +38,12 @@ class WebHidScanner implements HidScanner {
 
   List<HidDevice> _filter(List<HidDevice> devices, List<DeviceFilter> filters) {
     if (filters.isEmpty) return devices;
+    // hid_tool reports usagePage/usage as 0 on web (see HidDeviceWeb), so match
+    // on VID/PID only. The picker already enforced usagePage at grant time.
     return devices.where((d) {
       for (final f in filters) {
         if ((f.vendorId == null || d.vendorId == f.vendorId) &&
-            (f.productId == null || d.productId == f.productId) &&
-            (f.usagePage == null || d.usagePage == f.usagePage) &&
-            (f.usage == null || d.usage == f.usage)) {
+            (f.productId == null || d.productId == f.productId)) {
           return true;
         }
       }

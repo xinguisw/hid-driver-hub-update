@@ -29,23 +29,26 @@ class MouseProtocol implements DeviceProtocol {
   static const int _askOpcode = 0xA1;
   static const int _ackOpcode = 0xA1;
 
-  static const int _ackDeviceTypeOffset = 6;
-  static const int _ackDeviceIdOffset = 7;
+  // Payload offsets (report id stripped). hid_tool keeps the report id on
+  // desktop and drops it on web (WebHID oninputreport has no report id prefix).
+  static const int _ackOpcodeOffset = 0;
+  static const int _ackDeviceTypeOffset = 5;
+  static const int _ackDeviceIdOffset = 6;
   static const int _deviceIdLength = 4;
 
   static const Duration _sendTimeout = Duration(milliseconds: 1000);
-  static const Duration _postSendDelay = Duration(milliseconds: 5);
 
   @override
   Future<DeviceHandshake> handshake(HidSession session) async {
     final ask = _buildAskFrame();
+    // Subscribe to the input stream before sending: on web the broadcast
+    // controller drops events with no listener, so the ack must arrive after
+    // the subscription is active (mirrors ClickSync's listener-first send).
+    final ackFuture = session.receiveReport(_frameLength, timeout: _sendTimeout);
     debugPrint('[proto] handshake: sending ask ${_hex(ask)}');
     await session.sendReport(ask, reportId: _reportId);
-    await Future.delayed(_postSendDelay);
 
-    final ack = await session
-        .receiveReport(_frameLength, timeout: _sendTimeout)
-        .timeout(_sendTimeout);
+    final ack = await ackFuture;
     debugPrint('[proto] handshake: received ack ${_hex(ack)} (${ack.length}B)');
 
     final result = _parseAck(ack);
@@ -66,18 +69,23 @@ class MouseProtocol implements DeviceProtocol {
     return frame;
   }
 
-  DeviceHandshake _parseAck(Uint8List ack) {
+  DeviceHandshake _parseAck(Uint8List raw) {
+    // Desktop prefixes the report id; web does not. Strip it so the payload
+    // always starts at the opcode (matches the WebHID oninputreport shape).
+    final ack = raw.isNotEmpty && raw[0] == _reportId
+        ? Uint8List.fromList(raw.sublist(1))
+        : raw;
     if (ack.length < _ackDeviceIdOffset + _deviceIdLength) {
       throw FormatException('Handshake ack too short: ${ack.length} bytes');
     }
-    final opcode = ack[1];
+    final opcode = ack[_ackOpcodeOffset];
     if (opcode != _ackOpcode) {
       throw FormatException(
         'Unexpected handshake ack opcode: 0x${opcode.toRadixString(16)}',
       );
     }
-    // receiveReport includes the report id at [0]; the id sits at [7..10].
-    final idBytes = ack.sublist(_ackDeviceIdOffset, _ackDeviceIdOffset + _deviceIdLength);
+    final idBytes =
+        ack.sublist(_ackDeviceIdOffset, _ackDeviceIdOffset + _deviceIdLength);
     return DeviceHandshake(
       deviceType: ack[_ackDeviceTypeOffset],
       deviceId: idBytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join(),

@@ -1,6 +1,6 @@
-import 'dart:typed_data';
-
 import 'package:driver_hub/core/device/hid_session.dart';
+import 'package:driver_hub/core/utils/crc16.dart';
+import 'package:flutter/foundation.dart';
 
 /// Handshake result: the device type and id reported by the device.
 class DeviceHandshake {
@@ -26,17 +26,26 @@ class MouseProtocol implements DeviceProtocol {
 
   static const int _reportId = 0x07;
   static const int _frameLength = 32;
-  static const int _askOpcode = 0xC2;
+  static const int _askOpcode = 0xA1;
   static const int _ackOpcode = 0xA1;
   static const int _handshakeAddrs = 0xA1;
   static const int _ackDeviceTypeOffset = 6;
   static const int _ackDeviceIdOffset = 7;
+  static const Crc16 _crc = Crc16();
 
   @override
   Future<DeviceHandshake> handshake(HidSession session) async {
-    await session.sendReport(_buildAskFrame(), reportId: _reportId);
+    final ask = _buildAskFrame();
+    debugPrint('[proto] handshake: sending C2 ask ${_hex(ask)}');
+    await session.sendReport(ask, reportId: _reportId);
+
     final ack = await session.receiveReport(_frameLength);
-    return _parseAck(ack);
+    debugPrint('[proto] handshake: received ack ${_hex(ack)} (${ack.length}B)');
+
+    final result = _parseAck(ack);
+    debugPrint('[proto] handshake: deviceType=${result.deviceType} '
+        'deviceId="${result.deviceId}" (byte=0x${ack[_ackDeviceIdOffset].toRadixString(16)})');
+    return result;
   }
 
   Uint8List _buildAskFrame() {
@@ -44,7 +53,10 @@ class MouseProtocol implements DeviceProtocol {
     frame[0] = _reportId;
     frame[1] = _askOpcode;
     frame[4] = _handshakeAddrs;
-    // frame[5] len = 0; CRC (30,31) zero — later implement
+    // CRC over bytes 0.._frameLength-3, little-endian at the last 2 bytes.
+    final crc = _crc.bytes(Uint8List.fromList(frame.sublist(0, _frameLength - 2)));
+    frame[_frameLength - 2] = crc[0];
+    frame[_frameLength - 1] = crc[1];
     return frame;
   }
 
@@ -63,4 +75,7 @@ class MouseProtocol implements DeviceProtocol {
       deviceId: ack[_ackDeviceIdOffset].toString(),
     );
   }
+
+  String _hex(Uint8List bytes) =>
+      bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join(' ');
 }

@@ -53,7 +53,8 @@ class DeviceSession {
   Stream<DeviceSessionState> get state => _controller.stream;
 
   /// Runs open -> handshake -> verify. Emits state on [state].
-  Future<void> start() async {
+  // Returns true only when verified; false on reject or error.
+  Future<bool> start() async {
     final name = device.entry.model;
     final mode = device.mode.desc;
 
@@ -75,15 +76,17 @@ class DeviceSession {
       if (typeMatch && idMatch) {
         debugPrint('[session] VERIFIED');
         _controller.add(DeviceSessionState.verified(name, mode));
-      } else {
-        debugPrint('[session] REJECTED — closing');
-        await _session.close();
-        _controller.add(DeviceSessionState.rejected(name, mode));
+        return true;
       }
+      debugPrint('[session] REJECTED — closing');
+      await _session.close();
+      _controller.add(DeviceSessionState.rejected(name, mode));
+      return false;
     } catch (e) {
       debugPrint('[session] ERROR: $e');
       await _safeClose();
       _controller.add(DeviceSessionState.error(name, mode, e.toString()));
+      return false;
     }
   }
 

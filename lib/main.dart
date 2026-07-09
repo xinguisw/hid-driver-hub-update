@@ -121,8 +121,9 @@ class _ScanTestScreenState extends State<ScanTestScreen> {
       _addLog('    state: ${s.status} (${s.name} / ${s.mode})'
           '${s.error != null ? " err=${s.error}" : ""}');
     });
-    await session.start();
+    final verified = await session.start();
     await sub.cancel();
+    if (!verified) return;
     _watcher.register(session);
   }
 

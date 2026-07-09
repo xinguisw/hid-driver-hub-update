@@ -93,8 +93,13 @@ class DeviceWatcher {
       session: _sessionFactory(match),
       protocol: _protocolFactory(),
     );
+    // Register only after verify; rejected sessions are closed and discarded.
+    final verified = await session.start();
+    if (!verified) {
+      await session.dispose();
+      return;
+    }
     _sessions[key] = session;
-    await session.start();
     onConnect(session);
   }
 

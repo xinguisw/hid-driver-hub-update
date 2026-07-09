@@ -34,6 +34,9 @@ class HidSession {
   Future<void> open() async {
     if (_open) return;
     await _device.open();
+    // hid_tool creates the web input controller lazily in inputStream();
+    // receiveReport dereferences it, so prime it here or it stays null.
+    _device.inputStream();
     _open = true;
   }
 

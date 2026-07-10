@@ -34,8 +34,11 @@ class HidSession {
   Future<void> open() async {
     if (_open) return;
     await _device.open();
-    // hid_tool creates the web input controller lazily in inputStream();
-    // receiveReport dereferences it, so prime it here or it stays null.
+    // Required on web: hid_tool's HidDeviceWeb creates its input-report
+    // controller lazily inside inputStream(), and receiveReport() dereferences
+    // it with `!`. Calling inputStream() here ensures the controller exists
+    // before any receiveReport, or the first read throws a null-check error.
+    // On desktop inputStream() is an async* generator, so this is a no-op.
     _device.inputStream();
     _open = true;
   }

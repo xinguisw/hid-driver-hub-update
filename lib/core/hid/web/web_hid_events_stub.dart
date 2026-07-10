@@ -3,8 +3,8 @@
 import '../hid_event_handle.dart';
 
 HidEventSubscription startWebHidListeners({
-  required void Function(int vendorId, int productId) onConnect,
-  required void Function(int vendorId, int productId) onDisconnect,
+  required void Function(String path, int vendorId, int productId) onConnect,
+  required void Function(String path, int vendorId, int productId) onDisconnect,
 }) {
   return const HidEventSubscription.noop();
 }

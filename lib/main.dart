@@ -62,8 +62,9 @@ class _ScanTestScreenState extends State<ScanTestScreen> {
         _saveLastDevice(session.device);
         if (mounted) setState(() => _verifiedActive = true);
       },
-      onDisconnect: (vid, pid) {
-        _addLog('  [watcher] disconnected: 0x${vid.toRadixString(16)}/0x${pid.toRadixString(16)}');
+      onDisconnect: (path, vid, pid) {
+        _addLog('  [watcher] disconnected: $path '
+            '(0x${vid.toRadixString(16)}/0x${pid.toRadixString(16)})');
         if (mounted) setState(() => _verifiedActive = false);
       },
     );

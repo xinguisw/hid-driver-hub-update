@@ -12,9 +12,15 @@ import 'device_session.dart';
 typedef DeviceSessionCallback = void Function(DeviceSession session);
 
 /// Callback for a session that disconnected.
-typedef DeviceDisconnectCallback = void Function(int vendorId, int productId);
+typedef DeviceDisconnectCallback = void Function(String path, int vendorId, int productId);
 
 /// Watches HID connect/disconnect events and manages session lifecycle.
+///
+/// Sessions are keyed by the device [path] (hidapi path on desktop, synthesized
+/// `web:<vid>:<pid>` on web), not by (vid, pid). This distinguishes two
+/// identical mice on desktop, where each gets a unique path. On web, hid_tool
+/// itself collapses identical mice to one path, so they remain
+/// indistinguishable there — a hid_tool limitation, not a watcher one.
 ///
 /// On disconnect of a known device: disposes its [DeviceSession].
 /// On connect of a supported device: re-acquires it gesture-free via
@@ -34,7 +40,7 @@ class DeviceWatcher {
   }) _sessionCtor;
 
   final HidEvents _events = HidEvents();
-  final _sessions = <_DeviceKey, DeviceSession>{};
+  final _sessions = <String, DeviceSession>{}; // keyed by device path
 
   DeviceWatcher({
     required this._scanner,
@@ -50,8 +56,9 @@ class DeviceWatcher {
     required DeviceDisconnectCallback onDisconnect,
   }) {
     _events.start(
-      onConnect: (vid, pid) => _handleConnect(vid, pid, onConnect),
-      onDisconnect: (vid, pid) => _handleDisconnect(vid, pid, onDisconnect),
+      onConnect: (path, vid, pid) => _handleConnect(path, vid, pid, onConnect),
+      onDisconnect: (path, vid, pid) =>
+          _handleDisconnect(path, vid, pid, onDisconnect),
     );
   }
 
@@ -66,22 +73,23 @@ class DeviceWatcher {
 
   /// Registers an already-started session so its disconnect is tracked.
   void register(DeviceSession session) {
-    final key = _DeviceKey(session.device.mode.vid, session.device.mode.pid);
-    _sessions[key] = session;
+    _sessions[session.device.hidDevice.path] = session;
   }
 
   Future<void> _handleConnect(
+    String path,
     int vid,
     int pid,
     DeviceSessionCallback onConnect,
   ) async {
-    final key = _DeviceKey(vid, pid);
-    if (_sessions.containsKey(key)) return; // already active
+    if (_sessions.containsKey(path)) return; // already active
 
     final discovered = await _scanner.discoverAuthorized();
     DiscoveredDevice? match;
     for (final d in discovered) {
-      if (d.mode.vid == vid && d.mode.pid == pid) {
+      // Match the specific instance by path. On desktop the path is unique per
+      // device, so a second identical mouse is matched here, not ignored.
+      if (d.hidDevice.path == path) {
         match = d;
         break;
       }
@@ -99,30 +107,20 @@ class DeviceWatcher {
       await session.dispose();
       return;
     }
-    _sessions[key] = session;
+    _sessions[path] = session;
     onConnect(session);
   }
 
   Future<void> _handleDisconnect(
+    String path,
     int vid,
     int pid,
     DeviceDisconnectCallback onDisconnect,
   ) async {
-    final key = _DeviceKey(vid, pid);
-    final session = _sessions.remove(key);
+    final session = _sessions.remove(path);
     if (session != null) {
       await session.dispose();
     }
-    onDisconnect(vid, pid);
+    onDisconnect(path, vid, pid);
   }
-}
-
-class _DeviceKey {
-  final int vid, pid;
-  const _DeviceKey(this.vid, this.pid);
-  @override
-  bool operator ==(Object other) =>
-      other is _DeviceKey && vid == other.vid && pid == other.pid;
-  @override
-  int get hashCode => Object.hash(vid, pid);
 }

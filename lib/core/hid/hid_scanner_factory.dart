@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'hid_scanner.dart';
 import 'desktop/desktop_hid_scanner.dart';
 import 'web/web_hid_scanner_stub.dart'
-    if (dart.library.html) 'web/web_hid_scanner.dart'
+    if (dart.library.js_interop) 'web/web_hid_scanner.dart'
     as web;
 
 /// The single platform seam in the application.

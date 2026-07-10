@@ -14,7 +14,7 @@ driver_hub targets desktop (Windows) and web (WebHID). Both paths converge at
 |---|-------|----------------|-------------|--------|
 | L1 | Discovery & Lifecycle | Scan the bus, match to catalog, fail-fast authenticate, own session lifecycle; output an immutable list of `DiscoveredCardState` for the home grid | `device_scanner.dart`, `device_catalog.dart`, `discovered_device.dart`, `device_session.dart`, `device_watcher.dart` | partial |
 | L2 | Capability Blueprint | Static lookup: devId (+ firmware version) → immutable `DeviceCapabilities`; image paths, sensor, max DPI, feature gates | `capabilities.dart`, `sensor_profiles.dart`, `device_type.dart`, `assets/catalog/supported_model.json` | built |
-| L3 | Presentation | Flutter view controllers, view models, widgets. Blind to hardware and protocol bytes; reads capability maps, subscribes to state, renders cards | `features/mouse/views/widgets/mouse_card.dart`, `features/mouse/models/discovered_card_state.dart` | partial |
+| L3 | Presentation | Flutter view controllers, view models, widgets. Blind to hardware and protocol bytes; reads capability maps, subscribes to state, renders cards | `features/mouse/views/widgets/device_card.dart`, `features/mouse/models/discovered_card_state.dart` | partial |
 | L4 | Domain | Abstract `DeviceRepository` + `DeviceHydrationService`; source of truth for the active config profile as typed classes (`DpiConfiguration`, `ButtonMap`), not dynamic maps | — | not yet reached |
 | L5 | Codec & Sequencing | `ProtocolCodec` facade delegating to sub-codecs (`dpi_codec`, `rgb_codec`); math transforms, framing, CRC, async priority `CommandPlanner` | `features/mouse/protocol/device_protocol.dart` (handshake only), `core/utils/crc16.dart` (staged, unused) | partial |
 | L6 | Hardware Transport Router | Uniform transport abstraction; platform-specific enumeration drivers; raw `read()`/`write()` | `core/device/hid_session.dart`, `core/hid/hid_scanner.dart`, `core/hid/hid_scanner_factory.dart`, `core/hid/desktop/desktop_hid_scanner.dart`, `core/hid/web/web_hid_scanner.dart`, `core/hid/hid_events.dart` | built |
@@ -42,7 +42,7 @@ a hardware revision can change capabilities. Deferred until firmware queries
 exist (L5 opcode A8).
 
 ### L3 — Presentation
-Built: `MouseCard`, a pure CDD component rendering `DiscoveredCardState` only —
+Built: `DeviceCard`, a pure CDD component rendering `DiscoveredCardState` only —
 no streams, no HID, no catalog lookup. `DiscoveredCardState` is an immutable
 view model with value equality.
 
@@ -106,7 +106,7 @@ Build order for the current stage (device-card UI, UI-only-loads-data):
 
 1. L1 list output — aggregate verified sessions into an immutable
    `List<DiscoveredCardState>` the UI can consume.
-2. L3 grid — `DevicesScreen` renders one `MouseCard` per entry, driven by a
+2. L3 grid — `DevicesScreen` renders one `DeviceCard` per entry, driven by a
    BLoC/view-model that subscribes to that list.
 
 L4 and the rest of L5 are later stages (settings read/write), not needed for

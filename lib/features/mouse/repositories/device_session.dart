@@ -60,7 +60,7 @@ class DeviceSession {
 
     _controller.add(DeviceSessionState.connecting(name, mode));
     debugPrint('[session] start: devId=${device.entry.devId} '
-        'expected deviceType=${device.entry.deviceType} expected devId="${device.entry.devId}"');
+        'expected deviceType=${device.entry.deviceType.name} expected devId="${device.entry.devId}"');
 
     try {
       debugPrint('[session] opening device…');
@@ -70,8 +70,8 @@ class DeviceSession {
 
       final typeMatch = hs.deviceType == device.entry.deviceType;
       final idMatch = hs.deviceId == device.entry.devId;
-      debugPrint('[session] verify: reported type=${hs.deviceType} (match=$typeMatch), '
-          'reported id="${hs.deviceId}" (match=$idMatch)');
+      debugPrint('[session] verify: reported type=${hs.deviceType?.name ?? 'unknown'} '
+          '(match=$typeMatch), reported id="${hs.deviceId}" (match=$idMatch)');
 
       if (typeMatch && idMatch) {
         debugPrint('[session] VERIFIED');

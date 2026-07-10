@@ -48,7 +48,7 @@ class DeviceScope {
     _watcher.start(
       onConnect: (session) {
         _saveLastDevice(session.device);
-        _upsert(session);
+        _publishWithBattery(session); // verified by watcher → query A4 → show
       },
       onDisconnect: (path, vid, pid) => _remove(path),
     );
@@ -94,11 +94,43 @@ class DeviceScope {
     final verified = await session.start();
     if (!verified) return;
     _watcher.register(session);
-    _upsert(session);
+    await _publishWithBattery(session);
   }
 
-  void _upsert(DeviceSession session) {
-    _cards[session.device.hidDevice.path] = _cardStateFor(session);
+  /// Queries battery (A4) before publishing — card shows once, populated.
+  /// Called from both [_startAndRegister] (launch/scan) and watcher
+  /// [onConnect] (hot-plug, session already verified).
+  Future<void> _publishWithBattery(DeviceSession session) async {
+    final battery = await _queryBattery(session);
+    _upsert(session, battery);
+  }
+
+  /// Queries battery+charging via A4. Returns null on failure so the caller
+  /// can fall back to sentinels rather than hiding a verified device.
+  Future<BatteryResult?> _queryBattery(DeviceSession session) async {
+    try {
+      final result = await session.queryBattery();
+      debugPrint('[scope] battery for ${session.device.entry.model}: '
+          '${result.percent}% charging=${result.isCharging}');
+      return result;
+    } catch (e) {
+      debugPrint('[scope] battery query failed for '
+          '${session.device.entry.model}: $e');
+      return null;
+    }
+  }
+
+  /// Publishes the card for [session] only when [battery] is available.
+  /// If battery is null (query failed), the card is NOT shown — per the
+  /// contract that a card renders only with battery+charging info present.
+  void _upsert(DeviceSession session, [BatteryResult? battery]) {
+    final path = session.device.hidDevice.path;
+    if (battery == null) {
+      debugPrint('[scope] no battery for ${session.device.entry.model} '
+          '— card not shown');
+      return;
+    }
+    _cards[path] = _cardStateFor(session, battery);
     cards.value = List.unmodifiable(_cards.values);
   }
 
@@ -108,16 +140,18 @@ class DeviceScope {
   }
 
   /// L1 → L3 bridge: builds the card state from a verified session's catalog
-  /// context. Firmware/battery/charging are sentinels until L5 lands.
-  DiscoveredCardState _cardStateFor(DeviceSession session) {
+  /// context plus the A4 battery result. Called only with a non-null battery
+  /// (the card is suppressed until then), so fields are real, not sentinels.
+  /// Firmware is still a sentinel (opcode A8, not yet built).
+  DiscoveredCardState _cardStateFor(DeviceSession session, BatteryResult battery) {
     final entry = session.device.entry;
     return DiscoveredCardState(
       devId: entry.devId,
       displayName: entry.model,
       connectionMode: session.device.mode.mode,
       firmwareVersion: '',
-      batteryPercentage: -1,
-      isCharging: false,
+      batteryPercentage: battery.percent,
+      isCharging: battery.isCharging,
       physicalHandle: session.device.hidDevice,
       imageSmall: entry.image.small,
       imageLarge: entry.image.large,

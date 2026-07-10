@@ -34,6 +34,8 @@ class DeviceCard extends StatelessWidget {
                   Text(state.displayName, style: _title),
                   const SizedBox(height: 4),
                   Text(_modeLabel, style: _subtitle),
+                  const SizedBox(height: 4),
+                  Text(_batteryLabel, style: _subtitle),
                 ],
               ),
             ),
@@ -45,6 +47,12 @@ class DeviceCard extends StatelessWidget {
 
   String get _modeLabel =>
       state.connectionMode == 0 ? 'USB' : state.connectionMode == 1 ? '2.4G' : '—';
+
+  String get _batteryLabel {
+    if (state.batteryPercentage < 0) return 'Battery —';
+    final pct = '${state.batteryPercentage}%';
+    return state.isCharging ? '$pct ⚡ charging' : 'Battery $pct';
+  }
 
   static const _title = TextStyle(fontSize: 16, fontWeight: FontWeight.bold);
   static const _subtitle = TextStyle(fontSize: 13, color: Colors.grey);

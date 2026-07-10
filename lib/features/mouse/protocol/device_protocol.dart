@@ -13,9 +13,18 @@ class DeviceHandshake {
   const DeviceHandshake({required this.deviceType, required this.deviceId});
 }
 
+/// Battery query result: charge level and charging state.
+class BatteryResult {
+  /// 0..100, or -1 when unknown.
+  final int percent;
+  final bool isCharging;
+  const BatteryResult({required this.percent, required this.isCharging});
+}
+
 /// Mouse handshake protocol. One protocol for all mice.
 abstract class DeviceProtocol {
   Future<DeviceHandshake> handshake(HidSession session);
+  Future<BatteryResult> queryBattery(HidSession session);
 }
 
 /// Standard mouse protocol. 32-byte frame over report id 7.
@@ -29,6 +38,7 @@ class MouseProtocol implements DeviceProtocol {
   static const int _frameLength = 32;
   static const int _askOpcode = 0xA1;
   static const int _ackOpcode = 0xA1;
+  static const int _batteryOpcode = 0xA4;
 
   // Payload offsets (report id stripped). hid_tool keeps the report id on
   // desktop and drops it on web (WebHID oninputreport has no report id prefix).
@@ -36,6 +46,10 @@ class MouseProtocol implements DeviceProtocol {
   static const int _ackDeviceTypeOffset = 5;
   static const int _ackDeviceIdOffset = 6;
   static const int _deviceIdLength = 4;
+
+  // A4 battery ack offsets (report id stripped).
+  static const int _batteryPercentOffset = 5; // 0..100
+  static const int _batteryChargingOffset = 6; // 0x01 charging, 0x00 not
 
   static const Duration _sendTimeout = Duration(milliseconds: 1000);
 
@@ -91,6 +105,46 @@ class MouseProtocol implements DeviceProtocol {
       deviceType: DeviceType.fromCode(ack[_ackDeviceTypeOffset]),
       deviceId: idBytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join(),
     );
+  }
+
+  @override
+  Future<BatteryResult> queryBattery(HidSession session) async {
+    final ask = _buildBatteryFrame();
+    // Listener-first send, same as handshake: arm receive before sending.
+    final ackFuture = session.receiveReport(_frameLength, timeout: _sendTimeout);
+    debugPrint('[proto] battery: sending ask ${_hex(ask)}');
+    await session.sendReport(ask, reportId: _reportId);
+
+    final ack = await ackFuture;
+    debugPrint('[proto] battery: received ack ${_hex(ack)} (${ack.length}B)');
+    return _parseBattery(ack);
+  }
+
+  Uint8List _buildBatteryFrame() {
+    final frame = Uint8List(_frameLength); // 32 bytes, all 00
+    frame[0] = _batteryOpcode; // A4, report id 7, rest 00 — no CRC
+    return frame;
+  }
+
+  BatteryResult _parseBattery(Uint8List raw) {
+    final ack = raw.isNotEmpty && raw[0] == _reportId
+        ? Uint8List.fromList(raw.sublist(1))
+        : raw;
+    if (ack.isEmpty) {
+      throw FormatException('Battery ack empty');
+    }
+    final opcode = ack[0];
+    if (opcode != _batteryOpcode) {
+      throw FormatException(
+        'Unexpected battery ack opcode: 0x${opcode.toRadixString(16)}',
+      );
+    }
+    if (ack.length <= _batteryChargingOffset) {
+      throw FormatException('Battery ack too short: ${ack.length} bytes');
+    }
+    final percent = ack[_batteryPercentOffset];
+    final isCharging = ack[_batteryChargingOffset] != 0;
+    return BatteryResult(percent: percent, isCharging: isCharging);
   }
 
   String _hex(Uint8List bytes) =>

@@ -59,21 +59,3 @@ WebHID input is event-based, not a blocking read. The transport layer (tier 6)
 adds an async request/response correlation (`sendAndWait`) for ack and retry.
 Everything above transport is platform-agnostic.
 
-## Comparison to ClickSync
-
-ClickSync is a web-only WebHID mouse config app with 8 tiers. driver_hub has
-10. The difference has two causes.
-
-The desktop and web paths converge at the `hid_tool` library (tier 8) and
-split at discovery (tier 7). This adds complexity inside tiers 7 and 8, not
-whole new tiers.
-
-driver_hub separates concerns that ClickSync bundles:
-
-| ClickSync bundles | driver_hub separates into | Reason |
-|---|---|---|
-| Tier 5 (vendor protocol) bundles transport and codec | Tier 4 (codec) and tier 6 (transport) | transport is device-independent shared core; codec is per-device |
-| Tier 4 (device_runtime) bundles discovery, matching, protocol loading | Tier 5 (matching) and tier 7 (discovery) | discovery is split by platform; matching is shared data comparison |
-| Tier 5 bundles capabilities (PID_CAPABILITY_MATRIX) | Tier 3 (descriptor) | capabilities are a first-class layer for multi-device scaling |
-
-Both are deliberate architecture decisions, not over-engineering.

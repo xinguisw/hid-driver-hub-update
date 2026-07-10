@@ -56,6 +56,9 @@ class DeviceSession {
   /// Caller owns the result; failures surface as thrown exceptions.
   Future<BatteryResult> queryBattery() => _protocol.queryBattery(_session);
 
+  /// Pass-through to the protocol's firmware query (opcode A8).
+  Future<FirmwareResult> queryFirmware() => _protocol.queryFirmware(_session);
+
   /// Runs open -> handshake -> verify. Emits state on [state].
   // Returns true only when verified; false on reject or error.
   Future<bool> start() async {

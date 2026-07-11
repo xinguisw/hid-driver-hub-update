@@ -97,20 +97,34 @@ class DeviceScope {
     await _publishCard(session);
   }
 
-  /// Queries battery (A4) and firmware (A8) before publishing — card shows
-  /// once, populated. Called from both [_startAndRegister] (launch/scan) and
-  /// watcher [onConnect] (hot-plug, session already verified).
+  /// Queries battery (A4) and firmware (A8) before publishing. Called from
+  /// [_startAndRegister] (launch/scan) and watcher [onConnect] (hot-plug).
+  ///
+  /// Guards on [DeviceSession.isAlive] after the awaits: if the device
+  /// disconnected mid-query the watcher already removed its card, so don't
+  /// re-add a stale one.
   Future<void> _publishCard(DeviceSession session) async {
     final battery = await _queryBattery(session);
     final firmware = await _queryFirmware(session);
+    if (!session.isAlive) {
+      debugPrint('[scope] ${session.device.entry.model} gone mid-query, '
+          'skipping publish');
+      return;
+    }
     _upsert(session, battery, firmware);
   }
 
-  /// Queries battery+charging via A4. Returns null on failure so the caller
-  /// can fall back to sentinels rather than hiding a verified device.
+  /// Queries battery+charging via A4. Returns null on failure (device gone,
+  /// query threw) so the caller can fall back to sentinels rather than hiding
+  /// a verified device.
   Future<BatteryResult?> _queryBattery(DeviceSession session) async {
     try {
       final result = await session.queryBattery();
+      if (result == null) {
+        debugPrint('[scope] battery skipped: ${session.device.entry.model} '
+            'no longer alive');
+        return null;
+      }
       debugPrint('[scope] battery for ${session.device.entry.model}: '
           '${result.percent}% charging=${result.isCharging}');
       return result;
@@ -126,6 +140,11 @@ class DeviceScope {
   Future<FirmwareResult?> _queryFirmware(DeviceSession session) async {
     try {
       final result = await session.queryFirmware();
+      if (result == null) {
+        debugPrint('[scope] firmware skipped: ${session.device.entry.model} '
+            'no longer alive');
+        return null;
+      }
       debugPrint('[scope] firmware for ${session.device.entry.model}: '
           'mouse=${result.mouseVersion.join('.')} '
           'dongle=${result.dongleVersion.join('.')}');

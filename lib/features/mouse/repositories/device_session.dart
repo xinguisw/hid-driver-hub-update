@@ -53,12 +53,11 @@ class DeviceSession {
   Stream<DeviceSessionState> get state => _controller.stream;
 
   /// Whether the underlying transport is still open. False once the device
-  /// unplugs or [dispose] runs. Callers should check before issuing queries.
+  /// unplugs or [dispose] runs.
   bool get isAlive => _session.isOpen;
 
   /// Pass-through to the protocol's battery query (opcode A4).
-  /// Returns null if the session is no longer alive (device gone) rather than
-  /// throwing into a dead transport.
+  /// Returns null if the session is no longer alive (device gone).
   Future<BatteryResult?> queryBattery() async {
     if (!isAlive) return null;
     return _protocol.queryBattery(_session);

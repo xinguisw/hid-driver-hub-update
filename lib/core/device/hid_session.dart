@@ -35,10 +35,8 @@ class HidSession {
   final HidDevice _device;
   bool _open = false;
 
-  /// Completed when [close] runs. Racing a [receiveReport] against this lets
-  /// an in-flight read abort promptly on disconnect instead of hanging until
-  /// its timeout, so the watcher's dispose and the scope's publish don't
-  /// fight over a dead session.
+  /// Completed when [close] runs. Racing [receiveReport] against it aborts an
+  /// in-flight read on disconnect instead of waiting for its timeout.
   Completer<void>? _closed;
 
   HidSession(this._device);
@@ -57,17 +55,16 @@ class HidSession {
     // On desktop inputStream() is an async* generator, so this is a no-op.
     _device.inputStream();
     _open = true;
-    _closed = null; // fresh — a reopened session can receive again
+    _closed = null; // reopened session can receive again
   }
 
-  /// Closes the underlying device. Aborts any in-flight [receiveReport] by
-  /// completing [_closed]; the losing receive throws
-  /// [HidSessionClosedException] instead of hanging to its timeout.
+  /// Closes the underlying device. Completes [_closed] to abort any in-flight
+  /// [receiveReport] before closing.
   Future<void> close() async {
     if (!_open) return;
     _open = false;
     _closed ??= Completer<void>();
-    _closed!.complete(); // abort in-flight receives first
+    _closed!.complete();
     if (_device.isOpen) {
       await _device.close();
     }
@@ -81,16 +78,14 @@ class HidSession {
   }
 
   /// Receives a raw input report of [reportLength] bytes. No parsing is
-  /// applied — callers interpret the bytes per their device's protocol.
+  /// applied; callers interpret the bytes per their device's protocol.
   ///
-  /// Races the device read against [_closed]: if [close] runs while waiting,
-  /// this throws [HidSessionClosedException] promptly rather than hanging
-  /// until [timeout].
+  /// Races the read against [_closed]: if [close] runs while waiting, throws
+  /// [HidSessionClosedException] instead of waiting for [timeout].
   Future<Uint8List> receiveReport(int reportLength, {Duration? timeout}) {
     _ensureOpen();
     _closed ??= Completer<void>();
     final read = _device.receiveReport(reportLength, timeout: timeout);
-    // If close() completes _closed first, surface a typed abort error.
     return Future.any([
       read,
       _closed!.future.then((_) =>

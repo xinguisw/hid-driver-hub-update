@@ -42,10 +42,9 @@ class DeviceWatcher {
   final HidEvents _events = HidEvents();
   final _sessions = <String, DeviceSession>{}; // keyed by device path
 
-  /// Pending dispose timers per path. On disconnect, dispose is deferred so a
-  /// rapid replug (disconnect+connect within [_replugDebounce]) cancels it and
-  /// keeps the existing session alive — avoids a stale-card flash and the
-  /// cost of re-handshaking the same physical device.
+  /// Disconnect teardown is deferred by [_replugDebounce]; if the same path
+  /// reconnects within the window, [_handleConnect] cancels the pending timer
+  /// and keeps the existing session.
   static const Duration _replugDebounce = Duration(milliseconds: 300);
   final _pendingDisposes = <String, Timer>{};
 
@@ -94,9 +93,7 @@ class DeviceWatcher {
     DeviceSessionCallback onConnect,
   ) async {
     if (_sessions.containsKey(path)) return; // already active
-    // Rapid replug: a disconnect was pending for this path but the device
-    // came back within the debounce window. Cancel the dispose, keep the
-    // existing session — no stale flash, no re-handshake.
+    // Cancel any pending dispose for this path (rapid replug).
     _pendingDisposes.remove(path)?.cancel();
 
     final discovered = await _scanner.discoverAuthorized();
@@ -133,10 +130,7 @@ class DeviceWatcher {
     DeviceDisconnectCallback onDisconnect,
   ) async {
     final session = _sessions.remove(path);
-    // Defer the actual teardown. If the device reconnects within
-    // [_replugDebounce], _handleConnect cancels this timer and the session
-    // survives untouched. Otherwise the card is removed and the session
-    // disposed after the window.
+    // Defer teardown by [_replugDebounce]; reconnect cancels it.
     _pendingDisposes[path]?.cancel();
     _pendingDisposes[path] = Timer(_replugDebounce, () {
       _pendingDisposes.remove(path);

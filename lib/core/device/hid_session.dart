@@ -3,6 +3,16 @@ import 'dart:typed_data';
 
 import 'package:hid_tool/hid_tool.dart';
 
+/// Thrown when an in-flight [HidSession.receiveReport] is aborted because the
+/// session was closed (device unplugged or [close] called) while waiting.
+/// Lets callers distinguish "device gone" from a generic transport error.
+class HidSessionClosedException implements Exception {
+  final String message;
+  const HidSessionClosedException([this.message = 'HidSession closed while a report receive was in flight.']);
+  @override
+  String toString() => 'HidSessionClosedException: $message';
+}
+
 /// The ONE transport object. Owns a single open [HidDevice] and is the only
 /// place in the application that calls [HidDevice.sendReport],
 /// [HidDevice.receiveReport], or [HidDevice.inputStream].
@@ -25,6 +35,12 @@ class HidSession {
   final HidDevice _device;
   bool _open = false;
 
+  /// Completed when [close] runs. Racing a [receiveReport] against this lets
+  /// an in-flight read abort promptly on disconnect instead of hanging until
+  /// its timeout, so the watcher's dispose and the scope's publish don't
+  /// fight over a dead session.
+  Completer<void>? _closed;
+
   HidSession(this._device);
 
   /// Whether the underlying device is open.
@@ -41,15 +57,20 @@ class HidSession {
     // On desktop inputStream() is an async* generator, so this is a no-op.
     _device.inputStream();
     _open = true;
+    _closed = null; // fresh — a reopened session can receive again
   }
 
-  /// Closes the underlying device.
+  /// Closes the underlying device. Aborts any in-flight [receiveReport] by
+  /// completing [_closed]; the losing receive throws
+  /// [HidSessionClosedException] instead of hanging to its timeout.
   Future<void> close() async {
     if (!_open) return;
+    _open = false;
+    _closed ??= Completer<void>();
+    _closed!.complete(); // abort in-flight receives first
     if (_device.isOpen) {
       await _device.close();
     }
-    _open = false;
   }
 
   /// Sends a raw output report. The [reportId] is prefixed by hid_tool per
@@ -61,9 +82,20 @@ class HidSession {
 
   /// Receives a raw input report of [reportLength] bytes. No parsing is
   /// applied — callers interpret the bytes per their device's protocol.
+  ///
+  /// Races the device read against [_closed]: if [close] runs while waiting,
+  /// this throws [HidSessionClosedException] promptly rather than hanging
+  /// until [timeout].
   Future<Uint8List> receiveReport(int reportLength, {Duration? timeout}) {
     _ensureOpen();
-    return _device.receiveReport(reportLength, timeout: timeout);
+    _closed ??= Completer<void>();
+    final read = _device.receiveReport(reportLength, timeout: timeout);
+    // If close() completes _closed first, surface a typed abort error.
+    return Future.any([
+      read,
+      _closed!.future.then((_) =>
+          throw const HidSessionClosedException()),
+    ]);
   }
 
   /// The raw input byte stream from the device. Each event is one byte.

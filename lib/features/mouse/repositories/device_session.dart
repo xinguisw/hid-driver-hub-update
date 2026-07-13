@@ -5,6 +5,7 @@ import 'package:driver_hub/core/device/hid_session.dart';
 import 'package:flutter/foundation.dart';
 
 import '../protocol/device_protocol.dart';
+import '../protocol/osd_codec.dart';
 
 /// State of a device session, emitted to the card.
 class DeviceSessionState {
@@ -34,15 +35,15 @@ class DeviceSessionState {
 enum Status { connecting, verified, rejected, error }
 
 /// Per-device orchestrator: open -> handshake -> verify against the catalog.
-///
-/// Match loads name and mode for the card; mismatch closes the session.
-/// Battery/charging need OSD push parsing and are added later.
 class DeviceSession {
   final DiscoveredDevice device;
   final HidSession _session;
   final DeviceProtocol _protocol;
+  final OsdCodec _osd = const OsdCodec();
 
   final _controller = StreamController<DeviceSessionState>.broadcast();
+  final _batteryPushes = StreamController<BatteryResult>.broadcast();
+  StreamSubscription<Uint8List>? _unsolicitedSub;
 
   DeviceSession({
     required this.device,
@@ -52,26 +53,23 @@ class DeviceSession {
 
   Stream<DeviceSessionState> get state => _controller.stream;
 
-  /// Whether the underlying transport is still open. False once the device
-  /// unplugs or [dispose] runs.
+  /// OSD report 9 opcode 2 (and web short frames) parsed to battery.
+  Stream<BatteryResult> get batteryPushes => _batteryPushes.stream;
+
+  /// Whether the underlying transport is still open.
   bool get isAlive => _session.isOpen;
 
-  /// Pass-through to the protocol's battery query (opcode A4).
-  /// Returns null if the session is no longer alive (device gone).
   Future<BatteryResult?> queryBattery() async {
     if (!isAlive) return null;
     return _protocol.queryBattery(_session);
   }
 
-  /// Pass-through to the protocol's firmware query (opcode A8).
-  /// Returns null if the session is no longer alive (device gone).
   Future<FirmwareResult?> queryFirmware() async {
     if (!isAlive) return null;
     return _protocol.queryFirmware(_session);
   }
 
-  /// Runs open -> handshake -> verify. Emits state on [state].
-  // Returns true only when verified; false on reject or error.
+  /// Open -> handshake -> verify. Starts OSD unsolicited listen when verified.
   Future<bool> start() async {
     final name = device.entry.model;
     final mode = device.mode.desc;
@@ -93,6 +91,7 @@ class DeviceSession {
 
       if (typeMatch && idMatch) {
         debugPrint('[session] VERIFIED');
+        _listenUnsolicited();
         _controller.add(DeviceSessionState.verified(name, mode));
         return true;
       }
@@ -108,8 +107,28 @@ class DeviceSession {
     }
   }
 
+  void _listenUnsolicited() {
+    _unsolicitedSub?.cancel();
+    _unsolicitedSub = _session.unsolicitedReports.listen((raw) {
+      debugPrint('[session] unsolicited ${_hex(raw)} (${raw.length}B)');
+      final battery = _osd.parseBattery(raw);
+      if (battery == null) return;
+      debugPrint('[session] OSD battery: ${battery.percent}% '
+          'charging=${battery.isCharging} raw=${_hex(raw)}');
+      if (!_batteryPushes.isClosed) {
+        _batteryPushes.add(battery);
+      }
+    });
+  }
+
+  String _hex(List<int> bytes) =>
+      bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join(' ');
+
   Future<void> dispose() async {
+    await _unsolicitedSub?.cancel();
+    _unsolicitedSub = null;
     await _safeClose();
+    await _batteryPushes.close();
     await _controller.close();
   }
 

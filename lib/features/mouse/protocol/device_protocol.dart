@@ -75,24 +75,21 @@ class MouseProtocol implements DeviceProtocol {
   static const Duration _sendTimeout = Duration(milliseconds: 1000);
 
   @override
-  Future<DeviceHandshake> handshake(HidSession session) {
-    // receive then send in one enqueue (web drops ack if no listener yet).
-    return session.enqueue(() async {
-      final ask = _buildAskFrame();
-      final ackFuture =
-          session.receiveReport(_frameLength, timeout: _sendTimeout);
-      debugPrint('[proto] handshake: sending ask ${_hex(ask)}');
-      await session.sendReport(ask, reportId: _reportId);
-
-      final ack = await ackFuture;
-      debugPrint(
-          '[proto] handshake: received ack ${_hex(ack)} (${ack.length}B)');
-
-      final result = _parseAck(ack);
-      debugPrint('[proto] handshake: deviceType=${result.deviceType} '
-          'deviceId="${result.deviceId}"');
-      return result;
-    });
+  Future<DeviceHandshake> handshake(HidSession session) async {
+    final ask = _buildAskFrame();
+    debugPrint('[proto] handshake: sending ask ${_hex(ask)}');
+    final ack = await session.sendAndWait(
+      data: ask,
+      reportId: _reportId,
+      reportLength: _frameLength,
+      match: (raw) => matchesOpcode(raw, _ackOpcode),
+      timeout: _sendTimeout,
+    );
+    debugPrint('[proto] handshake: received ack ${_hex(ack)} (${ack.length}B)');
+    final result = _parseAck(ack);
+    debugPrint('[proto] handshake: deviceType=${result.deviceType} '
+        'deviceId="${result.deviceId}"');
+    return result;
   }
 
   Uint8List _buildAskFrame() {
@@ -108,11 +105,7 @@ class MouseProtocol implements DeviceProtocol {
   }
 
   DeviceHandshake _parseAck(Uint8List raw) {
-    // Desktop prefixes the report id; web does not. Strip it so the payload
-    // always starts at the opcode (matches the WebHID oninputreport shape).
-    final ack = raw.isNotEmpty && raw[0] == _reportId
-        ? Uint8List.fromList(raw.sublist(1))
-        : raw;
+    final ack = _stripReportId(raw);
     if (ack.length < _ackDeviceIdOffset + _deviceIdLength) {
       throw FormatException('Handshake ack too short: ${ack.length} bytes');
     }
@@ -131,19 +124,18 @@ class MouseProtocol implements DeviceProtocol {
   }
 
   @override
-  Future<BatteryResult> queryBattery(HidSession session) {
-    return session.enqueue(() async {
-      final ask = _buildBatteryFrame();
-      final ackFuture =
-          session.receiveReport(_frameLength, timeout: _sendTimeout);
-      debugPrint('[proto] battery: sending ask ${_hex(ask)}');
-      await session.sendReport(ask, reportId: _reportId);
-
-      final ack = await ackFuture;
-      debugPrint(
-          '[proto] battery: received ack ${_hex(ack)} (${ack.length}B)');
-      return _parseBattery(ack);
-    });
+  Future<BatteryResult> queryBattery(HidSession session) async {
+    final ask = _buildBatteryFrame();
+    debugPrint('[proto] battery: sending ask ${_hex(ask)}');
+    final ack = await session.sendAndWait(
+      data: ask,
+      reportId: _reportId,
+      reportLength: _frameLength,
+      match: (raw) => matchesOpcode(raw, _batteryOpcode),
+      timeout: _sendTimeout,
+    );
+    debugPrint('[proto] battery: received ack ${_hex(ack)} (${ack.length}B)');
+    return _parseBattery(ack);
   }
 
   Uint8List _buildBatteryFrame() {
@@ -153,9 +145,7 @@ class MouseProtocol implements DeviceProtocol {
   }
 
   BatteryResult _parseBattery(Uint8List raw) {
-    final ack = raw.isNotEmpty && raw[0] == _reportId
-        ? Uint8List.fromList(raw.sublist(1))
-        : raw;
+    final ack = _stripReportId(raw);
     if (ack.isEmpty) {
       throw FormatException('Battery ack empty');
     }
@@ -174,19 +164,18 @@ class MouseProtocol implements DeviceProtocol {
   }
 
   @override
-  Future<FirmwareResult> queryFirmware(HidSession session) {
-    return session.enqueue(() async {
-      final ask = _buildFirmwareFrame();
-      final ackFuture =
-          session.receiveReport(_frameLength, timeout: _sendTimeout);
-      debugPrint('[proto] firmware: sending ask ${_hex(ask)}');
-      await session.sendReport(ask, reportId: _reportId);
-
-      final ack = await ackFuture;
-      debugPrint(
-          '[proto] firmware: received ack ${_hex(ack)} (${ack.length}B)');
-      return _parseFirmware(ack);
-    });
+  Future<FirmwareResult> queryFirmware(HidSession session) async {
+    final ask = _buildFirmwareFrame();
+    debugPrint('[proto] firmware: sending ask ${_hex(ask)}');
+    final ack = await session.sendAndWait(
+      data: ask,
+      reportId: _reportId,
+      reportLength: _frameLength,
+      match: (raw) => matchesOpcode(raw, _firmwareOpcode),
+      timeout: _sendTimeout,
+    );
+    debugPrint('[proto] firmware: received ack ${_hex(ack)} (${ack.length}B)');
+    return _parseFirmware(ack);
   }
 
   Uint8List _buildFirmwareFrame() {
@@ -196,9 +185,7 @@ class MouseProtocol implements DeviceProtocol {
   }
 
   FirmwareResult _parseFirmware(Uint8List raw) {
-    final ack = raw.isNotEmpty && raw[0] == _reportId
-        ? Uint8List.fromList(raw.sublist(1))
-        : raw;
+    final ack = _stripReportId(raw);
     if (ack.isEmpty) {
       throw FormatException('Firmware ack empty');
     }
@@ -217,6 +204,23 @@ class MouseProtocol implements DeviceProtocol {
     final dongle = ack.sublist(
         _firmwareDongleOffset, _firmwareDongleOffset + _firmwareVersionLength);
     return FirmwareResult(mouseVersion: mouse, dongleVersion: dongle);
+  }
+
+  /// Desktop may prefix report id 0x07; web usually does not.
+  Uint8List _stripReportId(Uint8List raw) => stripReportId(raw);
+
+  /// Desktop may prefix report id 0x07; web usually does not.
+  static Uint8List stripReportId(Uint8List raw, {int reportId = _reportId}) {
+    if (raw.isNotEmpty && raw[0] == reportId) {
+      return Uint8List.fromList(raw.sublist(1));
+    }
+    return raw;
+  }
+
+  /// True when payload opcode (after optional report-id byte) equals [opcode].
+  static bool matchesOpcode(Uint8List raw, int opcode, {int reportId = _reportId}) {
+    final body = stripReportId(raw, reportId: reportId);
+    return body.isNotEmpty && body[0] == opcode;
   }
 
   String _hex(Uint8List bytes) =>

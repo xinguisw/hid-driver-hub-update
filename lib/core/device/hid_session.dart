@@ -28,8 +28,65 @@ class HidSession {
 
   bool get isOpen => _open;
 
-  /// Serialize work on this device. One task = full receive+send+await pair.
+  /// Serialize work on this device. One task = full critical section.
   Future<T> enqueue<T>(Future<T> Function() task) => _queue.enqueue(task);
+
+  /// Send [data], then wait for the first IN report where [match] is true.
+  ///
+  /// Runs as one [enqueue] job (do not wrap again). Arms receive before send.
+  /// Non-matching reports are skipped until [timeout] or [close].
+  Future<Uint8List> sendAndWait({
+    required Uint8List data,
+    required int reportId,
+    required int reportLength,
+    required bool Function(Uint8List raw) match,
+    Duration timeout = const Duration(milliseconds: 1000),
+  }) {
+    return enqueue(() => _sendAndWaitBody(
+          data: data,
+          reportId: reportId,
+          reportLength: reportLength,
+          match: match,
+          timeout: timeout,
+        ));
+  }
+
+  Future<Uint8List> _sendAndWaitBody({
+    required Uint8List data,
+    required int reportId,
+    required int reportLength,
+    required bool Function(Uint8List raw) match,
+    required Duration timeout,
+  }) async {
+    final deadline = DateTime.now().add(timeout);
+
+    Duration remaining() {
+      final left = deadline.difference(DateTime.now());
+      return left.isNegative ? Duration.zero : left;
+    }
+
+    void ensureTimeLeft() {
+      if (remaining() == Duration.zero) {
+        throw TimeoutException(
+          'HidSession.sendAndWait timed out waiting for a matching report',
+          timeout,
+        );
+      }
+    }
+
+    ensureTimeLeft();
+    // Listener-first: arm receive before send (web can drop unsolicited acks).
+    final first = receiveReport(reportLength, timeout: remaining());
+    await sendReport(data, reportId: reportId);
+    var raw = await first;
+    if (match(raw)) return raw;
+
+    while (true) {
+      ensureTimeLeft();
+      raw = await receiveReport(reportLength, timeout: remaining());
+      if (match(raw)) return raw;
+    }
+  }
 
   Future<void> open() async {
     if (_open) return;
@@ -50,14 +107,14 @@ class HidSession {
     }
   }
 
-  /// Raw OUT report. Use inside [enqueue].
+  /// Raw OUT report. Use inside [enqueue] / [sendAndWait].
   Future<void> sendReport(Uint8List data, {int reportId = 0x00}) {
     _ensureOpen();
     return _device.sendReport(data, reportId: reportId);
   }
 
   /// Raw IN report. Throws [HidSessionClosedException] if [close] wins the race.
-  /// Use inside [enqueue].
+  /// Use inside [enqueue] / [sendAndWait].
   Future<Uint8List> receiveReport(int reportLength, {Duration? timeout}) {
     _ensureOpen();
     _closed ??= Completer<void>();

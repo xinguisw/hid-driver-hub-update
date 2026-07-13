@@ -48,7 +48,7 @@ class DeviceScope {
   Timer? _batteryPollTimer;
 
   /// How often to re-query battery via A4 (backup if OSD is quiet).
-  static const _batteryPollInterval = Duration(seconds: 60);
+  static const _batteryPollInterval = Duration(seconds: 300);// 5min
 
   /// Published card list. The UI listens to rebuild on add/remove.
   final cards = ValueNotifier<List<DiscoveredCardState>>(const []);
@@ -123,10 +123,10 @@ class DeviceScope {
           'skipping publish');
       return;
     }
+    // Soft battery: always show card after verify; unknown battery is "—".
+    // Still start OSD/poll so a later value can fill in.
     _upsert(session, battery, firmware);
-    if (battery != null) {
-      _startLiveBattery(session);
-    }
+    _startLiveBattery(session);
   }
 
   /// OSD push + A4 poll for this device (same path on desktop and web).
@@ -208,8 +208,7 @@ class DeviceScope {
     }
   }
 
-  /// Queries mouse/dongle firmware via A8. Returns null on failure — firmware
-  /// is best-effort and does not gate the card (battery does).
+  /// Queries mouse/dongle firmware via A8. Returns null on failure (best-effort).
   Future<FirmwareResult?> _queryFirmware(DeviceSession session) async {
     try {
       final result = await session.queryFirmware();
@@ -229,16 +228,14 @@ class DeviceScope {
     }
   }
 
-  /// Publishes the card for [session] only when [battery] is available.
-  /// [firmware] is best-effort — null (query failed) leaves firmware as a
-  /// sentinel ("—") but does not suppress the card; battery is the gate.
+  /// Publishes a card for a verified [session].
+  /// Battery/firmware null → sentinels ("—" on the card); session stays usable.
   void _upsert(DeviceSession session, BatteryResult? battery,
       [FirmwareResult? firmware]) {
     final path = session.device.hidDevice.path;
     if (battery == null) {
-      debugPrint('[scope] no battery for ${session.device.entry.model} '
-          '— card not shown');
-      return;
+      debugPrint('[scope] no battery yet for ${session.device.entry.model} '
+          '— card shown with Battery —');
     }
     _cards[path] = _cardStateFor(session, battery, firmware);
     cards.value = List.unmodifiable(_cards.values);
@@ -252,21 +249,18 @@ class DeviceScope {
     cards.value = List.unmodifiable(_cards.values);
   }
 
-  /// L1 → L3 bridge: builds the card state from a verified session's catalog
-  /// context plus the A4 battery and A8 firmware results. Battery gates the
-  /// card (caller ensures non-null); firmware may be null (query failed).
-  DiscoveredCardState _cardStateFor(DeviceSession session, BatteryResult battery,
+  /// L1 → L3 bridge: catalog + optional A4/A8. Unknown battery → -1 ("—").
+  DiscoveredCardState _cardStateFor(DeviceSession session, BatteryResult? battery,
       [FirmwareResult? firmware]) {
     final entry = session.device.entry;
     return DiscoveredCardState(
       devId: entry.devId,
       displayName: entry.model,
       connectionMode: session.device.mode.mode,
-      // Show the firmware of the device on the wire: USB → mouse FW,
-      // 2.4G → dongle FW (the receiver is what we're talking to).
+      // USB → mouse FW; 2.4G → dongle FW.
       firmwareVersion: _firmwareLabel(session.device.mode.mode, firmware),
-      batteryPercentage: battery.percent,
-      isCharging: battery.isCharging,
+      batteryPercentage: battery?.percent ?? -1,
+      isCharging: battery?.isCharging ?? false,
       physicalHandle: session.device.hidDevice,
       imageSmall: entry.image.small,
       imageLarge: entry.image.large,

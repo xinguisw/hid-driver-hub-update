@@ -1,4 +1,4 @@
-import 'package:driver_hub/core/device/send_queue.dart';
+import 'package:driver_hub/layer6_transport/send_queue.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

@@ -5,6 +5,6 @@ import 'package:driver_hub/main.dart';
 void main() {
   testWidgets('app builds', (WidgetTester tester) async {
     await tester.pumpWidget(const DriverHubApp());
-    expect(find.text('driver_hub — scan test'), findsOneWidget);
+    expect(find.text('driver_hub'), findsOneWidget);
   });
 }

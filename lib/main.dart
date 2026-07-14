@@ -1,4 +1,4 @@
-import 'package:driver_hub/features/mouse/views/devices_screen.dart';
+import 'package:driver_hub/layer3_ui/screens/devices_screen.dart';
 import 'package:flutter/material.dart';
 
 void main() {

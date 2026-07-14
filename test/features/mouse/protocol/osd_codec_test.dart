@@ -1,6 +1,6 @@
 import 'dart:typed_data';
 
-import 'package:driver_hub/features/mouse/protocol/osd_codec.dart';
+import 'package:driver_hub/layer5_codec/codecs/osd_codec.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

@@ -75,22 +75,24 @@ class MouseProtocol implements DeviceProtocol {
   static const Duration _sendTimeout = Duration(milliseconds: 1000);
 
   @override
-  Future<DeviceHandshake> handshake(HidSession session) async {
-    final ask = _buildAskFrame();
-    // Subscribe to the input stream before sending: on web the broadcast
-    // controller drops events with no listener, so the ack must arrive after
-    // the subscription is active (listener-first send).
-    final ackFuture = session.receiveReport(_frameLength, timeout: _sendTimeout);
-    debugPrint('[proto] handshake: sending ask ${_hex(ask)}');
-    await session.sendReport(ask, reportId: _reportId);
+  Future<DeviceHandshake> handshake(HidSession session) {
+    // receive then send in one enqueue (web drops ack if no listener yet).
+    return session.enqueue(() async {
+      final ask = _buildAskFrame();
+      final ackFuture =
+          session.receiveReport(_frameLength, timeout: _sendTimeout);
+      debugPrint('[proto] handshake: sending ask ${_hex(ask)}');
+      await session.sendReport(ask, reportId: _reportId);
 
-    final ack = await ackFuture;
-    debugPrint('[proto] handshake: received ack ${_hex(ack)} (${ack.length}B)');
+      final ack = await ackFuture;
+      debugPrint(
+          '[proto] handshake: received ack ${_hex(ack)} (${ack.length}B)');
 
-    final result = _parseAck(ack);
-    debugPrint('[proto] handshake: deviceType=${result.deviceType} '
-        'deviceId="${result.deviceId}"');
-    return result;
+      final result = _parseAck(ack);
+      debugPrint('[proto] handshake: deviceType=${result.deviceType} '
+          'deviceId="${result.deviceId}"');
+      return result;
+    });
   }
 
   Uint8List _buildAskFrame() {
@@ -129,16 +131,19 @@ class MouseProtocol implements DeviceProtocol {
   }
 
   @override
-  Future<BatteryResult> queryBattery(HidSession session) async {
-    final ask = _buildBatteryFrame();
-    // Listener-first send, same as handshake: arm receive before sending.
-    final ackFuture = session.receiveReport(_frameLength, timeout: _sendTimeout);
-    debugPrint('[proto] battery: sending ask ${_hex(ask)}');
-    await session.sendReport(ask, reportId: _reportId);
+  Future<BatteryResult> queryBattery(HidSession session) {
+    return session.enqueue(() async {
+      final ask = _buildBatteryFrame();
+      final ackFuture =
+          session.receiveReport(_frameLength, timeout: _sendTimeout);
+      debugPrint('[proto] battery: sending ask ${_hex(ask)}');
+      await session.sendReport(ask, reportId: _reportId);
 
-    final ack = await ackFuture;
-    debugPrint('[proto] battery: received ack ${_hex(ack)} (${ack.length}B)');
-    return _parseBattery(ack);
+      final ack = await ackFuture;
+      debugPrint(
+          '[proto] battery: received ack ${_hex(ack)} (${ack.length}B)');
+      return _parseBattery(ack);
+    });
   }
 
   Uint8List _buildBatteryFrame() {
@@ -169,17 +174,19 @@ class MouseProtocol implements DeviceProtocol {
   }
 
   @override
-  Future<FirmwareResult> queryFirmware(HidSession session) async {
-    final ask = _buildFirmwareFrame();
-    // Listener-first send, same as handshake/battery: arm receive first.
-    final ackFuture =
-        session.receiveReport(_frameLength, timeout: _sendTimeout);
-    debugPrint('[proto] firmware: sending ask ${_hex(ask)}');
-    await session.sendReport(ask, reportId: _reportId);
+  Future<FirmwareResult> queryFirmware(HidSession session) {
+    return session.enqueue(() async {
+      final ask = _buildFirmwareFrame();
+      final ackFuture =
+          session.receiveReport(_frameLength, timeout: _sendTimeout);
+      debugPrint('[proto] firmware: sending ask ${_hex(ask)}');
+      await session.sendReport(ask, reportId: _reportId);
 
-    final ack = await ackFuture;
-    debugPrint('[proto] firmware: received ack ${_hex(ack)} (${ack.length}B)');
-    return _parseFirmware(ack);
+      final ack = await ackFuture;
+      debugPrint(
+          '[proto] firmware: received ack ${_hex(ack)} (${ack.length}B)');
+      return _parseFirmware(ack);
+    });
   }
 
   Uint8List _buildFirmwareFrame() {

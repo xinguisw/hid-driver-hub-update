@@ -10,6 +10,7 @@ import 'package:driver_hub/layer5_codec/device_protocol.dart';
 import 'package:driver_hub/layer1_discovery/device_session.dart';
 import 'package:driver_hub/layer1_discovery/device_watcher.dart';
 import 'package:flutter/foundation.dart';
+import 'package:hid_tool/hid_tool.dart';
 
 /// Owns the device lifecycle (L1) and exposes card state to the UI (L3).
 ///
@@ -127,8 +128,50 @@ class DeviceScope {
     }
     // Soft battery: always show card after verify; unknown battery is "—".
     // Live updates after connect: OSD push only (no A4 poll).
+    // Onboard config GETs (B2/C2/…) only when user opens settings (card tap).
     _upsert(session, battery, firmware);
     _startLiveBattery(session);
+  }
+
+  /// Live session for a card, if still connected. Used by settings after card tap.
+  DeviceSession? sessionForCard(DiscoveredCardState card) {
+    final handle = card.physicalHandle;
+    if (handle is HidDevice) {
+      return _sessions[handle.path];
+    }
+    return null;
+  }
+
+  /// Onboard config GETs for settings (not at card load). Soft: log errors, continue.
+  ///
+  /// Re-handshake first: device returns NAK 0x01 (handshake) for B2/C2/… if
+  /// A1 is not fresh when the user opens settings later.
+  Future<void> queryOnboardConfig(DeviceSession session) async {
+    final name = session.device.entry.model;
+    if (!session.isAlive) return;
+
+    final ok = await session.rehandshake();
+    if (!ok || !session.isAlive) {
+      debugPrint('[settings] $name: rehandshake failed — skip config GET');
+      return;
+    }
+
+    Future<void> run(String label, Future<Object?> Function() q) async {
+      if (!session.isAlive) return;
+      try {
+        final r = await q();
+        debugPrint('[settings] config $label $name: $r');
+      } catch (e) {
+        debugPrint('[settings] config $label $name FAILED: $e');
+      }
+    }
+
+    await run('buttonMapping', () => session.queryButtonMapping());
+    await run('reportRateDpi', () => session.queryReportRateDpiInfo());
+    await run('dpiTable', () => session.queryDpiTable());
+    await run('dpiRgb', () => session.queryDpiRgb());
+    await run('sensorOther', () => session.querySensorOther());
+    await run('rgbBacklight', () => session.queryRgbBacklight());
   }
 
   /// Subscribe to device OSD battery/charging pushes (real-time from device).

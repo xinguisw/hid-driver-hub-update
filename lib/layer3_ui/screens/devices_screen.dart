@@ -1,5 +1,6 @@
 import 'package:driver_hub/layer3_ui/models/discovered_card_state.dart';
 import 'package:driver_hub/layer1_discovery/device_connection_manager.dart';
+import 'package:driver_hub/layer3_ui/screens/device_settings_screen.dart';
 import 'package:driver_hub/layer3_ui/widgets/device_card_grid.dart';
 import 'package:driver_hub/layer3_ui/widgets/empty_device_state.dart';
 import 'package:flutter/foundation.dart';
@@ -51,11 +52,23 @@ class _DevicesScreenState extends State<DevicesScreen> {
                         EmptyDeviceState(busy: busy),
                   );
                 }
-                return DeviceCardGrid(cards: cards);
+                return DeviceCardGrid(
+                  cards: cards,
+                  onCardTap: _openDeviceSettings,
+                );
               },
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  /// Card tap → settings page; onboard config GETs run there (not at card load).
+  void _openDeviceSettings(DiscoveredCardState card) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => DeviceSettingsScreen(card: card, scope: _scope),
       ),
     );
   }

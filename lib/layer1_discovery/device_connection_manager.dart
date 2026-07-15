@@ -38,17 +38,19 @@ class DeviceScope {
   /// Verified devices as card states, keyed by device path.
   final _cards = <String, DiscoveredCardState>{};
 
-  /// Live sessions for poll + OSD, keyed by device path.
+  /// Live sessions for OSD (and optional A4 poll if re-enabled), keyed by path.
   final _sessions = <String, DeviceSession>{};
 
   /// OSD battery subscriptions per device path.
   final _batterySubs = <String, StreamSubscription<BatteryResult>>{};
 
-  /// Shared A4 poll timer (desktop + web). One timer for all cards.
-  Timer? _batteryPollTimer;
-
-  /// How often to re-query battery via A4 (backup if OSD is quiet).
-  static const _batteryPollInterval = Duration(seconds: 300);// 5min
+  // --- Polling for battery and charging (DISABLED) ---
+  // Manager decision: no A4 poll. Battery/charging stay real-time via OSD push
+  // (device sends report 9 opcode 2; we listen). Re-enable the block below if
+  // a product later needs host-driven refresh when OSD is unavailable.
+  //
+  // Timer? _batteryPollTimer;
+  // static const _batteryPollInterval = Duration(minutes: 5);
 
   /// Published card list. The UI listens to rebuild on add/remove.
   final cards = ValueNotifier<List<DiscoveredCardState>>(const []);
@@ -124,17 +126,18 @@ class DeviceScope {
       return;
     }
     // Soft battery: always show card after verify; unknown battery is "—".
-    // Still start OSD/poll so a later value can fill in.
+    // Live updates after connect: OSD push only (no A4 poll).
     _upsert(session, battery, firmware);
     _startLiveBattery(session);
   }
 
-  /// OSD push + A4 poll for this device (same path on desktop and web).
+  /// Subscribe to device OSD battery/charging pushes (real-time from device).
   void _startLiveBattery(DeviceSession session) {
     final path = session.device.hidDevice.path;
     _sessions[path] = session;
     _bindBatteryPush(session);
-    _ensureBatteryPollTimer();
+    // Polling for battery and charging — disabled (OSD is real-time source).
+    // _ensureBatteryPollTimer();
   }
 
   /// Live OSD battery (report 9 opcode 2) → patch existing card.
@@ -146,34 +149,38 @@ class DeviceScope {
     });
   }
 
-  void _ensureBatteryPollTimer() {
-    if (_batteryPollTimer != null) return;
-    _batteryPollTimer = Timer.periodic(_batteryPollInterval, (_) {
-      unawaited(_pollAllBatteries());
-    });
-    debugPrint('[scope] battery poll every ${_batteryPollInterval.inSeconds}s');
-  }
-
-  void _stopBatteryPollTimerIfIdle() {
-    if (_sessions.isNotEmpty) return;
-    _batteryPollTimer?.cancel();
-    _batteryPollTimer = null;
-  }
-
-  /// A4 poll for every live session. Soft-fail: keep last card values on error.
-  Future<void> _pollAllBatteries() async {
-    final snapshot = Map<String, DeviceSession>.from(_sessions);
-    for (final entry in snapshot.entries) {
-      final path = entry.key;
-      final session = entry.value;
-      if (!session.isAlive) continue;
-      debugPrint('[scope] poll A4 ${session.device.entry.model}');
-      final battery = await _queryBattery(session);
-      if (battery == null) continue; // keep last shown values
-      if (!session.isAlive || !_cards.containsKey(path)) continue;
-      _patchBattery(path, battery, source: 'poll');
-    }
-  }
+  // --- Polling for battery and charging (DISABLED) ---
+  // Host-driven A4 refresh on a timer. Not used while OSD push covers live
+  // battery/charging. Uncomment + restore fields above if polling is needed.
+  //
+  // void _ensureBatteryPollTimer() {
+  //   if (_batteryPollTimer != null) return;
+  //   _batteryPollTimer = Timer.periodic(_batteryPollInterval, (_) {
+  //     unawaited(_pollAllBatteries());
+  //   });
+  //   debugPrint(
+  //       '[scope] battery poll every ${_batteryPollInterval.inSeconds}s');
+  // }
+  //
+  // void _stopBatteryPollTimerIfIdle() {
+  //   if (_sessions.isNotEmpty) return;
+  //   _batteryPollTimer?.cancel();
+  //   _batteryPollTimer = null;
+  // }
+  //
+  // Future<void> _pollAllBatteries() async {
+  //   final snapshot = Map<String, DeviceSession>.from(_sessions);
+  //   for (final entry in snapshot.entries) {
+  //     final path = entry.key;
+  //     final session = entry.value;
+  //     if (!session.isAlive) continue;
+  //     debugPrint('[scope] poll A4 ${session.device.entry.model}');
+  //     final battery = await _queryBattery(session);
+  //     if (battery == null) continue;
+  //     if (!session.isAlive || !_cards.containsKey(path)) continue;
+  //     _patchBattery(path, battery, source: 'poll');
+  //   }
+  // }
 
   void _patchBattery(String path, BatteryResult battery, {required String source}) {
     final prev = _cards[path];
@@ -244,7 +251,8 @@ class DeviceScope {
   void _remove(String path) {
     _batterySubs.remove(path)?.cancel();
     _sessions.remove(path);
-    _stopBatteryPollTimerIfIdle();
+    // Polling for battery and charging — disabled.
+    // _stopBatteryPollTimerIfIdle();
     _cards.remove(path);
     cards.value = List.unmodifiable(_cards.values);
   }
@@ -275,8 +283,9 @@ class DeviceScope {
   }
 
   Future<void> dispose() async {
-    _batteryPollTimer?.cancel();
-    _batteryPollTimer = null;
+    // Polling for battery and charging — disabled.
+    // _batteryPollTimer?.cancel();
+    // _batteryPollTimer = null;
     for (final sub in _batterySubs.values) {
       await sub.cancel();
     }

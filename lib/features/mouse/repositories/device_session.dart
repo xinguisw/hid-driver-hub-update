@@ -52,6 +52,10 @@ class DeviceSession {
 
   Stream<DeviceSessionState> get state => _controller.stream;
 
+  /// Pass-through to the protocol's battery query (opcode A4).
+  /// Caller owns the result; failures surface as thrown exceptions.
+  Future<BatteryResult> queryBattery() => _protocol.queryBattery(_session);
+
   /// Runs open -> handshake -> verify. Emits state on [state].
   // Returns true only when verified; false on reject or error.
   Future<bool> start() async {

@@ -95,4 +95,6 @@ flutter:
   ## this one is assests list
   assets:
     - assets/catalog/supported_model.json
+    - assets/catalog/mouse/capabilities.json
+    - assets/catalog/mouse/sensors.json
     - assets/images/m7xse/

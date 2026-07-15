@@ -8,8 +8,9 @@ import 'package:driver_hub/layer2_capabilities/device_type.dart';
 /// Catalog entry for one supported device, parsed from the approved
 /// `assets/catalog/supported_model.json`.
 ///
-/// The registry is the only catalog data. Device capabilities are defined in
-/// Dart (see [CapabilityStore]); they are not read from a data file.
+/// Shared device registry (mouse, later keyboard). Mouse device capabilities and
+/// sensors load from `assets/catalog/mouse/` (see [DeviceCapabilityStore],
+/// [SensorProfiles]).
 /// [DeviceScanner] reads this registry to build discovery filters and to match
 /// raw [HidDevice]s back to catalog entries.
 class DeviceCatalogEntry {

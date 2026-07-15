@@ -35,17 +35,168 @@ class FirmwareResult {
   String get dongleVersionLabel => dongleVersion.join('.');
 }
 
-/// Mouse handshake protocol. One protocol for all mice.
+// ---------------------------------------------------------------------------
+// Onboard config GET results (report 7, opcode GET 0x07 / ack SET 0x08).
+// Layout from Telink USB MOUSE CONFIG: body after report-id strip:
+//   [0] opcode  [1] r  [2] r  [3] addrs  [4] len  [5..] data
+// ---------------------------------------------------------------------------
+
+/// One button: action + 3 params (4 bytes).
+class ButtonMappingEntry {
+  final int action;
+  final int param1;
+  final int param2;
+  final int param3;
+  const ButtonMappingEntry({
+    required this.action,
+    required this.param1,
+    required this.param2,
+    required this.param3,
+  });
+
+  @override
+  String toString() =>
+      'ButtonMappingEntry(action=$action, p1=$param1, p2=$param2, p3=$param3)';
+}
+
+/// addrs 0xB2 — button mapping (len 24 = 6 × 4).
+class ButtonMappingResult {
+  final List<ButtonMappingEntry> buttons;
+  final Uint8List raw;
+  const ButtonMappingResult({required this.buttons, required this.raw});
+}
+
+/// addrs 0xC2 — report rate & DPI info (len 3).
+class ReportRateDpiInfoResult {
+  final int reportRate;
+  final int dpiCurrentLevel;
+  final int dpiActiveLevel;
+  final Uint8List raw;
+  const ReportRateDpiInfoResult({
+    required this.reportRate,
+    required this.dpiCurrentLevel,
+    required this.dpiActiveLevel,
+    required this.raw,
+  });
+
+  @override
+  String toString() =>
+      'ReportRateDpiInfo(rate=$reportRate, currentLv=$dpiCurrentLevel, '
+      'activeLv=$dpiActiveLevel)';
+}
+
+/// One DPI stage X/Y wire bytes (sensor encoding applied later).
+class DpiTableEntry {
+  final int x;
+  final int y;
+  const DpiTableEntry({required this.x, required this.y});
+
+  @override
+  String toString() => 'DpiTableEntry(x=$x, y=$y)';
+}
+
+/// addrs 0xC4 — DPI table (len 16 = 8 × XY).
+class DpiTableResult {
+  final List<DpiTableEntry> stages;
+  final Uint8List raw;
+  const DpiTableResult({required this.stages, required this.raw});
+}
+
+/// One stage RGB.
+class DpiRgbEntry {
+  final int r;
+  final int g;
+  final int b;
+  const DpiRgbEntry({required this.r, required this.g, required this.b});
+
+  @override
+  String toString() => 'DpiRgbEntry(r=$r, g=$g, b=$b)';
+}
+
+/// addrs 0xC6 — DPI RGB (len 24 = 8 × RGB).
+class DpiRgbResult {
+  final List<DpiRgbEntry> stages;
+  final Uint8List raw;
+  const DpiRgbResult({required this.stages, required this.raw});
+}
+
+/// addrs 0xD4 — sensor + other (len 14).
+class SensorOtherResult {
+  final int rippleControl;
+  final int angleSnap;
+  final int lod;
+  final int angleTune;
+  final int performance;
+  final int debounceTime;
+  final int sleepTime;
+  final int wheelDirection;
+  final Uint8List raw;
+  const SensorOtherResult({
+    required this.rippleControl,
+    required this.angleSnap,
+    required this.lod,
+    required this.angleTune,
+    required this.performance,
+    required this.debounceTime,
+    required this.sleepTime,
+    required this.wheelDirection,
+    required this.raw,
+  });
+
+  @override
+  String toString() =>
+      'SensorOther(ripple=$rippleControl, angleSnap=$angleSnap, lod=$lod, '
+      'angleTune=$angleTune, perf=$performance, debounce=$debounceTime, '
+      'sleep=$sleepTime, wheel=$wheelDirection)';
+}
+
+/// addrs 0xE2 — RGB backlight (len 8).
+class RgbBacklightResult {
+  final int enable;
+  final int mode;
+  final int brightness;
+  final int speed;
+  final int r;
+  final int g;
+  final int b;
+  final int sleepTime;
+  final Uint8List raw;
+  const RgbBacklightResult({
+    required this.enable,
+    required this.mode,
+    required this.brightness,
+    required this.speed,
+    required this.r,
+    required this.g,
+    required this.b,
+    required this.sleepTime,
+    required this.raw,
+  });
+
+  @override
+  String toString() =>
+      'RgbBacklight(en=$enable, mode=$mode, bri=$brightness, spd=$speed, '
+      'rgb=($r,$g,$b), sleep=$sleepTime)';
+}
+
+/// Mouse protocol. One implementation for all mice (same firmware family).
 abstract class DeviceProtocol {
   Future<DeviceHandshake> handshake(HidSession session);
   Future<BatteryResult> queryBattery(HidSession session);
   Future<FirmwareResult> queryFirmware(HidSession session);
+
+  Future<ButtonMappingResult> queryButtonMapping(HidSession session);
+  Future<ReportRateDpiInfoResult> queryReportRateDpiInfo(HidSession session);
+  Future<DpiTableResult> queryDpiTable(HidSession session);
+  Future<DpiRgbResult> queryDpiRgb(HidSession session);
+  Future<SensorOtherResult> querySensorOther(HidSession session);
+  Future<RgbBacklightResult> queryRgbBacklight(HidSession session);
 }
 
 /// Standard mouse protocol. 32-byte frame over report id 7.
 ///
-/// Body layout: [opcode][r][r][r][addrs][len][data…][CRC lo][CRC hi].
-/// hid_tool prefixes the report id, so the body starts with the opcode.
+/// Body layout: [opcode][r][r][addrs][len][data…][CRC lo][CRC hi].
+/// hid_tool may prefix the report id (desktop); strip before parse.
 class MouseProtocol implements DeviceProtocol {
   const MouseProtocol();
 
@@ -55,6 +206,25 @@ class MouseProtocol implements DeviceProtocol {
   static const int _ackOpcode = 0xA1;
   static const int _batteryOpcode = 0xA4;
   static const int _firmwareOpcode = 0xA8;
+
+  /// GET / SET (ack) / NAK — USB MOUSE CONFIG sheet.
+  static const int _getOpcode = 0x07;
+  static const int _setOpcode = 0x08;
+  static const int _nakOpcode = 0xFF;
+
+  /// Onboard block addresses.
+  static const int addrsButtonMapping = 0xB2;
+  static const int addrsReportRateDpi = 0xC2;
+  static const int addrsDpiTable = 0xC4;
+  static const int addrsDpiRgb = 0xC6;
+  static const int addrsSensorOther = 0xD4;
+  static const int addrsRgbBacklight = 0xE2;
+
+  // Body indices (report id stripped).
+  static const int _opOff = 0;
+  static const int _addrsOff = 3;
+  static const int _lenOff = 4;
+  static const int _dataOff = 5;
 
   // Payload offsets (report id stripped). hid_tool keeps the report id on
   // desktop and drops it on web (WebHID oninputreport has no report id prefix).
@@ -206,16 +376,211 @@ class MouseProtocol implements DeviceProtocol {
     return FirmwareResult(mouseVersion: mouse, dongleVersion: dongle);
   }
 
-  /// Desktop may prefix report id 0x07; web usually does not.
+  // --- Onboard config GET (0x07) / ack (0x08) + addrs -------------------
+
+  @override
+  Future<ButtonMappingResult> queryButtonMapping(HidSession session) async {
+    final raw = await _getConfig(session, addrsButtonMapping, 'buttonMapping');
+    final data = _configData(raw, addrsButtonMapping);
+    final buttons = <ButtonMappingEntry>[];
+    for (var i = 0; i + 3 < data.length && buttons.length < 6; i += 4) {
+      buttons.add(ButtonMappingEntry(
+        action: data[i],
+        param1: data[i + 1],
+        param2: data[i + 2],
+        param3: data[i + 3],
+      ));
+    }
+    return ButtonMappingResult(buttons: buttons, raw: raw);
+  }
+
+  @override
+  Future<ReportRateDpiInfoResult> queryReportRateDpiInfo(
+      HidSession session) async {
+    final raw = await _getConfig(session, addrsReportRateDpi, 'reportRateDpi');
+    final data = _configData(raw, addrsReportRateDpi);
+    if (data.length < 3) {
+      throw FormatException('ReportRateDpi data too short: ${data.length}');
+    }
+    return ReportRateDpiInfoResult(
+      reportRate: data[0],
+      dpiCurrentLevel: data[1],
+      dpiActiveLevel: data[2],
+      raw: raw,
+    );
+  }
+
+  @override
+  Future<DpiTableResult> queryDpiTable(HidSession session) async {
+    final raw = await _getConfig(session, addrsDpiTable, 'dpiTable');
+    final data = _configData(raw, addrsDpiTable);
+    final stages = <DpiTableEntry>[];
+    for (var i = 0; i + 1 < data.length && stages.length < 8; i += 2) {
+      stages.add(DpiTableEntry(x: data[i], y: data[i + 1]));
+    }
+    return DpiTableResult(stages: stages, raw: raw);
+  }
+
+  @override
+  Future<DpiRgbResult> queryDpiRgb(HidSession session) async {
+    final raw = await _getConfig(session, addrsDpiRgb, 'dpiRgb');
+    final data = _configData(raw, addrsDpiRgb);
+    final stages = <DpiRgbEntry>[];
+    for (var i = 0; i + 2 < data.length && stages.length < 8; i += 3) {
+      stages.add(DpiRgbEntry(r: data[i], g: data[i + 1], b: data[i + 2]));
+    }
+    return DpiRgbResult(stages: stages, raw: raw);
+  }
+
+  @override
+  Future<SensorOtherResult> querySensorOther(HidSession session) async {
+    final raw = await _getConfig(session, addrsSensorOther, 'sensorOther');
+    final data = _configData(raw, addrsSensorOther);
+    if (data.length < 14) {
+      throw FormatException('SensorOther data too short: ${data.length}');
+    }
+    return SensorOtherResult(
+      rippleControl: data[0],
+      angleSnap: data[1],
+      lod: data[2],
+      angleTune: data[3],
+      performance: data[4],
+      // data[5..10] reserved zeros per sheet
+      debounceTime: data[11],
+      sleepTime: data[12],
+      wheelDirection: data[13],
+      raw: raw,
+    );
+  }
+
+  @override
+  Future<RgbBacklightResult> queryRgbBacklight(HidSession session) async {
+    final raw = await _getConfig(session, addrsRgbBacklight, 'rgbBacklight');
+    final data = _configData(raw, addrsRgbBacklight);
+    if (data.length < 8) {
+      throw FormatException('RgbBacklight data too short: ${data.length}');
+    }
+    return RgbBacklightResult(
+      enable: data[0],
+      mode: data[1],
+      brightness: data[2],
+      speed: data[3],
+      r: data[4],
+      g: data[5],
+      b: data[6],
+      sleepTime: data[7],
+      raw: raw,
+    );
+  }
+
+  /// GET ask: opcode 0x07, addrs set, len 0 (sheet: request only needs addrs).
+  Uint8List _buildGetFrame(int addrs) {
+    final frame = Uint8List(_frameLength);
+    frame[_opOff] = _getOpcode;
+    frame[_addrsOff] = addrs;
+    frame[_lenOff] = 0;
+    return frame;
+  }
+
+  Future<Uint8List> _getConfig(
+    HidSession session,
+    int addrs,
+    String label,
+  ) async {
+    final ask = _buildGetFrame(addrs);
+    debugPrint('[proto] $label: GET addrs=0x${addrs.toRadixString(16)} '
+        'ask ${_hex(ask)}');
+    final ack = await session.sendAndWait(
+      data: ask,
+      reportId: _reportId,
+      reportLength: _frameLength,
+      match: (raw) => matchesConfigAck(raw, addrs: addrs),
+      timeout: _sendTimeout,
+    );
+    debugPrint('[proto] $label: ack ${_hex(ack)} (${ack.length}B)');
+    final body = stripReportId(ack);
+    if (body.isNotEmpty && body[_opOff] == _nakOpcode) {
+      // NAK layout: opcode FF, addrs, len, reason in data[0] (sheet).
+      final reason = body.length > _dataOff ? body[_dataOff] : -1;
+      throw FormatException(
+        '$label NAK reason=0x${reason.toRadixString(16)} '
+        '(0x01=handshake 0x02=bad addrs 0x03=bad opcode …)',
+      );
+    }
+    return ack;
+  }
+
+  /// Data bytes from a config reply; checks opcode + addrs.
+  ///
+  /// Device may reply with SET (0x08) per sheet, or GET (0x07) with len+data
+  /// filled (observed on M7XSE for B2).
+  Uint8List _configData(Uint8List raw, int addrs) {
+    final body = stripReportId(raw);
+    if (body.length <= _lenOff) {
+      throw FormatException('Config ack too short: ${body.length}');
+    }
+    final op = body[_opOff];
+    if (op != _setOpcode && op != _getOpcode) {
+      throw FormatException(
+        'Unexpected config opcode: 0x${op.toRadixString(16)}',
+      );
+    }
+    if (body[_addrsOff] != addrs) {
+      throw FormatException(
+        'Config addrs mismatch: got 0x${body[_addrsOff].toRadixString(16)} '
+        'want 0x${addrs.toRadixString(16)}',
+      );
+    }
+    final len = body[_lenOff];
+    final end = _dataOff + len;
+    if (body.length < end) {
+      throw FormatException(
+        'Config data short: need $end have ${body.length} (len=$len)',
+      );
+    }
+    return Uint8List.fromList(body.sublist(_dataOff, end));
+  }
+
+  /// Match config reply for [addrs]: GET(0x07) or SET(0x08) with that addrs,
+  /// or NAK(0xFF) so caller can surface the reason.
+  ///
+  /// Hardware (M7XSE) returned GET+data for button mapping, not SET.
+  static bool matchesConfigAck(
+    Uint8List raw, {
+    required int addrs,
+    int reportId = _reportId,
+  }) {
+    final body = stripReportId(raw, reportId: reportId);
+    if (body.length <= _addrsOff) return false;
+    final op = body[_opOff];
+    if (op == _nakOpcode) {
+      // Prefer NAK that names our addrs when present.
+      return body.length <= _addrsOff || body[_addrsOff] == addrs;
+    }
+    if (body[_addrsOff] != addrs) return false;
+    return op == _setOpcode || op == _getOpcode;
+  }
+
   Uint8List _stripReportId(Uint8List raw) => stripReportId(raw);
 
-  /// Desktop may prefix report id 0x07; web usually does not.
+  /// Strip desktop report-id prefix only when byte1 is a known opcode.
+  ///
+  /// GET opcode is also 0x07. On web the body starts with 0x07 0x00 … — do not
+  /// treat that as report-id + opcode or matching breaks.
   static Uint8List stripReportId(Uint8List raw, {int reportId = _reportId}) {
-    if (raw.isNotEmpty && raw[0] == reportId) {
+    if (raw.length >= 2 && raw[0] == reportId && _isBodyOpcode(raw[1])) {
       return Uint8List.fromList(raw.sublist(1));
     }
     return raw;
   }
+
+  static bool _isBodyOpcode(int b) =>
+      b == _askOpcode ||
+      b == _batteryOpcode ||
+      b == _firmwareOpcode ||
+      b == _getOpcode ||
+      b == _setOpcode ||
+      b == _nakOpcode;
 
   /// True when payload opcode (after optional report-id byte) equals [opcode].
   static bool matchesOpcode(Uint8List raw, int opcode, {int reportId = _reportId}) {

@@ -59,6 +59,32 @@ class DeviceSession {
   /// Whether the underlying transport is still open.
   bool get isAlive => _session.isOpen;
 
+  /// Re-run A1 handshake on an open session.
+  ///
+  /// Firmware NAKs onboard config (reason 0x01) if handshake is not fresh
+  /// when settings opens later. Does not re-open the device.
+  Future<bool> rehandshake() async {
+    if (!isAlive) return false;
+    final name = device.entry.model;
+    final mode = device.mode.desc;
+    try {
+      debugPrint('[session] rehandshake: $name…');
+      final hs = await _protocol.handshake(_session);
+      final typeMatch = hs.deviceType == device.entry.deviceType;
+      final idMatch = hs.deviceId == device.entry.devId;
+      debugPrint('[session] rehandshake: type=${hs.deviceType?.name} '
+          'id="${hs.deviceId}" match=${typeMatch && idMatch}');
+      if (typeMatch && idMatch) {
+        return true;
+      }
+      _controller.add(DeviceSessionState.rejected(name, mode));
+      return false;
+    } catch (e) {
+      debugPrint('[session] rehandshake ERROR: $e');
+      return false;
+    }
+  }
+
   Future<BatteryResult?> queryBattery() async {
     if (!isAlive) return null;
     return _protocol.queryBattery(_session);
@@ -67,6 +93,36 @@ class DeviceSession {
   Future<FirmwareResult?> queryFirmware() async {
     if (!isAlive) return null;
     return _protocol.queryFirmware(_session);
+  }
+
+  Future<ButtonMappingResult?> queryButtonMapping() async {
+    if (!isAlive) return null;
+    return _protocol.queryButtonMapping(_session);
+  }
+
+  Future<ReportRateDpiInfoResult?> queryReportRateDpiInfo() async {
+    if (!isAlive) return null;
+    return _protocol.queryReportRateDpiInfo(_session);
+  }
+
+  Future<DpiTableResult?> queryDpiTable() async {
+    if (!isAlive) return null;
+    return _protocol.queryDpiTable(_session);
+  }
+
+  Future<DpiRgbResult?> queryDpiRgb() async {
+    if (!isAlive) return null;
+    return _protocol.queryDpiRgb(_session);
+  }
+
+  Future<SensorOtherResult?> querySensorOther() async {
+    if (!isAlive) return null;
+    return _protocol.querySensorOther(_session);
+  }
+
+  Future<RgbBacklightResult?> queryRgbBacklight() async {
+    if (!isAlive) return null;
+    return _protocol.queryRgbBacklight(_session);
   }
 
   /// Open -> handshake -> verify. Starts OSD unsolicited listen when verified.

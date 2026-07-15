@@ -1,9 +1,11 @@
+import 'dart:convert';
+
+import 'package:flutter/services.dart' show rootBundle;
+
 /// Sensor DPI-encoding tables and per-device sensor profiles.
-//
-// Defined in Dart, not in a JSON data file. Transcribed from the former
-// `assets/catalog/mouse/profile/sensors.json`. Adding a device's sensor
-// profile means adding a Dart entry, not editing a data file.
-library;
+///
+/// Product data lives in [assets/catalog/mouse/sensors.json].
+/// This file holds the typed model and loader only.
 
 /// How a sensor encodes a DPI value onto the wire.
 class DpiEncoding {
@@ -21,6 +23,16 @@ class DpiEncoding {
     required this.endian,
     required this.independentXY,
   });
+
+  factory DpiEncoding.fromJson(Map<String, dynamic> json) {
+    return DpiEncoding(
+      transform: json['transform'] as String,
+      factor: json['factor'] as int,
+      bytesPerAxis: json['bytesPerAxis'] as int,
+      endian: json['endian'] as String,
+      independentXY: json['independentXY'] as bool,
+    );
+  }
 }
 
 /// The DPI range a sensor supports.
@@ -28,7 +40,19 @@ class DpiRange {
   final int minDpi;
   final int maxDpi;
   final int step;
-  const DpiRange({required this.minDpi, required this.maxDpi, required this.step});
+  const DpiRange({
+    required this.minDpi,
+    required this.maxDpi,
+    required this.step,
+  });
+
+  factory DpiRange.fromJson(Map<String, dynamic> json) {
+    return DpiRange(
+      minDpi: json['minDpi'] as int,
+      maxDpi: json['maxDpi'] as int,
+      step: json['step'] as int,
+    );
+  }
 }
 
 /// One encoding table, keyed by `<chip>/<mode>`.
@@ -43,6 +67,16 @@ class EncodingTable {
     required this.dpiEncoding,
     required this.dpiRange,
   });
+
+  factory EncodingTable.fromJson(Map<String, dynamic> json) {
+    return EncodingTable(
+      chip: json['chip'] as String,
+      mode: json['mode'] as String,
+      dpiEncoding: DpiEncoding.fromJson(
+          json['dpiEncoding'] as Map<String, dynamic>),
+      dpiRange: DpiRange.fromJson(json['dpiRange'] as Map<String, dynamic>),
+    );
+  }
 }
 
 /// Which encoding table a device+mode uses.
@@ -50,48 +84,61 @@ class SensorProfile {
   final String chip;
   final String mode;
   final String table; // key into EncodingTables
-  const SensorProfile({required this.chip, required this.mode, required this.table});
+  const SensorProfile({
+    required this.chip,
+    required this.mode,
+    required this.table,
+  });
+
+  factory SensorProfile.fromJson(Map<String, dynamic> json) {
+    return SensorProfile(
+      chip: json['chip'] as String,
+      mode: json['mode'] as String,
+      table: json['table'] as String,
+    );
+  }
 }
 
-/// Hardcoded encoding tables and sensor profiles.
+/// Loads encoding tables and sensor profiles from
+/// [assets/catalog/mouse/sensors.json].
 ///
-/// No JSON read. Adding a sensor means adding Dart entries here.
+/// Not loaded at app start. Load with capabilities when the user opens
+/// mouse settings (device card → settings). Cached after first [load].
 class SensorProfiles {
-  const SensorProfiles._();
+  SensorProfiles._();
+
+  static const _assetPath = 'assets/catalog/mouse/sensors.json';
+
+  static Map<String, EncodingTable>? _tables;
+  static Map<String, SensorProfile>? _byDevice;
+
+  /// Loads sensor data from the asset JSON. Cached after first load.
+  /// Call when entering mouse settings, not at app start.
+  static Future<void> load() async {
+    if (_tables != null) return;
+    final raw = await rootBundle.loadString(_assetPath);
+    final json = jsonDecode(raw) as Map<String, dynamic>;
+
+    final tablesJson = json['tables'] as Map<String, dynamic>;
+    final tables = <String, EncodingTable>{};
+    for (final e in tablesJson.entries) {
+      tables[e.key] =
+          EncodingTable.fromJson(e.value as Map<String, dynamic>);
+    }
+
+    final devicesJson = json['devices'] as Map<String, dynamic>;
+    final byDevice = <String, SensorProfile>{};
+    for (final e in devicesJson.entries) {
+      byDevice[e.key] =
+          SensorProfile.fromJson(e.value as Map<String, dynamic>);
+    }
+
+    _tables = tables;
+    _byDevice = byDevice;
+  }
 
   static SensorProfile? forDevice(String devId, int mode) =>
-      _byDevice['$devId:$mode'];
+      _byDevice?['$devId:$mode'];
 
-  static EncodingTable? table(String key) => _tables[key];
-
-  static const _tables = <String, EncodingTable>{
-    'PAW3395/high_res': EncodingTable(
-      chip: 'PAW3395',
-      mode: 'high_res',
-      dpiEncoding: DpiEncoding(
-        transform: 'divide',
-        factor: 50,
-        bytesPerAxis: 1,
-        endian: 'big',
-        independentXY: true,
-      ),
-      dpiRange: DpiRange(minDpi: 100, maxDpi: 26000, step: 50),
-    ),
-    'PAW3395/std_res': EncodingTable(
-      chip: 'PAW3395',
-      mode: 'std_res',
-      dpiEncoding: DpiEncoding(
-        transform: 'divide',
-        factor: 25,
-        bytesPerAxis: 1,
-        endian: 'big',
-        independentXY: true,
-      ),
-      dpiRange: DpiRange(minDpi: 100, maxDpi: 16000, step: 50),
-    ),
-  };
-
-  static const _byDevice = <String, SensorProfile>{
-    'aa4ecd01:1': SensorProfile(chip: 'PAW3395', mode: 'high_res', table: 'PAW3395/high_res'),
-  };
+  static EncodingTable? table(String key) => _tables?[key];
 }

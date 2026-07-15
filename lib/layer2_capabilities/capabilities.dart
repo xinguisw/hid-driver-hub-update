@@ -1,11 +1,13 @@
-import 'sensor_profiles.dart';
+import 'dart:convert';
+
+import 'package:flutter/services.dart' show rootBundle;
+
+import 'package:driver_hub/layer2_capabilities/sensor_profiles.dart';
 
 /// Capabilities of a supported device.
 ///
-/// Capabilities are defined in Dart, not in a JSON data file. The registry
-/// (supported_model.json) is the only catalog data; capabilities are code.
-/// Adding a device's capabilities means adding a Dart definition, not editing
-/// a data file.
+/// Product data lives in [assets/catalog/mouse/capabilities.json].
+/// This file holds the typed model and loader only.
 ///
 /// Every capability block carries a [present] flag, mirroring the catalog
 /// convention. A card renders a row only when its capability is present.
@@ -34,6 +36,42 @@ class DeviceCapabilities {
     this.osd,
   });
 
+  factory DeviceCapabilities.fromJson(Map<String, dynamic> json) {
+    return DeviceCapabilities(
+      devId: json['devId'] as String,
+      displayNameKey: json['displayNameKey'] as String,
+      buttons: json['buttons'] == null
+          ? null
+          : ButtonCapabilities.fromJson(
+              json['buttons'] as Map<String, dynamic>),
+      reportRate: json['reportRate'] == null
+          ? null
+          : ReportRateCapabilities.fromJson(
+              json['reportRate'] as Map<String, dynamic>),
+      dpi: json['dpi'] == null
+          ? null
+          : DpiCapabilities.fromJson(json['dpi'] as Map<String, dynamic>),
+      sensor: json['sensor'] == null
+          ? null
+          : SensorCapabilities.fromJson(
+              json['sensor'] as Map<String, dynamic>),
+      otherFeatures: json['otherFeatures'] == null
+          ? null
+          : OtherFeaturesCapabilities.fromJson(
+              json['otherFeatures'] as Map<String, dynamic>),
+      rgbBacklight: json['rgbBacklight'] == null
+          ? null
+          : RgbBacklightCapabilities.fromJson(
+              json['rgbBacklight'] as Map<String, dynamic>),
+      macro: json['macro'] == null
+          ? null
+          : MacroCapabilities.fromJson(json['macro'] as Map<String, dynamic>),
+      osd: json['osd'] == null
+          ? null
+          : OsdCapabilities.fromJson(json['osd'] as Map<String, dynamic>),
+    );
+  }
+
   /// Sensor profile for this device and mode, or null if none.
   SensorProfile? sensorProfileFor(int mode) =>
       SensorProfiles.forDevice(devId, mode);
@@ -43,6 +81,15 @@ class ButtonCapabilities {
   final int count;
   final List<ButtonDef> list;
   const ButtonCapabilities({required this.count, required this.list});
+
+  factory ButtonCapabilities.fromJson(Map<String, dynamic> json) {
+    return ButtonCapabilities(
+      count: json['count'] as int,
+      list: (json['list'] as List)
+          .map((e) => ButtonDef.fromJson(e as Map<String, dynamic>))
+          .toList(growable: false),
+    );
+  }
 }
 
 class ButtonDef {
@@ -56,17 +103,44 @@ class ButtonDef {
     required this.remappable,
     required this.hotspot,
   });
+
+  factory ButtonDef.fromJson(Map<String, dynamic> json) {
+    return ButtonDef(
+      id: json['id'] as int,
+      labelKey: json['labelKey'] as String,
+      remappable: json['remappable'] as bool,
+      hotspot: Hotspot.fromJson(json['hotspot'] as Map<String, dynamic>),
+    );
+  }
 }
 
 class Hotspot {
   final double x, y, r;
   const Hotspot({required this.x, required this.y, required this.r});
+
+  factory Hotspot.fromJson(Map<String, dynamic> json) {
+    return Hotspot(
+      x: (json['x'] as num).toDouble(),
+      y: (json['y'] as num).toDouble(),
+      r: (json['r'] as num).toDouble(),
+    );
+  }
 }
 
 class ReportRateCapabilities {
   final List<int> options;
   final int defaultValue;
-  const ReportRateCapabilities({required this.options, required this.defaultValue});
+  const ReportRateCapabilities({
+    required this.options,
+    required this.defaultValue,
+  });
+
+  factory ReportRateCapabilities.fromJson(Map<String, dynamic> json) {
+    return ReportRateCapabilities(
+      options: (json['options'] as List).map((e) => e as int).toList(),
+      defaultValue: json['defaultValue'] as int,
+    );
+  }
 }
 
 class DpiCapabilities {
@@ -84,28 +158,51 @@ class DpiCapabilities {
     required this.rgbPerStage,
     required this.levels,
   });
+
+  factory DpiCapabilities.fromJson(Map<String, dynamic> json) {
+    return DpiCapabilities(
+      maxLevels: json['maxLevels'] as int,
+      defaultLevel: json['defaultLevel'] as int,
+      maxDpi: json['maxDpi'] as int,
+      independentXY: json['independentXY'] as bool,
+      rgbPerStage: json['rgbPerStage'] as bool,
+      levels: (json['levels'] as List)
+          .map((e) => DpiLevel.fromJson(e as Map<String, dynamic>))
+          .toList(growable: false),
+    );
+  }
 }
 
 class DpiLevel {
   final int level;
   final int value;
   final String color; // "#RRGGBB"
-  const DpiLevel({required this.level, required this.value, required this.color});
+  const DpiLevel({
+    required this.level,
+    required this.value,
+    required this.color,
+  });
+
+  factory DpiLevel.fromJson(Map<String, dynamic> json) {
+    return DpiLevel(
+      level: json['level'] as int,
+      value: json['value'] as int,
+      color: json['color'] as String,
+    );
+  }
 }
 
-/// Ripple control and angle snap are a coupled group: a device has both or
-/// neither. They are not independent flags.
+/// Sensor-related product flags.
 ///
-/// When [sensorTuning] is true, the device supports ripple control and angle
-/// snap. Display labels: "Ripple Control" and "Angle Snap".
-///
-/// [angleTune] is a separate, independent capability. A device may have
-/// sensor tuning without angle tune.
+/// [sensorTuning] is grouped: ripple control + angle snap (both or neither).
+/// [angleTune] is a separate capability.
 class SensorCapabilities {
   final bool present;
   final SensorPerformance? performance;
-  final bool sensorTuning; // ripple control + angle snap, as one group
-  final bool angleTune; // separate capability
+  /// Grouped: ripple control + angle snap (both or neither).
+  final bool sensorTuning;
+  /// Separate feature from [sensorTuning].
+  final bool angleTune;
   final LiftOffDistance? liftOffDistance;
   const SensorCapabilities({
     required this.present,
@@ -114,18 +211,48 @@ class SensorCapabilities {
     required this.angleTune,
     this.liftOffDistance,
   });
+
+  factory SensorCapabilities.fromJson(Map<String, dynamic> json) {
+    return SensorCapabilities(
+      present: json['present'] as bool,
+      performance: json['performance'] == null
+          ? null
+          : SensorPerformance.fromJson(
+              json['performance'] as Map<String, dynamic>),
+      sensorTuning: json['sensorTuning'] as bool,
+      angleTune: json['angleTune'] as bool,
+      liftOffDistance: json['liftOffDistance'] == null
+          ? null
+          : LiftOffDistance.fromJson(
+              json['liftOffDistance'] as Map<String, dynamic>),
+    );
+  }
 }
 
 class SensorPerformance {
   final bool present;
   final List<int> options;
   const SensorPerformance({required this.present, required this.options});
+
+  factory SensorPerformance.fromJson(Map<String, dynamic> json) {
+    return SensorPerformance(
+      present: json['present'] as bool,
+      options: (json['options'] as List).map((e) => e as int).toList(),
+    );
+  }
 }
 
 class LiftOffDistance {
   final bool present;
   final List<int> options;
   const LiftOffDistance({required this.present, required this.options});
+
+  factory LiftOffDistance.fromJson(Map<String, dynamic> json) {
+    return LiftOffDistance(
+      present: json['present'] as bool,
+      options: (json['options'] as List).map((e) => e as int).toList(),
+    );
+  }
 }
 
 class OtherFeaturesCapabilities {
@@ -139,18 +266,46 @@ class OtherFeaturesCapabilities {
     this.sleepTime,
     required this.wheelDirectionInvert,
   });
+
+  factory OtherFeaturesCapabilities.fromJson(Map<String, dynamic> json) {
+    return OtherFeaturesCapabilities(
+      present: json['present'] as bool,
+      buttonDebounce: json['buttonDebounce'] == null
+          ? null
+          : ButtonDebounce.fromJson(
+              json['buttonDebounce'] as Map<String, dynamic>),
+      sleepTime: json['sleepTime'] == null
+          ? null
+          : SleepTime.fromJson(json['sleepTime'] as Map<String, dynamic>),
+      wheelDirectionInvert: json['wheelDirectionInvert'] as bool,
+    );
+  }
 }
 
 class ButtonDebounce {
   final bool present;
   final List<int> options;
   const ButtonDebounce({required this.present, required this.options});
+
+  factory ButtonDebounce.fromJson(Map<String, dynamic> json) {
+    return ButtonDebounce(
+      present: json['present'] as bool,
+      options: (json['options'] as List).map((e) => e as int).toList(),
+    );
+  }
 }
 
 class SleepTime {
   final bool present;
   final List<int> options;
   const SleepTime({required this.present, required this.options});
+
+  factory SleepTime.fromJson(Map<String, dynamic> json) {
+    return SleepTime(
+      present: json['present'] as bool,
+      options: (json['options'] as List).map((e) => e as int).toList(),
+    );
+  }
 }
 
 class RgbBacklightCapabilities {
@@ -166,126 +321,91 @@ class RgbBacklightCapabilities {
     required this.speedLevels,
     required this.sleepTimeOptions,
   });
+
+  factory RgbBacklightCapabilities.fromJson(Map<String, dynamic> json) {
+    return RgbBacklightCapabilities(
+      present: json['present'] as bool,
+      modes: (json['modes'] as List)
+          .map((e) => RgbMode.fromJson(e as Map<String, dynamic>))
+          .toList(growable: false),
+      brightnessLevels: json['brightnessLevels'] as int,
+      speedLevels: json['speedLevels'] as int,
+      sleepTimeOptions:
+          (json['sleepTimeOptions'] as List).map((e) => e as int).toList(),
+    );
+  }
 }
 
 class RgbMode {
   final int id;
   final String nameKey;
   final bool supportsColor;
-  const RgbMode({required this.id, required this.nameKey, required this.supportsColor});
+  const RgbMode({
+    required this.id,
+    required this.nameKey,
+    required this.supportsColor,
+  });
+
+  factory RgbMode.fromJson(Map<String, dynamic> json) {
+    return RgbMode(
+      id: json['id'] as int,
+      nameKey: json['nameKey'] as String,
+      supportsColor: json['supportsColor'] as bool,
+    );
+  }
 }
 
 class MacroCapabilities {
   final int slots;
   final int maxLength;
   const MacroCapabilities({required this.slots, required this.maxLength});
+
+  factory MacroCapabilities.fromJson(Map<String, dynamic> json) {
+    return MacroCapabilities(
+      slots: json['slots'] as int,
+      maxLength: json['maxLength'] as int,
+    );
+  }
 }
 
 class OsdCapabilities {
   final bool enabled;
   const OsdCapabilities({required this.enabled});
+
+  factory OsdCapabilities.fromJson(Map<String, dynamic> json) {
+    return OsdCapabilities(enabled: json['enabled'] as bool);
+  }
 }
 
-/// Returns the hardcoded capability definition for a device.
+/// Loads device capabilities from [assets/catalog/mouse/capabilities.json].
 ///
-/// Capabilities are Dart code, not a data file. Adding a device's capabilities
-/// means adding an entry to [_byDevId]. There is no JSON read.
-class CapabilityStore {
-  const CapabilityStore._();
+/// Not loaded at app start. Load when the user opens settings for a mouse
+/// (device card → settings). [forDevice] returns caps for a [devId], or null
+/// if not loaded / unknown. Results are cached after first [load].
+///
+/// Add a mouse: new object in capabilities.json devices[] (match catalog devId).
+class DeviceCapabilityStore {
+  DeviceCapabilityStore._();
 
-  /// Returns the capabilities for [devId], or null if unsupported.
-  static DeviceCapabilities? forDevice(String devId) => _byDevId[devId];
+  static const _assetPath = 'assets/catalog/mouse/capabilities.json';
 
-  static const _byDevId = <String, DeviceCapabilities>{
-    'aa4ecd01': _m7xse,
-  };
+  static Map<String, DeviceCapabilities>? _byDevId;
 
-  static const _m7xse = DeviceCapabilities(
-    devId: 'aa4ecd01',
-    displayNameKey: 'device.m7xse.name',
-    buttons: ButtonCapabilities(
-      count: 6,
-      list: [
-        ButtonDef(id: 1, labelKey: 'button.left_click', remappable: false,
-            hotspot: Hotspot(x: 0.22, y: 0.12, r: 0.06)),
-        ButtonDef(id: 2, labelKey: 'button.right_click', remappable: true,
-            hotspot: Hotspot(x: 0.78, y: 0.12, r: 0.06)),
-        ButtonDef(id: 3, labelKey: 'button.middle_click', remappable: true,
-            hotspot: Hotspot(x: 0.50, y: 0.14, r: 0.05)),
-        ButtonDef(id: 4, labelKey: 'button.forward', remappable: true,
-            hotspot: Hotspot(x: 0.10, y: 0.55, r: 0.05)),
-        ButtonDef(id: 5, labelKey: 'button.back', remappable: true,
-            hotspot: Hotspot(x: 0.10, y: 0.65, r: 0.05)),
-        ButtonDef(id: 6, labelKey: 'button.dpi_cycle', remappable: true,
-            hotspot: Hotspot(x: 0.50, y: 0.30, r: 0.04)),
-      ],
-    ),
-    reportRate: ReportRateCapabilities(options: [125, 500, 1000, 4000], defaultValue: 1000),
-    dpi: DpiCapabilities(
-      maxLevels: 8,
-      defaultLevel: 1,
-      maxDpi: 3200,
-      independentXY: false,
-      rgbPerStage: true,
-      levels: [
-        DpiLevel(level: 1, value: 400, color: '#FF0000'),
-        DpiLevel(level: 2, value: 800, color: '#00FF00'),
-        DpiLevel(level: 3, value: 1600, color: '#0000FF'),
-      ],
-    ),
-    sensor: SensorCapabilities(
-      present: true,
-      performance: SensorPerformance(present: true, options: [0, 1, 2]),
-      sensorTuning: true, // ripple control + angle snap (grouped)
-      angleTune: false, // separate capability; M7XSE lacks it
-      liftOffDistance: LiftOffDistance(present: true, options: [1, 2, 3]),
-    ),
-    otherFeatures: OtherFeaturesCapabilities(
-      present: true,
-      buttonDebounce: ButtonDebounce(present: true, options: [4, 8, 16, 24]),
-      sleepTime: SleepTime(present: true, options: [30, 60, 300, 600]),
-      wheelDirectionInvert: true,
-    ),
-    rgbBacklight: RgbBacklightCapabilities(
-      present: true,
-      modes: [
-        RgbMode(id: 1, nameKey: 'light.wave', supportsColor: true),
-        RgbMode(id: 2, nameKey: 'light.breathing', supportsColor: true),
-        RgbMode(id: 3, nameKey: 'light.solid', supportsColor: true),
-        RgbMode(id: 6, nameKey: 'light.off', supportsColor: false),
-      ],
-      brightnessLevels: 5,
-      speedLevels: 5,
-      sleepTimeOptions: [30, 60, 300],
-    ),
-    macro: MacroCapabilities(slots: 16, maxLength: 127),
-    osd: OsdCapabilities(enabled: true),
-  );
+  /// Loads device capabilities from the asset JSON. Cached after first load.
+  /// Call when entering mouse settings, not at app start.
+  static Future<void> load() async {
+    if (_byDevId != null) return;
+    final raw = await rootBundle.loadString(_assetPath);
+    final json = jsonDecode(raw) as Map<String, dynamic>;
+    final devices = json['devices'] as List;
+    final map = <String, DeviceCapabilities>{};
+    for (final d in devices) {
+      final caps = DeviceCapabilities.fromJson(d as Map<String, dynamic>);
+      map[caps.devId] = caps;
+    }
+    _byDevId = map;
+  }
 
-  // -------------------------------------------------------------------------
-  // TEMPLATE — copy this block to add a new mouse.
-  //
-  // 1. Add a registry entry to assets/catalog/supported_model.json (devId,
-  //    vid/pid/modes, usagePage). See docs/ADDING_A_DEVICE.md.
-  // 2. Copy this block, rename _template to _<devId>, and fill every value.
-  // 3. Add the entry to _byDevId above.
-  // 4. Run `flutter analyze`.
-  //
-  // Every field is shown. Use null/false/empty for capabilities the device
-  // does not have. The compiler checks the types; it cannot check correctness
-  // of the values against the hardware.
-  // -------------------------------------------------------------------------
-  static const _template = DeviceCapabilities( // ignore: unused_field
-    devId: '<devId>', // TODO: must match supported_model.json devId
-    displayNameKey: 'device.<devId>.name', // TODO: i18n key
-    buttons: null, // TODO: ButtonCapabilities(count: N, list: [...])
-    reportRate: null, // TODO: ReportRateCapabilities(options: [...], defaultValue: N)
-    dpi: null, // TODO: DpiCapabilities(maxLevels: N, ...)
-    sensor: null, // TODO: SensorCapabilities(...)
-    //  sensorTuning groups ripple control + angle snap. angleTune is separate.
-    otherFeatures: null, // TODO: OtherFeaturesCapabilities(...)
-    rgbBacklight: null, // TODO: RgbBacklightCapabilities(...) if device has RGB
-    macro: null, // TODO: MacroCapabilities(slots: N, maxLength: N) if supported
-    osd: OsdCapabilities(enabled: false), // TODO: true if device pushes OSD reports
-  );
+  /// Returns the device capabilities for [devId], or null if unsupported / not loaded.
+  static DeviceCapabilities? forDevice(String devId) => _byDevId?[devId];
 }

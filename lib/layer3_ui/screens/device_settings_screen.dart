@@ -1,12 +1,10 @@
-import 'package:driver_hub/layer3_ui/models/discovered_card_state.dart';
-import 'package:driver_hub/layer1_discovery/device_session.dart';
 import 'package:driver_hub/layer1_discovery/device_connection_manager.dart';
+import 'package:driver_hub/layer1_discovery/device_session.dart';
+import 'package:driver_hub/layer3_ui/models/discovered_card_state.dart';
 import 'package:flutter/material.dart';
 
-/// Device settings page — opened from a mouse card tap.
-///
-/// On open: runs onboard config GETs for this mouse (not at app start / card load).
-/// UI body still empty; results go to console for now.
+/// Settings for one connected mouse. Opens from card tap; GETs config on enter.
+/// If that device disconnects, pops back to the home list.
 class DeviceSettingsScreen extends StatefulWidget {
   const DeviceSettingsScreen({
     super.key,
@@ -14,10 +12,7 @@ class DeviceSettingsScreen extends StatefulWidget {
     required this.scope,
   });
 
-  /// Card of the device the user selected.
   final DiscoveredCardState card;
-
-  /// Owns live sessions; used only to resolve session + run config queries.
   final DeviceScope scope;
 
   @override
@@ -28,19 +23,51 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
   @override
   void initState() {
     super.initState();
-    // After first frame so navigation is done before HID traffic.
+    widget.scope.cards.addListener(_onCardsChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadOnboardConfig());
   }
 
+  @override
+  void dispose() {
+    widget.scope.cards.removeListener(_onCardsChanged);
+    super.dispose();
+  }
+
+  /// Card list lost this device → leave settings (option A).
+  void _onCardsChanged() {
+    if (!mounted) return;
+    if (_sessionStillAlive) return;
+    debugPrint(
+      '[settings] ${widget.card.displayName}: disconnected — pop',
+    );
+    Navigator.of(context).maybePop();
+  }
+
+  bool get _sessionStillAlive {
+    final session = widget.scope.sessionForCard(widget.card);
+    return session != null && session.isAlive;
+  }
+
   Future<void> _loadOnboardConfig() async {
-    final DeviceSession? session = widget.scope.sessionForCard(widget.card);
-    if (session == null || !session.isAlive) {
+    if (!_sessionStillAlive) {
       debugPrint('[settings] ${widget.card.displayName}: no live session');
+      if (mounted) Navigator.of(context).maybePop();
       return;
     }
-    debugPrint('[settings] ${widget.card.displayName}: loading onboard config…');
+    final DeviceSession session =
+        widget.scope.sessionForCard(widget.card)!;
+    debugPrint(
+      '[settings] ${widget.card.displayName}: loading onboard config…',
+    );
     await widget.scope.queryOnboardConfig(session);
-    debugPrint('[settings] ${widget.card.displayName}: onboard config done');
+    if (!mounted) return;
+    if (!_sessionStillAlive) {
+      Navigator.of(context).maybePop();
+      return;
+    }
+    debugPrint(
+      '[settings] ${widget.card.displayName}: onboard config done',
+    );
   }
 
   @override

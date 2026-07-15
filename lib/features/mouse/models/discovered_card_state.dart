@@ -4,15 +4,14 @@
 /// gathers the fields from catalog + protocol and packs them here; the card
 /// (tier 1) consumes them. This keeps session and UI decoupled.
 ///
-/// Protocol-dependent fields are placeholders, wired later:
-/// - [firmwareVersion], [batteryPercentage], [isCharging] — TODO, need the
-///   firmware query (opcode A8) and the OSD push protocol. Until then they
-///   carry sentinel values; the card renders them as "—".
+/// [batteryPercentage] below 0 → card shows "Battery —" (soft battery / unknown).
+/// Empty [firmwareVersion] → "Firmware —".
 class DiscoveredCardState {
   final String devId;
   final String displayName;
   final int connectionMode; // 0=USB, 1=2.4G
   final String firmwareVersion;
+  /// 0..100, or -1 when unknown (A4 failed; may update via OSD/poll).
   final int batteryPercentage;
   final bool isCharging;
   final dynamic physicalHandle; // raw HID handle, for identity — not rendered

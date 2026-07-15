@@ -36,6 +36,8 @@ class DeviceCard extends StatelessWidget {
                   Text(_modeLabel, style: _subtitle),
                   const SizedBox(height: 4),
                   Text(_batteryLabel, style: _subtitle),
+                  const SizedBox(height: 4),
+                  Text(_firmwareLabel, style: _subtitle),
                 ],
               ),
             ),
@@ -53,6 +55,9 @@ class DeviceCard extends StatelessWidget {
     final pct = '${state.batteryPercentage}%';
     return state.isCharging ? '$pct ⚡ charging' : 'Battery $pct';
   }
+
+  String get _firmwareLabel =>
+      state.firmwareVersion.isEmpty ? 'Firmware —' : 'Firmware ${state.firmwareVersion}';
 
   static const _title = TextStyle(fontSize: 16, fontWeight: FontWeight.bold);
   static const _subtitle = TextStyle(fontSize: 13, color: Colors.grey);

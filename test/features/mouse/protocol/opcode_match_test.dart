@@ -1,6 +1,6 @@
 import 'dart:typed_data';
 
-import 'package:driver_hub/features/mouse/protocol/device_protocol.dart';
+import 'package:driver_hub/layer5_codec/device_protocol.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

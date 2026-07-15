@@ -197,11 +197,11 @@ class CapabilityStore {
   static DeviceCapabilities? forDevice(String devId) => _byDevId[devId];
 
   static const _byDevId = <String, DeviceCapabilities>{
-    'm7xse': _m7xse,
+    'aa4ecd01': _m7xse,
   };
 
   static const _m7xse = DeviceCapabilities(
-    devId: 'm7xse',
+    devId: 'aa4ecd01',
     displayNameKey: 'device.m7xse.name',
     buttons: ButtonCapabilities(
       count: 6,

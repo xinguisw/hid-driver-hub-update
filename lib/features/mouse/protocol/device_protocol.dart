@@ -1,10 +1,11 @@
+import 'package:driver_hub/core/device/device_type.dart';
 import 'package:driver_hub/core/device/hid_session.dart';
 import 'package:flutter/foundation.dart';
 
 /// Handshake result: the device type and id reported by the device.
 class DeviceHandshake {
-  /// Device type reported by the device (e.g. 1 for mouse).
-  final int deviceType;
+  /// Device type reported by the device, parsed from its wire byte.
+  final DeviceType? deviceType;
 
   /// Device id reported by the device, comparable to the catalog `devId`.
   final String deviceId;
@@ -43,7 +44,7 @@ class MouseProtocol implements DeviceProtocol {
     final ask = _buildAskFrame();
     // Subscribe to the input stream before sending: on web the broadcast
     // controller drops events with no listener, so the ack must arrive after
-    // the subscription is active (mirrors ClickSync's listener-first send).
+    // the subscription is active (listener-first send).
     final ackFuture = session.receiveReport(_frameLength, timeout: _sendTimeout);
     debugPrint('[proto] handshake: sending ask ${_hex(ask)}');
     await session.sendReport(ask, reportId: _reportId);
@@ -87,7 +88,7 @@ class MouseProtocol implements DeviceProtocol {
     final idBytes =
         ack.sublist(_ackDeviceIdOffset, _ackDeviceIdOffset + _deviceIdLength);
     return DeviceHandshake(
-      deviceType: ack[_ackDeviceTypeOffset],
+      deviceType: DeviceType.fromCode(ack[_ackDeviceTypeOffset]),
       deviceId: idBytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join(),
     );
   }

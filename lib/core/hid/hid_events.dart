@@ -10,12 +10,18 @@ import 'web/web_hid_events_stub.dart'
 
 /// Unified connect/disconnect event source across desktop and web.
 ///
-/// Desktop: hid_tool's [HidDeviceEvents] (method-channel, dart:io).
+/// Desktop: hid_tool's [HidDeviceEvents] (method-channel, dart:io). Each event
+/// carries a unique device [path] (the hidapi path), so two identical mice are
+/// distinguishable.
 /// Web: direct navigator.hid listeners via dart:js_interop — hid_tool does not
-/// expose these publicly, so we bind them ourselves.
+/// expose these publicly, so we bind them ourselves. WebHID has no inherent
+/// per-instance id; we synthesize `web:<vid>:<pid>` to match the path hid_tool
+/// reports for a [HidDevice]. Two identical web mice share that path (a
+/// hid_tool limitation), but it is still the most stable key available.
 ///
-/// Both deliver (vendorId, productId). The watcher matches these against its
-/// known device set.
+/// Both deliver the device [path], which the watcher matches against its known
+/// device set. (vid, pid) is also carried for logging and unsupported-device
+/// filtering.
 class HidEvents {
   StreamSubscription<HidDeviceEvent>? _desktopConnect;
   StreamSubscription<HidDeviceEvent>? _desktopDisconnect;
@@ -23,8 +29,8 @@ class HidEvents {
 
   /// Start listening. Call [stop] to tear down.
   void start({
-    required void Function(int vendorId, int productId) onConnect,
-    required void Function(int vendorId, int productId) onDisconnect,
+    required void Function(String path, int vendorId, int productId) onConnect,
+    required void Function(String path, int vendorId, int productId) onDisconnect,
   }) {
     if (kIsWeb) {
       _webSub = webevents.startWebHidListeners(
@@ -36,12 +42,12 @@ class HidEvents {
       Hid.startListening();
       _desktopConnect = HidDeviceEvents.onConnected.listen((e) {
         if (e.vendorId != null && e.productId != null) {
-          onConnect(e.vendorId!, e.productId!);
+          onConnect(e.path, e.vendorId!, e.productId!);
         }
       });
       _desktopDisconnect = HidDeviceEvents.onDisconnected.listen((e) {
         if (e.vendorId != null && e.productId != null) {
-          onDisconnect(e.vendorId!, e.productId!);
+          onDisconnect(e.path, e.vendorId!, e.productId!);
         }
       });
     }

@@ -32,13 +32,19 @@ extension type _HidDevice._(JSObject _) implements JSObject {
 /// Returns navigator.hid, or null if WebHID is unavailable.
 _Hid? _getNavigatorHid() => _navigatorHid;
 
+/// Synthesizes the device path hid_tool reports for a web [HidDevice]
+/// (`web:<vid>:<pid>`), so connect/disconnect events match the path on a
+/// [DiscoveredDevice.hidDevice]. WebHID has no inherent per-instance id; two
+/// identical web mice share this path (a hid_tool limitation).
+String _pathFor(int vendorId, int productId) => 'web:$vendorId:$productId';
+
 /// Starts listening to web connect/disconnect events.
 ///
-/// [onConnect]/[onDisconnect] receive (vendorId, productId). Returns a handle
-/// whose [stop] removes the listeners.
+/// Each callback receives (path, vendorId, productId). Returns a handle whose
+/// [stop] removes the listeners.
 HidEventSubscription startWebHidListeners({
-  required void Function(int vendorId, int productId) onConnect,
-  required void Function(int vendorId, int productId) onDisconnect,
+  required void Function(String path, int vendorId, int productId) onConnect,
+  required void Function(String path, int vendorId, int productId) onDisconnect,
 }) {
   final hid = _getNavigatorHid();
   if (hid == null) {
@@ -46,11 +52,15 @@ HidEventSubscription startWebHidListeners({
   }
 
   void connectHandler(_HidConnectionEvent e) {
-    onConnect(e.device.vendorId, e.device.productId);
+    final vid = e.device.vendorId;
+    final pid = e.device.productId;
+    onConnect(_pathFor(vid, pid), vid, pid);
   }
 
   void disconnectHandler(_HidConnectionEvent e) {
-    onDisconnect(e.device.vendorId, e.device.productId);
+    final vid = e.device.vendorId;
+    final pid = e.device.productId;
+    onDisconnect(_pathFor(vid, pid), vid, pid);
   }
 
   final c = connectHandler.toJS;

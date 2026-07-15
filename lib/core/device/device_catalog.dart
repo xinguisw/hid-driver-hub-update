@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:hid_tool/hid_tool.dart';
 
+import 'device_type.dart';
+
 /// Catalog entry for one supported device, parsed from the approved
 /// `assets/catalog/supported_model.json`.
 ///
@@ -12,7 +14,7 @@ import 'package:hid_tool/hid_tool.dart';
 /// raw [HidDevice]s back to catalog entries.
 class DeviceCatalogEntry {
   final String devId;
-  final int deviceType;
+  final DeviceType deviceType;
   final String model;
   final String deviceAttr;
   final int interfaceId;
@@ -34,7 +36,7 @@ class DeviceCatalogEntry {
   factory DeviceCatalogEntry.fromJson(Map<String, dynamic> json) {
     return DeviceCatalogEntry(
       devId: json['devId'] as String,
-      deviceType: json['deviceType'] as int,
+      deviceType: DeviceType.fromCatalogCode(json['deviceType'] as int),
       model: json['model'] as String,
       deviceAttr: json['deviceAttr'] as String,
       interfaceId: json['interfaceId'] as int,

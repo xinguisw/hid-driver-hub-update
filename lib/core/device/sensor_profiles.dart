@@ -92,6 +92,6 @@ class SensorProfiles {
   };
 
   static const _byDevice = <String, SensorProfile>{
-    'm7xse:1': SensorProfile(chip: 'PAW3395', mode: 'high_res', table: 'PAW3395/high_res'),
+    'aa4ecd01:1': SensorProfile(chip: 'PAW3395', mode: 'high_res', table: 'PAW3395/high_res'),
   };
 }

@@ -42,6 +42,12 @@ class DeviceWatcher {
   final HidEvents _events = HidEvents();
   final _sessions = <String, DeviceSession>{}; // keyed by device path
 
+  /// Disconnect teardown is deferred by [_replugDebounce]; if the same path
+  /// reconnects within the window, [_handleConnect] cancels the pending timer
+  /// and keeps the existing session.
+  static const Duration _replugDebounce = Duration(milliseconds: 300);
+  final _pendingDisposes = <String, Timer>{};
+
   DeviceWatcher({
     required this._scanner,
     required this._protocolFactory,
@@ -65,6 +71,10 @@ class DeviceWatcher {
   /// Stops watching and disposes all active sessions.
   Future<void> stop() async {
     _events.stop();
+    for (final t in _pendingDisposes.values) {
+      t.cancel();
+    }
+    _pendingDisposes.clear();
     for (final session in _sessions.values) {
       await session.dispose();
     }
@@ -83,6 +93,8 @@ class DeviceWatcher {
     DeviceSessionCallback onConnect,
   ) async {
     if (_sessions.containsKey(path)) return; // already active
+    // Cancel any pending dispose for this path (rapid replug).
+    _pendingDisposes.remove(path)?.cancel();
 
     final discovered = await _scanner.discoverAuthorized();
     DiscoveredDevice? match;
@@ -118,9 +130,14 @@ class DeviceWatcher {
     DeviceDisconnectCallback onDisconnect,
   ) async {
     final session = _sessions.remove(path);
-    if (session != null) {
-      await session.dispose();
-    }
-    onDisconnect(path, vid, pid);
+    // Defer teardown by [_replugDebounce]; reconnect cancels it.
+    _pendingDisposes[path]?.cancel();
+    _pendingDisposes[path] = Timer(_replugDebounce, () {
+      _pendingDisposes.remove(path);
+      onDisconnect(path, vid, pid);
+      if (session != null) {
+        session.dispose(); // best-effort; close() aborts in-flight receives
+      }
+    });
   }
 }

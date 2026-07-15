@@ -3,6 +3,16 @@ import 'dart:typed_data';
 
 import 'package:hid_tool/hid_tool.dart';
 
+/// Thrown when an in-flight [HidSession.receiveReport] is aborted because the
+/// session was closed (device unplugged or [close] called) while waiting.
+/// Lets callers distinguish "device gone" from a generic transport error.
+class HidSessionClosedException implements Exception {
+  final String message;
+  const HidSessionClosedException([this.message = 'HidSession closed while a report receive was in flight.']);
+  @override
+  String toString() => 'HidSessionClosedException: $message';
+}
+
 /// The ONE transport object. Owns a single open [HidDevice] and is the only
 /// place in the application that calls [HidDevice.sendReport],
 /// [HidDevice.receiveReport], or [HidDevice.inputStream].
@@ -25,6 +35,10 @@ class HidSession {
   final HidDevice _device;
   bool _open = false;
 
+  /// Completed when [close] runs. Racing [receiveReport] against it aborts an
+  /// in-flight read on disconnect instead of waiting for its timeout.
+  Completer<void>? _closed;
+
   HidSession(this._device);
 
   /// Whether the underlying device is open.
@@ -41,15 +55,19 @@ class HidSession {
     // On desktop inputStream() is an async* generator, so this is a no-op.
     _device.inputStream();
     _open = true;
+    _closed = null; // reopened session can receive again
   }
 
-  /// Closes the underlying device.
+  /// Closes the underlying device. Completes [_closed] to abort any in-flight
+  /// [receiveReport] before closing.
   Future<void> close() async {
     if (!_open) return;
+    _open = false;
+    _closed ??= Completer<void>();
+    _closed!.complete();
     if (_device.isOpen) {
       await _device.close();
     }
-    _open = false;
   }
 
   /// Sends a raw output report. The [reportId] is prefixed by hid_tool per
@@ -60,10 +78,19 @@ class HidSession {
   }
 
   /// Receives a raw input report of [reportLength] bytes. No parsing is
-  /// applied — callers interpret the bytes per their device's protocol.
+  /// applied; callers interpret the bytes per their device's protocol.
+  ///
+  /// Races the read against [_closed]: if [close] runs while waiting, throws
+  /// [HidSessionClosedException] instead of waiting for [timeout].
   Future<Uint8List> receiveReport(int reportLength, {Duration? timeout}) {
     _ensureOpen();
-    return _device.receiveReport(reportLength, timeout: timeout);
+    _closed ??= Completer<void>();
+    final read = _device.receiveReport(reportLength, timeout: timeout);
+    return Future.any([
+      read,
+      _closed!.future.then((_) =>
+          throw const HidSessionClosedException()),
+    ]);
   }
 
   /// The raw input byte stream from the device. Each event is one byte.

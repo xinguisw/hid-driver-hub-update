@@ -52,12 +52,23 @@ class DeviceSession {
 
   Stream<DeviceSessionState> get state => _controller.stream;
 
+  /// Whether the underlying transport is still open. False once the device
+  /// unplugs or [dispose] runs.
+  bool get isAlive => _session.isOpen;
+
   /// Pass-through to the protocol's battery query (opcode A4).
-  /// Caller owns the result; failures surface as thrown exceptions.
-  Future<BatteryResult> queryBattery() => _protocol.queryBattery(_session);
+  /// Returns null if the session is no longer alive (device gone).
+  Future<BatteryResult?> queryBattery() async {
+    if (!isAlive) return null;
+    return _protocol.queryBattery(_session);
+  }
 
   /// Pass-through to the protocol's firmware query (opcode A8).
-  Future<FirmwareResult> queryFirmware() => _protocol.queryFirmware(_session);
+  /// Returns null if the session is no longer alive (device gone).
+  Future<FirmwareResult?> queryFirmware() async {
+    if (!isAlive) return null;
+    return _protocol.queryFirmware(_session);
+  }
 
   /// Runs open -> handshake -> verify. Emits state on [state].
   // Returns true only when verified; false on reject or error.

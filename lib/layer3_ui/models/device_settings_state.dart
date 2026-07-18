@@ -44,7 +44,7 @@ class DeviceSettingsState {
   /// Default or live stage table; null = no DPI table yet.
   final List<DpiStageData>? dpiLevels;
 
-  /// 0-based active stage; null = unknown.
+  /// 1-based active stage for display (wire is 0-based); null = unknown.
   final int? dpiActiveIndex;
 
   /// Matrix "DPI RGB Customize".
@@ -72,11 +72,19 @@ class DeviceSettingsState {
 
   /// Separate matrix row "Angle Tune Feature" (e.g. PRO only).
   final bool hasAngleTune;
+
+  /// Live D4 angle tune wire value; null = unknown.
+  final int? angleTune;
+
   final bool hasLod;
 
   /// LOD options in mm; null/empty = no LOD.
   final List<int>? lodOptionsMm;
   final int? lodMm;
+
+  /// D4 performance wire value; null = unknown.
+  final bool hasPerformance;
+  final int? performance;
 
   // --- Other ---
 
@@ -91,15 +99,20 @@ class DeviceSettingsState {
   final bool hasWheelInvert;
   final bool? wheelInvert;
 
-  // --- RGB backlight ---
+  // --- RGB backlight (E2: enable, mode, bri, speed, R, G, B, sleep) ---
 
   final bool hasRgbBacklight;
   final List<RgbModeData>? rgbModes;
+  final bool? rgbEnable;
   final int? rgbModeId;
   final int? rgbBrightnessLevels;
   final int? rgbBrightness;
   final int? rgbSpeedLevels;
   final int? rgbSpeed;
+  final int? rgbR;
+  final int? rgbG;
+  final int? rgbB;
+  final int? rgbSleepTime;
 
   const DeviceSettingsState({
     required this.devId,
@@ -123,9 +136,12 @@ class DeviceSettingsState {
     this.sensorChip,
     this.hasSensorTuning = false,
     this.hasAngleTune = false,
+    this.angleTune,
     this.hasLod = false,
     this.lodOptionsMm,
     this.lodMm,
+    this.hasPerformance = false,
+    this.performance,
     this.rippleOn,
     this.angleSnapOn,
     this.hasSleepTime = false,
@@ -138,11 +154,16 @@ class DeviceSettingsState {
     this.wheelInvert,
     this.hasRgbBacklight = false,
     this.rgbModes,
+    this.rgbEnable,
     this.rgbModeId,
     this.rgbBrightnessLevels,
     this.rgbBrightness,
     this.rgbSpeedLevels,
     this.rgbSpeed,
+    this.rgbR,
+    this.rgbG,
+    this.rgbB,
+    this.rgbSleepTime,
   });
 
   DeviceSettingsState copyWith({
@@ -167,9 +188,12 @@ class DeviceSettingsState {
     String? sensorChip,
     bool? hasSensorTuning,
     bool? hasAngleTune,
+    int? angleTune,
     bool? hasLod,
     List<int>? lodOptionsMm,
     int? lodMm,
+    bool? hasPerformance,
+    int? performance,
     bool? rippleOn,
     bool? angleSnapOn,
     bool? hasSleepTime,
@@ -182,11 +206,16 @@ class DeviceSettingsState {
     bool? wheelInvert,
     bool? hasRgbBacklight,
     List<RgbModeData>? rgbModes,
+    bool? rgbEnable,
     int? rgbModeId,
     int? rgbBrightnessLevels,
     int? rgbBrightness,
     int? rgbSpeedLevels,
     int? rgbSpeed,
+    int? rgbR,
+    int? rgbG,
+    int? rgbB,
+    int? rgbSleepTime,
     bool clearError = false,
   }) {
     return DeviceSettingsState(
@@ -211,9 +240,12 @@ class DeviceSettingsState {
       sensorChip: sensorChip ?? this.sensorChip,
       hasSensorTuning: hasSensorTuning ?? this.hasSensorTuning,
       hasAngleTune: hasAngleTune ?? this.hasAngleTune,
+      angleTune: angleTune ?? this.angleTune,
       hasLod: hasLod ?? this.hasLod,
       lodOptionsMm: lodOptionsMm ?? this.lodOptionsMm,
       lodMm: lodMm ?? this.lodMm,
+      hasPerformance: hasPerformance ?? this.hasPerformance,
+      performance: performance ?? this.performance,
       rippleOn: rippleOn ?? this.rippleOn,
       angleSnapOn: angleSnapOn ?? this.angleSnapOn,
       hasSleepTime: hasSleepTime ?? this.hasSleepTime,
@@ -226,11 +258,16 @@ class DeviceSettingsState {
       wheelInvert: wheelInvert ?? this.wheelInvert,
       hasRgbBacklight: hasRgbBacklight ?? this.hasRgbBacklight,
       rgbModes: rgbModes ?? this.rgbModes,
+      rgbEnable: rgbEnable ?? this.rgbEnable,
       rgbModeId: rgbModeId ?? this.rgbModeId,
       rgbBrightnessLevels: rgbBrightnessLevels ?? this.rgbBrightnessLevels,
       rgbBrightness: rgbBrightness ?? this.rgbBrightness,
       rgbSpeedLevels: rgbSpeedLevels ?? this.rgbSpeedLevels,
       rgbSpeed: rgbSpeed ?? this.rgbSpeed,
+      rgbR: rgbR ?? this.rgbR,
+      rgbG: rgbG ?? this.rgbG,
+      rgbB: rgbB ?? this.rgbB,
+      rgbSleepTime: rgbSleepTime ?? this.rgbSleepTime,
     );
   }
 
@@ -260,9 +297,12 @@ class DeviceSettingsState {
           sensorChip == other.sensorChip &&
           hasSensorTuning == other.hasSensorTuning &&
           hasAngleTune == other.hasAngleTune &&
+          angleTune == other.angleTune &&
           hasLod == other.hasLod &&
           _listEq(lodOptionsMm, other.lodOptionsMm) &&
           lodMm == other.lodMm &&
+          hasPerformance == other.hasPerformance &&
+          performance == other.performance &&
           rippleOn == other.rippleOn &&
           angleSnapOn == other.angleSnapOn &&
           hasSleepTime == other.hasSleepTime &&
@@ -275,11 +315,16 @@ class DeviceSettingsState {
           wheelInvert == other.wheelInvert &&
           hasRgbBacklight == other.hasRgbBacklight &&
           _listEq(rgbModes, other.rgbModes) &&
+          rgbEnable == other.rgbEnable &&
           rgbModeId == other.rgbModeId &&
           rgbBrightnessLevels == other.rgbBrightnessLevels &&
           rgbBrightness == other.rgbBrightness &&
           rgbSpeedLevels == other.rgbSpeedLevels &&
-          rgbSpeed == other.rgbSpeed;
+          rgbSpeed == other.rgbSpeed &&
+          rgbR == other.rgbR &&
+          rgbG == other.rgbG &&
+          rgbB == other.rgbB &&
+          rgbSleepTime == other.rgbSleepTime;
 
   @override
   int get hashCode => Object.hashAll([
@@ -304,9 +349,12 @@ class DeviceSettingsState {
         sensorChip,
         hasSensorTuning,
         hasAngleTune,
+        angleTune,
         hasLod,
         Object.hashAll(lodOptionsMm ?? const []),
         lodMm,
+        hasPerformance,
+        performance,
         rippleOn,
         angleSnapOn,
         hasSleepTime,
@@ -319,23 +367,30 @@ class DeviceSettingsState {
         wheelInvert,
         hasRgbBacklight,
         Object.hashAll(rgbModes ?? const []),
+        rgbEnable,
         rgbModeId,
         rgbBrightnessLevels,
         rgbBrightness,
         rgbSpeedLevels,
         rgbSpeed,
+        rgbR,
+        rgbG,
+        rgbB,
+        rgbSleepTime,
       ]);
 }
 
-/// One DPI stage row (data only).
+/// One DPI stage row (data only). [value] = wire X; [y] = wire Y when known.
 class DpiStageData {
   final int level; // 1-based
   final int value;
-  final String? color; // "#RRGGBB" when product supports per-stage RGB
+  final int? y;
+  final String? color; // "#RRGGBB" when known
 
   const DpiStageData({
     required this.level,
     required this.value,
+    this.y,
     this.color,
   });
 
@@ -345,10 +400,11 @@ class DpiStageData {
       other is DpiStageData &&
           level == other.level &&
           value == other.value &&
+          y == other.y &&
           color == other.color;
 
   @override
-  int get hashCode => Object.hash(level, value, color);
+  int get hashCode => Object.hash(level, value, y, color);
 }
 
 /// One button def / live action (data only).

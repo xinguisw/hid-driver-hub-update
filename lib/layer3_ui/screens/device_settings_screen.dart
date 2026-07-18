@@ -1,12 +1,17 @@
-import 'package:driver_hub/layer3_ui/models/discovered_card_state.dart';
-import 'package:driver_hub/layer1_discovery/device_session.dart';
 import 'package:driver_hub/layer1_discovery/device_connection_manager.dart';
+import 'package:driver_hub/layer1_discovery/device_session.dart';
+import 'package:driver_hub/layer3_ui/models/device_settings_state.dart';
+import 'package:driver_hub/layer3_ui/models/discovered_card_state.dart';
+import 'package:driver_hub/layer3_ui/widgets/settings_block_card.dart';
+import 'package:driver_hub/layer5_codec/codecs/translation_codec.dart';
 import 'package:flutter/material.dart';
 
-/// Device settings page — opened from a mouse card tap.
+/// Settings for one connected mouse. GETs config on enter; text bloks gated by
+/// product capabilities (has* / options). Pops on disconnect.
 ///
-/// On open: runs onboard config GETs for this mouse (not at app start / card load).
-/// UI body still empty; results go to console for now.
+/// Selected-device summary is text only (name, mode, battery, FW) — no image
+/// or icons (phase 3 UI). Scrolls with body; later can move to a sidebar.
+/// Tap pops home to pick another device.
 class DeviceSettingsScreen extends StatefulWidget {
   const DeviceSettingsScreen({
     super.key,
@@ -14,10 +19,8 @@ class DeviceSettingsScreen extends StatefulWidget {
     required this.scope,
   });
 
-  /// Card of the device the user selected.
+  /// Snapshot of the mouse the user selected on home.
   final DiscoveredCardState card;
-
-  /// Owns live sessions; used only to resolve session + run config queries.
   final DeviceScope scope;
 
   @override
@@ -25,31 +28,300 @@ class DeviceSettingsScreen extends StatefulWidget {
 }
 
 class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
+  DeviceSettingsState? _state;
+
   @override
   void initState() {
     super.initState();
-    // After first frame so navigation is done before HID traffic.
+    widget.scope.cards.addListener(_onCardsChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadOnboardConfig());
   }
 
-  Future<void> _loadOnboardConfig() async {
-    final DeviceSession? session = widget.scope.sessionForCard(widget.card);
-    if (session == null || !session.isAlive) {
-      debugPrint('[settings] ${widget.card.displayName}: no live session');
+  @override
+  void dispose() {
+    widget.scope.cards.removeListener(_onCardsChanged);
+    super.dispose();
+  }
+
+  void _onCardsChanged() {
+    if (!mounted) return;
+    if (!_sessionStillAlive) {
+      debugPrint(
+        '[settings] ${widget.card.displayName}: disconnected — pop',
+      );
+      Navigator.of(context).maybePop();
       return;
     }
-    debugPrint('[settings] ${widget.card.displayName}: loading onboard config…');
-    await widget.scope.queryOnboardConfig(session);
-    debugPrint('[settings] ${widget.card.displayName}: onboard config done');
+    // Live battery / firmware on selected-device text summary.
+    setState(() {});
+  }
+
+  bool get _sessionStillAlive {
+    final session = widget.scope.sessionForCard(widget.card);
+    return session != null && session.isAlive;
+  }
+
+  /// Live state for the mouse opened from home; falls back to open snapshot.
+  DiscoveredCardState get _selectedCard {
+    final snap = widget.card;
+    final list = widget.scope.cards.value;
+    for (final c in list) {
+      if (identical(c.physicalHandle, snap.physicalHandle) ||
+          c.physicalHandle == snap.physicalHandle) {
+        return c;
+      }
+    }
+    for (final c in list) {
+      if (c.devId == snap.devId &&
+          c.connectionMode == snap.connectionMode) {
+        return c;
+      }
+    }
+    return snap;
+  }
+
+  Future<void> _loadOnboardConfig() async {
+    if (!_sessionStillAlive) {
+      debugPrint('[settings] ${widget.card.displayName}: no live session');
+      if (mounted) Navigator.of(context).maybePop();
+      return;
+    }
+    setState(() {
+      _state = DeviceSettingsState(
+        devId: widget.card.devId,
+        displayName: widget.card.displayName,
+        connectionMode: widget.card.connectionMode,
+        loading: true,
+      );
+    });
+    final DeviceSession session =
+        widget.scope.sessionForCard(widget.card)!;
+    debugPrint(
+      '[settings] ${widget.card.displayName}: loading onboard config…',
+    );
+    final packed =
+        await widget.scope.queryOnboardConfig(session, widget.card);
+    if (!mounted) return;
+    // Handshake fail, GET timeout, or session lost → home (no spinner UX change).
+    if (!_sessionStillAlive || packed.error != null) {
+      debugPrint(
+        '[settings] ${widget.card.displayName}: load failed '
+        '(${packed.error ?? 'no session'}) — pop home',
+      );
+      Navigator.of(context).maybePop();
+      return;
+    }
+    setState(() => _state = packed);
+    debugPrint(
+      '[settings] ${widget.card.displayName}: onboard config done',
+    );
+  }
+
+  void _popHome() {
+    Navigator.of(context).maybePop();
   }
 
   @override
   Widget build(BuildContext context) {
+    final state = _state;
+    final selected = _selectedCard;
+    final loading = state == null || state.loading;
+
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.card.displayName),
+        title: Text(selected.displayName),
       ),
-      body: const SizedBox.shrink(),
+      // Text summary scrolls with bloks — not sticky (sidebar later).
+      body: loading
+          ? const Center(child: CircularProgressIndicator())
+          : ListView(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              children: [
+                _selectedDeviceTextSummary(selected),
+                if (state.error != null)
+                  Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Text(
+                      state.error!,
+                      style: const TextStyle(color: Colors.red),
+                    ),
+                  ),
+                if (state.buttons != null)
+                  SettingsBlockCard(
+                    title: 'Buttons',
+                    lines: _buttonLines(state),
+                  ),
+                if (state.reportRateOptions != null ||
+                    state.reportRateHz != null)
+                  SettingsBlockCard(
+                    title: 'Report rate',
+                    lines: [
+                      'report rate: ${_dash(state.reportRateHz)} Hz',
+                    ],
+                  ),
+                if (state.dpiMaxLevels != null || state.dpiLevels != null)
+                  SettingsBlockCard(
+                    title: 'DPI',
+                    lines: _dpiLines(state),
+                  ),
+                if (state.dpiLevels != null)
+                  SettingsBlockCard(
+                    title: 'DPI table',
+                    lines: _dpiTableLines(state),
+                  ),
+                if (state.hasSensorTuning)
+                  SettingsBlockCard(
+                    title: 'Sensor tuning',
+                    lines: [
+                      'ripple control: ${_dash(state.rippleOn)}',
+                      'angle snap: ${_dash(state.angleSnapOn)}',
+                    ],
+                  ),
+                if (state.hasLod)
+                  SettingsBlockCard(
+                    title: 'LOD',
+                    lines: ['LOD (raw): ${_dash(state.lodMm)}'],
+                  ),
+                if (state.hasAngleTune)
+                  SettingsBlockCard(
+                    title: 'Angle tune',
+                    lines: [
+                      'angle tune (raw): ${_dash(state.angleTune)}',
+                    ],
+                  ),
+                if (state.hasPerformance)
+                  SettingsBlockCard(
+                    title: 'Performance',
+                    lines: [
+                      'performance (raw): ${_dash(state.performance)}',
+                    ],
+                  ),
+                if (state.hasButtonDebounce)
+                  SettingsBlockCard(
+                    title: 'Key debounce delay',
+                    lines: [
+                      'debounce (raw): ${_dash(state.debounceMs)}',
+                    ],
+                  ),
+                if (state.hasSleepTime)
+                  SettingsBlockCard(
+                    title: 'Sleep time',
+                    lines: [
+                      'sleep (raw): ${_dash(state.sleepSeconds)}',
+                    ],
+                  ),
+                if (state.hasWheelInvert)
+                  SettingsBlockCard(
+                    title: 'Wheel invert',
+                    lines: [
+                      'wheel invert: ${_dash(state.wheelInvert)}',
+                    ],
+                  ),
+                if (state.hasRgbBacklight)
+                  SettingsBlockCard(
+                    title: 'RGB backlight',
+                    lines: _rgbLines(state),
+                  ),
+              ],
+            ),
     );
+  }
+
+  /// Text-only summary of the selected mouse (no image / icons).
+  Widget _selectedDeviceTextSummary(DiscoveredCardState card) {
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      child: InkWell(
+        onTap: _popHome,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                card.displayName,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(_batteryText(card), style: _summaryLine),
+              const SizedBox(height: 4),
+              Text(
+                'Mode: ${_modeLabel(card.connectionMode)}',
+                style: _summaryLine,
+              ),
+              const SizedBox(height: 4),
+              Text(_firmwareText(card), style: _summaryLine),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _batteryText(DiscoveredCardState card) {
+    if (card.batteryPercentage < 0) return 'Battery —';
+    final pct = '${card.batteryPercentage}%';
+    return card.isCharging ? 'Battery $pct charging' : 'Battery $pct';
+  }
+
+  String _firmwareText(DiscoveredCardState card) {
+    if (card.firmwareVersion.isEmpty) return 'Firmware —';
+    return 'Firmware ${card.firmwareVersion}';
+  }
+
+  String _modeLabel(int mode) {
+    if (mode == 0) return 'USB';
+    if (mode == 1) return '2.4G';
+    return '—';
+  }
+
+  static const _summaryLine = TextStyle(fontSize: 13, color: Colors.grey);
+
+  String _dash(Object? v) => v == null ? '—' : '$v';
+
+  List<String> _buttonLines(DeviceSettingsState s) {
+    final list = s.buttons;
+    if (list == null || list.isEmpty) return const ['—'];
+    const translate = TranslationCodec();
+    return [
+      for (final b in list)
+        '${translate.buttonIdToLabel(b.id)}: ${b.actionLabel ?? '—'}',
+    ];
+  }
+
+  List<String> _dpiLines(DeviceSettingsState s) {
+    return [
+      'DPI current level: ${_dash(s.dpiActiveIndex)}',
+      'DPI active count: ${_dash(s.dpiActiveLevelCount)}',
+    ];
+  }
+
+  List<String> _dpiTableLines(DeviceSettingsState s) {
+    final list = s.dpiLevels;
+    if (list == null || list.isEmpty) return const ['—'];
+    return [
+      for (final d in list)
+        d.y != null
+            ? 'L${d.level}: X=${d.value} Y=${d.y}'
+                '${d.color != null ? '  ${d.color}' : ''}'
+            : 'L${d.level}: ${d.value}'
+                '${d.color != null ? '  ${d.color}' : ''}',
+    ];
+  }
+
+  List<String> _rgbLines(DeviceSettingsState s) {
+    return [
+      'enable: ${_dash(s.rgbEnable)}',
+      'mode: ${_dash(s.rgbModeId)}',
+      'brightness: ${_dash(s.rgbBrightness)}',
+      'speed: ${_dash(s.rgbSpeed)}',
+      'R: ${_dash(s.rgbR)}',
+      'G: ${_dash(s.rgbG)}',
+      'B: ${_dash(s.rgbB)}',
+      'RGB sleep (raw): ${_dash(s.rgbSleepTime)}',
+    ];
   }
 }

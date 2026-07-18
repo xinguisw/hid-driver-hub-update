@@ -1,0 +1,118 @@
+{
+  "devId": "aa4ecd01",
+  "displayNameKey": "device.m7xse.name",
+  "buttons": {
+    "count": 6,
+    "list": [
+      {
+        "id": 1,
+        "labelKey": "button.left_click",
+        "remappable": true,
+        "hotspot": { "x": 0.22, "y": 0.12, "r": 0.06 }
+      },
+      {
+        "id": 2,
+        "labelKey": "button.right_click",
+        "remappable": true,
+        "hotspot": { "x": 0.78, "y": 0.12, "r": 0.06 }
+      },
+      {
+        "id": 3,
+        "labelKey": "button.middle_click",
+        "remappable": true,
+        "hotspot": { "x": 0.5, "y": 0.14, "r": 0.05 }
+      },
+      {
+        "id": 4,
+        "labelKey": "button.forward",
+        "remappable": true,
+        "hotspot": { "x": 0.1, "y": 0.55, "r": 0.05 }
+      },
+      {
+        "id": 5,
+        "labelKey": "button.back",
+        "remappable": true,
+        "hotspot": { "x": 0.1, "y": 0.65, "r": 0.05 }
+      },
+      {
+        "id": 6,
+        "labelKey": "button.dpi_cycle",
+        "remappable": true,
+        "hotspot": { "x": 0.5, "y": 0.3, "r": 0.04 }
+      }
+    ]
+  },
+  "reportRate": {
+    "options": [500, 250, 125],
+    "defaultValue": 500
+  },
+  "dpi": {
+    "maxLevels": 8,
+    "defaultLevel": 2,
+    "maxDpi": 5000,
+    "independentXY": false,
+    "rgbPerStage": false,
+    "levels": [
+      { "level": 1, "value": 800, "color": "" },
+      { "level": 2, "value": 1600, "color": "" },
+      { "level": 3, "value": 2400, "color": "" },
+      { "level": 4, "value": 3200, "color": "" },
+      { "level": 5, "value": 5000, "color": "" },
+      { "level": 6, "value": 1600, "color": "" },
+      { "level": 7, "value": 1600, "color": "" },
+      { "level": 8, "value": 1600, "color": "" }
+    ]
+  },
+  "sensor": {
+    "present": false,
+    "sensorTuning": false,
+    "angleTune": false,
+    "liftOffDistance": {
+      "present": false,
+      "options": [1, 2, 3]
+    }
+  },
+  "otherFeatures": {
+    "present": true,
+    "buttonDebounce": {
+      "present": false,
+      "options": [4, 8, 16, 24]
+    },
+    "sleepTime": {
+      "present": true,
+      "options": [900]
+    },
+    "wheelDirectionInvert": false
+  },
+  "rgbBacklight": {
+    "present": false,
+    "modes": [
+      {
+        "id": 1,
+        "nameKey": "light.wave",
+        "supportsColor": true
+      },
+      {
+        "id": 2,
+        "nameKey": "light.breathing",
+        "supportsColor": true
+      },
+      {
+        "id": 3,
+        "nameKey": "light.solid",
+        "supportsColor": true
+      },
+      {
+        "id": 6,
+        "nameKey": "light.off",
+        "supportsColor": false
+      }
+    ],
+    "brightnessLevels": 5,
+    "speedLevels": 5,
+    "sleepTimeOptions": [30, 60, 300]
+  },
+  "osd": {
+    "enabled": true
+  }
+}

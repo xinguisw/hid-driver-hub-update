@@ -6,8 +6,8 @@ import 'package:driver_hub/layer2_capabilities/sensor_profiles.dart';
 
 /// Capabilities of a supported device.
 ///
-/// Product data lives in [assets/catalog/mouse/capabilities.json].
-/// This file holds the typed model and loader only.
+/// Product data lives per mouse: [assets/catalog/mouse/{modelSlug}.json]
+/// (e.g. m7xse.json). This file holds the typed model and loader only.
 ///
 /// Every capability block carries a [present] flag, mirroring the catalog
 /// convention. A card renders a row only when its capability is present.
@@ -377,35 +377,38 @@ class OsdCapabilities {
   }
 }
 
-/// Loads device capabilities from [assets/catalog/mouse/capabilities.json].
+/// Loads per-mouse capabilities from [assets/catalog/mouse/{modelSlug}.json].
 ///
 /// Not loaded at app start. Load when the user opens settings for a mouse
 /// (device card → settings). [forDevice] returns caps for a [devId], or null
-/// if not loaded / unknown. Results are cached after first [load].
+/// if not loaded / unknown. Each model file is cached after first [load].
 ///
-/// Add a mouse: new object in capabilities.json devices[] (match catalog devId).
+/// Add a mouse: new file e.g. `assets/catalog/mouse/m8xxx.json` (slug =
+/// catalog model lowercased) with that product's capability object.
 class DeviceCapabilityStore {
   DeviceCapabilityStore._();
 
-  static const _assetPath = 'assets/catalog/mouse/capabilities.json';
+  static const _dir = 'assets/catalog/mouse';
 
-  static Map<String, DeviceCapabilities>? _byDevId;
+  static final Map<String, DeviceCapabilities> _byDevId = {};
+  static final Set<String> _loadedSlugs = {};
 
-  /// Loads device capabilities from the asset JSON. Cached after first load.
+  /// Asset path for a catalog model name (e.g. `M7XSE` → `.../m7xse.json`).
+  static String assetPathForModel(String model) =>
+      '$_dir/${model.toLowerCase()}.json';
+
+  /// Loads one mouse capabilities file. Cached per model slug.
   /// Call when entering mouse settings, not at app start.
-  static Future<void> load() async {
-    if (_byDevId != null) return;
-    final raw = await rootBundle.loadString(_assetPath);
+  static Future<void> load(String model) async {
+    final slug = model.toLowerCase();
+    if (_loadedSlugs.contains(slug)) return;
+    final raw = await rootBundle.loadString(assetPathForModel(model));
     final json = jsonDecode(raw) as Map<String, dynamic>;
-    final devices = json['devices'] as List;
-    final map = <String, DeviceCapabilities>{};
-    for (final d in devices) {
-      final caps = DeviceCapabilities.fromJson(d as Map<String, dynamic>);
-      map[caps.devId] = caps;
-    }
-    _byDevId = map;
+    final caps = DeviceCapabilities.fromJson(json);
+    _byDevId[caps.devId] = caps;
+    _loadedSlugs.add(slug);
   }
 
   /// Returns the device capabilities for [devId], or null if unsupported / not loaded.
-  static DeviceCapabilities? forDevice(String devId) => _byDevId?[devId];
+  static DeviceCapabilities? forDevice(String devId) => _byDevId[devId];
 }

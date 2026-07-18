@@ -9,12 +9,15 @@ import 'package:flutter/services.dart' show rootBundle;
 
 /// How a sensor encodes a DPI value onto the wire.
 class DpiEncoding {
-  /// 'divide' (wire = value / factor) or 'multiply'.
+  /// `identity` | `divide` | `multiply` | `paw3311`.
   final String transform;
   final int factor;
   final int bytesPerAxis;
   final String endian;
   final bool independentXY;
+
+  /// Optional wire-code → display DPI (e.g. PAW3311 SDK table `0x13` → 840).
+  final Map<int, int> cpiMap;
 
   const DpiEncoding({
     required this.transform,
@@ -22,16 +25,39 @@ class DpiEncoding {
     required this.bytesPerAxis,
     required this.endian,
     required this.independentXY,
+    this.cpiMap = const {},
   });
 
   factory DpiEncoding.fromJson(Map<String, dynamic> json) {
+    final rawMap = json['cpiMap'];
+    final cpiMap = <int, int>{};
+    if (rawMap is Map) {
+      for (final e in rawMap.entries) {
+        final k = _parseWireKey(e.key);
+        final v = e.value;
+        if (v is int) {
+          cpiMap[k] = v;
+        } else if (v is num) {
+          cpiMap[k] = v.toInt();
+        }
+      }
+    }
     return DpiEncoding(
       transform: json['transform'] as String,
       factor: json['factor'] as int,
       bytesPerAxis: json['bytesPerAxis'] as int,
       endian: json['endian'] as String,
       independentXY: json['independentXY'] as bool,
+      cpiMap: cpiMap,
     );
+  }
+
+  static int _parseWireKey(Object? key) {
+    final s = key.toString().trim();
+    if (s.startsWith('0x') || s.startsWith('0X')) {
+      return int.parse(s.substring(2), radix: 16);
+    }
+    return int.parse(s);
   }
 }
 
@@ -135,6 +161,12 @@ class SensorProfiles {
 
     _tables = tables;
     _byDevice = byDevice;
+  }
+
+  /// Test-only: clear cache so asset reloads pick up JSON edits.
+  static void debugReset() {
+    _tables = null;
+    _byDevice = null;
   }
 
   static SensorProfile? forDevice(String devId, int mode) =>

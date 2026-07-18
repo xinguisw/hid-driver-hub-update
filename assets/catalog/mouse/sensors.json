@@ -31,13 +31,56 @@
         "maxDpi": 16000,
         "step": 50
       }
+    },
+    "SG8925/std": {
+      "chip": "SG8925",
+      "mode": "std",
+      "dpiEncoding": {
+        "transform": "identity",
+        "factor": 1,
+        "bytesPerAxis": 2,
+        "endian": "big",
+        "independentXY": false
+      },
+      "dpiRange": {
+        "minDpi": 50,
+        "maxDpi": 5000,
+        "step": 50
+      }
+    },
+    "PAW3311/std": {
+      "chip": "PAW3311",
+      "mode": "std",
+      "dpiEncoding": {
+        "transform": "paw3311",
+        "factor": 50,
+        "bytesPerAxis": 1,
+        "endian": "big",
+        "independentXY": false,
+        "cpiMap": {
+          "0x13": 840,
+          "0x26": 1200,
+          "0x39": 1620,
+          "0x55": 3180
+        }
+      },
+      "dpiRange": {
+        "minDpi": 50,
+        "maxDpi": 12000,
+        "step": 50
+      }
     }
   },
   "devices": {
+    "aa4ecd01:0": {
+      "chip": "PAW3311",
+      "mode": "std",
+      "table": "PAW3311/std"
+    },
     "aa4ecd01:1": {
-      "chip": "PAW3395",
-      "mode": "high_res",
-      "table": "PAW3395/high_res"
+      "chip": "PAW3311",
+      "mode": "std",
+      "table": "PAW3311/std"
     }
   }
 }

@@ -8,8 +8,9 @@ import 'package:driver_hub/layer2_capabilities/device_type.dart';
 /// Catalog entry for one supported device, parsed from the approved
 /// `assets/catalog/supported_model.json`.
 ///
-/// Shared device registry (mouse, later keyboard). Mouse device capabilities and
-/// sensors load from `assets/catalog/mouse/` (see [DeviceCapabilityStore],
+/// Shared device registry (mouse, later keyboard). Mouse capabilities load per
+/// model (`assets/catalog/mouse/{model}.json`, e.g. m7xse.json); sensors from
+/// `assets/catalog/mouse/sensors.json` (see [DeviceCapabilityStore],
 /// [SensorProfiles]).
 /// [DeviceScanner] reads this registry to build discovery filters and to match
 /// raw [HidDevice]s back to catalog entries.

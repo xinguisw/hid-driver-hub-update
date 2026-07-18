@@ -5,57 +5,70 @@ import 'package:driver_hub/layer2_capabilities/sensor_profiles.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  test('DeviceCapabilityStore loads aa4ecd01 from JSON with same fields', () async {
-    await DeviceCapabilityStore.load();
+  test('DeviceCapabilityStore loads m7xse.json from product matrix', () async {
+    await DeviceCapabilityStore.load('m7xse');
     final caps = DeviceCapabilityStore.forDevice('aa4ecd01');
     expect(caps, isNotNull);
     expect(caps!.devId, 'aa4ecd01');
     expect(caps.displayNameKey, 'device.m7xse.name');
     expect(caps.buttons!.count, 6);
     expect(caps.buttons!.list.length, 6);
-    expect(caps.buttons!.list[0].id, 1);
-    expect(caps.buttons!.list[0].remappable, false);
-    expect(caps.buttons!.list[0].hotspot.x, 0.22);
-    expect(caps.reportRate!.options, [125, 500, 1000, 4000]);
-    expect(caps.reportRate!.defaultValue, 1000);
+    expect(caps.buttons!.list.every((b) => b.remappable), isTrue);
+    expect(caps.reportRate!.options, [500, 250, 125]);
+    expect(caps.reportRate!.defaultValue, 500);
     expect(caps.dpi!.maxLevels, 8);
-    expect(caps.dpi!.defaultLevel, 1);
-    expect(caps.dpi!.maxDpi, 3200);
-    expect(caps.dpi!.independentXY, false);
-    expect(caps.dpi!.rgbPerStage, true);
-    expect(caps.dpi!.levels.length, 3);
-    expect(caps.dpi!.levels[0].value, 400);
-    expect(caps.dpi!.levels[0].color, '#FF0000');
-    expect(caps.sensor!.present, true);
-    expect(caps.sensor!.sensorTuning, true);
-    expect(caps.sensor!.angleTune, false);
+    expect(caps.dpi!.defaultLevel, 2);
+    expect(caps.dpi!.maxDpi, 5000);
+    expect(caps.dpi!.rgbPerStage, isFalse);
+    expect(caps.dpi!.levels.length, 8);
+    expect(caps.dpi!.levels.map((e) => e.value).toList(),
+        [800, 1600, 2400, 3200, 5000, 1600, 1600, 1600]);
+    expect(caps.sensor!.present, isFalse);
+    expect(caps.sensor!.sensorTuning, isFalse);
+    expect(caps.sensor!.angleTune, isFalse);
+    expect(caps.sensor!.liftOffDistance!.present, isFalse);
     expect(caps.sensor!.liftOffDistance!.options, [1, 2, 3]);
-    expect(caps.otherFeatures!.wheelDirectionInvert, true);
+    expect(caps.otherFeatures!.buttonDebounce!.present, isFalse);
     expect(caps.otherFeatures!.buttonDebounce!.options, [4, 8, 16, 24]);
-    expect(caps.otherFeatures!.sleepTime!.options, [30, 60, 300, 600]);
-    expect(caps.rgbBacklight!.present, true);
+    expect(caps.otherFeatures!.sleepTime!.present, isTrue);
+    expect(caps.otherFeatures!.sleepTime!.options, [900]);
+    expect(caps.otherFeatures!.wheelDirectionInvert, isFalse);
+    expect(caps.rgbBacklight!.present, isFalse);
     expect(caps.rgbBacklight!.modes.length, 4);
-    expect(caps.rgbBacklight!.brightnessLevels, 5);
-    expect(caps.macro!.slots, 16);
-    expect(caps.macro!.maxLength, 127);
-    expect(caps.osd!.enabled, true);
+    expect(caps.macro, isNull);
+    expect(caps.osd!.enabled, isTrue);
     expect(DeviceCapabilityStore.forDevice('unknown'), isNull);
   });
 
-  test('SensorProfiles loads tables and aa4ecd01:1 from JSON', () async {
+  test('SensorProfiles loads PAW3311 for M7XSE; keeps SG8925 and PAW3395', () async {
+    SensorProfiles.debugReset();
     await SensorProfiles.load();
-    final profile = SensorProfiles.forDevice('aa4ecd01', 1);
-    expect(profile, isNotNull);
-    expect(profile!.chip, 'PAW3395');
-    expect(profile.mode, 'high_res');
-    expect(profile.table, 'PAW3395/high_res');
-    final table = SensorProfiles.table('PAW3395/high_res');
-    expect(table, isNotNull);
-    expect(table!.dpiEncoding.factor, 50);
-    expect(table.dpiRange.maxDpi, 26000);
-    final std = SensorProfiles.table('PAW3395/std_res');
-    expect(std!.dpiEncoding.factor, 25);
-    expect(std.dpiRange.maxDpi, 16000);
-    expect(SensorProfiles.forDevice('aa4ecd01', 0), isNull);
+    final usb = SensorProfiles.forDevice('aa4ecd01', 0);
+    final rf = SensorProfiles.forDevice('aa4ecd01', 1);
+    expect(usb, isNotNull);
+    expect(rf, isNotNull);
+    expect(usb!.chip, 'PAW3311');
+    expect(rf!.chip, 'PAW3311');
+    expect(usb.table, 'PAW3311/std');
+    expect(rf.table, 'PAW3311/std');
+    final paw3311 = SensorProfiles.table('PAW3311/std');
+    expect(paw3311, isNotNull);
+    expect(paw3311!.dpiEncoding.transform, 'paw3311');
+    expect(paw3311.dpiEncoding.bytesPerAxis, 1);
+    expect(paw3311.dpiEncoding.independentXY, isFalse);
+    expect(paw3311.dpiEncoding.cpiMap[0x13], 840);
+    expect(paw3311.dpiEncoding.cpiMap[0x26], 1200);
+    expect(paw3311.dpiEncoding.cpiMap[0x39], 1620);
+    expect(paw3311.dpiEncoding.cpiMap[0x55], 3180);
+    final sigma = SensorProfiles.table('SG8925/std');
+    expect(sigma, isNotNull);
+    expect(sigma!.dpiEncoding.transform, 'identity');
+    expect(sigma.dpiEncoding.bytesPerAxis, 2);
+    expect(sigma.dpiRange.maxDpi, 5000);
+    final paw = SensorProfiles.table('PAW3395/high_res');
+    expect(paw, isNotNull);
+    expect(paw!.dpiEncoding.factor, 50);
+    expect(SensorProfiles.table('PAW3395/std_res')!.dpiEncoding.factor, 25);
   });
 }
+

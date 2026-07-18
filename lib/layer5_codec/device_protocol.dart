@@ -23,16 +23,22 @@ class BatteryResult {
 
 /// Firmware query result: mouse and dongle version bytes (A8 reply).
 class FirmwareResult {
-  /// 4 mouse-firmware bytes (ack[5..8]).
+  /// 4 mouse-firmware bytes (ack[5..8]), wire order.
   final List<int> mouseVersion;
-  /// 4 dongle-firmware bytes (ack[9..12]).
+  /// 4 dongle-firmware bytes (ack[9..12]), wire order.
   final List<int> dongleVersion;
   const FirmwareResult(
       {required this.mouseVersion, required this.dongleVersion});
 
-  /// Best-guess formatted string until the real reply confirms the format.
-  String get mouseVersionLabel => mouseVersion.join('.');
-  String get dongleVersionLabel => dongleVersion.join('.');
+  /// Wire e.g. 04 03 02 01 → display "1.2.3.4" (little-endian version).
+  String get mouseVersionLabel => formatFirmwareVersion(mouseVersion);
+  String get dongleVersionLabel => formatFirmwareVersion(dongleVersion);
+
+  /// Shared mouse / receiver path: reverse wire bytes, join with dots.
+  static String formatFirmwareVersion(List<int> wire) {
+    if (wire.isEmpty) return '';
+    return wire.reversed.map((b) => b.toString()).join('.');
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -95,11 +101,17 @@ class DpiTableEntry {
   String toString() => 'DpiTableEntry(x=$x, y=$y)';
 }
 
-/// addrs 0xC4 — DPI table (len 16 = 8 × XY).
+/// addrs 0xC4 — DPI table (len 16 = 8 interleaved byte pairs).
 class DpiTableResult {
   final List<DpiTableEntry> stages;
+  /// Config data payload only (typically 16 bytes), for sensor decode.
+  final Uint8List data;
   final Uint8List raw;
-  const DpiTableResult({required this.stages, required this.raw});
+  const DpiTableResult({
+    required this.stages,
+    required this.data,
+    required this.raw,
+  });
 }
 
 /// One stage RGB.
@@ -414,11 +426,12 @@ class MouseProtocol implements DeviceProtocol {
   Future<DpiTableResult> queryDpiTable(HidSession session) async {
     final raw = await _getConfig(session, addrsDpiTable, 'dpiTable');
     final data = _configData(raw, addrsDpiTable);
+    // Interleaved stage pairs; display DPI is applied via the device sensor profile.
     final stages = <DpiTableEntry>[];
     for (var i = 0; i + 1 < data.length && stages.length < 8; i += 2) {
       stages.add(DpiTableEntry(x: data[i], y: data[i + 1]));
     }
-    return DpiTableResult(stages: stages, raw: raw);
+    return DpiTableResult(stages: stages, data: data, raw: raw);
   }
 
   @override

@@ -8,9 +8,8 @@ import 'package:driver_hub/layer3_ui/models/device_settings_state.dart';
 /// Sensor chip comes from [SensorProfiles] when already loaded.
 DeviceSettingsState applyCapabilitiesToSettings(
   DeviceSettingsState state,
-  DeviceCapabilities caps, {
-  int connectionMode = 0,
-}) {
+  DeviceCapabilities caps,
+) {
   var next = state;
 
   final report = caps.reportRate;
@@ -65,7 +64,7 @@ DeviceSettingsState applyCapabilitiesToSettings(
       lodOptionsMm: (lod != null && lod.present) ? lod.options : null,
       hasPerformance: perf?.present ?? false,
     );
-    final profile = SensorProfiles.forDevice(caps.devId, connectionMode);
+    final profile = SensorProfiles.forDevice(caps.devId);
     if (profile != null) {
       next = next.copyWith(sensorChip: profile.chip);
     }

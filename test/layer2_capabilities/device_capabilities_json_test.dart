@@ -43,14 +43,10 @@ void main() {
   test('SensorProfiles loads PAW3311 for M7XSE; keeps SG8925 and PAW3395', () async {
     SensorProfiles.debugReset();
     await SensorProfiles.load();
-    final usb = SensorProfiles.forDevice('aa4ecd01', 0);
-    final rf = SensorProfiles.forDevice('aa4ecd01', 1);
-    expect(usb, isNotNull);
-    expect(rf, isNotNull);
-    expect(usb!.chip, 'PAW3311');
-    expect(rf!.chip, 'PAW3311');
-    expect(usb.table, 'PAW3311/std');
-    expect(rf.table, 'PAW3311/std');
+    final profile = SensorProfiles.forDevice('aa4ecd01');
+    expect(profile, isNotNull);
+    expect(profile!.chip, 'PAW3311');
+    expect(profile.table, 'PAW3311/std');
     final paw3311 = SensorProfiles.table('PAW3311/std');
     expect(paw3311, isNotNull);
     expect(paw3311!.dpiEncoding.transform, 'paw3311');

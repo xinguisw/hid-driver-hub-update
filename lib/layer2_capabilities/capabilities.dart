@@ -72,9 +72,9 @@ class DeviceCapabilities {
     );
   }
 
-  /// Sensor profile for this device and mode, or null if none.
-  SensorProfile? sensorProfileFor(int mode) =>
-      SensorProfiles.forDevice(devId, mode);
+  /// Sensor profile for this product [devId], or null if none.
+  /// USB and 2.4G use the same profile (one sensor per device id).
+  SensorProfile? sensorProfileFor() => SensorProfiles.forDevice(devId);
 }
 
 class ButtonCapabilities {

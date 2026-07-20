@@ -169,8 +169,8 @@ class SensorProfiles {
     _byDevice = null;
   }
 
-  static SensorProfile? forDevice(String devId, int mode) =>
-      _byDevice?['$devId:$mode'];
+  /// Profile for [devId] only (one sensor per product; USB and 2.4G share it).
+  static SensorProfile? forDevice(String devId) => _byDevice?[devId];
 
   static EncodingTable? table(String key) => _tables?[key];
 }

@@ -72,12 +72,7 @@
     }
   },
   "devices": {
-    "aa4ecd01:0": {
-      "chip": "PAW3311",
-      "mode": "std",
-      "table": "PAW3311/std"
-    },
-    "aa4ecd01:1": {
+    "aa4ecd01": {
       "chip": "PAW3311",
       "mode": "std",
       "table": "PAW3311/std"

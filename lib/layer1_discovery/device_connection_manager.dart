@@ -174,11 +174,7 @@ class DeviceScope {
     final caps = await _loadCapabilitiesForSession(session, card);
     final hasCaps = caps != null;
     if (hasCaps) {
-      state = applyCapabilitiesToSettings(
-        state,
-        caps,
-        connectionMode: card.connectionMode,
-      );
+      state = applyCapabilitiesToSettings(state, caps);
       debugPrint(
         '[settings] caps $name: devId=${caps.devId} '
         'reportRate=${state.reportRateOptions} '
@@ -481,7 +477,7 @@ class DeviceScope {
   /// Encoding table for this card’s sensor (after [SensorProfiles.load]).
   EncodingTable? _sensorEncodingTableFor(DiscoveredCardState card) {
     final profile =
-        SensorProfiles.forDevice(card.devId, card.connectionMode);
+        SensorProfiles.forDevice(card.devId);
     if (profile == null) return null;
     return SensorProfiles.table(profile.table);
   }

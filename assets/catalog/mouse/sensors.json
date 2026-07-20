@@ -73,9 +73,9 @@
   },
   "devices": {
     "aa4ecd01": {
-      "chip": "PAW3311",
+      "chip": "SG8925",
       "mode": "std",
-      "table": "PAW3311/std"
+      "table": "SG8925/std"
     }
   }
 }

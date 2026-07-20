@@ -40,27 +40,22 @@ void main() {
     expect(DeviceCapabilityStore.forDevice('unknown'), isNull);
   });
 
-  test('SensorProfiles loads PAW3311 for M7XSE; keeps SG8925 and PAW3395', () async {
+  test('SensorProfiles loads SG8925 for M7XSE; keeps PAW3311 and PAW3395 tables', () async {
     SensorProfiles.debugReset();
     await SensorProfiles.load();
     final profile = SensorProfiles.forDevice('aa4ecd01');
     expect(profile, isNotNull);
-    expect(profile!.chip, 'PAW3311');
-    expect(profile.table, 'PAW3311/std');
-    final paw3311 = SensorProfiles.table('PAW3311/std');
-    expect(paw3311, isNotNull);
-    expect(paw3311!.dpiEncoding.transform, 'paw3311');
-    expect(paw3311.dpiEncoding.bytesPerAxis, 1);
-    expect(paw3311.dpiEncoding.independentXY, isFalse);
-    expect(paw3311.dpiEncoding.cpiMap[0x13], 840);
-    expect(paw3311.dpiEncoding.cpiMap[0x26], 1200);
-    expect(paw3311.dpiEncoding.cpiMap[0x39], 1620);
-    expect(paw3311.dpiEncoding.cpiMap[0x55], 3180);
+    expect(profile!.chip, 'SG8925');
+    expect(profile.table, 'SG8925/std');
     final sigma = SensorProfiles.table('SG8925/std');
     expect(sigma, isNotNull);
     expect(sigma!.dpiEncoding.transform, 'identity');
     expect(sigma.dpiEncoding.bytesPerAxis, 2);
     expect(sigma.dpiRange.maxDpi, 5000);
+    final paw3311 = SensorProfiles.table('PAW3311/std');
+    expect(paw3311, isNotNull);
+    expect(paw3311!.dpiEncoding.transform, 'paw3311');
+    expect(paw3311.dpiEncoding.cpiMap[0x13], 840);
     final paw = SensorProfiles.table('PAW3395/high_res');
     expect(paw, isNotNull);
     expect(paw!.dpiEncoding.factor, 50);

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'package:driver_hub/layer3_ui/models/discovered_card_state.dart';
+import 'package:driver_hub/layer4_domain/models/discovered_card_state.dart';
 
 /// Device card — a pure component (CDD).
 ///

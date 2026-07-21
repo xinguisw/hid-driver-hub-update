@@ -1,6 +1,6 @@
 import 'package:driver_hub/layer2_capabilities/capabilities.dart';
 import 'package:driver_hub/layer2_capabilities/sensor_profiles.dart';
-import 'package:driver_hub/layer3_ui/models/device_settings_state.dart';
+import 'package:driver_hub/layer4_domain/models/device_settings_state.dart';
 
 /// Pure pack: product matrix → presence + option lists on [DeviceSettingsState].
 ///

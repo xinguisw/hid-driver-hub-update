@@ -1,6 +1,6 @@
-import 'package:driver_hub/layer1_discovery/settings_capabilities_pack.dart';
 import 'package:driver_hub/layer2_capabilities/capabilities.dart';
-import 'package:driver_hub/layer3_ui/models/device_settings_state.dart';
+import 'package:driver_hub/layer4_domain/models/device_settings_state.dart';
+import 'package:driver_hub/layer4_domain/settings_capabilities_pack.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

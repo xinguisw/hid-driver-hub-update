@@ -3,13 +3,13 @@ import 'dart:convert';
 
 import 'package:driver_hub/layer1_discovery/device_scanner.dart';
 import 'package:driver_hub/layer1_discovery/discovered_device.dart';
-import 'package:driver_hub/layer1_discovery/settings_capabilities_pack.dart';
+import 'package:driver_hub/layer4_domain/settings_capabilities_pack.dart';
 import 'package:driver_hub/layer2_capabilities/capabilities.dart';
 import 'package:driver_hub/layer2_capabilities/sensor_profiles.dart';
 import 'package:driver_hub/layer6_transport/hid_session.dart';
 import 'package:driver_hub/layer6_transport/local_storage.dart';
-import 'package:driver_hub/layer3_ui/models/device_settings_state.dart';
-import 'package:driver_hub/layer3_ui/models/discovered_card_state.dart';
+import 'package:driver_hub/layer4_domain/models/device_settings_state.dart';
+import 'package:driver_hub/layer4_domain/models/discovered_card_state.dart';
 import 'package:driver_hub/layer5_codec/codecs/translation_codec.dart';
 import 'package:driver_hub/layer5_codec/device_protocol.dart';
 import 'package:driver_hub/layer1_discovery/device_session.dart';

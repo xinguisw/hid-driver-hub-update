@@ -8,9 +8,9 @@ import 'package:flutter/material.dart';
 
 /// Home screen: one [DeviceCard] per verified device.
 ///
-/// Pure composition (CDD): owns no lifecycle, no HID, no scanner. It reads the
-/// [DeviceScope] and composes [DeviceCardGrid] / [EmptyDeviceState]. All
-/// hardware concern lives in [DeviceScope] (L1); this is L3.
+/// L3 presentation: composes [DeviceCardGrid] / [EmptyDeviceState] from
+/// [DeviceScope] card list (L1 lifecycle). Does not parse config GETs or
+/// own domain settings hydrate (that is L4).
 class DevicesScreen extends StatefulWidget {
   const DevicesScreen({super.key});
 

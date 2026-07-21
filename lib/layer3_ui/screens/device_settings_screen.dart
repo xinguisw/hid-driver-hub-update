@@ -1,13 +1,15 @@
 import 'package:driver_hub/layer1_discovery/device_connection_manager.dart';
 import 'package:driver_hub/layer1_discovery/device_session.dart';
+import 'package:driver_hub/layer3_ui/widgets/settings_block_card.dart';
 import 'package:driver_hub/layer4_domain/models/device_settings_state.dart';
 import 'package:driver_hub/layer4_domain/models/discovered_card_state.dart';
-import 'package:driver_hub/layer3_ui/widgets/settings_block_card.dart';
+import 'package:driver_hub/layer4_domain/settings_onboard_query.dart';
 import 'package:driver_hub/layer5_codec/codecs/translation_codec.dart';
 import 'package:flutter/material.dart';
 
-/// Settings for one connected mouse. GETs config on enter; text bloks gated by
-/// product capabilities (has* / options). Pops on disconnect.
+/// Settings for one connected mouse. Loads domain state via L4
+/// [queryOnboardConfig]; text blocks gated by product capabilities.
+/// Pops on disconnect.
 ///
 /// Selected-device summary is text only (name, mode, battery, FW) — no image
 /// or icons (phase 3 UI). Scrolls with body; later can move to a sidebar.
@@ -99,8 +101,8 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
     debugPrint(
       '[settings] ${widget.card.displayName}: loading onboard config…',
     );
-    final packed =
-        await widget.scope.queryOnboardConfig(session, widget.card);
+    // L4 domain hydrate (not L1 DeviceScope). Session from L1 lifecycle only.
+    final packed = await queryOnboardConfig(session, widget.card);
     if (!mounted) return;
     // Handshake fail, GET timeout, or session lost → home (no spinner UX change).
     if (!_sessionStillAlive || packed.error != null) {

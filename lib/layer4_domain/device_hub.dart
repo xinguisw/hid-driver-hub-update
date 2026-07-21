@@ -5,18 +5,20 @@ import 'package:driver_hub/layer1_discovery/device_scanner.dart';
 import 'package:driver_hub/layer1_discovery/device_session.dart';
 import 'package:driver_hub/layer1_discovery/device_watcher.dart';
 import 'package:driver_hub/layer1_discovery/discovered_device.dart';
+import 'package:driver_hub/layer4_domain/models/device_settings_state.dart';
 import 'package:driver_hub/layer4_domain/models/discovered_card_state.dart';
+import 'package:driver_hub/layer4_domain/settings_onboard_query.dart';
 import 'package:driver_hub/layer5_codec/device_protocol.dart';
 import 'package:driver_hub/layer6_transport/hid_session.dart';
 import 'package:driver_hub/layer6_transport/local_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hid_tool/hid_tool.dart';
 
-/// L1 device lifecycle: scan, connect, handshake, hot-plug, card publish.
+/// L4 domain hub: owns [DiscoveredCardState] cards and settings load entry.
 ///
-/// Holds [DeviceWatcher] and live [DeviceSession]s. Publishes
-/// [DiscoveredCardState] via [cards]. Does **not** hydrate settings
-/// (that is L4 [queryOnboardConfig]).
+/// Uses L1 ([DeviceScanner], [DeviceWatcher], [DeviceSession]) for lifecycle
+/// and L4 [queryOnboardConfig] for settings hydrate. L3 reads [cards] / [busy]
+/// and calls [addDevice] / [loadOnboardSettings] only — never sessions or L5.
 ///
 /// One entry per verified device, keyed by device path → multi-device.
 class DeviceScope {
@@ -131,8 +133,45 @@ class DeviceScope {
     _startLiveBattery(session);
   }
 
-  /// Live session for a card, if still connected (L4/L3 resolve session, then hydrate in L4).
-  DeviceSession? sessionForCard(DiscoveredCardState card) {
+  /// Whether this card still has a live session (for L3 disconnect / load guards).
+  bool isCardConnected(DiscoveredCardState card) {
+    final session = _sessionForCard(card);
+    return session != null && session.isAlive;
+  }
+
+  /// Latest card snapshot from [cards], or [snap] if not found.
+  DiscoveredCardState resolveCard(DiscoveredCardState snap) {
+    final list = cards.value;
+    for (final c in list) {
+      if (identical(c.physicalHandle, snap.physicalHandle) ||
+          c.physicalHandle == snap.physicalHandle) {
+        return c;
+      }
+    }
+    for (final c in list) {
+      if (c.devId == snap.devId && c.connectionMode == snap.connectionMode) {
+        return c;
+      }
+    }
+    return snap;
+  }
+
+  /// L4 entry: hydrate settings for [card] (session stays inside domain).
+  Future<DeviceSettingsState> loadOnboardSettings(DiscoveredCardState card) async {
+    final session = _sessionForCard(card);
+    if (session == null || !session.isAlive) {
+      return DeviceSettingsState(
+        devId: card.devId,
+        displayName: card.displayName,
+        connectionMode: card.connectionMode,
+        loading: false,
+        error: 'no session',
+      );
+    }
+    return queryOnboardConfig(session, card);
+  }
+
+  DeviceSession? _sessionForCard(DiscoveredCardState card) {
     final handle = card.physicalHandle;
     if (handle is HidDevice) {
       return _sessions[handle.path];

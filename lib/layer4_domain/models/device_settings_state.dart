@@ -416,6 +416,9 @@ class ButtonData {
   final double? hotspotY;
   final double? hotspotR;
 
+  /// Display name for the physical button (set in L4; L3 must not use L5).
+  final String? buttonLabel;
+
   /// Live mapping label from GET; null = unknown.
   final String? actionLabel;
 
@@ -426,6 +429,7 @@ class ButtonData {
     this.hotspotX,
     this.hotspotY,
     this.hotspotR,
+    this.buttonLabel,
     this.actionLabel,
   });
 
@@ -439,6 +443,7 @@ class ButtonData {
           hotspotX == other.hotspotX &&
           hotspotY == other.hotspotY &&
           hotspotR == other.hotspotR &&
+          buttonLabel == other.buttonLabel &&
           actionLabel == other.actionLabel;
 
   @override
@@ -449,6 +454,7 @@ class ButtonData {
         hotspotX,
         hotspotY,
         hotspotR,
+        buttonLabel,
         actionLabel,
       );
 }

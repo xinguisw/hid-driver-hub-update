@@ -80,6 +80,10 @@ Future<DeviceSettingsState> queryOnboardConfig(
             hotspotR: state.buttons != null && i < state.buttons!.length
                 ? state.buttons![i].hotspotR
                 : null,
+            buttonLabel: state.buttons != null && i < state.buttons!.length
+                ? (state.buttons![i].buttonLabel ??
+                    translate.buttonIdToLabel(i + 1))
+                : translate.buttonIdToLabel(i + 1),
             actionLabel: translate.buttonActionToLabel(
               action: buttons.buttons[i].action,
               param1: buttons.buttons[i].param1,
@@ -112,7 +116,7 @@ Future<DeviceSettingsState> queryOnboardConfig(
   try {
     final info = await session.queryReportRateDpiInfo();
     if (info != null) {
-      // L5 keeps wire; L1 packs display values via TranslationCodec.
+      // L5 keeps wire; L4 packs display values via TranslationCodec.
       const translate = TranslationCodec();
       dpiActiveMask = info.dpiActiveLevel;
       final activeCount =

@@ -1,16 +1,15 @@
-import 'package:driver_hub/layer4_domain/models/discovered_card_state.dart';
-import 'package:driver_hub/layer1_discovery/device_connection_manager.dart';
 import 'package:driver_hub/layer3_ui/screens/device_settings_screen.dart';
 import 'package:driver_hub/layer3_ui/widgets/device_card_grid.dart';
 import 'package:driver_hub/layer3_ui/widgets/empty_device_state.dart';
+import 'package:driver_hub/layer4_domain/device_hub.dart';
+import 'package:driver_hub/layer4_domain/models/discovered_card_state.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 /// Home screen: one [DeviceCard] per verified device.
 ///
-/// L3 presentation: composes [DeviceCardGrid] / [EmptyDeviceState] from
-/// [DeviceScope] card list (L1 lifecycle). Does not parse config GETs or
-/// own domain settings hydrate (that is L4).
+/// L3 presentation only: reads L4 [DeviceScope] card list. No L1 session,
+/// no config GET, no codec.
 class DevicesScreen extends StatefulWidget {
   const DevicesScreen({super.key});
 
@@ -64,7 +63,7 @@ class _DevicesScreenState extends State<DevicesScreen> {
     );
   }
 
-  /// Card tap → settings page; onboard config GETs run there (not at card load).
+  /// Card tap → settings; domain load runs inside L4 via the settings screen.
   void _openDeviceSettings(DiscoveredCardState card) {
     Navigator.of(context).push(
       MaterialPageRoute<void>(

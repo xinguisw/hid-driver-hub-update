@@ -1,19 +1,13 @@
-import 'package:driver_hub/layer1_discovery/device_connection_manager.dart';
-import 'package:driver_hub/layer1_discovery/device_session.dart';
 import 'package:driver_hub/layer3_ui/widgets/settings_block_card.dart';
+import 'package:driver_hub/layer4_domain/device_hub.dart';
 import 'package:driver_hub/layer4_domain/models/device_settings_state.dart';
 import 'package:driver_hub/layer4_domain/models/discovered_card_state.dart';
-import 'package:driver_hub/layer4_domain/settings_onboard_query.dart';
-import 'package:driver_hub/layer5_codec/codecs/translation_codec.dart';
 import 'package:flutter/material.dart';
 
-/// Settings for one connected mouse. Loads domain state via L4
-/// [queryOnboardConfig]; text blocks gated by product capabilities.
-/// Pops on disconnect.
+/// Settings for one connected mouse.
 ///
-/// Selected-device summary is text only (name, mode, battery, FW) — no image
-/// or icons (phase 3 UI). Scrolls with body; later can move to a sidebar.
-/// Tap pops home to pick another device.
+/// L3 only: renders L4 [DeviceSettingsState], dispatches load via
+/// [DeviceScope.loadOnboardSettings]. No L1 session, no L5 codec, no raw GET.
 class DeviceSettingsScreen extends StatefulWidget {
   const DeviceSettingsScreen({
     super.key,
@@ -47,43 +41,18 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
 
   void _onCardsChanged() {
     if (!mounted) return;
-    if (!_sessionStillAlive) {
+    if (!widget.scope.isCardConnected(widget.card)) {
       debugPrint(
         '[settings] ${widget.card.displayName}: disconnected — pop',
       );
       Navigator.of(context).maybePop();
       return;
     }
-    // Live battery / firmware on selected-device text summary.
     setState(() {});
   }
 
-  bool get _sessionStillAlive {
-    final session = widget.scope.sessionForCard(widget.card);
-    return session != null && session.isAlive;
-  }
-
-  /// Live state for the mouse opened from home; falls back to open snapshot.
-  DiscoveredCardState get _selectedCard {
-    final snap = widget.card;
-    final list = widget.scope.cards.value;
-    for (final c in list) {
-      if (identical(c.physicalHandle, snap.physicalHandle) ||
-          c.physicalHandle == snap.physicalHandle) {
-        return c;
-      }
-    }
-    for (final c in list) {
-      if (c.devId == snap.devId &&
-          c.connectionMode == snap.connectionMode) {
-        return c;
-      }
-    }
-    return snap;
-  }
-
   Future<void> _loadOnboardConfig() async {
-    if (!_sessionStillAlive) {
+    if (!widget.scope.isCardConnected(widget.card)) {
       debugPrint('[settings] ${widget.card.displayName}: no live session');
       if (mounted) Navigator.of(context).maybePop();
       return;
@@ -96,16 +65,12 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
         loading: true,
       );
     });
-    final DeviceSession session =
-        widget.scope.sessionForCard(widget.card)!;
     debugPrint(
       '[settings] ${widget.card.displayName}: loading onboard config…',
     );
-    // L4 domain hydrate (not L1 DeviceScope). Session from L1 lifecycle only.
-    final packed = await queryOnboardConfig(session, widget.card);
+    final packed = await widget.scope.loadOnboardSettings(widget.card);
     if (!mounted) return;
-    // Handshake fail, GET timeout, or session lost → home (no spinner UX change).
-    if (!_sessionStillAlive || packed.error != null) {
+    if (!widget.scope.isCardConnected(widget.card) || packed.error != null) {
       debugPrint(
         '[settings] ${widget.card.displayName}: load failed '
         '(${packed.error ?? 'no session'}) — pop home',
@@ -126,14 +91,13 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final state = _state;
-    final selected = _selectedCard;
+    final selected = widget.scope.resolveCard(widget.card);
     final loading = state == null || state.loading;
 
     return Scaffold(
       appBar: AppBar(
         title: Text(selected.displayName),
       ),
-      // Text summary scrolls with bloks — not sticky (sidebar later).
       body: loading
           ? const Center(child: CircularProgressIndicator())
           : ListView(
@@ -229,7 +193,6 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
     );
   }
 
-  /// Text-only summary of the selected mouse (no image / icons).
   Widget _selectedDeviceTextSummary(DiscoveredCardState card) {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -287,10 +250,9 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
   List<String> _buttonLines(DeviceSettingsState s) {
     final list = s.buttons;
     if (list == null || list.isEmpty) return const ['—'];
-    const translate = TranslationCodec();
     return [
       for (final b in list)
-        '${translate.buttonIdToLabel(b.id)}: ${b.actionLabel ?? '—'}',
+        '${b.buttonLabel ?? 'Button ${b.id}'}: ${b.actionLabel ?? '—'}',
     ];
   }
 

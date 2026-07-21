@@ -1,6 +1,7 @@
 import 'package:driver_hub/layer2_capabilities/capabilities.dart';
 import 'package:driver_hub/layer2_capabilities/sensor_profiles.dart';
 import 'package:driver_hub/layer4_domain/models/device_settings_state.dart';
+import 'package:driver_hub/layer5_codec/codecs/translation_codec.dart';
 
 /// Pure pack: product matrix → presence + option lists on [DeviceSettingsState].
 ///
@@ -37,6 +38,7 @@ DeviceSettingsState applyCapabilitiesToSettings(
 
   final buttons = caps.buttons;
   if (buttons != null) {
+    const translate = TranslationCodec();
     next = next.copyWith(
       buttonCount: buttons.count,
       buttons: [
@@ -48,6 +50,7 @@ DeviceSettingsState applyCapabilitiesToSettings(
             hotspotX: b.hotspot.x,
             hotspotY: b.hotspot.y,
             hotspotR: b.hotspot.r,
+            buttonLabel: translate.buttonIdToLabel(b.id),
           ),
       ],
     );

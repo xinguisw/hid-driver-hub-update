@@ -14,7 +14,7 @@ import 'package:driver_hub/layer6_transport/local_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hid_tool/hid_tool.dart';
 
-/// L4 domain hub: owns [DiscoveredCardState] cards and settings load entry.
+/// L4 domain scope: owns [DiscoveredCardState] cards and settings load entry.
 ///
 /// Uses L1 ([DeviceScanner], [DeviceWatcher], [DeviceSession]) for lifecycle
 /// and L4 [queryOnboardConfig] for settings hydrate. L3 reads [cards] / [busy]

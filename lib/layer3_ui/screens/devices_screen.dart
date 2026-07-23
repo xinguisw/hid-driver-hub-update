@@ -1,7 +1,7 @@
 import 'package:driver_hub/layer3_ui/screens/device_settings_screen.dart';
 import 'package:driver_hub/layer3_ui/widgets/device_card_grid.dart';
 import 'package:driver_hub/layer3_ui/widgets/empty_device_state.dart';
-import 'package:driver_hub/layer4_domain/device_hub.dart';
+import 'package:driver_hub/layer4_domain/device_scope.dart';
 import 'package:driver_hub/layer4_domain/models/discovered_card_state.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';

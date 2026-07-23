@@ -1,5 +1,5 @@
 import 'package:driver_hub/layer3_ui/widgets/settings_block_card.dart';
-import 'package:driver_hub/layer4_domain/device_hub.dart';
+import 'package:driver_hub/layer4_domain/device_scope.dart';
 import 'package:driver_hub/layer4_domain/models/device_settings_state.dart';
 import 'package:driver_hub/layer4_domain/models/discovered_card_state.dart';
 import 'package:flutter/material.dart';

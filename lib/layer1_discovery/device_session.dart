@@ -36,6 +36,12 @@ enum Status { connecting, verified, rejected, error }
 
 /// Per-device orchestrator: open -> handshake -> verify against the catalog.
 class DeviceSession {
+  /// Max transport open attempts per [start] (total tries).
+  static const int maxOpenAttempts = 2;
+
+  /// Delay between failed open attempts.
+  static const Duration openRetryDelay = Duration(milliseconds: 120);
+
   final DiscoveredDevice device;
   final HidSession _session;
   final DeviceProtocol _protocol;
@@ -125,7 +131,7 @@ class DeviceSession {
     return _protocol.queryRgbBacklight(_session);
   }
 
-  /// Open -> handshake -> verify. Starts OSD unsolicited listen when verified.
+  /// Open (with retry) -> handshake -> verify. Starts OSD unsolicited when verified.
   Future<bool> start() async {
     final name = device.entry.model;
     final mode = device.mode.desc;
@@ -135,8 +141,7 @@ class DeviceSession {
         'expected deviceType=${device.entry.deviceType.name} expected devId="${device.entry.devId}"');
 
     try {
-      debugPrint('[session] opening device…');
-      await _session.open();
+      await _openTransportWithRetry();
       debugPrint('[session] opened, running handshake…');
       final hs = await _protocol.handshake(_session);
 
@@ -161,6 +166,31 @@ class DeviceSession {
       _controller.add(DeviceSessionState.error(name, mode, e.toString()));
       return false;
     }
+  }
+
+  /// Opens L6 transport with [maxOpenAttempts] and [openRetryDelay].
+  Future<void> _openTransportWithRetry() async {
+    Object? lastError;
+    for (var attempt = 1; attempt <= maxOpenAttempts; attempt++) {
+      try {
+        debugPrint(
+          '[session] opening device (attempt $attempt/$maxOpenAttempts)…',
+        );
+        await _session.open();
+        return;
+      } catch (e) {
+        lastError = e;
+        debugPrint(
+          '[session] open failed (attempt $attempt/$maxOpenAttempts): $e',
+        );
+        await _safeClose();
+        if (attempt < maxOpenAttempts) {
+          await Future<void>.delayed(openRetryDelay);
+        }
+      }
+    }
+    throw lastError ??
+        StateError('open failed after $maxOpenAttempts attempts');
   }
 
   void _listenUnsolicited() {

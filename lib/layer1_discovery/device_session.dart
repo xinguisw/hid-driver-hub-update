@@ -42,6 +42,12 @@ class DeviceSession {
   /// Delay between failed open attempts.
   static const Duration openRetryDelay = Duration(milliseconds: 120);
 
+  /// Max handshake (identity read) attempts per [start] (total tries).
+  static const int maxHandshakeAttempts = 2;
+
+  /// Delay between failed handshake attempts.
+  static const Duration handshakeRetryDelay = Duration(milliseconds: 120);
+
   final DiscoveredDevice device;
   final HidSession _session;
   final DeviceProtocol _protocol;
@@ -143,7 +149,7 @@ class DeviceSession {
     try {
       await _openTransportWithRetry();
       debugPrint('[session] opened, running handshake…');
-      final hs = await _protocol.handshake(_session);
+      final hs = await _handshakeWithRetry();
 
       final typeMatch = hs.deviceType == device.entry.deviceType;
       final idMatch = hs.deviceId == device.entry.devId;
@@ -191,6 +197,30 @@ class DeviceSession {
     }
     throw lastError ??
         StateError('open failed after $maxOpenAttempts attempts');
+  }
+
+  /// A1 handshake via L5 with [maxHandshakeAttempts] and [handshakeRetryDelay].
+  /// Retries only on throw (timeout / I/O). Catalog mismatch is not retried.
+  Future<DeviceHandshake> _handshakeWithRetry() async {
+    Object? lastError;
+    for (var attempt = 1; attempt <= maxHandshakeAttempts; attempt++) {
+      try {
+        debugPrint(
+          '[session] handshake (attempt $attempt/$maxHandshakeAttempts)…',
+        );
+        return await _protocol.handshake(_session);
+      } catch (e) {
+        lastError = e;
+        debugPrint(
+          '[session] handshake failed (attempt $attempt/$maxHandshakeAttempts): $e',
+        );
+        if (attempt < maxHandshakeAttempts) {
+          await Future<void>.delayed(handshakeRetryDelay);
+        }
+      }
+    }
+    throw lastError ??
+        StateError('handshake failed after $maxHandshakeAttempts attempts');
   }
 
   void _listenUnsolicited() {

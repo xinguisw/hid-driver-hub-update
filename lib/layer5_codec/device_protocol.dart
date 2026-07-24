@@ -1,4 +1,5 @@
 import 'package:driver_hub/layer2_capabilities/device_type.dart';
+import 'package:driver_hub/layer5_codec/utils/crc16.dart';
 import 'package:driver_hub/layer6_transport/hid_session.dart';
 import 'package:flutter/foundation.dart';
 
@@ -237,6 +238,14 @@ class MouseProtocol implements DeviceProtocol {
   static const int _addrsOff = 3;
   static const int _lenOff = 4;
   static const int _dataOff = 5;
+
+  /// Config CRC covers this many bytes from data offset (includes zero pad).
+  static const int configCrcPayloadLength = 24; //no opcode/addrs/len//no crc - pure data
+  /// Stripped body: header(5) + payload slot(24) + CRC(2).
+  static const int configBodyLength =
+      _dataOff + configCrcPayloadLength + 2;
+  /// Desktop raw may be report-id + body.
+  static const int configRawMaxLength = 1 + configBodyLength;
 
   // Payload offsets (report id stripped). hid_tool keeps the report id on
   // desktop and drops it on web (WebHID oninputreport has no report id prefix).
@@ -511,8 +520,19 @@ class MouseProtocol implements DeviceProtocol {
       timeout: _sendTimeout,
     );
     debugPrint('[proto] $label: ack ${_hex(ack)} (${ack.length}B)');
+    // Chart: length → header (addrs) → opcode 07/08? → CRC only if yes → extract.
+    validateConfigAckFrame(ack, addrs: addrs, label: label);
     final body = stripReportId(ack);
-    if (body.isNotEmpty && body[_opOff] == _nakOpcode) {
+    final op = body.isEmpty ? -1 : body[_opOff];
+    if (op == _getOpcode || op == _setOpcode) {
+      verifyConfigAckCrc(ack, label: label);
+    } else {
+      debugPrint(
+        '[proto] $label: opcode 0x${op.toRadixString(16)} '
+        'not 07/08, skip CRC',
+      );
+    }
+    if (op == _nakOpcode) {
       // NAK layout: opcode FF, addrs, len, reason in data[0] (sheet).
       final reason = body.length > _dataOff ? body[_dataOff] : -1;
       throw FormatException(
@@ -521,6 +541,86 @@ class MouseProtocol implements DeviceProtocol {
       );
     }
     return ack;
+  }
+
+  /// Config frame: length + header addrs (B2/C2/C4/…). Opcode 07/08 not required here.
+  ///
+  /// Throws [FormatException] on failure.
+  static void validateConfigAckFrame(
+    Uint8List raw, {
+    required int addrs,
+    String label = 'config',
+  }) {
+    if (raw.isEmpty || raw.length > configRawMaxLength) {
+      // TODO: product error handling not finalized.
+      throw FormatException(
+        '$label size: raw length ${raw.length} '
+        '(max $configRawMaxLength)',
+      );
+    }
+    final body = stripReportId(raw);
+    if (body.length < configBodyLength) {
+      // TODO: product error handling not finalized.
+      throw FormatException(
+        '$label size: body length ${body.length} '
+        '(need $configBodyLength)',
+      );
+    }
+    if (body.length > configBodyLength) {
+      // TODO: product error handling not finalized.
+      throw FormatException(
+        '$label size: body length ${body.length} '
+        '(max $configBodyLength)',
+      );
+    }
+
+    // Header: block address (B2, C2, C4, C6, D4, E2, …).
+    final gotAddrs = body[_addrsOff];
+    if (gotAddrs != addrs) {
+      // TODO: product error handling not finalized.
+      throw FormatException(
+        '$label header: addrs 0x${gotAddrs.toRadixString(16)} '
+        '(want 0x${addrs.toRadixString(16)})',
+      );
+    }
+
+    final len = body[_lenOff];
+    if (len > configCrcPayloadLength) {
+      // TODO: product error handling not finalized.
+      throw FormatException(
+        '$label size: len $len (max $configCrcPayloadLength)',
+      );
+    }
+  }
+
+  /// CRC-16 over body[5..29), LE at [29..30]. Only for opcode 07/08.
+  ///
+  /// Throws [FormatException] if CRC does not match.
+  static void verifyConfigAckCrc(Uint8List raw, {String label = 'config'}) {
+    final body = stripReportId(raw);
+    final payloadStart = _dataOff;
+    final payloadEnd = _dataOff + configCrcPayloadLength;
+    final payload = body.sublist(payloadStart, payloadEnd);
+    final wireLo = body[payloadEnd];
+    final wireHi = body[payloadEnd + 1];
+    final calc = const Crc16().bytes(payload);
+    final calcHex =
+        '${calc[0].toRadixString(16).padLeft(2, '0')} '
+        '${calc[1].toRadixString(16).padLeft(2, '0')}';
+    final wireHex =
+        '${wireLo.toRadixString(16).padLeft(2, '0')} '
+        '${wireHi.toRadixString(16).padLeft(2, '0')}';
+    final match = calc[0] == wireLo && calc[1] == wireHi;
+    debugPrint(
+      '[proto] $label: CRC calc=$calcHex wire=$wireHex '
+      'match=$match',
+    );
+    if (!match) {
+      // TODO: product error handling not finalized.
+      throw FormatException(
+        '$label CRC mismatch: calc=$calcHex wire=$wireHex',
+      );
+    }
   }
 
   /// Data bytes from a config reply; checks opcode + addrs.

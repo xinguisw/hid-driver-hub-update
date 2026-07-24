@@ -205,9 +205,26 @@ class HidSession {
     }
   }
 
-  Future<void> sendReport(Uint8List data, {int reportId = 0x00}) {
+  static const int maxWriteAttempts = 2;
+  static const Duration writeRetryDelay = Duration(milliseconds: 16);
+
+  Future<void> sendReport(Uint8List data, {int reportId = 0x00}) async {
     _ensureOpen();
-    return _device.sendReport(data, reportId: reportId);
+    Object? lastError;
+    for (var attempt = 1; attempt <= maxWriteAttempts; attempt++) {
+      try {
+        await _device.sendReport(data, reportId: reportId);
+        return;
+      } catch (e) {
+        lastError = e;
+        if (attempt < maxWriteAttempts) {
+          await Future<void>.delayed(writeRetryDelay);
+        }
+      }
+    }
+    // TODO(phase-L4): report write failure to BLoC instead of rethrowing.
+    throw lastError ??
+        StateError('sendReport failed after $maxWriteAttempts attempts');
   }
 
   Future<Uint8List> receiveReport(int reportLength, {Duration? timeout}) {

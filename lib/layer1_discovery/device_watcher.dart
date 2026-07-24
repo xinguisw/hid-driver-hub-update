@@ -39,21 +39,30 @@ class DeviceWatcher {
     required DeviceProtocol protocol,
   }) _sessionCtor;
 
-  final HidEvents _events = HidEvents();
+  final HidEvents _events;
   final _sessions = <String, DeviceSession>{}; // keyed by device path
 
-  /// Disconnect teardown is deferred by [_replugDebounce]; if the same path
+  /// Disconnect teardown is deferred by [_replugDebounce]. If the same path
   /// reconnects within the window, [_handleConnect] cancels the pending timer
-  /// and keeps the existing session.
+  /// so [onDisconnect] never fires (the card does not flicker), then disposes
+  /// the orphaned session before opening a fresh one.
   static const Duration _replugDebounce = Duration(milliseconds: 300);
   final _pendingDisposes = <String, Timer>{};
+
+  /// Sessions pulled from [_sessions] whose dispose is still deferred.
+  // why: cancelling the debounce timer skips its dispose, leaving the session's
+  // input subscription and HID handle open.
+  final _pendingOrphans = <String, DeviceSession>{};
 
   DeviceWatcher({
     required this._scanner,
     required this._protocolFactory,
     required this._sessionFactory,
     required this._sessionCtor,
-  });
+    // why: connect/disconnect events are the only dependency this class built
+    // itself; injecting lets a test drive the lifecycle without hardware.
+    HidEvents? events,
+  }) : _events = events ?? HidEvents();
 
   /// Starts watching. [onConnect] fires when a device (re)connects and
   /// verifies; [onDisconnect] when one is removed.
@@ -75,6 +84,10 @@ class DeviceWatcher {
       t.cancel();
     }
     _pendingDisposes.clear();
+    for (final orphan in _pendingOrphans.values) {
+      await orphan.dispose();
+    }
+    _pendingOrphans.clear();
     for (final session in _sessions.values) {
       await session.dispose();
     }
@@ -95,6 +108,9 @@ class DeviceWatcher {
     if (_sessions.containsKey(path)) return; // already active
     // Cancel any pending dispose for this path (rapid replug).
     _pendingDisposes.remove(path)?.cancel();
+    // why: awaited so the old handle closes before the new open() on the same
+    // path. A second open while the first is live can be rejected.
+    await _pendingOrphans.remove(path)?.dispose();
 
     final discovered = await _scanner.discoverAuthorized();
     DiscoveredDevice? match;
@@ -132,12 +148,14 @@ class DeviceWatcher {
     final session = _sessions.remove(path);
     // Defer teardown by [_replugDebounce]; reconnect cancels it.
     _pendingDisposes[path]?.cancel();
+    if (session != null) {
+      _pendingOrphans[path] = session;
+    }
     _pendingDisposes[path] = Timer(_replugDebounce, () {
       _pendingDisposes.remove(path);
+      final orphan = _pendingOrphans.remove(path);
       onDisconnect(path, vid, pid);
-      if (session != null) {
-        session.dispose(); // best-effort; close() aborts in-flight receives
-      }
+      orphan?.dispose(); // best-effort; close() aborts in-flight receives
     });
   }
 }

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:hid_tool/hid_tool.dart';
 
 import 'package:driver_hub/layer6_transport/hid_scanner.dart';
@@ -9,12 +10,12 @@ import 'discovered_device.dart';
 ///
 /// The ONE component that marries raw [HidDevice] handles to supported catalog
 /// entries. No feature re-scans or re-matches on its own — it calls
-/// [discover] and receives a list of [DiscoveredDevice]s.
+/// [discover] / [discoverAuthorized] and receives a list of [DiscoveredDevice]s.
 ///
-/// Pre-open matching is by (vid, pid) only. usagePage is unreliable on web
-/// (hid_tool returns 0) and the collections-based usagePage requires the device
-/// open, so interface/usagePage confirmation happens post-open in the verify
-/// step, not here.
+/// Match rules from [supported_model.json]:
+/// - always: (vid, pid) against catalog modes
+/// - desktop: [HidDevice.interfaceNumber] == entry.interfaceId
+/// - web: VID/PID only here; catalog usagePage filter is L6 [WebHidScanner]
 class DeviceScanner {
   final HidScanner _scanner;
 
@@ -49,15 +50,25 @@ class DeviceScanner {
     final discovered = <DiscoveredDevice>[];
     for (final dev in devices) {
       final match = byVidPid[_VidPidKey(dev.vendorId, dev.productId)];
-      if (match != null) {
-        discovered.add(DiscoveredDevice(
-          entry: match.entry,
-          mode: match.mode,
-          hidDevice: dev,
-        ));
-      }
+      if (match == null) continue;
+      if (!_matchesDesktopInterface(dev, match.entry)) continue;
+      discovered.add(DiscoveredDevice(
+        entry: match.entry,
+        mode: match.mode,
+        hidDevice: dev,
+      ));
     }
     return discovered;
+  }
+
+  /// Desktop only: catalog [DeviceCatalogEntry.interfaceId].
+  /// Web: always true (usagePage is L6).
+  bool _matchesDesktopInterface(
+    HidDevice device,
+    DeviceCatalogEntry entry,
+  ) {
+    if (kIsWeb) return true;
+    return device.interfaceNumber == entry.interfaceId;
   }
 }
 

@@ -181,17 +181,52 @@ void main() {
       expect(t.buttonActionToLabel(action: 0x0E), 'DPI cycle');
     });
 
-    test('shortcut shows param bytes', () {
+    test('shortcut names the key, never raw bytes', () {
       expect(
         t.buttonActionToLabel(action: 0x12, param1: 0xB3, param2: 0x00),
-        'Shortcut (0xb3)',
+        'Volume up',
       );
       expect(
         t.buttonActionToLabel(action: 0x12, param1: 0x01, param2: 0x06),
-        'Shortcut (0x1, 0x6)',
+        'Win lock + C',
       );
     });
 
+    test('modifiers prefix the key whatever slot they occupy', () {
+      expect(
+        t.buttonActionToLabel(action: 0x12, param1: 0xE0, param2: 0x06),
+        'Ctrl + C',
+      );
+      expect(
+        t.buttonActionToLabel(
+          action: 0x12,
+          param1: 0xE0,
+          param2: 0xE2,
+          param3: 0x06,
+        ),
+        'Ctrl + Alt + C',
+      );
+      expect(
+        t.buttonActionToLabel(action: 0x12, param1: 0x00, param3: 0x06),
+        'C',
+      );
+    });
+
+    test('consumer action shares the same key table', () {
+      expect(
+        t.buttonActionToLabel(action: 0x13, param1: 0xB1),
+        'Play / pause',
+      );
+      expect(
+        t.buttonActionToLabel(action: 0x13, param1: 0xAC),
+        'Calculator',
+      );
+    });
+
+    test('empty slots and unmapped bytes', () {
+      expect(t.buttonActionToLabel(action: 0x12), 'Not assigned');
+      expect(t.buttonActionToLabel(action: 0x12, param1: 0x02), 'Key 0x02');
+    });
     test('macro and unknown', () {
       expect(
         t.buttonActionToLabel(action: 0x14, param1: 3),
@@ -201,6 +236,26 @@ void main() {
         t.buttonActionToLabel(action: 0x99, param1: 1, param2: 2, param3: 3),
         'Unknown action 0x99 (p=1,2,3)',
       );
+    });
+  });
+
+  group('TranslationCodec.keyValueToLabel', () {
+    test('covers every keyvalue group', () {
+      expect(t.keyValueToLabel(0x04), 'A');
+      expect(t.keyValueToLabel(0x1E), '1');
+      expect(t.keyValueToLabel(0x28), 'Enter');
+      expect(t.keyValueToLabel(0x31), r'\');
+      expect(t.keyValueToLabel(0x45), 'F12');
+      expect(t.keyValueToLabel(0x73), 'F24');
+      expect(t.keyValueToLabel(0x52), 'Up');
+      expect(t.keyValueToLabel(0x62), 'Numpad 0');
+      expect(t.keyValueToLabel(0xA1), 'System power');
+      expect(t.keyValueToLabel(0xBE), 'Terminal lock');
+      expect(t.keyValueToLabel(0xC6), 'Wheel up');
+      expect(t.keyValueToLabel(0xCF), 'Copy');
+      expect(t.keyValueToLabel(0xE7), 'Right Win');
+      expect(t.keyValueToLabel(0xF0), 'Gamepad A');
+      expect(t.keyValueToLabel(0xFF), 'Fn');
     });
   });
 }

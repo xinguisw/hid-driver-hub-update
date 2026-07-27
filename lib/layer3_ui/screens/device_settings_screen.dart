@@ -134,82 +134,94 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
                       style: const TextStyle(color: Colors.red),
                     ),
                   ),
-                if (state.buttons != null)
-                  SettingsBlockCard(
-                    title: 'Buttons',
-                    lines: _buttonLines(state),
-                  ),
-                if (state.reportRateOptions != null ||
-                    state.reportRateHz != null)
-                  SettingsBlockCard(
-                    title: 'Report rate',
-                    lines: [
-                      'report rate: ${_dash(state.reportRateHz)} Hz',
-                    ],
-                  ),
-                if (state.dpiMaxLevels != null || state.dpiLevels != null)
-                  SettingsBlockCard(
-                    title: 'DPI',
-                    lines: _dpiLines(state),
-                  ),
-                if (state.dpiLevels != null)
-                  SettingsBlockCard(
-                    title: 'DPI table',
-                    lines: _dpiTableLines(state),
-                  ),
-                if (state.hasSensorTuning)
-                  SettingsBlockCard(
-                    title: 'Sensor tuning',
-                    lines: [
-                      'ripple control: ${_dash(state.rippleOn)}',
-                      'angle snap: ${_dash(state.angleSnapOn)}',
-                    ],
-                  ),
-                if (state.hasLod)
-                  SettingsBlockCard(
-                    title: 'LOD',
-                    lines: ['LOD (raw): ${_dash(state.lodMm)}'],
-                  ),
-                if (state.hasAngleTune)
-                  SettingsBlockCard(
-                    title: 'Angle tune',
-                    lines: [
-                      'angle tune (raw): ${_dash(state.angleTune)}',
-                    ],
-                  ),
-                if (state.hasPerformance)
-                  SettingsBlockCard(
-                    title: 'Performance',
-                    lines: [
-                      'performance (raw): ${_dash(state.performance)}',
-                    ],
-                  ),
-                if (state.hasButtonDebounce)
-                  SettingsBlockCard(
-                    title: 'Key debounce delay',
-                    lines: [
-                      'debounce (raw): ${_dash(state.debounceMs)}',
-                    ],
-                  ),
-                if (state.hasSleepTime)
-                  SettingsBlockCard(
-                    title: 'Sleep time',
-                    lines: [
-                      'sleep (raw): ${_dash(state.sleepSeconds)}',
-                    ],
-                  ),
-                if (state.hasWheelInvert)
-                  SettingsBlockCard(
-                    title: 'Wheel invert',
-                    lines: [
-                      'wheel invert: ${_dash(state.wheelInvert)}',
-                    ],
-                  ),
-                if (state.hasRgbBacklight)
-                  SettingsBlockCard(
-                    title: 'RGB backlight',
-                    lines: _rgbLines(state),
-                  ),
+                // if (state.buttons != null)
+                //   SettingsBlockCard(
+                //     title: 'Buttons',
+                //     lines: _buttonLines(state),
+                //   ),
+                // if (state.reportRateOptions != null ||
+                //     state.reportRateHz != null)
+                //   SettingsBlockCard(
+                //     title: 'Report rate',
+                //     lines: [
+                //       'report rate: ${_dash(state.reportRateHz)} Hz',
+                //     ],
+                //   ),
+                // if (state.dpiMaxLevels != null || state.dpiLevels != null)
+                //   SettingsBlockCard(
+                //     title: 'DPI',
+                //     lines: _dpiLines(state),
+                //   ),
+                // if (state.dpiLevels != null)
+                //   SettingsBlockCard(
+                //     title: 'DPI table',
+                //     lines: _dpiTableLines(state),
+                //   ),
+                // if (state.hasSensorTuning)
+                //   SettingsBlockCard(
+                //     title: 'Sensor tuning',
+                //     lines: [
+                //       'ripple control: ${_dash(state.rippleOn)}',
+                //       'angle snap: ${_dash(state.angleSnapOn)}',
+                //     ],
+                //   ),
+                // if (state.hasLod)
+                //   SettingsBlockCard(
+                //     title: 'LOD',
+                //     lines: ['LOD (raw): ${_dash(state.lodMm)}'],
+                //   ),
+                // if (state.hasAngleTune)
+                //   SettingsBlockCard(
+                //     title: 'Angle tune',
+                //     lines: [
+                //       'angle tune (raw): ${_dash(state.angleTune)}',
+                //     ],
+                //   ),
+                // if (state.hasPerformance)
+                //   SettingsBlockCard(
+                //     title: 'Performance',
+                //     lines: [
+                //       'performance (raw): ${_dash(state.performance)}',
+                //     ],
+                //   ),
+                // if (state.hasButtonDebounce)
+                //   SettingsBlockCard(
+                //     title: 'Key debounce delay',
+                //     lines: [
+                //       'debounce (raw): ${_dash(state.debounceMs)}',
+                //     ],
+                //   ),
+                // if (state.hasSleepTime)
+                //   SettingsBlockCard(
+                //     title: 'Sleep time',
+                //     lines: [
+                //       'sleep (raw): ${_dash(state.sleepSeconds)}',
+                //     ],
+                //   ),
+                // if (state.hasWheelInvert)
+                //   SettingsBlockCard(
+                //     title: 'Wheel invert',
+                //     lines: [
+                //       'wheel invert: ${_dash(state.wheelInvert)}',
+                //     ],
+                //   ),
+                // if (state.hasRgbBacklight)
+                //   SettingsBlockCard(
+                //     title: 'RGB backlight',
+                //     lines: _rgbLines(state),
+                //   ),
+                ButtonsSettingsBlock(state: state),
+                ReportRateSettingsBlock(state: state),
+                DpiSettingsBlock(state: state),
+                DpiTableSettingsBlock(state: state),
+                SensorTuningSettingsBlock(state: state),
+                LodSettingsBlock(state: state),
+                AngleTuneSettingsBlock(state: state),
+                PerformanceSettingsBlock(state: state),
+                DebounceSettingsBlock(state: state),
+                SleepTimeSettingsBlock(state: state),
+                WheelInvertSettingsBlock(state: state),
+                RgbBacklightSettingsBlock(state: state),
               ],
             ),
     );
@@ -267,47 +279,47 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
 
   static const _summaryLine = TextStyle(fontSize: 13, color: Colors.grey);
 
-  String _dash(Object? v) => v == null ? '—' : '$v';
-
-  List<String> _buttonLines(DeviceSettingsState s) {
-    final list = s.buttons;
-    if (list == null || list.isEmpty) return const ['—'];
-    return [
-      for (final b in list)
-        '${b.buttonLabel ?? 'Button ${b.id}'}: ${b.actionLabel ?? '—'}',
-    ];
-  }
-
-  List<String> _dpiLines(DeviceSettingsState s) {
-    return [
-      'DPI current level: ${_dash(s.dpiActiveIndex)}',
-      'DPI active count: ${_dash(s.dpiActiveLevelCount)}',
-    ];
-  }
-
-  List<String> _dpiTableLines(DeviceSettingsState s) {
-    final list = s.dpiLevels;
-    if (list == null || list.isEmpty) return const ['—'];
-    return [
-      for (final d in list)
-        d.y != null
-            ? 'L${d.level}: X=${d.value} Y=${d.y}'
-                '${d.color != null ? '  ${d.color}' : ''}'
-            : 'L${d.level}: ${d.value}'
-                '${d.color != null ? '  ${d.color}' : ''}',
-    ];
-  }
-
-  List<String> _rgbLines(DeviceSettingsState s) {
-    return [
-      'enable: ${_dash(s.rgbEnable)}',
-      'mode: ${_dash(s.rgbModeId)}',
-      'brightness: ${_dash(s.rgbBrightness)}',
-      'speed: ${_dash(s.rgbSpeed)}',
-      'R: ${_dash(s.rgbR)}',
-      'G: ${_dash(s.rgbG)}',
-      'B: ${_dash(s.rgbB)}',
-      'RGB sleep (raw): ${_dash(s.rgbSleepTime)}',
-    ];
-  }
+  // String _dash(Object? v) => v == null ? '—' : '$v';
+  //
+  // List<String> _buttonLines(DeviceSettingsState s) {
+  //   final list = s.buttons;
+  //   if (list == null || list.isEmpty) return const ['—'];
+  //   return [
+  //     for (final b in list)
+  //       '${b.buttonLabel ?? 'Button ${b.id}'}: ${b.actionLabel ?? '—'}',
+  //   ];
+  // }
+  //
+  // List<String> _dpiLines(DeviceSettingsState s) {
+  //   return [
+  //     'DPI current level: ${_dash(s.dpiActiveIndex)}',
+  //     'DPI active count: ${_dash(s.dpiActiveLevelCount)}',
+  //   ];
+  // }
+  //
+  // List<String> _dpiTableLines(DeviceSettingsState s) {
+  //   final list = s.dpiLevels;
+  //   if (list == null || list.isEmpty) return const ['—'];
+  //   return [
+  //     for (final d in list)
+  //       d.y != null
+  //           ? 'L${d.level}: X=${d.value} Y=${d.y}'
+  //               '${d.color != null ? '  ${d.color}' : ''}'
+  //           : 'L${d.level}: ${d.value}'
+  //               '${d.color != null ? '  ${d.color}' : ''}',
+  //   ];
+  // }
+  //
+  // List<String> _rgbLines(DeviceSettingsState s) {
+  //   return [
+  //     'enable: ${_dash(s.rgbEnable)}',
+  //     'mode: ${_dash(s.rgbModeId)}',
+  //     'brightness: ${_dash(s.rgbBrightness)}',
+  //     'speed: ${_dash(s.rgbSpeed)}',
+  //     'R: ${_dash(s.rgbR)}',
+  //     'G: ${_dash(s.rgbG)}',
+  //     'B: ${_dash(s.rgbB)}',
+  //     'RGB sleep (raw): ${_dash(s.rgbSleepTime)}',
+  //   ];
+  // }
 }

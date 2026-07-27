@@ -2,6 +2,10 @@ import 'package:driver_hub/layer4_domain/models/device_settings_state.dart';
 import 'package:flutter/material.dart';
 
 /// One settings group card: title + text lines (items).
+///
+/// TODO(L3): fully interactive controls (slider/switch/dropdown) — skeleton phase.
+/// TODO(L3): when block payload misses — inline "Unable to read feature data",
+/// keep full block height, inline Retry (chart yellow; not finalized).
 class SettingsBlockCard extends StatelessWidget {
   const SettingsBlockCard({
     super.key,

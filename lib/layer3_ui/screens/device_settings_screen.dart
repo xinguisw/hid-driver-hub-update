@@ -29,6 +29,9 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
   @override
   void initState() {
     super.initState();
+    // why: paint the values held from a previous visit so re-entry has no
+    // spinner; the read below still runs and refreshes them.
+    _state = widget.scope.settingsFor(widget.card);
     widget.scope.cards.addListener(_onCardsChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadOnboardConfig());
   }
@@ -57,14 +60,16 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
       if (mounted) Navigator.of(context).maybePop();
       return;
     }
-    setState(() {
-      _state = DeviceSettingsState(
-        devId: widget.card.devId,
-        displayName: widget.card.displayName,
-        connectionMode: widget.card.connectionMode,
-        loading: true,
-      );
-    });
+    if (_state == null) {
+      setState(() {
+        _state = DeviceSettingsState(
+          devId: widget.card.devId,
+          displayName: widget.card.displayName,
+          connectionMode: widget.card.connectionMode,
+          loading: true,
+        );
+      });
+    }
     debugPrint(
       '[settings] ${widget.card.displayName}: loading onboard config…',
     );

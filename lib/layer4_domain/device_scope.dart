@@ -45,6 +45,9 @@ class DeviceScope {
   /// OSD battery subscriptions per device path.
   final _batterySubs = <String, StreamSubscription<BatteryResult>>{};
 
+  /// Last hydrated settings per device path, for the life of the connection.
+  final _settings = <String, DeviceSettingsState>{};
+
   // --- Polling for battery and charging (DISABLED) ---
   // Manager decision: no A4 poll. Battery/charging stay real-time via OSD push
   // (device sends report 9 opcode 2; we listen). Re-enable the block below if
@@ -156,6 +159,14 @@ class DeviceScope {
     return snap;
   }
 
+  /// Settings hydrated earlier for [card], or null if none held yet.
+  ///
+  /// why: lets L3 paint known values at once while a fresh read runs behind.
+  DeviceSettingsState? settingsFor(DiscoveredCardState card) {
+    final path = _pathForCard(card);
+    return path == null ? null : _settings[path];
+  }
+
   /// L4 entry: hydrate settings for [card] (session stays inside domain).
   Future<DeviceSettingsState> loadOnboardSettings(DiscoveredCardState card) async {
     final session = _sessionForCard(card);
@@ -168,15 +179,23 @@ class DeviceScope {
         error: 'no session',
       );
     }
-    return queryOnboardConfig(session, card);
+    final packed = await queryOnboardConfig(session, card);
+    final path = _pathForCard(card);
+    // why: a failed read must not become the value a later entry paints from.
+    if (path != null && packed.error == null) {
+      _settings[path] = packed;
+    }
+    return packed;
   }
 
   DeviceSession? _sessionForCard(DiscoveredCardState card) {
+    final path = _pathForCard(card);
+    return path == null ? null : _sessions[path];
+  }
+
+  String? _pathForCard(DiscoveredCardState card) {
     final handle = card.physicalHandle;
-    if (handle is HidDevice) {
-      return _sessions[handle.path];
-    }
-    return null;
+    return handle is HidDevice ? handle.path : null;
   }
 
   /// Subscribe to device OSD battery/charging pushes (real-time from device).
@@ -299,6 +318,7 @@ class DeviceScope {
   void _remove(String path) {
     _batterySubs.remove(path)?.cancel();
     _sessions.remove(path);
+    _settings.remove(path);
     // Polling for battery and charging — disabled.
     // _stopBatteryPollTimerIfIdle();
     _cards.remove(path);

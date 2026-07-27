@@ -19,12 +19,16 @@ import 'package:flutter/foundation.dart';
 /// 2) GET **all** config blocks (L5); translate known live fields.
 /// 3) Overlay live values without turning off-matrix features on.
 ///
+/// [onPartial] receives the caps-seeded state (still `loading: true`) before
+/// hardware GETs so the canvas can mount with the correct blocks.
+///
 /// Handshake failure or [TimeoutException] on any GET →
 /// [DeviceSettingsState.error] (caller should pop home). Other errors soft-fail.
 Future<DeviceSettingsState> queryOnboardConfig(
   DeviceSession session,
-  DiscoveredCardState card,
-) async {
+  DiscoveredCardState card, {
+  void Function(DeviceSettingsState partial)? onPartial,
+}) async {
   final name = card.displayName;
   var state = DeviceSettingsState(
     devId: card.devId,
@@ -49,6 +53,8 @@ Future<DeviceSettingsState> queryOnboardConfig(
   } else {
     debugPrint('[settings] caps $name: none — UI falls back to live GETs');
   }
+  // why: block presence is known here; live values arrive after the GETs below.
+  onPartial?.call(state);
 
   final ok = await session.rehandshake();
   if (!ok || !session.isAlive) {

@@ -62,6 +62,11 @@ class DeviceScope {
   /// Whether a scan/add is in flight.
   final busy = ValueNotifier<bool>(false);
 
+  /// Bumped when held settings change (caps-first or final pack).
+  ///
+  /// why: L3 repaints from [settingsFor] without waiting on the final Future.
+  final settingsVersion = ValueNotifier<int>(0);
+
   void start() {
     _watcher.start(
       onConnect: (session) {
@@ -168,6 +173,9 @@ class DeviceScope {
   }
 
   /// L4 entry: hydrate settings for [card] (session stays inside domain).
+  ///
+  /// Caps-first partials are written into [_settings] and bump
+  /// [settingsVersion] before the final packed result returns.
   Future<DeviceSettingsState> loadOnboardSettings(DiscoveredCardState card) async {
     final session = _sessionForCard(card);
     if (session == null || !session.isAlive) {
@@ -179,11 +187,20 @@ class DeviceScope {
         error: 'no session',
       );
     }
-    final packed = await queryOnboardConfig(session, card);
     final path = _pathForCard(card);
+    final packed = await queryOnboardConfig(
+      session,
+      card,
+      onPartial: (partial) {
+        if (path == null) return;
+        _settings[path] = partial;
+        settingsVersion.value++;
+      },
+    );
     // why: a failed read must not become the value a later entry paints from.
     if (path != null && packed.error == null) {
       _settings[path] = packed;
+      settingsVersion.value++;
     }
     return packed;
   }
@@ -361,6 +378,7 @@ class DeviceScope {
     await _watcher.stop();
     cards.dispose();
     busy.dispose();
+    settingsVersion.dispose();
   }
 }
 

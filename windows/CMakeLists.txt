@@ -57,6 +57,13 @@ add_subdirectory("runner")
 # them to the application.
 include(flutter/generated_plugins.cmake)
 
+# cnativeapi (nativeapi) vendor C API: MSVC C4996 (strncpy/strcpy) and C4244
+# (id narrowing). Not our sources — silence on that target only.
+if(TARGET cnativeapi)
+  target_compile_definitions(cnativeapi PRIVATE _CRT_SECURE_NO_WARNINGS)
+  target_compile_options(cnativeapi PRIVATE /wd4996 /wd4244)
+endif()
+
 
 # === Installation ===
 # Support files are copied into place next to the executable, so that it can

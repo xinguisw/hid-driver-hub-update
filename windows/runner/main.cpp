@@ -26,7 +26,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
 
   FlutterWindow window(project);
   Win32Window::Point origin(10, 10);
-  Win32Window::Size size(1280, 720);
+  // Match lib/desktop_shell/window_bootstrap.dart (logical px before DPI scale).
+  Win32Window::Size size(1256, 753);
   if (!window.Create(L"driver_hub", origin, size)) {
     return EXIT_FAILURE;
   }

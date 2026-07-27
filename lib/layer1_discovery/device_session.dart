@@ -163,7 +163,9 @@ class DeviceSession {
         return true;
       }
       debugPrint('[session] REJECTED — closing');
-      await _session.close();
+      // why: a throwing close() here would fall into the catch below and
+      // downgrade this to error, losing the "wrong device" signal.
+      await _safeClose();
       _controller.add(DeviceSessionState.rejected(name, mode));
       return false;
     } catch (e) {

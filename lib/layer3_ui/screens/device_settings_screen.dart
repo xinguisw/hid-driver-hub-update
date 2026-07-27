@@ -33,12 +33,14 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
     // spinner; the read below still runs and refreshes them.
     _state = widget.scope.settingsFor(widget.card);
     widget.scope.cards.addListener(_onCardsChanged);
+    widget.scope.settingsVersion.addListener(_onSettingsChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadOnboardConfig());
   }
 
   @override
   void dispose() {
     widget.scope.cards.removeListener(_onCardsChanged);
+    widget.scope.settingsVersion.removeListener(_onSettingsChanged);
     super.dispose();
   }
 
@@ -52,6 +54,13 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
       return;
     }
     setState(() {});
+  }
+
+  void _onSettingsChanged() {
+    if (!mounted) return;
+    final next = widget.scope.settingsFor(widget.card);
+    if (next == null) return;
+    setState(() => _state = next);
   }
 
   Future<void> _loadOnboardConfig() async {
@@ -97,18 +106,26 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
   Widget build(BuildContext context) {
     final state = _state;
     final selected = widget.scope.resolveCard(widget.card);
-    final loading = state == null || state.loading;
+    // final loading = state == null || state.loading;
 
     return Scaffold(
       appBar: AppBar(
         title: Text(selected.displayName),
       ),
-      body: loading
+      // body: loading
+      //     ? const Center(child: CircularProgressIndicator())
+      //     : ListView(
+      body: state == null
           ? const Center(child: CircularProgressIndicator())
           : ListView(
               padding: const EdgeInsets.symmetric(vertical: 8),
               children: [
                 _selectedDeviceTextSummary(selected),
+                if (state.loading)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    child: LinearProgressIndicator(),
+                  ),
                 if (state.error != null)
                   Padding(
                     padding: const EdgeInsets.all(12),

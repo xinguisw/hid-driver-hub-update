@@ -25,6 +25,9 @@ class DeviceSettingsState {
   /// Live Hz from device; null = unknown.
   final int? reportRateHz;
 
+  /// L5 [reportRateWireToLabel]; null until live GET.
+  final String? reportRateLabel;
+
   // --- DPI (matrix: max, stages, rgb per stage) ---
 
   /// null = no DPI feature.
@@ -76,11 +79,19 @@ class DeviceSettingsState {
   /// Live D4 angle tune wire value; null = unknown.
   final int? angleTune;
 
+  /// L5 [angleTuneWireToLabel]; null if unknown / unmapped.
+  final String? angleTuneLabel;
+
   final bool hasLod;
 
   /// LOD options in mm; null/empty = no LOD.
   final List<int>? lodOptionsMm;
+
+  /// Live LOD wire level (for later SET); prefer [lodLabel] for display.
   final int? lodMm;
+
+  /// L5 [lodWireToLabel] e.g. `1mm`; null if unknown / unmapped.
+  final String? lodLabel;
 
   /// D4 performance wire value; null = unknown.
   final bool hasPerformance;
@@ -90,11 +101,21 @@ class DeviceSettingsState {
 
   final bool hasSleepTime;
   final List<int>? sleepOptionsSeconds;
+
+  /// Live sleep wire index (for later SET); prefer [sleepLabel] for display.
   final int? sleepSeconds;
+
+  /// L5 [sleepIndexToLabel]; null if unknown / unmapped.
+  final String? sleepLabel;
 
   final bool hasButtonDebounce;
   final List<int>? debounceOptionsMs;
+
+  /// Live debounce wire index (for later SET); prefer [debounceLabel] for display.
   final int? debounceMs;
+
+  /// L5 [debounceIndexToLabel]; null if unknown / unmapped.
+  final String? debounceLabel;
 
   final bool hasWheelInvert;
   final bool? wheelInvert;
@@ -105,14 +126,35 @@ class DeviceSettingsState {
   final List<RgbModeData>? rgbModes;
   final bool? rgbEnable;
   final int? rgbModeId;
+
+  /// L5 [rgbModeToLabel]; null until live GET.
+  final String? rgbModeLabel;
+
   final int? rgbBrightnessLevels;
+
+  /// Live brightness level index (for later SET); prefer [rgbBrightnessLabel].
   final int? rgbBrightness;
+
+  /// L5 [brightnessLevelToLabel]; null if unknown / unmapped.
+  final String? rgbBrightnessLabel;
+
   final int? rgbSpeedLevels;
+
+  /// Live speed level index (for later SET); prefer [rgbSpeedLabel].
   final int? rgbSpeed;
+
+  /// L5 [speedLevelToLabel]; null if unknown / unmapped.
+  final String? rgbSpeedLabel;
+
   final int? rgbR;
   final int? rgbG;
   final int? rgbB;
+
+  /// Live RGB sleep wire index (for later SET); prefer [rgbSleepLabel].
   final int? rgbSleepTime;
+
+  /// L5 [sleepIndexToLabel] for RGB sleep; null if unknown / unmapped.
+  final String? rgbSleepLabel;
 
   const DeviceSettingsState({
     required this.devId,
@@ -122,6 +164,7 @@ class DeviceSettingsState {
     this.error,
     this.reportRateOptions,
     this.reportRateHz,
+    this.reportRateLabel,
     this.dpiMax,
     this.dpiMin,
     this.dpiStep,
@@ -137,9 +180,11 @@ class DeviceSettingsState {
     this.hasSensorTuning = false,
     this.hasAngleTune = false,
     this.angleTune,
+    this.angleTuneLabel,
     this.hasLod = false,
     this.lodOptionsMm,
     this.lodMm,
+    this.lodLabel,
     this.hasPerformance = false,
     this.performance,
     this.rippleOn,
@@ -147,23 +192,29 @@ class DeviceSettingsState {
     this.hasSleepTime = false,
     this.sleepOptionsSeconds,
     this.sleepSeconds,
+    this.sleepLabel,
     this.hasButtonDebounce = false,
     this.debounceOptionsMs,
     this.debounceMs,
+    this.debounceLabel,
     this.hasWheelInvert = false,
     this.wheelInvert,
     this.hasRgbBacklight = false,
     this.rgbModes,
     this.rgbEnable,
     this.rgbModeId,
+    this.rgbModeLabel,
     this.rgbBrightnessLevels,
     this.rgbBrightness,
+    this.rgbBrightnessLabel,
     this.rgbSpeedLevels,
     this.rgbSpeed,
+    this.rgbSpeedLabel,
     this.rgbR,
     this.rgbG,
     this.rgbB,
     this.rgbSleepTime,
+    this.rgbSleepLabel,
   });
 
   DeviceSettingsState copyWith({
@@ -174,6 +225,7 @@ class DeviceSettingsState {
     String? error,
     List<int>? reportRateOptions,
     int? reportRateHz,
+    String? reportRateLabel,
     int? dpiMax,
     int? dpiMin,
     int? dpiStep,
@@ -189,9 +241,11 @@ class DeviceSettingsState {
     bool? hasSensorTuning,
     bool? hasAngleTune,
     int? angleTune,
+    String? angleTuneLabel,
     bool? hasLod,
     List<int>? lodOptionsMm,
     int? lodMm,
+    String? lodLabel,
     bool? hasPerformance,
     int? performance,
     bool? rippleOn,
@@ -199,23 +253,29 @@ class DeviceSettingsState {
     bool? hasSleepTime,
     List<int>? sleepOptionsSeconds,
     int? sleepSeconds,
+    String? sleepLabel,
     bool? hasButtonDebounce,
     List<int>? debounceOptionsMs,
     int? debounceMs,
+    String? debounceLabel,
     bool? hasWheelInvert,
     bool? wheelInvert,
     bool? hasRgbBacklight,
     List<RgbModeData>? rgbModes,
     bool? rgbEnable,
     int? rgbModeId,
+    String? rgbModeLabel,
     int? rgbBrightnessLevels,
     int? rgbBrightness,
+    String? rgbBrightnessLabel,
     int? rgbSpeedLevels,
     int? rgbSpeed,
+    String? rgbSpeedLabel,
     int? rgbR,
     int? rgbG,
     int? rgbB,
     int? rgbSleepTime,
+    String? rgbSleepLabel,
     bool clearError = false,
   }) {
     return DeviceSettingsState(
@@ -226,6 +286,7 @@ class DeviceSettingsState {
       error: clearError ? null : (error ?? this.error),
       reportRateOptions: reportRateOptions ?? this.reportRateOptions,
       reportRateHz: reportRateHz ?? this.reportRateHz,
+      reportRateLabel: reportRateLabel ?? this.reportRateLabel,
       dpiMax: dpiMax ?? this.dpiMax,
       dpiMin: dpiMin ?? this.dpiMin,
       dpiStep: dpiStep ?? this.dpiStep,
@@ -241,9 +302,11 @@ class DeviceSettingsState {
       hasSensorTuning: hasSensorTuning ?? this.hasSensorTuning,
       hasAngleTune: hasAngleTune ?? this.hasAngleTune,
       angleTune: angleTune ?? this.angleTune,
+      angleTuneLabel: angleTuneLabel ?? this.angleTuneLabel,
       hasLod: hasLod ?? this.hasLod,
       lodOptionsMm: lodOptionsMm ?? this.lodOptionsMm,
       lodMm: lodMm ?? this.lodMm,
+      lodLabel: lodLabel ?? this.lodLabel,
       hasPerformance: hasPerformance ?? this.hasPerformance,
       performance: performance ?? this.performance,
       rippleOn: rippleOn ?? this.rippleOn,
@@ -251,23 +314,29 @@ class DeviceSettingsState {
       hasSleepTime: hasSleepTime ?? this.hasSleepTime,
       sleepOptionsSeconds: sleepOptionsSeconds ?? this.sleepOptionsSeconds,
       sleepSeconds: sleepSeconds ?? this.sleepSeconds,
+      sleepLabel: sleepLabel ?? this.sleepLabel,
       hasButtonDebounce: hasButtonDebounce ?? this.hasButtonDebounce,
       debounceOptionsMs: debounceOptionsMs ?? this.debounceOptionsMs,
       debounceMs: debounceMs ?? this.debounceMs,
+      debounceLabel: debounceLabel ?? this.debounceLabel,
       hasWheelInvert: hasWheelInvert ?? this.hasWheelInvert,
       wheelInvert: wheelInvert ?? this.wheelInvert,
       hasRgbBacklight: hasRgbBacklight ?? this.hasRgbBacklight,
       rgbModes: rgbModes ?? this.rgbModes,
       rgbEnable: rgbEnable ?? this.rgbEnable,
       rgbModeId: rgbModeId ?? this.rgbModeId,
+      rgbModeLabel: rgbModeLabel ?? this.rgbModeLabel,
       rgbBrightnessLevels: rgbBrightnessLevels ?? this.rgbBrightnessLevels,
       rgbBrightness: rgbBrightness ?? this.rgbBrightness,
+      rgbBrightnessLabel: rgbBrightnessLabel ?? this.rgbBrightnessLabel,
       rgbSpeedLevels: rgbSpeedLevels ?? this.rgbSpeedLevels,
       rgbSpeed: rgbSpeed ?? this.rgbSpeed,
+      rgbSpeedLabel: rgbSpeedLabel ?? this.rgbSpeedLabel,
       rgbR: rgbR ?? this.rgbR,
       rgbG: rgbG ?? this.rgbG,
       rgbB: rgbB ?? this.rgbB,
       rgbSleepTime: rgbSleepTime ?? this.rgbSleepTime,
+      rgbSleepLabel: rgbSleepLabel ?? this.rgbSleepLabel,
     );
   }
 
@@ -283,6 +352,7 @@ class DeviceSettingsState {
           error == other.error &&
           _listEq(reportRateOptions, other.reportRateOptions) &&
           reportRateHz == other.reportRateHz &&
+          reportRateLabel == other.reportRateLabel &&
           dpiMax == other.dpiMax &&
           dpiMin == other.dpiMin &&
           dpiStep == other.dpiStep &&
@@ -298,9 +368,11 @@ class DeviceSettingsState {
           hasSensorTuning == other.hasSensorTuning &&
           hasAngleTune == other.hasAngleTune &&
           angleTune == other.angleTune &&
+          angleTuneLabel == other.angleTuneLabel &&
           hasLod == other.hasLod &&
           _listEq(lodOptionsMm, other.lodOptionsMm) &&
           lodMm == other.lodMm &&
+          lodLabel == other.lodLabel &&
           hasPerformance == other.hasPerformance &&
           performance == other.performance &&
           rippleOn == other.rippleOn &&
@@ -308,23 +380,29 @@ class DeviceSettingsState {
           hasSleepTime == other.hasSleepTime &&
           _listEq(sleepOptionsSeconds, other.sleepOptionsSeconds) &&
           sleepSeconds == other.sleepSeconds &&
+          sleepLabel == other.sleepLabel &&
           hasButtonDebounce == other.hasButtonDebounce &&
           _listEq(debounceOptionsMs, other.debounceOptionsMs) &&
           debounceMs == other.debounceMs &&
+          debounceLabel == other.debounceLabel &&
           hasWheelInvert == other.hasWheelInvert &&
           wheelInvert == other.wheelInvert &&
           hasRgbBacklight == other.hasRgbBacklight &&
           _listEq(rgbModes, other.rgbModes) &&
           rgbEnable == other.rgbEnable &&
           rgbModeId == other.rgbModeId &&
+          rgbModeLabel == other.rgbModeLabel &&
           rgbBrightnessLevels == other.rgbBrightnessLevels &&
           rgbBrightness == other.rgbBrightness &&
+          rgbBrightnessLabel == other.rgbBrightnessLabel &&
           rgbSpeedLevels == other.rgbSpeedLevels &&
           rgbSpeed == other.rgbSpeed &&
+          rgbSpeedLabel == other.rgbSpeedLabel &&
           rgbR == other.rgbR &&
           rgbG == other.rgbG &&
           rgbB == other.rgbB &&
-          rgbSleepTime == other.rgbSleepTime;
+          rgbSleepTime == other.rgbSleepTime &&
+          rgbSleepLabel == other.rgbSleepLabel;
 
   @override
   int get hashCode => Object.hashAll([
@@ -335,6 +413,7 @@ class DeviceSettingsState {
         error,
         Object.hashAll(reportRateOptions ?? const []),
         reportRateHz,
+        reportRateLabel,
         dpiMax,
         dpiMin,
         dpiStep,
@@ -350,9 +429,11 @@ class DeviceSettingsState {
         hasSensorTuning,
         hasAngleTune,
         angleTune,
+        angleTuneLabel,
         hasLod,
         Object.hashAll(lodOptionsMm ?? const []),
         lodMm,
+        lodLabel,
         hasPerformance,
         performance,
         rippleOn,
@@ -360,23 +441,29 @@ class DeviceSettingsState {
         hasSleepTime,
         Object.hashAll(sleepOptionsSeconds ?? const []),
         sleepSeconds,
+        sleepLabel,
         hasButtonDebounce,
         Object.hashAll(debounceOptionsMs ?? const []),
         debounceMs,
+        debounceLabel,
         hasWheelInvert,
         wheelInvert,
         hasRgbBacklight,
         Object.hashAll(rgbModes ?? const []),
         rgbEnable,
         rgbModeId,
+        rgbModeLabel,
         rgbBrightnessLevels,
         rgbBrightness,
+        rgbBrightnessLabel,
         rgbSpeedLevels,
         rgbSpeed,
+        rgbSpeedLabel,
         rgbR,
         rgbG,
         rgbB,
         rgbSleepTime,
+        rgbSleepLabel,
       ]);
 }
 

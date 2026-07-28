@@ -141,6 +141,7 @@ Future<DeviceSettingsState> queryOnboardConfig(
             ];
       state = state.copyWith(
         reportRateHz: hz,
+        reportRateLabel: translate.reportRateWireToLabel(info.reportRate),
         dpiActiveIndex: currentLevel,
         dpiActiveLevelCount: activeCount,
         dpiLevels: filteredSeed ?? state.dpiLevels,
@@ -274,28 +275,42 @@ Future<DeviceSettingsState> queryOnboardConfig(
     final sensor = await session.querySensorOther();
     if (sensor != null) {
       // Always GET; only surface fields allowed by caps (or all if no caps).
+      // why: L5 owns wire→meaning; L4 only packs (tri-state, labels, wire ids).
+      const translate = TranslationCodec();
       final showAll = !hasCaps;
       state = state.copyWith(
         rippleOn: (showAll || state.hasSensorTuning)
-            ? sensor.rippleControl != 0
+            ? translate.triStateWireToBool(sensor.rippleControl)
             : state.rippleOn,
         angleSnapOn: (showAll || state.hasSensorTuning)
-            ? sensor.angleSnap != 0
+            ? translate.triStateWireToBool(sensor.angleSnap)
             : state.angleSnapOn,
         lodMm: (showAll || state.hasLod) ? sensor.lod : state.lodMm,
+        lodLabel: (showAll || state.hasLod)
+            ? translate.lodWireToLabel(sensor.lod)
+            : state.lodLabel,
         angleTune:
             (showAll || state.hasAngleTune) ? sensor.angleTune : state.angleTune,
+        angleTuneLabel: (showAll || state.hasAngleTune)
+            ? translate.angleTuneWireToLabel(sensor.angleTune)
+            : state.angleTuneLabel,
         performance: (showAll || state.hasPerformance)
             ? sensor.performance
             : state.performance,
         debounceMs: (showAll || state.hasButtonDebounce)
             ? sensor.debounceTime
             : state.debounceMs,
+        debounceLabel: (showAll || state.hasButtonDebounce)
+            ? translate.debounceIndexToLabel(sensor.debounceTime)
+            : state.debounceLabel,
         sleepSeconds: (showAll || state.hasSleepTime)
             ? sensor.sleepTime
             : state.sleepSeconds,
+        sleepLabel: (showAll || state.hasSleepTime)
+            ? translate.sleepIndexToLabel(sensor.sleepTime)
+            : state.sleepLabel,
         wheelInvert: (showAll || state.hasWheelInvert)
-            ? sensor.wheelDirection != 0
+            ? translate.triStateWireToBool(sensor.wheelDirection)
             : state.wheelInvert,
       );
       if (showAll) {
@@ -324,16 +339,23 @@ Future<DeviceSettingsState> queryOnboardConfig(
     if (light != null) {
       final showRgb = !hasCaps || state.hasRgbBacklight;
       if (showRgb) {
+        // why: L5 labels + tri-state; wire ids kept for later SET.
+        const translate = TranslationCodec();
         state = state.copyWith(
           hasRgbBacklight: hasCaps ? state.hasRgbBacklight : true,
-          rgbEnable: light.enable != 0,
+          rgbEnable: translate.triStateWireToBool(light.enable),
           rgbModeId: light.mode,
+          rgbModeLabel: translate.rgbModeToLabel(light.mode),
           rgbBrightness: light.brightness,
+          rgbBrightnessLabel:
+              translate.brightnessLevelToLabel(light.brightness),
           rgbSpeed: light.speed,
+          rgbSpeedLabel: translate.speedLevelToLabel(light.speed),
           rgbR: light.r,
           rgbG: light.g,
           rgbB: light.b,
           rgbSleepTime: light.sleepTime,
+          rgbSleepLabel: translate.sleepIndexToLabel(light.sleepTime),
         );
       }
       debugPrint(

@@ -1,15 +1,26 @@
-/// Pure wire → display maps for settings (and later SET reverse maps).
-///
-/// L5 protocol parse stays raw; L1 packs through this. One home for every
-/// field translation (report rate, DPI mask, buttons, …).
-class TranslationCodec {
-  const TranslationCodec();
+import 'package:driver_hub/layer5_codec/codecs/keyvalue_table.dart';
 
-  /// Report-rate wire (interval ms) → Hz. Null if unknown.
+/// L5 wire → meaning maps for settings (and later SET reverse maps).
+///
+/// **Display standard:** fixed sheet tables use `*ToLabel` → complete
+/// strings with unit or name (`1000 Hz`, `2ms`, `1mm`, `On`). Callers
+/// must not invent units. Keyvalue names live in [KeyvalueTable].
+///
+/// **Domain helpers:** `*ToHz` / mask / DPI decode stay numeric for L4
+/// options, counts, and staging — not half-finished display labels.
+class TranslationCodec {
+  const TranslationCodec({this.keyvalues = const KeyvalueTable()});
+
+  /// Standalone keyvalue library (add / change / delete keys there).
+  final KeyvalueTable keyvalues;
+
+  // --- Domain helpers (typed product units for L4; not bare wire) ---
+
+  /// Report-rate wire → Hz number for domain options / state.
   ///
-  /// `1→1000`, `2→500`, `4→250`, `8→125`.
+  /// Display path: [reportRateWireToLabel]. `1→1000` … `8→125`.
   int? reportRateWireToHz(int wire) {
-    switch (wire) {
+    switch (wire & 0xFF) {
       case 1:
         return 1000;
       case 2:
@@ -40,7 +51,7 @@ class TranslationCodec {
     return (mask & (1 << index)) != 0;
   }
 
-  /// Current DPI stage: wire 0-based → display 1-based.
+  /// Current DPI stage: wire 0-based → 1-based index for domain state.
   int dpiCurrentLevelWireToDisplay(int wire) => wire + 1;
 
   /// Combine wire bytes into one unsigned integer ([endian] big/little).
@@ -136,6 +147,15 @@ class TranslationCodec {
     return (value: x, y: y);
   }
 
+  // --- Display labels (wire / index → complete string; unit included) ---
+
+  /// Report-rate wire → display label (`1000 Hz`, …).
+  String? reportRateWireToLabel(int wire) {
+    final hz = reportRateWireToHz(wire);
+    if (hz == null) return null;
+    return '$hz Hz';
+  }
+
   /// Physical button slot name (1-based id).
   String buttonIdToLabel(int buttonId) {
     switch (buttonId) {
@@ -214,126 +234,210 @@ class TranslationCodec {
 
   /// Shortcut / consumer keyvalue slots → one combined label.
   ///
-  /// @param p1 first keyvalue slot; `0` means empty.
-  /// @param p2 second keyvalue slot; `0` means empty.
-  /// @param p3 third keyvalue slot; `0` means empty.
-  /// @returns modifiers then key joined by ` + `, e.g. `Ctrl + Alt + C`.
-  String keyComboToLabel(int p1, int p2, int p3) {
-    final mods = <String>[];
-    final keys = <String>[];
-    for (final v in [p1, p2, p3]) {
-      if (v == 0) continue;
-      // why: a key may occupy any slot, so classify on the byte value and
-      // never on its position.
-      if (v >= _modifierFirst && v <= _modifierLast) {
-        mods.add(keyValueToLabel(v));
-      } else {
-        keys.add(keyValueToLabel(v));
-      }
-    }
-    if (mods.isEmpty && keys.isEmpty) return 'Not assigned';
-    return [...mods, ...keys].join(' + ');
-  }
+  /// Delegates to [KeyvalueTable.keyComboToLabel].
+  String keyComboToLabel(int p1, int p2, int p3) =>
+      keyvalues.keyComboToLabel(p1, p2, p3);
 
   /// Keyvalue byte → key name.
   ///
-  /// @returns `Key 0xNN` for a byte with no assigned name.
-  String keyValueToLabel(int value) =>
-      _keyValues[value] ?? 'Key 0x${value.toRadixString(16).padLeft(2, '0')}';
+  /// Delegates to [KeyvalueTable.keyValueToLabel].
+  String keyValueToLabel(int value) => keyvalues.keyValueToLabel(value);
 
-  static const int _modifierFirst = 0xE0;
-  static const int _modifierLast = 0xE7;
+  // --- Telink config field maps (data reference) → labels ---
 
-  static const Map<int, String> _keyValues = {
-    0x01: 'Win lock',
+  static const int _triOn = 0xFF;
+  static const int _triOff = 0x0F;
+  static const int _triIgnore = 0x00;
 
-    // Letters
-    0x04: 'A', 0x05: 'B', 0x06: 'C', 0x07: 'D', 0x08: 'E', 0x09: 'F',
-    0x0A: 'G', 0x0B: 'H', 0x0C: 'I', 0x0D: 'J', 0x0E: 'K', 0x0F: 'L',
-    0x10: 'M', 0x11: 'N', 0x12: 'O', 0x13: 'P', 0x14: 'Q', 0x15: 'R',
-    0x16: 'S', 0x17: 'T', 0x18: 'U', 0x19: 'V', 0x1A: 'W', 0x1B: 'X',
-    0x1C: 'Y', 0x1D: 'Z',
+  /// ON / OFF / Ignore wire → display label.
+  ///
+  /// `0xFF`→`On`, `0x0F`→`Off`, `0x00`/other → null (ignore / unknown).
+  String? triStateWireToLabel(int wire) {
+    switch (wire & 0xFF) {
+      case _triOn:
+        return 'On';
+      case _triOff:
+        return 'Off';
+      case _triIgnore:
+      default:
+        return null;
+    }
+  }
 
-    // Digits
-    0x1E: '1', 0x1F: '2', 0x20: '3', 0x21: '4', 0x22: '5',
-    0x23: '6', 0x24: '7', 0x25: '8', 0x26: '9', 0x27: '0',
+  /// ON / OFF / Ignore wire → bool for domain / controls.
+  ///
+  /// Display path: [triStateWireToLabel].
+  bool? triStateWireToBool(int wire) {
+    switch (wire & 0xFF) {
+      case _triOn:
+        return true;
+      case _triOff:
+        return false;
+      case _triIgnore:
+      default:
+        return null;
+    }
+  }
 
-    // Basic control
-    0x28: 'Enter', 0x29: 'Esc', 0x2A: 'Backspace', 0x2B: 'Tab',
-    0x2C: 'Space', 0x39: 'Caps Lock',
+  /// Button debounce index → display label.
+  ///
+  /// `0x00`/`0x01`→`2ms` … `0x06`→`12ms`.
+  String? debounceIndexToLabel(int index) {
+    switch (index & 0xFF) {
+      case 0x00:
+      case 0x01:
+        return '2ms';
+      case 0x02:
+        return '4ms';
+      case 0x03:
+        return '6ms';
+      case 0x04:
+        return '8ms';
+      case 0x05:
+        return '10ms';
+      case 0x06:
+        return '12ms';
+      default:
+        return null;
+    }
+  }
 
-    // Punctuation
-    0x2D: '-', 0x2E: '=', 0x2F: '[', 0x30: ']', 0x31: '\\',
-    0x32: 'K42', 0x33: ';', 0x34: "'", 0x35: '`', 0x36: ',',
-    0x37: '.', 0x38: '/',
+  /// Sleep / RGB-sleep index → display label (same table).
+  ///
+  /// Sheet wording: `30 sec`, `1 min` … `30 min`.
+  String? sleepIndexToLabel(int index) {
+    switch (index & 0xFF) {
+      case 0x00:
+        return '30 sec';
+      case 0x01:
+        return '1 min';
+      case 0x02:
+        return '2 min';
+      case 0x03:
+        return '5 min';
+      case 0x04:
+        return '10 min';
+      case 0x05:
+        return '15 min';
+      case 0x06:
+        return '30 min';
+      default:
+        return null;
+    }
+  }
 
-    // Function keys
-    0x3A: 'F1', 0x3B: 'F2', 0x3C: 'F3', 0x3D: 'F4', 0x3E: 'F5',
-    0x3F: 'F6', 0x40: 'F7', 0x41: 'F8', 0x42: 'F9', 0x43: 'F10',
-    0x44: 'F11', 0x45: 'F12',
-    0x68: 'F13', 0x69: 'F14', 0x6A: 'F15', 0x6B: 'F16', 0x6C: 'F17',
-    0x6D: 'F18', 0x6E: 'F19', 0x6F: 'F20', 0x70: 'F21', 0x71: 'F22',
-    0x72: 'F23', 0x73: 'F24',
+  /// PAW3395 angle-tune wire → display label.
+  ///
+  /// `0x00`→`-30°` … `0x04`→`30°`.
+  String? angleTuneWireToLabel(int wire) {
+    switch (wire & 0xFF) {
+      case 0x00:
+        return '-30°';
+      case 0x01:
+        return '-10°';
+      case 0x02:
+        return '0°';
+      case 0x03:
+        return '10°';
+      case 0x04:
+        return '30°';
+      default:
+        return null;
+    }
+  }
 
-    // Navigation and editing
-    0x46: 'Print Screen', 0x47: 'Scroll Lock', 0x48: 'Pause',
-    0x49: 'Insert', 0x4A: 'Home', 0x4B: 'Page Up', 0x4C: 'Delete',
-    0x4D: 'End', 0x4E: 'Page Down',
-    0x4F: 'Right', 0x50: 'Left', 0x51: 'Down', 0x52: 'Up',
+  /// PAW3395 lift-off distance level → display label.
+  ///
+  /// `0`→`1mm`, `1`→`2mm`.
+  String? lodWireToLabel(int wire) {
+    switch (wire & 0xFF) {
+      case 0:
+        return '1mm';
+      case 1:
+        return '2mm';
+      default:
+        return null;
+    }
+  }
 
-    // Numpad
-    0x53: 'Num Lock', 0x54: 'Numpad /', 0x55: 'Numpad *',
-    0x56: 'Numpad -', 0x57: 'Numpad +', 0x58: 'Numpad Enter',
-    0x59: 'Numpad 1', 0x5A: 'Numpad 2', 0x5B: 'Numpad 3',
-    0x5C: 'Numpad 4', 0x5D: 'Numpad 5', 0x5E: 'Numpad 6',
-    0x5F: 'Numpad 7', 0x60: 'Numpad 8', 0x61: 'Numpad 9',
-    0x62: 'Numpad 0', 0x63: 'Numpad Del', 0x67: 'Numpad =',
+  /// RGB mode id → label.
+  // todo: still not confirm the value , so use the stale value for now
+  String rgbModeToLabel(int mode) {
+    switch (mode & 0xFF) {
+      case 0x00:
+        return 'Close';
+      case 0x01:
+        return 'Constant';
+      case 0x02:
+        return 'Single breathing';
+      case 0x03:
+        return 'Sunning color';
+      case 0x04:
+        return '7 Cycle color';
+      default:
+        return 'Unknown RGB mode 0x${(mode & 0xFF).toRadixString(16)}';
+    }
+  }
 
-    // Miscellaneous keyboard
-    0x64: 'K45', 0x65: 'Menu', 0x66: 'Power',
-    0x85: 'K107', 0x87: 'K56', 0x88: 'K133', 0x89: 'K14',
-    0x8A: 'K132', 0x8B: 'K131', 0x90: 'K150', 0x91: 'K151',
-    0xD6: 'Alt + NBSP', 0xD7: 'Shift + NBSP',
+  /// Brightness level index (0..4) → display label.
+  ///
+  /// `0`→`0%` … `4`→`100%`.
+  String? brightnessLevelToLabel(int level) {
+    switch (level & 0xFF) {
+      case 0:
+        return '0%';
+      case 1:
+        return '25%';
+      case 2:
+        return '50%';
+      case 3:
+        return '75%';
+      case 4:
+        return '100%';
+      default:
+        return null;
+    }
+  }
 
-    // System power
-    0xA0: 'Sleep', 0xA1: 'System power', 0xA2: 'Wake up',
+  /// Speed level index (0..4) → display label.
+  ///
+  /// `0`→`10%` … `4`→`100%`.
+  String? speedLevelToLabel(int level) {
+    switch (level & 0xFF) {
+      case 0:
+        return '10%';
+      case 1:
+        return '25%';
+      case 2:
+        return '50%';
+      case 3:
+        return '75%';
+      case 4:
+        return '100%';
+      default:
+        return null;
+    }
+  }
 
-    // Consumer
-    0xA3: 'Web search', 0xA4: 'Web home', 0xA5: 'Web back',
-    0xA6: 'Web forward', 0xA7: 'Web stop', 0xA8: 'Web refresh',
-    0xA9: 'Web favourites', 0xAA: 'Media player', 0xAB: 'Email',
-    0xAC: 'Calculator', 0xAD: 'My computer', 0xAE: 'Next track',
-    0xAF: 'Previous track', 0xB0: 'Stop', 0xB1: 'Play / pause',
-    0xB2: 'Mute', 0xB3: 'Volume up', 0xB4: 'Volume down',
-    0xB5: 'Vendor key', 0xB6: 'Zoom in', 0xB7: 'Zoom out',
-    0xB8: 'Pan left', 0xB9: 'Pan right', 0xBA: 'Brightness up',
-    0xBB: 'Brightness down', 0xBC: 'Reject call', 0xBD: 'Media power',
-    0xBE: 'Terminal lock',
-
-    // Mouse
-    0xC0: 'DPI', 0xC1: 'Left click', 0xC2: 'Right click',
-    0xC3: 'Middle click', 0xC4: 'Mouse button 4',
-    0xC5: 'Mouse button 5', 0xC6: 'Wheel up', 0xC7: 'Wheel down',
-
-    // Tool
-    0xC8: 'Device power', 0xC9: 'Bind', 0xCA: 'Keyboard', 0xCB: 'Lock',
-    0xCC: 'Brightness up', 0xCD: 'Brightness down', 0xCE: 'Language',
-    0xCF: 'Copy', 0xD0: 'Paste', 0xD1: 'Cut', 0xD2: 'Phone',
-    0xD3: 'Print Screen', 0xD4: 'Backlight', 0xD5: 'Task manager',
-
-    // Modifiers
-    0xE0: 'Ctrl', 0xE1: 'Shift', 0xE2: 'Alt', 0xE3: 'Win',
-    0xE4: 'Right Ctrl', 0xE5: 'Right Shift', 0xE6: 'Right Alt',
-    0xE7: 'Right Win',
-
-    // Gamepad
-    0xDD: 'Gamepad Start', 0xDE: 'Gamepad Back',
-    0xDF: 'Gamepad Select', 0xF0: 'Gamepad A', 0xF1: 'Gamepad B',
-    0xF2: 'Gamepad X', 0xF3: 'Gamepad Y', 0xF4: 'D-pad Left',
-    0xF5: 'D-pad Down', 0xF6: 'D-pad Up', 0xF7: 'D-pad Right',
-    0xF8: 'L1', 0xF9: 'R1', 0xFA: 'L2', 0xFB: 'R2', 0xFC: 'L3',
-    0xFD: 'R3', 0xFE: 'Gamepad Home',
-
-    0xFF: 'Fn',
-  };
+  /// Config NAK reason byte → display text.
+  String nakReasonToLabel(int reason) {
+    switch (reason & 0xFF) {
+      case 0x01:
+        return 'Handshake required before GET/SET';
+      case 0x02:
+        return 'Unknown config address';
+      case 0x03:
+        return 'Opcode is not GET or SET';
+      case 0x04:
+        return 'Payload length mismatch';
+      case 0x05:
+        return 'Array index out of bounds';
+      case 0x06:
+        return 'CRC16 mismatch on SET';
+      case 0xFF:
+        return 'Config address not implemented on device';
+      default:
+        return 'NAK reason 0x${(reason & 0xFF).toRadixString(16).padLeft(2, '0')}';
+    }
+  }
 }

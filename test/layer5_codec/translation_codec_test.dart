@@ -1,8 +1,10 @@
+import 'package:driver_hub/layer5_codec/codecs/keyvalue_table.dart';
 import 'package:driver_hub/layer5_codec/codecs/translation_codec.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   const t = TranslationCodec();
+  const keys = KeyvalueTable();
 
   group('TranslationCodec.reportRateWireToHz', () {
     test('maps polling intervals to Hz', () {
@@ -16,6 +18,16 @@ void main() {
       expect(t.reportRateWireToHz(0), isNull);
       expect(t.reportRateWireToHz(3), isNull);
       expect(t.reportRateWireToHz(500), isNull);
+    });
+  });
+
+  group('TranslationCodec.reportRateWireToLabel', () {
+    test('complete labels with unit', () {
+      expect(t.reportRateWireToLabel(1), '1000 Hz');
+      expect(t.reportRateWireToLabel(2), '500 Hz');
+      expect(t.reportRateWireToLabel(4), '250 Hz');
+      expect(t.reportRateWireToLabel(8), '125 Hz');
+      expect(t.reportRateWireToLabel(0), isNull);
     });
   });
 
@@ -256,6 +268,108 @@ void main() {
       expect(t.keyValueToLabel(0xE7), 'Right Win');
       expect(t.keyValueToLabel(0xF0), 'Gamepad A');
       expect(t.keyValueToLabel(0xFF), 'Fn');
+    });
+  });
+
+  group('KeyvalueTable', () {
+    test('is the source of labels TranslationCodec consumes', () {
+      expect(keys.keyValueToLabel(0xB3), 'Volume up');
+      expect(keys.keyComboToLabel(0xE0, 0x06, 0), 'Ctrl + C');
+      expect(KeyvalueTable.labels[0xB3], 'Volume up');
+    });
+  });
+
+  group('TranslationCodec.triStateWireToLabel', () {
+    test('FF On, 0F Off, 00 ignore', () {
+      expect(t.triStateWireToLabel(0xFF), 'On');
+      expect(t.triStateWireToLabel(0x0F), 'Off');
+      expect(t.triStateWireToLabel(0x00), isNull);
+      expect(t.triStateWireToLabel(0x01), isNull);
+    });
+  });
+
+  group('TranslationCodec.triStateWireToBool', () {
+    test('FF on, 0F off, 00 ignore', () {
+      expect(t.triStateWireToBool(0xFF), isTrue);
+      expect(t.triStateWireToBool(0x0F), isFalse);
+      expect(t.triStateWireToBool(0x00), isNull);
+      expect(t.triStateWireToBool(0x01), isNull);
+    });
+  });
+
+  group('TranslationCodec.debounceIndexToLabel', () {
+    test('maps debounce table with unit', () {
+      expect(t.debounceIndexToLabel(0x00), '2ms');
+      expect(t.debounceIndexToLabel(0x01), '2ms');
+      expect(t.debounceIndexToLabel(0x02), '4ms');
+      expect(t.debounceIndexToLabel(0x06), '12ms');
+      expect(t.debounceIndexToLabel(0x07), isNull);
+    });
+  });
+
+  group('TranslationCodec.sleepIndexToLabel', () {
+    test('maps sleep and RGB sleep table', () {
+      expect(t.sleepIndexToLabel(0x00), '30 sec');
+      expect(t.sleepIndexToLabel(0x01), '1 min');
+      expect(t.sleepIndexToLabel(0x03), '5 min');
+      expect(t.sleepIndexToLabel(0x06), '30 min');
+      expect(t.sleepIndexToLabel(0x10), isNull);
+    });
+  });
+
+  group('TranslationCodec.angleTuneWireToLabel', () {
+    test('PAW3395 angle tune labels', () {
+      expect(t.angleTuneWireToLabel(0x00), '-30°');
+      expect(t.angleTuneWireToLabel(0x02), '0°');
+      expect(t.angleTuneWireToLabel(0x04), '30°');
+      expect(t.angleTuneWireToLabel(0x05), isNull);
+    });
+  });
+
+  group('TranslationCodec.lodWireToLabel', () {
+    test('PAW3395 lift-off distance labels', () {
+      expect(t.lodWireToLabel(0), '1mm');
+      expect(t.lodWireToLabel(1), '2mm');
+      expect(t.lodWireToLabel(2), isNull);
+    });
+  });
+
+  group('TranslationCodec.rgbModeToLabel', () {
+    test('named modes and unknown', () {
+      expect(t.rgbModeToLabel(0x00), 'Close');
+      expect(t.rgbModeToLabel(0x01), 'Constant');
+      expect(t.rgbModeToLabel(0x02), 'Single breathing');
+      expect(t.rgbModeToLabel(0x03), 'Sunning color');
+      expect(t.rgbModeToLabel(0x04), '7 Cycle color');
+      expect(t.rgbModeToLabel(0x09), 'Unknown RGB mode 0x9');
+    });
+  });
+
+  group('TranslationCodec brightness and speed levels', () {
+    test('five-step percent labels', () {
+      expect(t.brightnessLevelToLabel(0), '0%');
+      expect(t.brightnessLevelToLabel(2), '50%');
+      expect(t.brightnessLevelToLabel(4), '100%');
+      expect(t.brightnessLevelToLabel(5), isNull);
+      expect(t.speedLevelToLabel(0), '10%');
+      expect(t.speedLevelToLabel(4), '100%');
+      expect(t.speedLevelToLabel(9), isNull);
+    });
+  });
+
+  group('TranslationCodec.nakReasonToLabel', () {
+    test('sheet reasons and fallback', () {
+      expect(t.nakReasonToLabel(0x01), 'Handshake required before GET/SET');
+      expect(t.nakReasonToLabel(0x02), 'Unknown config address');
+      expect(t.nakReasonToLabel(0x03), 'Opcode is not GET or SET');
+      expect(t.nakReasonToLabel(0x04), 'Payload length mismatch');
+      expect(t.nakReasonToLabel(0x05), 'Array index out of bounds');
+      expect(t.nakReasonToLabel(0x06), 'CRC16 mismatch on SET');
+      expect(
+        t.nakReasonToLabel(0xFF),
+        'Config address not implemented on device',
+      );
+      expect(t.nakReasonToLabel(0xAB), 'NAK reason 0xab');
     });
   });
 }

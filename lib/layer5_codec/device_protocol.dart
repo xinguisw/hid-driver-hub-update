@@ -1,4 +1,5 @@
 import 'package:driver_hub/layer2_capabilities/device_type.dart';
+import 'package:driver_hub/layer5_codec/codecs/translation_codec.dart';
 import 'package:driver_hub/layer5_codec/utils/crc16.dart';
 import 'package:driver_hub/layer6_transport/hid_session.dart';
 import 'package:flutter/foundation.dart';
@@ -535,9 +536,10 @@ class MouseProtocol implements DeviceProtocol {
     if (op == _nakOpcode) {
       // NAK layout: opcode FF, addrs, len, reason in data[0] (sheet).
       final reason = body.length > _dataOff ? body[_dataOff] : -1;
+      final meaning = const TranslationCodec().nakReasonToLabel(reason);
       throw FormatException(
-        '$label NAK reason=0x${reason.toRadixString(16)} '
-        '(0x01=handshake 0x02=bad addrs 0x03=bad opcode …)',
+        '$label NAK: $meaning '
+        '(reason=0x${(reason & 0xFF).toRadixString(16).padLeft(2, '0')})',
       );
     }
     return ack;

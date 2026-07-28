@@ -46,6 +46,19 @@ class SettingsBlockCard extends StatelessWidget {
 
 String _dash(Object? v) => v == null ? '—' : '$v';
 
+/// Prefer L4 display label; fall back to bare value; null → —.
+String _labelOr(Object? label, Object? raw) {
+  if (label != null) return '$label';
+  if (raw != null) return '$raw';
+  return '—';
+}
+
+/// Bool from L4 tri-state pack → On / Off / —.
+String _onOff(bool? v) {
+  if (v == null) return '—';
+  return v ? 'On' : 'Off';
+}
+
 /// Buttons feature block — present when count or list is known.
 class ButtonsSettingsBlock extends StatelessWidget {
   const ButtonsSettingsBlock({super.key, required this.state});
@@ -83,7 +96,10 @@ class ReportRateSettingsBlock extends StatelessWidget {
     if (!_present) return const SizedBox.shrink();
     return SettingsBlockCard(
       title: 'Report rate',
-      lines: ['report rate: ${_dash(state.reportRateHz)} Hz'],
+      // why: L4 reportRateLabel is complete (`1000 Hz`); bare Hz only if label missing.
+      lines: [
+        'report rate: ${_labelOr(state.reportRateLabel, state.reportRateHz == null ? null : '${state.reportRateHz} Hz')}',
+      ],
     );
   }
 }
@@ -149,8 +165,8 @@ class SensorTuningSettingsBlock extends StatelessWidget {
     return SettingsBlockCard(
       title: 'Sensor tuning',
       lines: [
-        'ripple control: ${_dash(state.rippleOn)}',
-        'angle snap: ${_dash(state.angleSnapOn)}',
+        'ripple control: ${_onOff(state.rippleOn)}',
+        'angle snap: ${_onOff(state.angleSnapOn)}',
       ],
     );
   }
@@ -167,7 +183,7 @@ class LodSettingsBlock extends StatelessWidget {
     if (!state.hasLod) return const SizedBox.shrink();
     return SettingsBlockCard(
       title: 'LOD',
-      lines: ['LOD (raw): ${_dash(state.lodMm)}'],
+      lines: ['LOD: ${_labelOr(state.lodLabel, state.lodMm)}'],
     );
   }
 }
@@ -183,7 +199,7 @@ class AngleTuneSettingsBlock extends StatelessWidget {
     if (!state.hasAngleTune) return const SizedBox.shrink();
     return SettingsBlockCard(
       title: 'Angle tune',
-      lines: ['angle tune (raw): ${_dash(state.angleTune)}'],
+      lines: ['angle tune: ${_labelOr(state.angleTuneLabel, state.angleTune)}'],
     );
   }
 }
@@ -215,7 +231,7 @@ class DebounceSettingsBlock extends StatelessWidget {
     if (!state.hasButtonDebounce) return const SizedBox.shrink();
     return SettingsBlockCard(
       title: 'Key debounce delay',
-      lines: ['debounce (raw): ${_dash(state.debounceMs)}'],
+      lines: ['debounce: ${_labelOr(state.debounceLabel, state.debounceMs)}'],
     );
   }
 }
@@ -231,7 +247,7 @@ class SleepTimeSettingsBlock extends StatelessWidget {
     if (!state.hasSleepTime) return const SizedBox.shrink();
     return SettingsBlockCard(
       title: 'Sleep time',
-      lines: ['sleep (raw): ${_dash(state.sleepSeconds)}'],
+      lines: ['sleep: ${_labelOr(state.sleepLabel, state.sleepSeconds)}'],
     );
   }
 }
@@ -247,7 +263,7 @@ class WheelInvertSettingsBlock extends StatelessWidget {
     if (!state.hasWheelInvert) return const SizedBox.shrink();
     return SettingsBlockCard(
       title: 'Wheel invert',
-      lines: ['wheel invert: ${_dash(state.wheelInvert)}'],
+      lines: ['wheel invert: ${_onOff(state.wheelInvert)}'],
     );
   }
 }
@@ -266,14 +282,14 @@ class RgbBacklightSettingsBlock extends StatelessWidget {
 
   static List<String> _lines(DeviceSettingsState s) {
     return [
-      'enable: ${_dash(s.rgbEnable)}',
-      'mode: ${_dash(s.rgbModeId)}',
-      'brightness: ${_dash(s.rgbBrightness)}',
-      'speed: ${_dash(s.rgbSpeed)}',
+      'enable: ${_onOff(s.rgbEnable)}',
+      'mode: ${_labelOr(s.rgbModeLabel, s.rgbModeId)}',
+      'brightness: ${_labelOr(s.rgbBrightnessLabel, s.rgbBrightness)}',
+      'speed: ${_labelOr(s.rgbSpeedLabel, s.rgbSpeed)}',
       'R: ${_dash(s.rgbR)}',
       'G: ${_dash(s.rgbG)}',
       'B: ${_dash(s.rgbB)}',
-      'RGB sleep (raw): ${_dash(s.rgbSleepTime)}',
+      'RGB sleep: ${_labelOr(s.rgbSleepLabel, s.rgbSleepTime)}',
     ];
   }
 }

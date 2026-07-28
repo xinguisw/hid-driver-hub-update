@@ -1,14 +1,12 @@
-import 'package:driver_hub/layer3_ui/widgets/device_card.dart';
 import 'package:driver_hub/layer4_domain/models/discovered_card_state.dart';
 import 'package:flutter/material.dart';
 
-/// Left hub nav — device on top, destinations with `x` + label, toggle bottom.
+/// Left hub nav — compact device header + destinations + collapse toggle.
 ///
 /// L3 presentational. No L4/L5.
 ///
-/// why: stock [NavigationRail] +8px overflow while extended animates. This pane
-/// owns width. [DeviceCard] only when extended (Card Row needs ~256px); collapsed
-/// shows image thumb only so Card is never laid out under 72px.
+/// Device header skeleton: name + mode + battery/charging text.
+/// No image, no firmware. Mode/battery as icons later.
 class HubLeftSidebar extends StatefulWidget {
   const HubLeftSidebar({
     super.key,
@@ -48,16 +46,14 @@ class _HubLeftSidebarState extends State<HubLeftSidebar> {
     final width = _extended ? _extendedWidth : _collapsedWidth;
     final theme = Theme.of(context);
 
-    // why: jump width (no AnimatedContainer) so DeviceCard never mid-animates
-    // into ~40px (that was the 60px right overflow on device_card Row)
     return SizedBox(
       width: width,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(4, 8, 4, 4),
-            child: _extended ? _extendedDevice() : _collapsedDevice(),
+            padding: const EdgeInsets.fromLTRB(8, 12, 8, 8),
+            child: _deviceHeader(theme),
           ),
           Expanded(
             child: ListView.builder(
@@ -107,7 +103,64 @@ class _HubLeftSidebarState extends State<HubLeftSidebar> {
     );
   }
 
-  /// `x` always kept; full label only when extended.
+  /// Skeleton: name + mode + battery/charging (text; icons later).
+  Widget _deviceHeader(ThemeData theme) {
+    final name = widget.card.displayName;
+    final subStyle = theme.textTheme.bodySmall?.copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
+    );
+    return InkWell(
+      onTap: widget.onDeviceTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: _extended
+            ? Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // why: ref — mode/battery row on top; model name at bottom
+                  Text(_modeLabel, style: subStyle),
+                  const SizedBox(height: 2),
+                  Text(_batteryLabel, style: subStyle),
+                  const SizedBox(height: 4),
+                  Text(
+                    name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              )
+            // why: collapsed rail — text stand-in "mouse" (not first letter of name)
+            : Center(
+                child: Text(
+                  'mouse',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+      ),
+    );
+  }
+
+  String get _modeLabel {
+    final m = widget.card.connectionMode;
+    if (m == 0) return 'USB';
+    if (m == 1) return '2.4G';
+    return '—';
+  }
+
+  String get _batteryLabel {
+    final pct = widget.card.batteryPercentage;
+    if (pct < 0) return 'Battery —';
+    if (widget.card.isCharging) return 'Battery $pct% charging';
+    return 'Battery $pct%';
+  }
+
   Widget _destinationRow(String label) {
     const xIcon = SizedBox(
       width: 24,
@@ -129,29 +182,6 @@ class _HubLeftSidebarState extends State<HubLeftSidebar> {
           ),
         ),
       ],
-    );
-  }
-
-  Widget _extendedDevice() {
-    return DeviceCard(
-      state: widget.card,
-      onTap: widget.onDeviceTap,
-    );
-  }
-
-  Widget _collapsedDevice() {
-    return InkWell(
-      onTap: widget.onDeviceTap,
-      child: Center(
-        child: SizedBox(
-          width: 40,
-          height: 40,
-          child: Image.asset(
-            widget.card.imageSmall,
-            fit: BoxFit.contain,
-          ),
-        ),
-      ),
     );
   }
 }

@@ -1,4 +1,5 @@
 import 'package:driver_hub/layer3_ui/widgets/hub_left_sidebar.dart';
+import 'package:driver_hub/layer3_ui/widgets/hub_mouse_canvas.dart';
 import 'package:driver_hub/layer4_domain/device_scope.dart';
 import 'package:driver_hub/layer4_domain/models/device_settings_state.dart';
 import 'package:driver_hub/layer4_domain/models/discovered_card_state.dart';
@@ -7,7 +8,7 @@ import 'package:flutter/material.dart';
 /// Per-device hub shell after card tap on home.
 ///
 /// L3 only: same onboard load as [DeviceSettingsScreen]; composes
-/// [HubLeftSidebar]. No L5 codec. Body center stays empty skeleton.
+/// [HubLeftSidebar] + [HubMouseCanvas]. No L5 codec.
 class HubLandingScreen extends StatefulWidget {
   const HubLandingScreen({
     super.key,
@@ -23,7 +24,7 @@ class HubLandingScreen extends StatefulWidget {
 }
 
 class _HubLandingScreenState extends State<HubLandingScreen> {
-  // why: held for later panes; center body stays empty this step
+  // why: held for later panes / right mapping
   DeviceSettingsState? _state;
   int _selectedIndex = 0;
 
@@ -95,7 +96,7 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
   @override
   Widget build(BuildContext context) {
     final selected = widget.scope.resolveCard(widget.card);
-    // why: no AppBar; left rail (device card + nav) + empty center
+    // why: no AppBar; left nav + center large mouse image
     return Scaffold(
       body: Row(
         children: [
@@ -108,10 +109,8 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
             onDeviceTap: () => Navigator.of(context).maybePop(),
           ),
           const VerticalDivider(thickness: 1, width: 1),
-          const Expanded(
-            child: Center(
-              child: Text('Hub landing (empty)'),
-            ),
+          Expanded(
+            child: HubMouseCanvas(imageLarge: selected.imageLarge),
           ),
         ],
       ),

@@ -26,7 +26,10 @@ class HubLandingScreen extends StatefulWidget {
 class _HubLandingScreenState extends State<HubLandingScreen> {
   // why: held for later panes / right mapping
   DeviceSettingsState? _state;
+  // why: 0 = Button Mapping (only page that shows mouse canvas)
   int _selectedIndex = 0;
+
+  static const int _buttonMappingIndex = 0;
 
   @override
   void initState() {
@@ -96,7 +99,7 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
   @override
   Widget build(BuildContext context) {
     final selected = widget.scope.resolveCard(widget.card);
-    // why: no AppBar; left nav + center large mouse image
+    // why: no AppBar; mouse canvas only on Button Mapping nav
     return Scaffold(
       body: Row(
         children: [
@@ -110,7 +113,15 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
           ),
           const VerticalDivider(thickness: 1, width: 1),
           Expanded(
-            child: HubMouseCanvas(imageLarge: selected.imageLarge),
+            child: _selectedIndex == _buttonMappingIndex
+                ? HubMouseCanvas(
+                    imageLarge: selected.imageLarge,
+                    // why: hotspot x/y/r from catalog via L4 caps pack
+                    buttons: _state?.buttons ?? const [],
+                  )
+                : const Center(
+                    child: Text(''),
+                  ),
           ),
         ],
       ),

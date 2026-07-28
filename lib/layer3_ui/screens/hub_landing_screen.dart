@@ -1,3 +1,4 @@
+import 'package:driver_hub/layer3_ui/widgets/hub_left_sidebar.dart';
 import 'package:driver_hub/layer4_domain/device_scope.dart';
 import 'package:driver_hub/layer4_domain/models/device_settings_state.dart';
 import 'package:driver_hub/layer4_domain/models/discovered_card_state.dart';
@@ -5,9 +6,8 @@ import 'package:flutter/material.dart';
 
 /// Per-device hub shell after card tap on home.
 ///
-/// L3 only: same onboard load path as [DeviceSettingsScreen]
-/// ([DeviceScope.loadOnboardSettings]); body stays empty skeleton.
-/// Composes hub panes later. No L5 codec here.
+/// L3 only: same onboard load as [DeviceSettingsScreen]; composes
+/// [HubLeftSidebar]. No L5 codec. Body center stays empty skeleton.
 class HubLandingScreen extends StatefulWidget {
   const HubLandingScreen({
     super.key,
@@ -23,8 +23,9 @@ class HubLandingScreen extends StatefulWidget {
 }
 
 class _HubLandingScreenState extends State<HubLandingScreen> {
-  // why: held for later panes; build stays empty this step
+  // why: held for later panes; center body stays empty this step
   DeviceSettingsState? _state;
+  int _selectedIndex = 0;
 
   @override
   void initState() {
@@ -60,7 +61,6 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
     setState(() => _state = next);
   }
 
-  /// Same entry as settings: L4 runs the full onboard query set.
   Future<void> _loadOnboardConfig() async {
     if (!widget.scope.isCardConnected(widget.card)) {
       debugPrint('[hub] ${widget.card.displayName}: no live session');
@@ -94,10 +94,26 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // why: no AppBar; empty body — load still runs above for later panes
-    return const Scaffold(
-      body: Center(
-        child: Text('Hub landing (empty)'),
+    final selected = widget.scope.resolveCard(widget.card);
+    // why: no AppBar; left rail (device card + nav) + empty center
+    return Scaffold(
+      body: Row(
+        children: [
+          HubLeftSidebar(
+            card: selected,
+            selectedIndex: _selectedIndex,
+            onDestinationSelected: (index) {
+              setState(() => _selectedIndex = index);
+            },
+            onDeviceTap: () => Navigator.of(context).maybePop(),
+          ),
+          const VerticalDivider(thickness: 1, width: 1),
+          const Expanded(
+            child: Center(
+              child: Text('Hub landing (empty)'),
+            ),
+          ),
+        ],
       ),
     );
   }

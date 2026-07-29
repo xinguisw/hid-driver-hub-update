@@ -20,7 +20,7 @@ class HubMouseCanvas extends StatelessWidget {
   /// Button Mapping: label tap opens mapping panel; dots are placement only.
   final ValueChanged<int>? onButtonSelected;
 
-  /// Skeleton control under the mouse; wire later (no SET yet).
+  /// After user Confirms reset tip dialog; L4 wire later (no SET in this step).
   final VoidCallback? onResetToDefault;
 
   @override
@@ -76,11 +76,11 @@ class HubMouseCanvas extends StatelessWidget {
                 ),
               ),
             ),
-            // why: below mouse — black label (not theme primary blue); space above bottom
+            // why: below mouse — confirm tip first; not the action-catalog flow
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
               child: OutlinedButton(
-                onPressed: onResetToDefault ?? () {},
+                onPressed: () => _onResetPressed(context),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: Colors.black87,
                   side: const BorderSide(color: Colors.black54),
@@ -92,6 +92,28 @@ class HubMouseCanvas extends StatelessWidget {
         );
       },
     );
+  }
+
+  /// Skeleton tip: restore default keys — Cancel / Confirm only.
+  Future<void> _onResetPressed(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Tip'),
+        content: const Text('Are you sure you want to restore default keys?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Confirm'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) onResetToDefault?.call();
   }
 
   static int? _hitButtonId(List<_CalloutTarget> targets, Offset local) {

@@ -1,3 +1,4 @@
+import 'package:driver_hub/layer3_ui/widgets/hub_button_mapping_panel.dart';
 import 'package:driver_hub/layer3_ui/widgets/hub_left_sidebar.dart';
 import 'package:driver_hub/layer3_ui/widgets/hub_mouse_canvas.dart';
 import 'package:driver_hub/layer4_domain/device_scope.dart';
@@ -8,7 +9,7 @@ import 'package:flutter/material.dart';
 /// Per-device hub shell after card tap on home.
 ///
 /// L3 only: same onboard load as [DeviceSettingsScreen]; composes
-/// [HubLeftSidebar] + [HubMouseCanvas]. No L5 codec.
+/// [HubLeftSidebar], [HubMouseCanvas], [HubButtonMappingPanel]. No L5 codec.
 class HubLandingScreen extends StatefulWidget {
   const HubLandingScreen({
     super.key,
@@ -28,6 +29,8 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
   DeviceSettingsState? _state;
   // why: 0 = Button Mapping (only page that shows mouse canvas)
   int _selectedIndex = 0;
+  // why: null = mapping panel hidden; set only on canvas **label** tap
+  int? _selectedButtonId;
 
   static const int _buttonMappingIndex = 0;
 
@@ -107,7 +110,13 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
             card: selected,
             selectedIndex: _selectedIndex,
             onDestinationSelected: (index) {
-              setState(() => _selectedIndex = index);
+              setState(() {
+                _selectedIndex = index;
+                // why: Button Mapping only — leave page → close mapping panel
+                if (index != _buttonMappingIndex) {
+                  _selectedButtonId = null;
+                }
+              });
             },
             onDeviceTap: () => Navigator.of(context).maybePop(),
           ),
@@ -116,13 +125,21 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
             child: _selectedIndex == _buttonMappingIndex
                 ? HubMouseCanvas(
                     imageLarge: selected.imageLarge,
-                    // why: hotspot x/y/r from catalog via L4 caps pack
                     buttons: _state?.buttons ?? const [],
+                    onButtonSelected: (id) {
+                      setState(() => _selectedButtonId = id);
+                    },
                   )
                 : const Center(
                     child: Text(''),
                   ),
           ),
+          // why: Button Mapping page only; opened by label tap, not placement dot
+          if (_selectedIndex == _buttonMappingIndex &&
+              _selectedButtonId != null) ...[
+            const VerticalDivider(thickness: 1, width: 1),
+            HubButtonMappingPanel(selectedButtonId: _selectedButtonId),
+          ],
         ],
       ),
     );

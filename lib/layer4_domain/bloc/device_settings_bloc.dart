@@ -18,7 +18,7 @@ typedef ButtonMappingCommit = Future<void> Function(
 class DeviceSettingsBloc
     extends Bloc<DeviceSettingsEvent, DeviceSettingsViewState> {
   DeviceSettingsBloc({
-    required ButtonMappingCommit this.commitButtonMapping,
+    required this.commitButtonMapping,
     DeviceSettingsViewState? initial,
     this.autoSaveAfterReset = true,
   }) : super(initial ?? DeviceSettingsViewState.empty) {

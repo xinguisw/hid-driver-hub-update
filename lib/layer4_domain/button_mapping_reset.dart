@@ -3,8 +3,8 @@ import 'package:driver_hub/layer5_codec/device_protocol.dart';
 
 /// L4: stage caps-aware identity defaults for button-map reset (no HID).
 ///
-/// Chart sandbox step only. Commit is [DeviceScope.resetButtonMappingToDefault]
-/// auto-Save → L1/L5. Codes match [TranslationCodec.buttonActionToLabel] /
+/// Chart sandbox step only. Commit is BLoC [DeviceSettingsSaveRequested]
+/// → L1/L5. Codes match [TranslationCodec.buttonActionToLabel] /
 /// factory identity (not catalog invent).
 List<ButtonMappingEntry> stageButtonMappingDefaults(
   List<ButtonData>? buttons, {

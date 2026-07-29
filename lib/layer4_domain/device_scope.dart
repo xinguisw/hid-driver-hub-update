@@ -5,11 +5,9 @@ import 'package:driver_hub/layer1_discovery/device_scanner.dart';
 import 'package:driver_hub/layer1_discovery/device_session.dart';
 import 'package:driver_hub/layer1_discovery/device_watcher.dart';
 import 'package:driver_hub/layer1_discovery/discovered_device.dart';
-import 'package:driver_hub/layer4_domain/button_mapping_reset.dart';
 import 'package:driver_hub/layer4_domain/models/device_settings_state.dart';
 import 'package:driver_hub/layer4_domain/models/discovered_card_state.dart';
 import 'package:driver_hub/layer4_domain/settings_onboard_query.dart';
-import 'package:driver_hub/layer5_codec/codecs/translation_codec.dart';
 import 'package:driver_hub/layer5_codec/device_protocol.dart';
 import 'package:driver_hub/layer6_transport/hid_session.dart';
 import 'package:driver_hub/layer6_transport/local_storage.dart';
@@ -207,133 +205,17 @@ class DeviceScope {
     return packed;
   }
 
-  /// Reset button map to caps-aware identity defaults (Confirm path).
+  /// Live L1 session for [card], or null if disconnected.
   ///
-  /// Chart: stage defaults (no L5) → auto-Save commit (validate → payload →
-  /// L1/L5 SET+CRC) → refresh labels into [_settings]. No Save UI yet, so
-  /// Confirm runs the Save pipeline immediately after stage.
-  Future<DeviceSettingsState> resetButtonMappingToDefault(
-    DiscoveredCardState card,
-  ) async {
-    final session = _sessionForCard(card);
+  /// L4 BLoC Save path uses this; L3 must not call protocol itself.
+  DeviceSession? sessionFor(DiscoveredCardState card) => _sessionForCard(card);
+
+  /// Persist BLoC-synced settings after successful Save (cache for re-entry).
+  void putSettings(DiscoveredCardState card, DeviceSettingsState settings) {
     final path = _pathForCard(card);
-    final current = path == null ? null : _settings[path];
-    if (session == null || !session.isAlive) {
-      final err = DeviceSettingsState(
-        devId: card.devId,
-        displayName: card.displayName,
-        connectionMode: card.connectionMode,
-        loading: false,
-        error: 'no session',
-        buttons: current?.buttons,
-        buttonCount: current?.buttonCount,
-      );
-      return err;
-    }
-
-    // A–C chart: stage only (sandbox; no packets yet).
-    final staged = stageButtonMappingDefaults(current?.buttons);
-    debugPrint(
-      '[scope] reset buttonMapping ${card.displayName}: staged '
-      '${[
-        for (var i = 0; i < staged.length; i++)
-          'B${i + 1}=0x${staged[i].action.toRadixString(16)}'
-      ].join(' ')}',
-    );
-
-    // D chart Save / auto-Save: validate slot count → payload → L5 via L1.
-    if (staged.length != 6) {
-      final failed = (current ??
-              DeviceSettingsState(
-                devId: card.devId,
-                displayName: card.displayName,
-                connectionMode: card.connectionMode,
-                loading: false,
-              ))
-          .copyWith(error: 'button mapping reset: expected 6 slots');
-      if (path != null) {
-        _settings[path] = failed;
-        settingsVersion.value++;
-      }
-      return failed;
-    }
-
-    try {
-      await session.setButtonMapping(staged);
-    } catch (e) {
-      debugPrint('[scope] reset buttonMapping SET failed: $e');
-      final failed = (current ??
-              DeviceSettingsState(
-                devId: card.devId,
-                displayName: card.displayName,
-                connectionMode: card.connectionMode,
-                loading: false,
-              ))
-          .copyWith(error: 'button mapping reset failed: $e');
-      if (path != null) {
-        _settings[path] = failed;
-        settingsVersion.value++;
-      }
-      return failed;
-    }
-
-    // Finish: pack labels from committed payload (same shape as GET overlay).
-    const translate = TranslationCodec();
-    final baseButtons = current?.buttons;
-    final live = [
-      for (var i = 0; i < staged.length; i++)
-        ButtonData(
-          id: i + 1,
-          labelKey: baseButtons != null && i < baseButtons.length
-              ? baseButtons[i].labelKey
-              : 'button.${i + 1}',
-          remappable: baseButtons != null && i < baseButtons.length
-              ? baseButtons[i].remappable
-              : true,
-          hotspotX: baseButtons != null && i < baseButtons.length
-              ? baseButtons[i].hotspotX
-              : null,
-          hotspotY: baseButtons != null && i < baseButtons.length
-              ? baseButtons[i].hotspotY
-              : null,
-          hotspotR: baseButtons != null && i < baseButtons.length
-              ? baseButtons[i].hotspotR
-              : null,
-          buttonLabel: baseButtons != null && i < baseButtons.length
-              ? (baseButtons[i].buttonLabel ??
-                  translate.buttonIdToLabel(i + 1))
-              : translate.buttonIdToLabel(i + 1),
-          actionLabel: translate.buttonActionToLabel(
-            action: staged[i].action,
-            param1: staged[i].param1,
-            param2: staged[i].param2,
-            param3: staged[i].param3,
-          ),
-          action: staged[i].action,
-          param1: staged[i].param1,
-          param2: staged[i].param2,
-          param3: staged[i].param3,
-        ),
-    ];
-    final next = (current ??
-            DeviceSettingsState(
-              devId: card.devId,
-              displayName: card.displayName,
-              connectionMode: card.connectionMode,
-              loading: false,
-            ))
-        .copyWith(
-      loading: false,
-      clearError: true,
-      buttonCount: live.length,
-      buttons: live,
-    );
-    if (path != null) {
-      _settings[path] = next;
-      settingsVersion.value++;
-    }
-    debugPrint('[scope] reset buttonMapping ${card.displayName}: done');
-    return next;
+    if (path == null) return;
+    _settings[path] = settings;
+    settingsVersion.value++;
   }
 
   DeviceSession? _sessionForCard(DiscoveredCardState card) {

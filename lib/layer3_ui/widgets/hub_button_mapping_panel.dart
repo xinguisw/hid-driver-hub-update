@@ -1,10 +1,11 @@
 import 'package:driver_hub/layer4_domain/models/device_settings_state.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 /// Button Mapping right pane — action catalog (skeleton).
 ///
 /// L3 only. Tabs paint L4-packed catalogs (assets via L2). No catalog
-/// ownership, no L5/HID. Row tap = local highlight only.
+/// ownership, no L5/HID. Row tap / Special combo = local UI only.
 class HubButtonMappingPanel extends StatefulWidget {
   const HubButtonMappingPanel({
     super.key,
@@ -21,6 +22,9 @@ class HubButtonMappingPanel extends StatefulWidget {
 
   static const double width = 280;
 
+  /// Product: combination shortcut allows at most two modifiers.
+  static const int maxSpecialModifiers = 2;
+
   @override
   State<HubButtonMappingPanel> createState() => _HubButtonMappingPanelState();
 }
@@ -30,8 +34,68 @@ class _HubButtonMappingPanelState extends State<HubButtonMappingPanel> {
 
   int _tabIndex = 0;
   String? _selectedCatalogId;
-  // Special combination UI (local only — not staged).
-  final Set<String> _specialMods = {};
+
+  /// Special mods in selection order (FIFO when over max).
+  final List<String> _specialModOrder = [];
+
+  /// Any-key field: listening for one character, then disengages.
+  bool _anyKeyListening = false;
+  String? _anyKeyChar;
+  final FocusNode _anyKeyFocus = FocusNode();
+
+  @override
+  void dispose() {
+    _anyKeyFocus.dispose();
+    super.dispose();
+  }
+
+  void _setTab(int i) {
+    setState(() {
+      _tabIndex = i;
+      if (i != 2) {
+        _anyKeyListening = false;
+      }
+    });
+  }
+
+  void _toggleSpecialMod(String id) {
+    setState(() {
+      if (_specialModOrder.contains(id)) {
+        _specialModOrder.remove(id);
+        return;
+      }
+      // At max: drop oldest so the new pick can light; always ≤ 2 selected.
+      if (_specialModOrder.length >= HubButtonMappingPanel.maxSpecialModifiers) {
+        _specialModOrder.removeAt(0);
+      }
+      _specialModOrder.add(id);
+    });
+  }
+
+  void _onAnyKeyFieldTap() {
+    setState(() {
+      _anyKeyListening = true;
+      // why: click again to change — wait for a new key; keep old until captured
+    });
+    _anyKeyFocus.requestFocus();
+  }
+
+  KeyEventResult _onAnyKeyEvent(FocusNode node, KeyEvent event) {
+    if (!_anyKeyListening) return KeyEventResult.ignored;
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+
+    final raw = event.character;
+    if (raw == null || raw.isEmpty) return KeyEventResult.ignored;
+    // Single printable char (letter, digit, symbol); ignore empty/control.
+    final ch = raw.characters.first;
+    if (ch.codeUnitAt(0) < 0x20) return KeyEventResult.ignored;
+
+    setState(() {
+      _anyKeyChar = ch;
+      _anyKeyListening = false;
+    });
+    return KeyEventResult.handled;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -48,7 +112,7 @@ class _HubButtonMappingPanelState extends State<HubButtonMappingPanel> {
                   child: _TabChip(
                     label: _tabs[i],
                     selected: i == _tabIndex,
-                    onTap: () => setState(() => _tabIndex = i),
+                    onTap: () => _setTab(i),
                   ),
                 ),
             ],
@@ -70,16 +134,13 @@ class _HubButtonMappingPanelState extends State<HubButtonMappingPanel> {
                   ),
                 2 => _SpecialCombinationBody(
                     sections: widget.specialActionCatalog ?? const [],
-                    selectedMods: _specialMods,
-                    onToggleMod: (id) {
-                      setState(() {
-                        if (_specialMods.contains(id)) {
-                          _specialMods.remove(id);
-                        } else {
-                          _specialMods.add(id);
-                        }
-                      });
-                    },
+                    selectedMods: _specialModOrder.toSet(),
+                    onToggleMod: _toggleSpecialMod,
+                    anyKeyChar: _anyKeyChar,
+                    anyKeyListening: _anyKeyListening,
+                    anyKeyFocus: _anyKeyFocus,
+                    onAnyKeyTap: _onAnyKeyFieldTap,
+                    onAnyKeyEvent: _onAnyKeyEvent,
                   ),
                 _ => const SizedBox.expand(),
               },
@@ -146,17 +207,27 @@ class _SectionCatalogList extends StatelessWidget {
   }
 }
 
-/// Special tab skeleton — Combination Keys from catalog roles (ref).
+/// Special tab — Combination Keys; max 2 mods; Any key = one char then idle.
 class _SpecialCombinationBody extends StatelessWidget {
   const _SpecialCombinationBody({
     required this.sections,
     required this.selectedMods,
     required this.onToggleMod,
+    required this.anyKeyChar,
+    required this.anyKeyListening,
+    required this.anyKeyFocus,
+    required this.onAnyKeyTap,
+    required this.onAnyKeyEvent,
   });
 
   final List<ActionCatalogSectionData> sections;
   final Set<String> selectedMods;
   final ValueChanged<String> onToggleMod;
+  final String? anyKeyChar;
+  final bool anyKeyListening;
+  final FocusNode anyKeyFocus;
+  final VoidCallback onAnyKeyTap;
+  final KeyEventResult Function(FocusNode, KeyEvent) onAnyKeyEvent;
 
   @override
   Widget build(BuildContext context) {
@@ -171,6 +242,11 @@ class _SpecialCombinationBody extends StatelessWidget {
           (i) => i?.role == 'any_key',
           orElse: () => null,
         );
+
+    final anyLabel = anyKeyListening
+        ? '…'
+        : (anyKeyChar ?? '');
+
     return ListView(
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 16),
       children: [
@@ -234,11 +310,35 @@ class _SpecialCombinationBody extends StatelessWidget {
               ),
             ),
             Expanded(
-              child: Container(
-                height: 28,
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceContainerHigh,
+              child: Focus(
+                focusNode: anyKeyFocus,
+                onKeyEvent: onAnyKeyEvent,
+                child: Material(
+                  color: anyKeyListening
+                      ? theme.colorScheme.primaryContainer
+                      : theme.colorScheme.surfaceContainerHigh,
                   borderRadius: BorderRadius.circular(4),
+                  child: InkWell(
+                    onTap: onAnyKeyTap,
+                    borderRadius: BorderRadius.circular(4),
+                    child: SizedBox(
+                      height: 28,
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          child: Text(
+                            anyLabel,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: anyKeyListening
+                                  ? theme.colorScheme.onPrimaryContainer
+                                  : theme.colorScheme.onSurface,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ),

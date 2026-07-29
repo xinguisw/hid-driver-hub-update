@@ -509,6 +509,12 @@ class ButtonData {
   /// Live mapping label from GET; null = unknown.
   final String? actionLabel;
 
+  /// Live wire action + params (for echo on non-remappable reset slots).
+  final int? action;
+  final int? param1;
+  final int? param2;
+  final int? param3;
+
   const ButtonData({
     required this.id,
     required this.labelKey,
@@ -518,6 +524,10 @@ class ButtonData {
     this.hotspotR,
     this.buttonLabel,
     this.actionLabel,
+    this.action,
+    this.param1,
+    this.param2,
+    this.param3,
   });
 
   @override
@@ -531,7 +541,11 @@ class ButtonData {
           hotspotY == other.hotspotY &&
           hotspotR == other.hotspotR &&
           buttonLabel == other.buttonLabel &&
-          actionLabel == other.actionLabel;
+          actionLabel == other.actionLabel &&
+          action == other.action &&
+          param1 == other.param1 &&
+          param2 == other.param2 &&
+          param3 == other.param3;
 
   @override
   int get hashCode => Object.hash(
@@ -543,6 +557,10 @@ class ButtonData {
         hotspotR,
         buttonLabel,
         actionLabel,
+        action,
+        param1,
+        param2,
+        param3,
       );
 }
 

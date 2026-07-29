@@ -96,6 +96,11 @@ Future<DeviceSettingsState> queryOnboardConfig(
               param2: buttons.buttons[i].param2,
               param3: buttons.buttons[i].param3,
             ),
+            // why: L4 reset echoes non-remappable slots without re-GET invent
+            action: buttons.buttons[i].action,
+            param1: buttons.buttons[i].param1,
+            param2: buttons.buttons[i].param2,
+            param3: buttons.buttons[i].param3,
           ),
       ];
       state = state.copyWith(

@@ -11,8 +11,12 @@ class HubMouseCanvas extends StatelessWidget {
     required this.imageLarge,
     this.buttons = const [],
     this.selectedButtonId,
+    this.isDirty = false,
+    this.committing = false,
     this.onButtonSelected,
     this.onResetToDefault,
+    this.onSave,
+    this.onCancel,
   });
 
   final String imageLarge;
@@ -21,11 +25,23 @@ class HubMouseCanvas extends StatelessWidget {
   /// Currently selected callout (label tap); orange highlight.
   final int? selectedButtonId;
 
+  /// SDRD FR-OPS: staging dirty → show Save/Cancel.
+  final bool isDirty;
+
+  /// True while L4 Save is in flight (disable actions).
+  final bool committing;
+
   /// Button Mapping: label tap opens mapping panel; dots are placement only.
   final ValueChanged<int>? onButtonSelected;
 
-  /// After user Confirms reset tip dialog; L4 wire later (no SET in this step).
+  /// After user Confirms reset tip dialog → L3 dispatches BLoC event only.
   final VoidCallback? onResetToDefault;
+
+  /// FR-OPS-003 explicit Save (dispatch only).
+  final VoidCallback? onSave;
+
+  /// FR-OPS-004 Cancel / discard staging (dispatch only).
+  final VoidCallback? onCancel;
 
   @override
   Widget build(BuildContext context) {
@@ -37,9 +53,9 @@ class HubMouseCanvas extends StatelessWidget {
           return const SizedBox.shrink();
         }
 
-        // why: leave band under art for Reset to Default (ref)
-        const resetBand = 56.0;
-        final drawH = (paneH - resetBand).clamp(1.0, paneH);
+        // why: Reset + optional Save/Cancel band (FR-OPS skeleton)
+        final actionBand = isDirty ? 104.0 : 56.0;
+        final drawH = (paneH - actionBand).clamp(1.0, paneH);
         final imgMaxW = paneW * 0.5;
         final imgMaxH = drawH * 0.55;
         final imageRect = Rect.fromLTWH(
@@ -83,16 +99,43 @@ class HubMouseCanvas extends StatelessWidget {
                 ),
               ),
             ),
-            // why: below mouse — confirm tip first; not the action-catalog flow
+            // why: below mouse — Reset tip; Save/Cancel only when dirty (FR-OPS)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-              child: OutlinedButton(
-                onPressed: () => _onResetPressed(context),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.black87,
-                  side: const BorderSide(color: Colors.black54),
-                ),
-                child: const Text('Reset to Default'),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (isDirty) ...[
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: committing ? null : onCancel,
+                            child: const Text('Cancel'),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: FilledButton(
+                            onPressed: committing ? null : onSave,
+                            child: const Text('Save'),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                  OutlinedButton(
+                    onPressed: committing
+                        ? null
+                        : () => _onResetPressed(context),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.black87,
+                      side: const BorderSide(color: Colors.black54),
+                    ),
+                    child: const Text('Reset to Default'),
+                  ),
+                ],
               ),
             ),
           ],

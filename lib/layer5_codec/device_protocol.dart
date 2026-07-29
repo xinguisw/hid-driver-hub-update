@@ -200,6 +200,13 @@ abstract class DeviceProtocol {
   Future<FirmwareResult> queryFirmware(HidSession session);
 
   Future<ButtonMappingResult> queryButtonMapping(HidSession session);
+
+  /// SET addrs 0xB2 — write full button map (6 × 4 + CRC). Chart encoding loop.
+  Future<void> setButtonMapping(
+    HidSession session,
+    List<ButtonMappingEntry> buttons,
+  );
+
   Future<ReportRateDpiInfoResult> queryReportRateDpiInfo(HidSession session);
   Future<DpiTableResult> queryDpiTable(HidSession session);
   Future<DpiRgbResult> queryDpiRgb(HidSession session);
@@ -414,6 +421,77 @@ class MouseProtocol implements DeviceProtocol {
       ));
     }
     return ButtonMappingResult(buttons: buttons, raw: raw);
+  }
+
+  @override
+  Future<void> setButtonMapping(
+    HidSession session,
+    List<ButtonMappingEntry> buttons,
+  ) async {
+    const label = 'buttonMapping';
+    final ask = buildButtonMappingSetFrame(buttons);
+    debugPrint(
+      '[proto] $label: SET addrs=0x${addrsButtonMapping.toRadixString(16)} '
+      'ask ${_hex(ask)}',
+    );
+    final ack = await session.sendAndWait(
+      data: ask,
+      reportId: _reportId,
+      reportLength: _frameLength,
+      match: (raw) => matchesConfigAck(raw, addrs: addrsButtonMapping),
+      timeout: _sendTimeout,
+    );
+    debugPrint('[proto] $label: SET ack ${_hex(ack)} (${ack.length}B)');
+    validateConfigAckFrame(ack, addrs: addrsButtonMapping, label: label);
+    final body = stripReportId(ack);
+    final op = body.isEmpty ? -1 : body[_opOff];
+    if (op == _getOpcode || op == _setOpcode) {
+      verifyConfigAckCrc(ack, label: label);
+    } else {
+      debugPrint(
+        '[proto] $label: SET ack opcode 0x${op.toRadixString(16)} '
+        'not 07/08, skip CRC',
+      );
+    }
+    if (op == _nakOpcode) {
+      final reason = body.length > _dataOff ? body[_dataOff] : -1;
+      final meaning = const TranslationCodec().nakReasonToLabel(reason);
+      throw FormatException(
+        '$label SET NAK: $meaning '
+        '(reason=0x${(reason & 0xFF).toRadixString(16).padLeft(2, '0')})',
+      );
+    }
+  }
+
+  /// Build SET body for B2 (no report id). Exactly 6 entries → 24 data + CRC.
+  ///
+  /// L5 encoding loop only: map domain entries → frame + checksum.
+  static Uint8List buildButtonMappingSetFrame(
+    List<ButtonMappingEntry> buttons,
+  ) {
+    if (buttons.length != 6) {
+      throw ArgumentError.value(
+        buttons.length,
+        'buttons.length',
+        'button mapping SET requires exactly 6 slots',
+      );
+    }
+    final frame = Uint8List(_frameLength);
+    frame[_opOff] = _setOpcode;
+    frame[_addrsOff] = addrsButtonMapping;
+    frame[_lenOff] = configCrcPayloadLength;
+    var o = _dataOff;
+    for (final b in buttons) {
+      frame[o++] = b.action & 0xFF;
+      frame[o++] = b.param1 & 0xFF;
+      frame[o++] = b.param2 & 0xFF;
+      frame[o++] = b.param3 & 0xFF;
+    }
+    final payload = frame.sublist(_dataOff, _dataOff + configCrcPayloadLength);
+    final crc = const Crc16().bytes(payload);
+    frame[_dataOff + configCrcPayloadLength] = crc[0];
+    frame[_dataOff + configCrcPayloadLength + 1] = crc[1];
+    return frame;
   }
 
   @override

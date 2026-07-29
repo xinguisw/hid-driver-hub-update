@@ -53,8 +53,8 @@ class HubMouseCanvas extends StatelessWidget {
           return const SizedBox.shrink();
         }
 
-        // why: fixed action band — Reset | Save | Cancel always present (no layout jump)
-        const actionBand = 64.0;
+        // why: fixed band so mouse never jumps; Save/Cancel hide when clean (ref)
+        const actionBand = 88.0;
         final drawH = (paneH - actionBand).clamp(1.0, paneH);
         final imgMaxW = paneW * 0.5;
         final imgMaxH = drawH * 0.55;
@@ -99,12 +99,14 @@ class HubMouseCanvas extends StatelessWidget {
                 ),
               ),
             ),
-            // why: ref row always — dirty only enables Save/Cancel (no shift)
+            // why: centered under mouse — Reset always; Save/Cancel only if dirty
             SizedBox(
               height: actionBand,
+              width: double.infinity,
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                child: Row(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     OutlinedButton(
                       onPressed: committing
@@ -114,28 +116,45 @@ class HubMouseCanvas extends StatelessWidget {
                         foregroundColor: Colors.black87,
                         side: const BorderSide(color: Colors.black87),
                         shape: const StadiumBorder(),
+                        visualDensity: VisualDensity.compact,
                       ),
                       child: const Text('Reset to Default'),
                     ),
-                    const SizedBox(width: 12),
-                    OutlinedButton(
-                      onPressed: (committing || !isDirty) ? null : onSave,
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.black87,
-                        side: const BorderSide(color: Colors.black87),
-                        shape: const StadiumBorder(),
-                      ),
-                      child: const Text('Save'),
-                    ),
-                    const SizedBox(width: 12),
-                    OutlinedButton(
-                      onPressed: (committing || !isDirty) ? null : onCancel,
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.black87,
-                        side: const BorderSide(color: Colors.black87),
-                        shape: const StadiumBorder(),
-                      ),
-                      child: const Text('Cancel'),
+                    // why: always reserve second row height — hide buttons when clean
+                    SizedBox(
+                      height: 36,
+                      child: isDirty
+                          ? Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                OutlinedButton(
+                                  onPressed: committing ? null : onSave,
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: Colors.black87,
+                                    side: const BorderSide(
+                                      color: Colors.black87,
+                                    ),
+                                    shape: const StadiumBorder(),
+                                    visualDensity: VisualDensity.compact,
+                                  ),
+                                  child: const Text('Save'),
+                                ),
+                                const SizedBox(width: 12),
+                                OutlinedButton(
+                                  onPressed: committing ? null : onCancel,
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: Colors.black87,
+                                    side: const BorderSide(
+                                      color: Colors.black87,
+                                    ),
+                                    shape: const StadiumBorder(),
+                                    visualDensity: VisualDensity.compact,
+                                  ),
+                                  child: const Text('Cancel'),
+                                ),
+                              ],
+                            )
+                          : null,
                     ),
                   ],
                 ),

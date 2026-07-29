@@ -1,9 +1,10 @@
+import 'package:driver_hub/layer3_ui/catalog/hub_mouse_action_catalog.dart';
 import 'package:flutter/material.dart';
 
-/// Button Mapping right pane — **action catalog** shell (skeleton).
+/// Button Mapping right pane — action catalog (skeleton).
 ///
-/// L3 only. Tabs Mouse / Keyboard / Special / Macro fill the panel width
-/// (no horizontal scroll, no swipe animation). Bodies empty for now.
+/// L3 only. Tabs Mouse / Keyboard / Special / Macro. Mouse tab = hardcoded
+/// list from [kHubMouseActionCatalog]; other tabs empty. No L4/L5/HID.
 class HubButtonMappingPanel extends StatefulWidget {
   const HubButtonMappingPanel({
     super.key,
@@ -22,6 +23,8 @@ class _HubButtonMappingPanelState extends State<HubButtonMappingPanel> {
   static const _tabs = ['Mouse', 'Keyboard', 'Special', 'Macro'];
 
   int _tabIndex = 0;
+  // why: local UI highlight only — not staged mapping yet
+  String? _selectedCatalogId;
 
   @override
   Widget build(BuildContext context) {
@@ -31,7 +34,6 @@ class _HubButtonMappingPanelState extends State<HubButtonMappingPanel> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // why: equal-width tabs, full row visible — no horizontal scroll
           Row(
             children: [
               for (var i = 0; i < _tabs.length; i++)
@@ -48,11 +50,71 @@ class _HubButtonMappingPanelState extends State<HubButtonMappingPanel> {
             child: ColoredBox(
               color: theme.colorScheme.surfaceContainerHighest
                   .withValues(alpha: 0.35),
-              child: const SizedBox.expand(),
+              child: _tabIndex == 0
+                  ? _MouseCatalogList(
+                      sections: kHubMouseActionCatalog,
+                      selectedId: _selectedCatalogId,
+                      onSelect: (id) => setState(() => _selectedCatalogId = id),
+                    )
+                  : const SizedBox.expand(),
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _MouseCatalogList extends StatelessWidget {
+  const _MouseCatalogList({
+    required this.sections,
+    required this.selectedId,
+    required this.onSelect,
+  });
+
+  final List<HubCatalogSection> sections;
+  final String? selectedId;
+  final ValueChanged<String> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return ListView(
+      padding: const EdgeInsets.only(bottom: 16),
+      children: [
+        for (final section in sections) ...[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+            child: Text(
+              section.title,
+              style: theme.textTheme.labelMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+          for (final item in section.items)
+            Material(
+              color: item.id == selectedId
+                  ? theme.colorScheme.primary
+                  : Colors.transparent,
+              child: InkWell(
+                onTap: () => onSelect(item.id),
+                child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  child: Text(
+                    item.label,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: item.id == selectedId
+                          ? theme.colorScheme.onPrimary
+                          : theme.colorScheme.onSurface,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ],
     );
   }
 }

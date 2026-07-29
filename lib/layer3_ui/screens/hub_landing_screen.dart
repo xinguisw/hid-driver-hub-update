@@ -126,6 +126,7 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                 ? HubMouseCanvas(
                     imageLarge: selected.imageLarge,
                     buttons: _state?.buttons ?? const [],
+                    selectedButtonId: _selectedButtonId,
                     onButtonSelected: (id) {
                       setState(() => _selectedButtonId = id);
                     },

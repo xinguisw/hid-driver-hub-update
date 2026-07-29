@@ -112,6 +112,14 @@ class DeviceSession {
     return _protocol.queryButtonMapping(_session);
   }
 
+  /// Thin L1 forwarder for B2 SET (L5 encodes + CRC).
+  Future<void> setButtonMapping(List<ButtonMappingEntry> buttons) async {
+    if (!isAlive) {
+      throw StateError('setButtonMapping: session not alive');
+    }
+    await _protocol.setButtonMapping(_session, buttons);
+  }
+
   Future<ReportRateDpiInfoResult?> queryReportRateDpiInfo() async {
     if (!isAlive) return null;
     return _protocol.queryReportRateDpiInfo(_session);

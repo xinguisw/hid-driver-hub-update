@@ -25,7 +25,7 @@ class HubMouseCanvas extends StatelessWidget {
   /// Currently selected callout (label tap); orange highlight.
   final int? selectedButtonId;
 
-  /// SDRD FR-OPS: staging dirty → show Save/Cancel.
+  /// SDRD FR-OPS: staging dirty → enable Save/Cancel (always laid out).
   final bool isDirty;
 
   /// True while L4 Save is in flight (disable actions).
@@ -53,8 +53,8 @@ class HubMouseCanvas extends StatelessWidget {
           return const SizedBox.shrink();
         }
 
-        // why: Reset + optional Save/Cancel band (FR-OPS skeleton)
-        final actionBand = isDirty ? 104.0 : 56.0;
+        // why: fixed action band — Reset | Save | Cancel always present (no layout jump)
+        const actionBand = 64.0;
         final drawH = (paneH - actionBand).clamp(1.0, paneH);
         final imgMaxW = paneW * 0.5;
         final imgMaxH = drawH * 0.55;
@@ -99,43 +99,46 @@ class HubMouseCanvas extends StatelessWidget {
                 ),
               ),
             ),
-            // why: below mouse — Reset tip; Save/Cancel only when dirty (FR-OPS)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (isDirty) ...[
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: committing ? null : onCancel,
-                            child: const Text('Cancel'),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: FilledButton(
-                            onPressed: committing ? null : onSave,
-                            child: const Text('Save'),
-                          ),
-                        ),
-                      ],
+            // why: ref row always — dirty only enables Save/Cancel (no shift)
+            SizedBox(
+              height: actionBand,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                child: Row(
+                  children: [
+                    OutlinedButton(
+                      onPressed: committing
+                          ? null
+                          : () => _onResetPressed(context),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.black87,
+                        side: const BorderSide(color: Colors.black87),
+                        shape: const StadiumBorder(),
+                      ),
+                      child: const Text('Reset to Default'),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(width: 12),
+                    OutlinedButton(
+                      onPressed: (committing || !isDirty) ? null : onSave,
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.black87,
+                        side: const BorderSide(color: Colors.black87),
+                        shape: const StadiumBorder(),
+                      ),
+                      child: const Text('Save'),
+                    ),
+                    const SizedBox(width: 12),
+                    OutlinedButton(
+                      onPressed: (committing || !isDirty) ? null : onCancel,
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.black87,
+                        side: const BorderSide(color: Colors.black87),
+                        shape: const StadiumBorder(),
+                      ),
+                      child: const Text('Cancel'),
+                    ),
                   ],
-                  OutlinedButton(
-                    onPressed: committing
-                        ? null
-                        : () => _onResetPressed(context),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.black87,
-                      side: const BorderSide(color: Colors.black54),
-                    ),
-                    child: const Text('Reset to Default'),
-                  ),
-                ],
+                ),
               ),
             ),
           ],

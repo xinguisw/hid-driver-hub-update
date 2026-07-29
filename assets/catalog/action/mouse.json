@@ -1,0 +1,43 @@
+{
+  "id": "action.mouse",
+  "tab": "mouse",
+  "sections": [
+    {
+      "title": "Mouse",
+      "items": [
+        { "id": "mouse.disable", "label": "Disable" },
+        { "id": "mouse.left", "label": "Left Button" },
+        { "id": "mouse.right", "label": "Right Button" },
+        { "id": "mouse.middle", "label": "Middle Button" },
+        { "id": "mouse.forward", "label": "Forward Button" },
+        { "id": "mouse.backward", "label": "Backward Button" }
+      ]
+    },
+    {
+      "title": "Mouse Action",
+      "items": [
+        { "id": "mouse.report_rate_cycle", "label": "Report Rate Cycle" },
+        { "id": "mouse.dpi_cycle", "label": "DPI Cycle" },
+        { "id": "mouse.dpi_up", "label": "DPI +" },
+        { "id": "mouse.dpi_down", "label": "DPI -" }
+      ]
+    },
+    {
+      "title": "Mouse Wheel Action",
+      "items": [
+        { "id": "mouse.wheel_up", "label": "Wheel Up" },
+        { "id": "mouse.wheel_down", "label": "Wheel Down" },
+        { "id": "mouse.tilt_left", "label": "Tilt Left" },
+        { "id": "mouse.tilt_right", "label": "Tilt Right" }
+      ]
+    },
+    {
+      "title": "Multimedia",
+      "items": [
+        { "id": "mouse.volume_up", "label": "Volume +" },
+        { "id": "mouse.volume_down", "label": "Volume -" },
+        { "id": "mouse.volume_mute", "label": "Volume Mute" }
+      ]
+    }
+  ]
+}

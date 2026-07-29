@@ -117,57 +117,71 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                 onDeviceTap: () => Navigator.of(context).maybePop(),
               ),
               const VerticalDivider(thickness: 1, width: 1),
-              Expanded(
-                child: _selectedIndex == _buttonMappingIndex
-                    ? BlocBuilder<DeviceSettingsBloc, DeviceSettingsViewState>(
-                        buildWhen: (p, n) =>
-                            p.displaySettings != n.displaySettings ||
-                            p.isDirty != n.isDirty ||
-                            p.committing != n.committing ||
-                            p.lastError != n.lastError,
-                        builder: (context, view) {
-                          final buttons =
-                              view.displaySettings?.buttons ?? const [];
-                          final bloc = context.read<DeviceSettingsBloc>();
-                          return HubMouseCanvas(
-                            imageLarge: selected.imageLarge,
-                            buttons: buttons,
-                            selectedButtonId: _selectedButtonId,
-                            isDirty: view.isDirty,
-                            committing: view.committing,
-                            onButtonSelected: (id) {
-                              setState(() => _selectedButtonId = id);
-                            },
-                            onResetToDefault: () {
-                              debugPrint(
-                                '[hub] ${widget.card.displayName}: dispatch reset',
-                              );
-                              bloc.add(
-                                const DeviceSettingsResetButtonMappingRequested(),
-                              );
-                            },
-                            onSave: () {
-                              debugPrint(
-                                '[hub] ${widget.card.displayName}: dispatch save',
-                              );
-                              bloc.add(const DeviceSettingsSaveRequested());
-                            },
-                            onCancel: () {
-                              debugPrint(
-                                '[hub] ${widget.card.displayName}: dispatch cancel',
-                              );
-                              bloc.add(const DeviceSettingsCancelRequested());
-                            },
-                          );
-                        },
-                      )
-                    : const Center(child: Text('')),
-              ),
-              if (_selectedIndex == _buttonMappingIndex &&
-                  _selectedButtonId != null) ...[
-                const VerticalDivider(thickness: 1, width: 1),
-                HubButtonMappingPanel(selectedButtonId: _selectedButtonId),
-              ],
+              if (_selectedIndex == _buttonMappingIndex)
+                Expanded(
+                  child: BlocBuilder<DeviceSettingsBloc, DeviceSettingsViewState>(
+                    buildWhen: (p, n) =>
+                        p.displaySettings != n.displaySettings ||
+                        p.isDirty != n.isDirty ||
+                        p.committing != n.committing ||
+                        p.lastError != n.lastError,
+                    builder: (context, view) {
+                      final display = view.displaySettings;
+                      final buttons = display?.buttons ?? const [];
+                      final bloc = context.read<DeviceSettingsBloc>();
+                      return Row(
+                        children: [
+                          Expanded(
+                            child: HubMouseCanvas(
+                              imageLarge: selected.imageLarge,
+                              buttons: buttons,
+                              selectedButtonId: _selectedButtonId,
+                              isDirty: view.isDirty,
+                              committing: view.committing,
+                              onButtonSelected: (id) {
+                                setState(() => _selectedButtonId = id);
+                              },
+                              onResetToDefault: () {
+                                debugPrint(
+                                  '[hub] ${widget.card.displayName}: '
+                                  'dispatch reset',
+                                );
+                                bloc.add(
+                                  const DeviceSettingsResetButtonMappingRequested(),
+                                );
+                              },
+                              onSave: () {
+                                debugPrint(
+                                  '[hub] ${widget.card.displayName}: '
+                                  'dispatch save',
+                                );
+                                bloc.add(const DeviceSettingsSaveRequested());
+                              },
+                              onCancel: () {
+                                debugPrint(
+                                  '[hub] ${widget.card.displayName}: '
+                                  'dispatch cancel',
+                                );
+                                bloc.add(
+                                  const DeviceSettingsCancelRequested(),
+                                );
+                              },
+                            ),
+                          ),
+                          if (_selectedButtonId != null) ...[
+                            const VerticalDivider(thickness: 1, width: 1),
+                            HubButtonMappingPanel(
+                              selectedButtonId: _selectedButtonId,
+                              mouseActionCatalog: display?.mouseActionCatalog,
+                            ),
+                          ],
+                        ],
+                      );
+                    },
+                  ),
+                )
+              else
+                const Expanded(child: Center(child: Text(''))),
             ],
           ),
         ),

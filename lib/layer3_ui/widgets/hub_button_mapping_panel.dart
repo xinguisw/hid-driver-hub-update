@@ -1,17 +1,22 @@
-import 'package:driver_hub/layer3_ui/catalog/hub_mouse_action_catalog.dart';
+import 'package:driver_hub/layer4_domain/models/device_settings_state.dart';
 import 'package:flutter/material.dart';
 
 /// Button Mapping right pane — action catalog (skeleton).
 ///
-/// L3 only. Tabs Mouse / Keyboard / Special / Macro. Mouse tab = hardcoded
-/// list from [kHubMouseActionCatalog]; other tabs empty. No L4/L5/HID.
+/// L3 only. Tabs Mouse / Keyboard / Special / Macro. Mouse body paints
+/// [mouseActionCatalog] from L4 state (asset via L2). No catalog ownership,
+/// no L5/HID.
 class HubButtonMappingPanel extends StatefulWidget {
   const HubButtonMappingPanel({
     super.key,
     this.selectedButtonId,
+    this.mouseActionCatalog,
   });
 
   final int? selectedButtonId;
+
+  /// Packed by L4 from assets/catalog/action/mouse.json; null = empty.
+  final List<ActionCatalogSectionData>? mouseActionCatalog;
 
   static const double width = 280;
 
@@ -52,7 +57,7 @@ class _HubButtonMappingPanelState extends State<HubButtonMappingPanel> {
                   .withValues(alpha: 0.35),
               child: _tabIndex == 0
                   ? _MouseCatalogList(
-                      sections: kHubMouseActionCatalog,
+                      sections: widget.mouseActionCatalog ?? const [],
                       selectedId: _selectedCatalogId,
                       onSelect: (id) => setState(() => _selectedCatalogId = id),
                     )
@@ -72,13 +77,16 @@ class _MouseCatalogList extends StatelessWidget {
     required this.onSelect,
   });
 
-  final List<HubCatalogSection> sections;
+  final List<ActionCatalogSectionData> sections;
   final String? selectedId;
   final ValueChanged<String> onSelect;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    if (sections.isEmpty) {
+      return const SizedBox.expand();
+    }
     return ListView(
       padding: const EdgeInsets.only(bottom: 16),
       children: [

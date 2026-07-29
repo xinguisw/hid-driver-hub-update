@@ -18,19 +18,18 @@ typedef ButtonMappingCommit = Future<void> Function(
 class DeviceSettingsBloc
     extends Bloc<DeviceSettingsEvent, DeviceSettingsViewState> {
   DeviceSettingsBloc({
-    required ButtonMappingCommit commitButtonMapping,
+    required ButtonMappingCommit this.commitButtonMapping,
     DeviceSettingsViewState? initial,
     this.autoSaveAfterReset = true,
-  })  : _commitButtonMapping = commitButtonMapping,
-        // why: named param kept public-facing; field is private commit hook
-        super(initial ?? DeviceSettingsViewState.empty) {
+  }) : super(initial ?? DeviceSettingsViewState.empty) {
     on<DeviceSettingsHydrated>(_onHydrated);
     on<DeviceSettingsResetButtonMappingRequested>(_onResetButtonMapping);
     on<DeviceSettingsSaveRequested>(_onSave);
     on<DeviceSettingsCancelRequested>(_onCancel);
   }
 
-  final ButtonMappingCommit _commitButtonMapping;
+  /// L1/L5 write hook — only invoked from Save handler.
+  final ButtonMappingCommit commitButtonMapping;
 
   /// Until a Save button exists: after reset staging, enqueue Save (same chart
   /// Save nodes, still via [DeviceSettingsSaveRequested] — not a silent L5 call
@@ -128,7 +127,7 @@ class DeviceSettingsBloc
     emit(state.copyWith(committing: true, clearError: true));
 
     try {
-      await _commitButtonMapping(staging);
+      await commitButtonMapping(staging);
     } catch (e) {
       debugPrint('[bloc] save buttonMapping failed: $e');
       final failures = state.consecutiveFailures + 1;

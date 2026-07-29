@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:driver_hub/layer1_discovery/device_session.dart';
+import 'package:driver_hub/layer2_capabilities/action_catalog.dart';
 import 'package:driver_hub/layer2_capabilities/capabilities.dart';
 import 'package:driver_hub/layer2_capabilities/sensor_profiles.dart';
 import 'package:driver_hub/layer4_domain/models/device_settings_state.dart';
@@ -52,6 +53,28 @@ Future<DeviceSettingsState> queryOnboardConfig(
     );
   } else {
     debugPrint('[settings] caps $name: none — UI falls back to live GETs');
+  }
+  // L2 action catalog (Mouse tab) — soft-fail; panel stays empty if missing.
+  try {
+    final mouseTab = await ActionCatalogStore.load('mouse');
+    state = state.copyWith(
+      mouseActionCatalog: [
+        for (final s in mouseTab.sections)
+          ActionCatalogSectionData(
+            title: s.title,
+            items: [
+              for (final i in s.items)
+                ActionCatalogItemData(id: i.id, label: i.label),
+            ],
+          ),
+      ],
+    );
+    debugPrint(
+      '[settings] actionCatalog mouse $name: '
+      '${state.mouseActionCatalog?.length ?? 0} sections',
+    );
+  } catch (e) {
+    debugPrint('[settings] actionCatalog mouse $name: soft-fail $e');
   }
   // why: block presence is known here; live values arrive after the GETs below.
   onPartial?.call(state);

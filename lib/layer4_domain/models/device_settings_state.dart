@@ -61,6 +61,9 @@ class DeviceSettingsState {
   /// Button defs for remap UI; null if not present.
   final List<ButtonData>? buttons;
 
+  /// Mouse tab action catalog (from L2 asset); null until packed.
+  final List<ActionCatalogSectionData>? mouseActionCatalog;
+
   // --- Sensor ---
 
   final String? sensorChip; // SG8925 / PAW3311 / PAW3395
@@ -176,6 +179,7 @@ class DeviceSettingsState {
     this.dpiRgbPerStage = false,
     this.buttonCount,
     this.buttons,
+    this.mouseActionCatalog,
     this.sensorChip,
     this.hasSensorTuning = false,
     this.hasAngleTune = false,
@@ -237,6 +241,7 @@ class DeviceSettingsState {
     bool? dpiRgbPerStage,
     int? buttonCount,
     List<ButtonData>? buttons,
+    List<ActionCatalogSectionData>? mouseActionCatalog,
     String? sensorChip,
     bool? hasSensorTuning,
     bool? hasAngleTune,
@@ -298,6 +303,7 @@ class DeviceSettingsState {
       dpiRgbPerStage: dpiRgbPerStage ?? this.dpiRgbPerStage,
       buttonCount: buttonCount ?? this.buttonCount,
       buttons: buttons ?? this.buttons,
+      mouseActionCatalog: mouseActionCatalog ?? this.mouseActionCatalog,
       sensorChip: sensorChip ?? this.sensorChip,
       hasSensorTuning: hasSensorTuning ?? this.hasSensorTuning,
       hasAngleTune: hasAngleTune ?? this.hasAngleTune,
@@ -364,6 +370,7 @@ class DeviceSettingsState {
           dpiRgbPerStage == other.dpiRgbPerStage &&
           buttonCount == other.buttonCount &&
           _listEq(buttons, other.buttons) &&
+          _listEq(mouseActionCatalog, other.mouseActionCatalog) &&
           sensorChip == other.sensorChip &&
           hasSensorTuning == other.hasSensorTuning &&
           hasAngleTune == other.hasAngleTune &&
@@ -425,6 +432,7 @@ class DeviceSettingsState {
         dpiRgbPerStage,
         buttonCount,
         Object.hashAll(buttons ?? const []),
+        Object.hashAll(mouseActionCatalog ?? const []),
         sensorChip,
         hasSensorTuning,
         hasAngleTune,
@@ -492,6 +500,40 @@ class DpiStageData {
 
   @override
   int get hashCode => Object.hash(level, value, y, color);
+}
+
+/// One action-catalog row for remap panel (domain paint data).
+class ActionCatalogItemData {
+  final String id;
+  final String label;
+
+  const ActionCatalogItemData({required this.id, required this.label});
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ActionCatalogItemData && id == other.id && label == other.label;
+
+  @override
+  int get hashCode => Object.hash(id, label);
+}
+
+/// One action-catalog section for remap panel.
+class ActionCatalogSectionData {
+  final String title;
+  final List<ActionCatalogItemData> items;
+
+  const ActionCatalogSectionData({required this.title, required this.items});
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ActionCatalogSectionData &&
+          title == other.title &&
+          _listEq(items, other.items);
+
+  @override
+  int get hashCode => Object.hash(title, Object.hashAll(items));
 }
 
 /// One button def / live action (data only).

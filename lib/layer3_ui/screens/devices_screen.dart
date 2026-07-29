@@ -1,4 +1,4 @@
-import 'package:driver_hub/layer3_ui/screens/device_settings_screen.dart';
+import 'package:driver_hub/layer3_ui/screens/hub_landing_screen.dart';
 import 'package:driver_hub/layer3_ui/widgets/device_card_grid.dart';
 import 'package:driver_hub/layer3_ui/widgets/empty_device_state.dart';
 import 'package:driver_hub/layer4_domain/device_scope.dart';
@@ -8,8 +8,7 @@ import 'package:flutter/material.dart';
 
 /// Home screen: one [DeviceCard] per verified device.
 ///
-/// L3 presentation only: reads L4 [DeviceScope] card list. No L1 session,
-/// no config GET, no codec.
+/// L3 only: reads L4 [DeviceScope] cards. Card tap → [HubLandingScreen].
 class DevicesScreen extends StatefulWidget {
   const DevicesScreen({super.key});
 
@@ -53,7 +52,7 @@ class _DevicesScreenState extends State<DevicesScreen> {
                 }
                 return DeviceCardGrid(
                   cards: cards,
-                  onCardTap: _openDeviceSettings,
+                  onCardTap: _openHubLanding,
                 );
               },
             ),
@@ -63,11 +62,10 @@ class _DevicesScreenState extends State<DevicesScreen> {
     );
   }
 
-  /// Card tap → settings; domain load runs inside L4 via the settings screen.
-  void _openDeviceSettings(DiscoveredCardState card) {
+  void _openHubLanding(DiscoveredCardState card) {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => DeviceSettingsScreen(card: card, scope: _scope),
+        builder: (_) => HubLandingScreen(card: card, scope: _scope),
       ),
     );
   }

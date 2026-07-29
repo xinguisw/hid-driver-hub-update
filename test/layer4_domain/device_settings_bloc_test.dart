@@ -1,8 +1,7 @@
 import 'package:driver_hub/layer4_domain/bloc/device_settings_bloc.dart';
 import 'package:driver_hub/layer4_domain/bloc/device_settings_event.dart';
-import 'package:driver_hub/layer4_domain/bloc/device_settings_state_view.dart';
+import 'package:driver_hub/layer4_domain/models/button_mapping_slot.dart';
 import 'package:driver_hub/layer4_domain/models/device_settings_state.dart';
-import 'package:driver_hub/layer5_codec/device_protocol.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -55,12 +54,9 @@ void main() {
         ],
       );
 
-  group('DeviceSettingsBloc chart sandbox', () {
+  group('DeviceSettingsBloc FR-OPS sandbox', () {
     test('hydrate seeds synced, not dirty', () async {
-      final bloc = DeviceSettingsBloc(
-        commitButtonMapping: (_) async {},
-        autoSaveAfterReset: false,
-      );
+      final bloc = DeviceSettingsBloc(commitButtonMapping: (_) async {});
       bloc.add(DeviceSettingsHydrated(baseSettings()));
       await pumpEventQueue();
       expect(bloc.state.synced?.devId, 'aa4ecd01');
@@ -69,36 +65,31 @@ void main() {
       await bloc.close();
     });
 
-    test('reset stages only — no commit when autoSave off', () async {
+    test('reset stages only — never commits (FR-OPS-001)', () async {
       var commits = 0;
       final bloc = DeviceSettingsBloc(
         commitButtonMapping: (_) async {
           commits++;
         },
-        autoSaveAfterReset: false,
       );
       bloc.add(DeviceSettingsHydrated(baseSettings()));
       await pumpEventQueue();
       bloc.add(const DeviceSettingsResetButtonMappingRequested());
+      await pumpEventQueue();
       await pumpEventQueue();
 
       expect(commits, 0);
       expect(bloc.state.isDirty, true);
       expect(bloc.state.buttonMappingStaging, isNotNull);
       expect(bloc.state.buttonMappingStaging!.length, 6);
-      expect(bloc.state.buttonMappingStaging![0].action, 0x02); // identity left
-      // Chart: L3 would paint staged labels
+      expect(bloc.state.buttonMappingStaging![0].action, 0x02);
       expect(bloc.state.displaySettings?.buttons?.first.action, 0x02);
-      // Synced still old until Save
       expect(bloc.state.synced?.buttons?.first.action, 0x14);
       await bloc.close();
     });
 
-    test('cancel wipes staging → last synchronized', () async {
-      final bloc = DeviceSettingsBloc(
-        commitButtonMapping: (_) async {},
-        autoSaveAfterReset: false,
-      );
+    test('cancel wipes staging → last synchronized (FR-OPS-004)', () async {
+      final bloc = DeviceSettingsBloc(commitButtonMapping: (_) async {});
       bloc.add(DeviceSettingsHydrated(baseSettings()));
       await pumpEventQueue();
       bloc.add(const DeviceSettingsResetButtonMappingRequested());
@@ -112,13 +103,12 @@ void main() {
       await bloc.close();
     });
 
-    test('save validates and commits then clears dirty', () async {
-      List<ButtonMappingEntry>? written;
+    test('save validates and commits then clears dirty (FR-OPS-003)', () async {
+      List<ButtonMappingSlot>? written;
       final bloc = DeviceSettingsBloc(
-        commitButtonMapping: (buttons) async {
-          written = buttons;
+        commitButtonMapping: (slots) async {
+          written = slots;
         },
-        autoSaveAfterReset: false,
       );
       bloc.add(DeviceSettingsHydrated(baseSettings()));
       await pumpEventQueue();
@@ -138,33 +128,11 @@ void main() {
       await bloc.close();
     });
 
-    test('autoSaveAfterReset enqueues Save after stage', () async {
-      var commits = 0;
-      final bloc = DeviceSettingsBloc(
-        commitButtonMapping: (_) async {
-          commits++;
-        },
-        autoSaveAfterReset: true,
-      );
-      bloc.add(DeviceSettingsHydrated(baseSettings()));
-      await pumpEventQueue();
-      bloc.add(const DeviceSettingsResetButtonMappingRequested());
-      // allow staged emit + nested Save
-      await pumpEventQueue();
-      await pumpEventQueue();
-
-      expect(commits, 1);
-      expect(bloc.state.isDirty, false);
-      expect(bloc.state.synced?.buttons?.first.action, 0x02);
-      await bloc.close();
-    });
-
     test('save failure keeps dirty and bumps consecutiveFailures', () async {
       final bloc = DeviceSettingsBloc(
         commitButtonMapping: (_) async {
           throw Exception('nak');
         },
-        autoSaveAfterReset: false,
       );
       bloc.add(DeviceSettingsHydrated(baseSettings()));
       await pumpEventQueue();
@@ -183,7 +151,6 @@ void main() {
   });
 }
 
-/// Drain microtasks so bloc async handlers finish in tests.
 Future<void> pumpEventQueue([int times = 20]) async {
   for (var i = 0; i < times; i++) {
     await Future<void>.delayed(Duration.zero);

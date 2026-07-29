@@ -7,7 +7,8 @@ void main() {
     test('empty live → six identity slots', () {
       final staged = stageButtonMappingDefaults(null);
       expect(staged.length, 6);
-      expect(staged.map((e) => e.action).toList(), [0x02, 0x03, 0x04, 0x05, 0x06, 0x0E]);
+      expect(staged.map((e) => e.action).toList(),
+          [0x02, 0x03, 0x04, 0x05, 0x06, 0x0E]);
       for (final e in staged) {
         expect(e.param1, 0);
         expect(e.param2, 0);
@@ -54,8 +55,8 @@ void main() {
         ),
       ];
       final staged = stageButtonMappingDefaults(live);
-      expect(staged[0].action, 0x02); // remappable left → identity
-      expect(staged[5].action, 0x0E); // non-remappable dpi → echo
+      expect(staged[0].action, 0x02);
+      expect(staged[5].action, 0x0E);
     });
 
     test('non-remappable without wire → disable slot', () {

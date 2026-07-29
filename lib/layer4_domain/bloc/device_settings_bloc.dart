@@ -1,26 +1,27 @@
 import 'package:driver_hub/layer4_domain/bloc/device_settings_event.dart';
 import 'package:driver_hub/layer4_domain/bloc/device_settings_state_view.dart';
 import 'package:driver_hub/layer4_domain/button_mapping_reset.dart';
+import 'package:driver_hub/layer4_domain/models/button_mapping_slot.dart';
 import 'package:driver_hub/layer4_domain/models/device_settings_state.dart';
-import 'package:driver_hub/layer5_codec/device_protocol.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-/// Writes staged button map through L1 → L5 (Save path only).
+/// Domain → hardware commit. Implemented by [DeviceScope] only (L1→L5).
+///
+/// L3 must never supply this; L4 BLoC receives it from Scope factory.
 typedef ButtonMappingCommit = Future<void> Function(
-  List<ButtonMappingEntry> buttons,
+  List<ButtonMappingSlot> slots,
 );
 
-/// L4 domain controller — official sandbox staging chart.
+/// L4 domain controller — SDRD FR-OPS sandbox + L4 architecture chart.
 ///
-/// Flow: **Dispatch event** → **Sandbox staging** (no L5) → Cancel wipe /
-/// Save validate → payload → [commitButtonMapping] (L1/L5).
+/// Adjust → stage only (FR-OPS-001). Save → validate → commit (FR-OPS-003).
+/// Cancel → wipe staging (FR-OPS-004). **No auto-write on adjust/reset.**
 class DeviceSettingsBloc
     extends Bloc<DeviceSettingsEvent, DeviceSettingsViewState> {
   DeviceSettingsBloc({
     required this.commitButtonMapping,
     DeviceSettingsViewState? initial,
-    this.autoSaveAfterReset = true,
   }) : super(initial ?? DeviceSettingsViewState.empty) {
     on<DeviceSettingsHydrated>(_onHydrated);
     on<DeviceSettingsResetButtonMappingRequested>(_onResetButtonMapping);
@@ -28,15 +29,8 @@ class DeviceSettingsBloc
     on<DeviceSettingsCancelRequested>(_onCancel);
   }
 
-  /// L1/L5 write hook — only invoked from Save handler.
   final ButtonMappingCommit commitButtonMapping;
 
-  /// Until a Save button exists: after reset staging, enqueue Save (same chart
-  /// Save nodes, still via [DeviceSettingsSaveRequested] — not a silent L5 call
-  /// from the Reset handler body).
-  final bool autoSaveAfterReset;
-
-  /// Chart error-tracking threshold (escalate to L1 later).
   static const int failureEscalateThreshold = 3;
 
   void _onHydrated(
@@ -54,7 +48,7 @@ class DeviceSettingsBloc
     );
   }
 
-  /// Chart: User adjusts → Dispatch already done → store sandbox (no L5/L6).
+  /// FR-OPS-001: stage only — no packets.
   Future<void> _onResetButtonMapping(
     DeviceSettingsResetButtonMappingRequested event,
     Emitter<DeviceSettingsViewState> emit,
@@ -75,7 +69,6 @@ class DeviceSettingsBloc
       ].join(' ')}',
     );
 
-    // Sandbox only — L3 paints displaySettings immediately (isDirty).
     emit(
       state.copyWith(
         buttonMappingStaging: staged,
@@ -83,14 +76,9 @@ class DeviceSettingsBloc
         clearError: true,
       ),
     );
-
-    // Product: no Save UI yet → internal Save event (chart Save diamond path).
-    if (autoSaveAfterReset) {
-      add(const DeviceSettingsSaveRequested());
-    }
   }
 
-  /// Chart: Click save? Yes → validate → L2 caps → payload → Encoder L5.
+  /// FR-OPS-003: validate → commit via Scope (L1/L5).
   Future<void> _onSave(
     DeviceSettingsSaveRequested event,
     Emitter<DeviceSettingsViewState> emit,
@@ -101,14 +89,13 @@ class DeviceSettingsBloc
     }
     if (state.committing) return;
 
-    final staging = List<ButtonMappingEntry>.from(state.buttonMappingStaging!);
+    final staging = List<ButtonMappingSlot>.from(state.buttonMappingStaging!);
     final synced = state.synced;
     if (synced == null) {
       emit(state.copyWith(lastError: 'save: no synced settings'));
       return;
     }
 
-    // Validate staging buffer (limits).
     if (staging.length != 6) {
       emit(
         state.copyWith(
@@ -141,13 +128,12 @@ class DeviceSettingsBloc
       if (failures >= failureEscalateThreshold) {
         debugPrint(
           '[bloc] consecutiveFailures=$failures >= $failureEscalateThreshold '
-          '(chart: escalate to L1 — not wired)',
+          '(chart escalate to L1 — not wired)',
         );
       }
       return;
     }
 
-    // Success: clear dirty; staging becomes last synchronized.
     final nextSynced = packButtonsOntoSettings(synced, staging);
     emit(
       DeviceSettingsViewState(
@@ -162,7 +148,7 @@ class DeviceSettingsBloc
     debugPrint('[bloc] save buttonMapping: synced');
   }
 
-  /// Chart: Click cancel? → wipe staging → last synchronized.
+  /// FR-OPS-004: wipe staging → last synchronized.
   void _onCancel(
     DeviceSettingsCancelRequested event,
     Emitter<DeviceSettingsViewState> emit,
@@ -180,12 +166,11 @@ class DeviceSettingsBloc
 
   String? _validateButtonMappingAgainstCaps(
     DeviceSettingsState synced,
-    List<ButtonMappingEntry> staging,
+    List<ButtonMappingSlot> staging,
   ) {
     if (staging.length != 6) {
       return 'button mapping length invalid';
     }
-    // L2 presence already filtered at stage (echo non-remappable).
     return null;
   }
 }

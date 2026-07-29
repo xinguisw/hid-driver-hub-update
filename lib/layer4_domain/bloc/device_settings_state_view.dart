@@ -1,10 +1,11 @@
+import 'package:driver_hub/layer4_domain/models/button_mapping_slot.dart';
 import 'package:driver_hub/layer4_domain/models/device_settings_state.dart';
 import 'package:driver_hub/layer5_codec/codecs/translation_codec.dart';
-import 'package:driver_hub/layer5_codec/device_protocol.dart';
 
 /// L4 BLoC state: last synchronized profile + sandbox staging buffer.
 ///
-/// Chart: staging holds dirty edits with **no** L5/L6 packets until Save.
+/// SDRD FR-OPS-001: staging holds dirty edits with **no** transport packets
+/// until explicit Save (FR-OPS-003).
 class DeviceSettingsViewState {
   const DeviceSettingsViewState({
     this.synced,
@@ -15,25 +16,17 @@ class DeviceSettingsViewState {
     this.lastError,
   });
 
-  /// Last device-synchronized settings (GET or successful Save).
   final DeviceSettingsState? synced;
 
-  /// Sandbox buffer for button map (6 slots). Null when clean for that block.
-  final List<ButtonMappingEntry>? buttonMappingStaging;
+  /// Sandbox buffer (domain slots). Null when clean for that block.
+  final List<ButtonMappingSlot>? buttonMappingStaging;
 
-  /// Chart: sandbox dirty → Cancel/Save / nav-guard path.
   final bool isDirty;
-
-  /// True while Save is talking to L5 (UI can disable controls).
   final bool committing;
-
-  /// Chart error-tracking consecutive failure counter.
   final int consecutiveFailures;
-
-  /// Soft error for L3; null if clean.
   final String? lastError;
 
-  /// What L3 paints: staged button labels when dirty, else synced.
+  /// L3 paints staged button labels when dirty, else synced.
   DeviceSettingsState? get displaySettings {
     final base = synced;
     if (base == null) return null;
@@ -46,7 +39,7 @@ class DeviceSettingsViewState {
 
   DeviceSettingsViewState copyWith({
     DeviceSettingsState? synced,
-    List<ButtonMappingEntry>? buttonMappingStaging,
+    List<ButtonMappingSlot>? buttonMappingStaging,
     bool? isDirty,
     bool? committing,
     int? consecutiveFailures,
@@ -67,10 +60,10 @@ class DeviceSettingsViewState {
   }
 }
 
-/// Overlay staged wire map onto [base] caps/hotspots + action labels.
+/// Overlay staged domain slots onto [base] for L3 paint / post-Save synced.
 DeviceSettingsState packButtonsOntoSettings(
   DeviceSettingsState base,
-  List<ButtonMappingEntry> staging, {
+  List<ButtonMappingSlot> staging, {
   TranslationCodec translate = const TranslationCodec(),
 }) {
   final baseButtons = base.buttons;

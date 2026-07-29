@@ -5,6 +5,8 @@ import 'package:driver_hub/layer1_discovery/device_scanner.dart';
 import 'package:driver_hub/layer1_discovery/device_session.dart';
 import 'package:driver_hub/layer1_discovery/device_watcher.dart';
 import 'package:driver_hub/layer1_discovery/discovered_device.dart';
+import 'package:driver_hub/layer4_domain/bloc/device_settings_bloc.dart';
+import 'package:driver_hub/layer4_domain/models/button_mapping_slot.dart';
 import 'package:driver_hub/layer4_domain/models/device_settings_state.dart';
 import 'package:driver_hub/layer4_domain/models/discovered_card_state.dart';
 import 'package:driver_hub/layer4_domain/settings_onboard_query.dart';
@@ -205,10 +207,37 @@ class DeviceScope {
     return packed;
   }
 
-  /// Live L1 session for [card], or null if disconnected.
+  /// L4 factory: BLoC whose Save commit stays inside domain (L1→L5).
   ///
-  /// L4 BLoC Save path uses this; L3 must not call protocol itself.
-  DeviceSession? sessionFor(DiscoveredCardState card) => _sessionForCard(card);
+  /// L3 only [BlocProvider]s this and dispatches events — never sessions.
+  DeviceSettingsBloc createSettingsBloc(DiscoveredCardState card) {
+    return DeviceSettingsBloc(
+      commitButtonMapping: (slots) => commitButtonMapping(card, slots),
+    );
+  }
+
+  /// Map domain staging slots → L5 entries and SET (FR-OPS-003 write path).
+  ///
+  /// Only [DeviceSettingsBloc] Save should call this (via factory hook).
+  Future<void> commitButtonMapping(
+    DiscoveredCardState card,
+    List<ButtonMappingSlot> slots,
+  ) async {
+    final session = _sessionForCard(card);
+    if (session == null || !session.isAlive) {
+      throw StateError('commitButtonMapping: no session');
+    }
+    final entries = [
+      for (final s in slots)
+        ButtonMappingEntry(
+          action: s.action,
+          param1: s.param1,
+          param2: s.param2,
+          param3: s.param3,
+        ),
+    ];
+    await session.setButtonMapping(entries);
+  }
 
   /// Persist BLoC-synced settings after successful Save (cache for re-entry).
   void putSettings(DiscoveredCardState card, DeviceSettingsState settings) {

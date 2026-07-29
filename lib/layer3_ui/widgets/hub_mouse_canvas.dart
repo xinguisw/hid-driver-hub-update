@@ -4,19 +4,24 @@ import 'package:flutter/material.dart';
 /// Center hub pane — large mouse image + hotspot callouts (skeleton).
 ///
 /// L3 only. Dot = placement; line + label = callout.
-/// Left/right/middle: vertical stem. Forward/back: horizontal stem.
-///
-/// **Line length:** change [_HotspotPainter.stemLength] (px). It is applied
-/// in full; callouts paint on the full pane so stems are not clipped away.
+/// Tap remappable callout **label** only → [onButtonSelected] (not the dot).
 class HubMouseCanvas extends StatelessWidget {
   const HubMouseCanvas({
     super.key,
     required this.imageLarge,
     this.buttons = const [],
+    this.onButtonSelected,
+    this.onResetToDefault,
   });
 
   final String imageLarge;
   final List<ButtonData> buttons;
+
+  /// Button Mapping: label tap opens mapping panel; dots are placement only.
+  final ValueChanged<int>? onButtonSelected;
+
+  /// Skeleton control under the mouse; wire later (no SET yet).
+  final VoidCallback? onResetToDefault;
 
   @override
   Widget build(BuildContext context) {
@@ -28,30 +33,59 @@ class HubMouseCanvas extends StatelessWidget {
           return const SizedBox.shrink();
         }
 
-        // why: mouse art ~half pane; leftover margin is for stems + labels
+        // why: leave band under art for Reset to Default (ref)
+        const resetBand = 56.0;
+        final drawH = (paneH - resetBand).clamp(1.0, paneH);
         final imgMaxW = paneW * 0.5;
-        final imgMaxH = paneH * 0.5;
-        final imgLeft = (paneW - imgMaxW) / 2;
-        final imgTop = (paneH - imgMaxH) / 2;
-        final imageRect = Rect.fromLTWH(imgLeft, imgTop, imgMaxW, imgMaxH);
+        final imgMaxH = drawH * 0.55;
+        final imageRect = Rect.fromLTWH(
+          (paneW - imgMaxW) / 2,
+          (drawH - imgMaxH) / 2,
+          imgMaxW,
+          imgMaxH,
+        );
+        final paneSize = Size(paneW, drawH);
+        final targets = _CalloutLayout.build(buttons, imageRect, paneSize);
 
-        return Stack(
-          fit: StackFit.expand,
+        return Column(
           children: [
-            Positioned.fromRect(
-              rect: imageRect,
-              child: Image.asset(
-                imageLarge,
-                fit: BoxFit.contain,
-                errorBuilder: (_, _, _) => const Text('Mouse image missing'),
+            Expanded(
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTapUp: (details) {
+                  final id = _hitButtonId(targets, details.localPosition);
+                  if (id != null) onButtonSelected?.call(id);
+                },
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Positioned.fromRect(
+                      rect: imageRect,
+                      child: Image.asset(
+                        imageLarge,
+                        fit: BoxFit.contain,
+                        errorBuilder: (_, _, _) =>
+                            const Text('Mouse image missing'),
+                      ),
+                    ),
+                    CustomPaint(
+                      size: paneSize,
+                      painter: _HotspotPainter(targets: targets),
+                    ),
+                  ],
+                ),
               ),
             ),
-            // why: full-pane paint so stemLength is not eaten by image-only bounds
-            CustomPaint(
-              size: Size(paneW, paneH),
-              painter: _HotspotPainter(
-                buttons: buttons,
-                imageRect: imageRect,
+            // why: below mouse — black label (not theme primary blue); space above bottom
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+              child: OutlinedButton(
+                onPressed: onResetToDefault ?? () {},
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.black87,
+                  side: const BorderSide(color: Colors.black54),
+                ),
+                child: const Text('Reset to Default'),
               ),
             ),
           ],
@@ -59,40 +93,56 @@ class HubMouseCanvas extends StatelessWidget {
       },
     );
   }
+
+  static int? _hitButtonId(List<_CalloutTarget> targets, Offset local) {
+    // why: label only — dot is placement, does not open mapping panel
+    for (final t in targets.reversed) {
+      if (t.labelHit.contains(local)) return t.id;
+    }
+    return null;
+  }
 }
 
-class _HotspotPainter extends CustomPainter {
-  _HotspotPainter({
-    required this.buttons,
-    required this.imageRect,
+class _CalloutTarget {
+  _CalloutTarget({
+    required this.id,
+    required this.center,
+    required this.radius,
+    required this.stemStart,
+    required this.stemEnd,
+    required this.label,
+    required this.labelOrigin,
+    required this.labelSize,
   });
 
-  final List<ButtonData> buttons;
+  final int id;
+  final Offset center;
+  final double radius;
+  final Offset stemStart;
+  final Offset stemEnd;
+  final String label;
+  final Offset labelOrigin;
+  final Size labelSize;
 
-  /// Drawn image box (hotspot 0..1 maps into this rect).
-  final Rect imageRect;
+  Rect get labelHit => (labelOrigin & labelSize).inflate(4);
+}
 
-  /// change stem or line length here *px 
+class _CalloutLayout {
+  // why: leader length in px — edit here
   static const double stemLength = 30.0;
 
-  static const _labelStyle = TextStyle(
+  static const labelStyle = TextStyle(
     color: Colors.black,
     fontSize: 12,
     fontWeight: FontWeight.w500,
   );
 
-  @override
-  void paint(Canvas canvas, Size size) {
-    final fill = Paint()..color = Colors.white;
-    final stroke = Paint()
-      ..color = Colors.black87 // color of the stroke
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5;
-    final linePaint = Paint()
-      ..color = Colors.black87 // color of the line
-      ..strokeWidth = 1.5
-      ..style = PaintingStyle.stroke;
-
+  static List<_CalloutTarget> build(
+    List<ButtonData> buttons,
+    Rect imageRect,
+    Size paneSize,
+  ) {
+    final out = <_CalloutTarget>[];
     for (final b in buttons) {
       if (!b.remappable) continue;
       final x = b.hotspotX;
@@ -100,35 +150,64 @@ class _HotspotPainter extends CustomPainter {
       final rNorm = b.hotspotR;
       if (x == null || y == null) continue;
 
-      // why: 0..1 hotspot is on the mouse image box, not the full pane
       final c = Offset(
         imageRect.left + x * imageRect.width,
         imageRect.top + y * imageRect.height,
       );
       final r = ((rNorm ?? 0.04) * imageRect.shortestSide).clamp(6.0, 24.0);
 
-      canvas.drawCircle(c, r, fill);
-      canvas.drawCircle(c, r, stroke);
-
-      // why: live GET mapping first; physical name only if action unknown
       final label = b.actionLabel ?? b.buttonLabel ?? 'B${b.id}';
       final tp = TextPainter(
-        text: TextSpan(text: label, style: _labelStyle),
+        text: TextSpan(text: label, style: labelStyle),
         textDirection: TextDirection.ltr,
         maxLines: 1,
         ellipsis: '…',
-      )..layout(maxWidth: size.width * 0.4);
+      )..layout(maxWidth: paneSize.width * 0.4);
+
+      late final Offset stemStart;
+      late final Offset stemEnd;
+      late final Offset labelOrigin;
 
       if (_useVerticalStem(b.id)) {
-        _paintVerticalCallout(canvas, c, r, tp, linePaint, size, b.id);
+        stemStart = Offset(c.dx, c.dy - r);
+        stemEnd = Offset(c.dx, c.dy - r - stemLength);
+        var labelX = stemEnd.dx - tp.width / 2;
+        if (b.id == 1) {
+          labelX = stemEnd.dx - tp.width;
+        } else if (b.id == 2) {
+          labelX = stemEnd.dx;
+        }
+        labelX = labelX.clamp(0.0, _max(0.0, paneSize.width - tp.width));
+        final labelY = (stemEnd.dy - tp.height - 4)
+            .clamp(0.0, _max(0.0, paneSize.height - tp.height));
+        labelOrigin = Offset(labelX, labelY);
       } else {
-        _paintHorizontalCallout(canvas, c, r, tp, linePaint, size);
+        stemStart = Offset(c.dx - r, c.dy);
+        stemEnd = Offset(c.dx - r - stemLength, c.dy);
+        final labelX = (stemEnd.dx - tp.width - 4)
+            .clamp(0.0, _max(0.0, paneSize.width - tp.width));
+        final labelY = (c.dy - tp.height / 2)
+            .clamp(0.0, _max(0.0, paneSize.height - tp.height));
+        labelOrigin = Offset(labelX, labelY);
       }
+
+      out.add(
+        _CalloutTarget(
+          id: b.id,
+          center: c,
+          radius: r,
+          stemStart: stemStart,
+          stemEnd: stemEnd,
+          label: label,
+          labelOrigin: labelOrigin,
+          labelSize: tp.size,
+        ),
+      );
     }
+    return out;
   }
 
-  // why: ids 4/5 = side buttons → horizontal; L/R/M (and others) vertical
-  bool _useVerticalStem(int id) {
+  static bool _useVerticalStem(int id) {
     switch (id) {
       case 4:
       case 5:
@@ -138,53 +217,43 @@ class _HotspotPainter extends CustomPainter {
     }
   }
 
-  void _paintVerticalCallout(
-    Canvas canvas,
-    Offset c,
-    double r,
-    TextPainter tp,
-    Paint linePaint,
-    Size size,
-    int id,
-  ) {
-    // why: full stemLength — do not clamp tip back onto the dot
-    final tip = Offset(c.dx, c.dy - r - stemLength);
-    canvas.drawLine(Offset(c.dx, c.dy - r), tip, linePaint);
+  static double _max(double a, double b) => a > b ? a : b;
+}
 
-    var labelX = tip.dx - tp.width / 2;
-    if (id == 1) {
-      labelX = tip.dx - tp.width;
-    } else if (id == 2) {
-      labelX = tip.dx;
+class _HotspotPainter extends CustomPainter {
+  _HotspotPainter({required this.targets});
+
+  final List<_CalloutTarget> targets;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final fill = Paint()..color = Colors.white;
+    final stroke = Paint()
+      ..color = Colors.black87
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
+    final linePaint = Paint()
+      ..color = Colors.black87
+      ..strokeWidth = 1.5
+      ..style = PaintingStyle.stroke;
+
+    for (final t in targets) {
+      canvas.drawCircle(t.center, t.radius, fill);
+      canvas.drawCircle(t.center, t.radius, stroke);
+      canvas.drawLine(t.stemStart, t.stemEnd, linePaint);
+
+      final tp = TextPainter(
+        text: TextSpan(text: t.label, style: _CalloutLayout.labelStyle),
+        textDirection: TextDirection.ltr,
+        maxLines: 1,
+        ellipsis: '…',
+      )..layout(maxWidth: t.labelSize.width + 1);
+      tp.paint(canvas, t.labelOrigin);
     }
-    labelX = labelX.clamp(0.0, mathMax(0.0, size.width - tp.width));
-    final labelY =
-        (tip.dy - tp.height - 4).clamp(0.0, mathMax(0.0, size.height - tp.height));
-    tp.paint(canvas, Offset(labelX, labelY));
   }
-
-  void _paintHorizontalCallout(
-    Canvas canvas,
-    Offset c,
-    double r,
-    TextPainter tp,
-    Paint linePaint,
-    Size size,
-  ) {
-    final tip = Offset(c.dx - r - stemLength, c.dy);
-    canvas.drawLine(Offset(c.dx - r, c.dy), tip, linePaint);
-
-    final labelX =
-        (tip.dx - tp.width - 4).clamp(0.0, mathMax(0.0, size.width - tp.width));
-    final labelY =
-        (c.dy - tp.height / 2).clamp(0.0, mathMax(0.0, size.height - tp.height));
-    tp.paint(canvas, Offset(labelX, labelY));
-  }
-
-  static double mathMax(double a, double b) => a > b ? a : b;
 
   @override
   bool shouldRepaint(covariant _HotspotPainter oldDelegate) {
-    return oldDelegate.buttons != buttons || oldDelegate.imageRect != imageRect;
+    return oldDelegate.targets != targets;
   }
 }

@@ -25,5 +25,32 @@ void main() {
       final b = await ActionCatalogStore.load('mouse');
       expect(identical(a, b), isTrue);
     });
+
+    test('loads keyboard sections', () async {
+      final tab = await ActionCatalogStore.load('keyboard');
+      expect(tab.tab, 'keyboard');
+      expect(tab.sections.length, 3);
+      expect(tab.sections[0].title, 'Letter & Symbol & Number keys');
+      expect(tab.sections[0].items.first.label, 'A');
+      expect(tab.sections[1].title, 'Numeric Keypad Keys');
+      expect(tab.sections[2].title, 'Modifier Key');
+      expect(tab.sections[2].items.first.label, 'CapsLk');
+    });
+
+    test('loads special combination layout', () async {
+      final tab = await ActionCatalogStore.load('special');
+      expect(tab.tab, 'special');
+      expect(tab.layout, 'combination');
+      expect(tab.sections.single.title, 'Combination Keys');
+      final mods = tab.sections.single.items
+          .where((i) => i.role == 'modifier')
+          .map((i) => i.label)
+          .toList();
+      expect(mods, ['Alt', 'Ctrl', 'Win', 'Shift']);
+      expect(
+        tab.sections.single.items.where((i) => i.role == 'any_key').single.label,
+        'Any key',
+      );
+    });
   });
 }

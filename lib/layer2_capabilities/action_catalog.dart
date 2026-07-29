@@ -9,12 +9,20 @@ class ActionCatalogItem {
   final String id;
   final String label;
 
-  const ActionCatalogItem({required this.id, required this.label});
+  /// Optional UI role (e.g. special tab: `modifier` / `any_key`).
+  final String? role;
+
+  const ActionCatalogItem({
+    required this.id,
+    required this.label,
+    this.role,
+  });
 
   factory ActionCatalogItem.fromJson(Map<String, dynamic> json) {
     return ActionCatalogItem(
       id: json['id'] as String,
       label: json['label'] as String,
+      role: json['role'] as String?,
     );
   }
 }
@@ -42,16 +50,21 @@ class ActionCatalogTab {
   final String tab;
   final List<ActionCatalogSection> sections;
 
+  /// Optional layout hint: omit/`list` = section list; `combination` = Special UI.
+  final String? layout;
+
   const ActionCatalogTab({
     required this.id,
     required this.tab,
     required this.sections,
+    this.layout,
   });
 
   factory ActionCatalogTab.fromJson(Map<String, dynamic> json) {
     return ActionCatalogTab(
       id: json['id'] as String,
       tab: json['tab'] as String,
+      layout: json['layout'] as String?,
       sections: (json['sections'] as List)
           .map((e) => ActionCatalogSection.fromJson(e as Map<String, dynamic>))
           .toList(growable: false),

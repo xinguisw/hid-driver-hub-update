@@ -173,6 +173,10 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                             HubButtonMappingPanel(
                               selectedButtonId: _selectedButtonId,
                               mouseActionCatalog: display?.mouseActionCatalog,
+                              keyboardActionCatalog:
+                                  display?.keyboardActionCatalog,
+                              specialActionCatalog:
+                                  display?.specialActionCatalog,
                             ),
                           ],
                         ],

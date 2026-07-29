@@ -1,0 +1,17 @@
+{
+  "id": "action.special",
+  "tab": "special",
+  "layout": "combination",
+  "sections": [
+    {
+      "title": "Combination Keys",
+      "items": [
+        { "id": "special.mod.alt", "label": "Alt", "role": "modifier" },
+        { "id": "special.mod.ctrl", "label": "Ctrl", "role": "modifier" },
+        { "id": "special.mod.win", "label": "Win", "role": "modifier" },
+        { "id": "special.mod.shift", "label": "Shift", "role": "modifier" },
+        { "id": "special.any_key", "label": "Any key", "role": "any_key" }
+      ]
+    }
+  ]
+}

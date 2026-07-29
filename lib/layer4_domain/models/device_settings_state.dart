@@ -64,6 +64,12 @@ class DeviceSettingsState {
   /// Mouse tab action catalog (from L2 asset); null until packed.
   final List<ActionCatalogSectionData>? mouseActionCatalog;
 
+  /// Keyboard tab action catalog (from L2 asset); null until packed.
+  final List<ActionCatalogSectionData>? keyboardActionCatalog;
+
+  /// Special tab action catalog (from L2 asset); null until packed.
+  final List<ActionCatalogSectionData>? specialActionCatalog;
+
   // --- Sensor ---
 
   final String? sensorChip; // SG8925 / PAW3311 / PAW3395
@@ -180,6 +186,8 @@ class DeviceSettingsState {
     this.buttonCount,
     this.buttons,
     this.mouseActionCatalog,
+    this.keyboardActionCatalog,
+    this.specialActionCatalog,
     this.sensorChip,
     this.hasSensorTuning = false,
     this.hasAngleTune = false,
@@ -242,6 +250,8 @@ class DeviceSettingsState {
     int? buttonCount,
     List<ButtonData>? buttons,
     List<ActionCatalogSectionData>? mouseActionCatalog,
+    List<ActionCatalogSectionData>? keyboardActionCatalog,
+    List<ActionCatalogSectionData>? specialActionCatalog,
     String? sensorChip,
     bool? hasSensorTuning,
     bool? hasAngleTune,
@@ -304,6 +314,9 @@ class DeviceSettingsState {
       buttonCount: buttonCount ?? this.buttonCount,
       buttons: buttons ?? this.buttons,
       mouseActionCatalog: mouseActionCatalog ?? this.mouseActionCatalog,
+      keyboardActionCatalog:
+          keyboardActionCatalog ?? this.keyboardActionCatalog,
+      specialActionCatalog: specialActionCatalog ?? this.specialActionCatalog,
       sensorChip: sensorChip ?? this.sensorChip,
       hasSensorTuning: hasSensorTuning ?? this.hasSensorTuning,
       hasAngleTune: hasAngleTune ?? this.hasAngleTune,
@@ -371,6 +384,8 @@ class DeviceSettingsState {
           buttonCount == other.buttonCount &&
           _listEq(buttons, other.buttons) &&
           _listEq(mouseActionCatalog, other.mouseActionCatalog) &&
+          _listEq(keyboardActionCatalog, other.keyboardActionCatalog) &&
+          _listEq(specialActionCatalog, other.specialActionCatalog) &&
           sensorChip == other.sensorChip &&
           hasSensorTuning == other.hasSensorTuning &&
           hasAngleTune == other.hasAngleTune &&
@@ -433,6 +448,8 @@ class DeviceSettingsState {
         buttonCount,
         Object.hashAll(buttons ?? const []),
         Object.hashAll(mouseActionCatalog ?? const []),
+        Object.hashAll(keyboardActionCatalog ?? const []),
+        Object.hashAll(specialActionCatalog ?? const []),
         sensorChip,
         hasSensorTuning,
         hasAngleTune,
@@ -507,15 +524,25 @@ class ActionCatalogItemData {
   final String id;
   final String label;
 
-  const ActionCatalogItemData({required this.id, required this.label});
+  /// Optional UI role from L2 (e.g. `modifier`, `any_key`).
+  final String? role;
+
+  const ActionCatalogItemData({
+    required this.id,
+    required this.label,
+    this.role,
+  });
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is ActionCatalogItemData && id == other.id && label == other.label;
+      other is ActionCatalogItemData &&
+          id == other.id &&
+          label == other.label &&
+          role == other.role;
 
   @override
-  int get hashCode => Object.hash(id, label);
+  int get hashCode => Object.hash(id, label, role);
 }
 
 /// One action-catalog section for remap panel.

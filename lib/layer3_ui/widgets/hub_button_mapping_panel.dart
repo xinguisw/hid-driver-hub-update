@@ -3,20 +3,21 @@ import 'package:flutter/material.dart';
 
 /// Button Mapping right pane — action catalog (skeleton).
 ///
-/// L3 only. Tabs Mouse / Keyboard / Special / Macro. Mouse body paints
-/// [mouseActionCatalog] from L4 state (asset via L2). No catalog ownership,
-/// no L5/HID.
+/// L3 only. Tabs paint L4-packed catalogs (assets via L2). No catalog
+/// ownership, no L5/HID. Row tap = local highlight only.
 class HubButtonMappingPanel extends StatefulWidget {
   const HubButtonMappingPanel({
     super.key,
     this.selectedButtonId,
     this.mouseActionCatalog,
+    this.keyboardActionCatalog,
+    this.specialActionCatalog,
   });
 
   final int? selectedButtonId;
-
-  /// Packed by L4 from assets/catalog/action/mouse.json; null = empty.
   final List<ActionCatalogSectionData>? mouseActionCatalog;
+  final List<ActionCatalogSectionData>? keyboardActionCatalog;
+  final List<ActionCatalogSectionData>? specialActionCatalog;
 
   static const double width = 280;
 
@@ -28,8 +29,9 @@ class _HubButtonMappingPanelState extends State<HubButtonMappingPanel> {
   static const _tabs = ['Mouse', 'Keyboard', 'Special', 'Macro'];
 
   int _tabIndex = 0;
-  // why: local UI highlight only — not staged mapping yet
   String? _selectedCatalogId;
+  // Special combination UI (local only — not staged).
+  final Set<String> _specialMods = {};
 
   @override
   Widget build(BuildContext context) {
@@ -55,13 +57,32 @@ class _HubButtonMappingPanelState extends State<HubButtonMappingPanel> {
             child: ColoredBox(
               color: theme.colorScheme.surfaceContainerHighest
                   .withValues(alpha: 0.35),
-              child: _tabIndex == 0
-                  ? _MouseCatalogList(
-                      sections: widget.mouseActionCatalog ?? const [],
-                      selectedId: _selectedCatalogId,
-                      onSelect: (id) => setState(() => _selectedCatalogId = id),
-                    )
-                  : const SizedBox.expand(),
+              child: switch (_tabIndex) {
+                0 => _SectionCatalogList(
+                    sections: widget.mouseActionCatalog ?? const [],
+                    selectedId: _selectedCatalogId,
+                    onSelect: (id) => setState(() => _selectedCatalogId = id),
+                  ),
+                1 => _SectionCatalogList(
+                    sections: widget.keyboardActionCatalog ?? const [],
+                    selectedId: _selectedCatalogId,
+                    onSelect: (id) => setState(() => _selectedCatalogId = id),
+                  ),
+                2 => _SpecialCombinationBody(
+                    sections: widget.specialActionCatalog ?? const [],
+                    selectedMods: _specialMods,
+                    onToggleMod: (id) {
+                      setState(() {
+                        if (_specialMods.contains(id)) {
+                          _specialMods.remove(id);
+                        } else {
+                          _specialMods.add(id);
+                        }
+                      });
+                    },
+                  ),
+                _ => const SizedBox.expand(),
+              },
             ),
           ),
         ],
@@ -70,8 +91,8 @@ class _HubButtonMappingPanelState extends State<HubButtonMappingPanel> {
   }
 }
 
-class _MouseCatalogList extends StatelessWidget {
-  const _MouseCatalogList({
+class _SectionCatalogList extends StatelessWidget {
+  const _SectionCatalogList({
     required this.sections,
     required this.selectedId,
     required this.onSelect,
@@ -84,9 +105,7 @@ class _MouseCatalogList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    if (sections.isEmpty) {
-      return const SizedBox.expand();
-    }
+    if (sections.isEmpty) return const SizedBox.expand();
     return ListView(
       padding: const EdgeInsets.only(bottom: 16),
       children: [
@@ -122,6 +141,109 @@ class _MouseCatalogList extends StatelessWidget {
               ),
             ),
         ],
+      ],
+    );
+  }
+}
+
+/// Special tab skeleton — Combination Keys from catalog roles (ref).
+class _SpecialCombinationBody extends StatelessWidget {
+  const _SpecialCombinationBody({
+    required this.sections,
+    required this.selectedMods,
+    required this.onToggleMod,
+  });
+
+  final List<ActionCatalogSectionData> sections;
+  final Set<String> selectedMods;
+  final ValueChanged<String> onToggleMod;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    if (sections.isEmpty) return const SizedBox.expand();
+    final section = sections.first;
+    final mods = [
+      for (final i in section.items)
+        if (i.role == 'modifier') i,
+    ];
+    final anyKey = section.items.cast<ActionCatalogItemData?>().firstWhere(
+          (i) => i?.role == 'any_key',
+          orElse: () => null,
+        );
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 16),
+      children: [
+        Text(
+          section.title,
+          style: theme.textTheme.labelMedium?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              width: 88,
+              child: Text('Modifier key', style: theme.textTheme.bodySmall),
+            ),
+            Expanded(
+              child: Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  for (final m in mods)
+                    Material(
+                      color: selectedMods.contains(m.id)
+                          ? theme.colorScheme.primary
+                          : theme.colorScheme.surfaceContainerHigh,
+                      borderRadius: BorderRadius.circular(4),
+                      child: InkWell(
+                        onTap: () => onToggleMod(m.id),
+                        borderRadius: BorderRadius.circular(4),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
+                          child: Text(
+                            m.label,
+                            style: theme.textTheme.labelMedium?.copyWith(
+                              color: selectedMods.contains(m.id)
+                                  ? theme.colorScheme.onPrimary
+                                  : theme.colorScheme.onSurface,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            SizedBox(
+              width: 88,
+              child: Text(
+                anyKey?.label ?? 'Any key',
+                style: theme.textTheme.bodySmall,
+              ),
+            ),
+            Expanded(
+              child: Container(
+                height: 28,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surfaceContainerHigh,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+            ),
+          ],
+        ),
       ],
     );
   }

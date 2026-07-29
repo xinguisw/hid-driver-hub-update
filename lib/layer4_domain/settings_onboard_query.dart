@@ -54,28 +54,16 @@ Future<DeviceSettingsState> queryOnboardConfig(
   } else {
     debugPrint('[settings] caps $name: none — UI falls back to live GETs');
   }
-  // L2 action catalog (Mouse tab) — soft-fail; panel stays empty if missing.
-  try {
-    final mouseTab = await ActionCatalogStore.load('mouse');
-    state = state.copyWith(
-      mouseActionCatalog: [
-        for (final s in mouseTab.sections)
-          ActionCatalogSectionData(
-            title: s.title,
-            items: [
-              for (final i in s.items)
-                ActionCatalogItemData(id: i.id, label: i.label),
-            ],
-          ),
-      ],
-    );
-    debugPrint(
-      '[settings] actionCatalog mouse $name: '
-      '${state.mouseActionCatalog?.length ?? 0} sections',
-    );
-  } catch (e) {
-    debugPrint('[settings] actionCatalog mouse $name: soft-fail $e');
-  }
+  // L2 action catalogs (Mouse / Keyboard / Special) — soft-fail per tab.
+  state = await _packActionCatalogTab(state, name, 'mouse', (s, sections) {
+    return s.copyWith(mouseActionCatalog: sections);
+  });
+  state = await _packActionCatalogTab(state, name, 'keyboard', (s, sections) {
+    return s.copyWith(keyboardActionCatalog: sections);
+  });
+  state = await _packActionCatalogTab(state, name, 'special', (s, sections) {
+    return s.copyWith(specialActionCatalog: sections);
+  });
   // why: block presence is known here; live values arrive after the GETs below.
   onPartial?.call(state);
 
@@ -443,4 +431,34 @@ String _rgbHex(int r, int g, int b) {
   return '#${h(r)}${h(g)}${h(b)}'.toUpperCase();
 }
 
+Future<DeviceSettingsState> _packActionCatalogTab(
+  DeviceSettingsState state,
+  String name,
+  String tab,
+  DeviceSettingsState Function(
+    DeviceSettingsState,
+    List<ActionCatalogSectionData>,
+  ) apply,
+) async {
+  try {
+    final loaded = await ActionCatalogStore.load(tab);
+    final sections = [
+      for (final s in loaded.sections)
+        ActionCatalogSectionData(
+          title: s.title,
+          items: [
+            for (final i in s.items)
+              ActionCatalogItemData(id: i.id, label: i.label, role: i.role),
+          ],
+        ),
+    ];
+    debugPrint(
+      '[settings] actionCatalog $tab $name: ${sections.length} sections',
+    );
+    return apply(state, sections);
+  } catch (e) {
+    debugPrint('[settings] actionCatalog $tab $name: soft-fail $e');
+    return state;
+  }
+}
 

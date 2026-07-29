@@ -1,28 +1,28 @@
 import 'package:driver_hub/layer4_domain/bloc/device_settings_event.dart';
 import 'package:driver_hub/layer4_domain/bloc/device_settings_state_view.dart';
 import 'package:driver_hub/layer4_domain/button_mapping_reset.dart';
+import 'package:driver_hub/layer4_domain/button_mapping_validate.dart';
 import 'package:driver_hub/layer4_domain/models/button_mapping_slot.dart';
-import 'package:driver_hub/layer4_domain/models/device_settings_state.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-/// Domain → hardware commit. Implemented by [DeviceScope] only (L1→L5).
-///
-/// L3 must never supply this; L4 BLoC receives it from Scope factory.
 typedef ButtonMappingCommit = Future<void> Function(
   List<ButtonMappingSlot> slots,
 );
 
-/// L4 domain controller — SDRD FR-OPS sandbox + L4 architecture chart.
-///
-/// Adjust → stage only (FR-OPS-001). Save → validate → commit (FR-OPS-003).
-/// Cancel → wipe staging (FR-OPS-004). **No auto-write on adjust/reset.**
 class DeviceSettingsBloc
     extends Bloc<DeviceSettingsEvent, DeviceSettingsViewState> {
   DeviceSettingsBloc({
     required this.commitButtonMapping,
+    ButtonActionLabelFn? actionLabelOf,
+    ButtonIdLabelFn? buttonIdLabelOf,
     DeviceSettingsViewState? initial,
-  }) : super(initial ?? DeviceSettingsViewState.empty) {
+  }) : super(
+          (initial ?? DeviceSettingsViewState.empty).copyWith(
+            actionLabelOf: actionLabelOf,
+            buttonIdLabelOf: buttonIdLabelOf,
+          ),
+        ) {
     on<DeviceSettingsHydrated>(_onHydrated);
     on<DeviceSettingsResetButtonMappingRequested>(_onResetButtonMapping);
     on<DeviceSettingsSaveRequested>(_onSave);
@@ -48,7 +48,6 @@ class DeviceSettingsBloc
     );
   }
 
-  /// FR-OPS-001: stage only — no packets.
   Future<void> _onResetButtonMapping(
     DeviceSettingsResetButtonMappingRequested event,
     Emitter<DeviceSettingsViewState> emit,
@@ -78,7 +77,6 @@ class DeviceSettingsBloc
     );
   }
 
-  /// FR-OPS-003: validate → commit via Scope (L1/L5).
   Future<void> _onSave(
     DeviceSettingsSaveRequested event,
     Emitter<DeviceSettingsViewState> emit,
@@ -96,18 +94,12 @@ class DeviceSettingsBloc
       return;
     }
 
-    if (staging.length != 6) {
-      emit(
-        state.copyWith(
-          lastError: 'button mapping: expected 6 slots, got ${staging.length}',
-        ),
-      );
-      return;
-    }
-
-    final capsErr = _validateButtonMappingAgainstCaps(synced, staging);
-    if (capsErr != null) {
-      emit(state.copyWith(lastError: capsErr));
+    final validationError = validateButtonMappingStaging(
+      staging: staging,
+      synced: synced,
+    );
+    if (validationError != null) {
+      emit(state.copyWith(lastError: validationError));
       return;
     }
 
@@ -127,14 +119,18 @@ class DeviceSettingsBloc
       );
       if (failures >= failureEscalateThreshold) {
         debugPrint(
-          '[bloc] consecutiveFailures=$failures >= $failureEscalateThreshold '
-          '(chart escalate to L1 — not wired)',
+          '[bloc] consecutiveFailures=$failures >= $failureEscalateThreshold',
         );
       }
       return;
     }
 
-    final nextSynced = packButtonsOntoSettings(synced, staging);
+    final nextSynced = packButtonsOntoSettings(
+      synced,
+      staging,
+      actionLabelOf: state.actionLabelOf,
+      buttonIdLabelOf: state.buttonIdLabelOf,
+    );
     emit(
       DeviceSettingsViewState(
         synced: nextSynced,
@@ -143,12 +139,13 @@ class DeviceSettingsBloc
         committing: false,
         consecutiveFailures: 0,
         lastError: null,
+        actionLabelOf: state.actionLabelOf,
+        buttonIdLabelOf: state.buttonIdLabelOf,
       ),
     );
     debugPrint('[bloc] save buttonMapping: synced');
   }
 
-  /// FR-OPS-004: wipe staging → last synchronized.
   void _onCancel(
     DeviceSettingsCancelRequested event,
     Emitter<DeviceSettingsViewState> emit,
@@ -162,15 +159,5 @@ class DeviceSettingsBloc
       ),
     );
     debugPrint('[bloc] cancel: staging wiped');
-  }
-
-  String? _validateButtonMappingAgainstCaps(
-    DeviceSettingsState synced,
-    List<ButtonMappingSlot> staging,
-  ) {
-    if (staging.length != 6) {
-      return 'button mapping length invalid';
-    }
-    return null;
   }
 }

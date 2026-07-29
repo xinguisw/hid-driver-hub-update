@@ -1,5 +1,6 @@
 import 'package:driver_hub/layer4_domain/bloc/device_settings_bloc.dart';
 import 'package:driver_hub/layer4_domain/bloc/device_settings_event.dart';
+import 'package:driver_hub/layer4_domain/bloc/device_settings_state_view.dart';
 import 'package:driver_hub/layer4_domain/models/button_mapping_slot.dart';
 import 'package:driver_hub/layer4_domain/models/device_settings_state.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -146,6 +147,29 @@ void main() {
       expect(bloc.state.consecutiveFailures, 1);
       expect(bloc.state.lastError, contains('nak'));
       expect(bloc.state.committing, false);
+      await bloc.close();
+    });
+
+    test('save rejects bad length without commit', () async {
+      var commits = 0;
+      final bloc = DeviceSettingsBloc(
+        commitButtonMapping: (_) async {
+          commits++;
+        },
+        initial: DeviceSettingsViewState(
+          synced: baseSettings(),
+          buttonMappingStaging: const [
+            ButtonMappingSlot(action: 0x02),
+          ],
+          isDirty: true,
+        ),
+      );
+      bloc.add(const DeviceSettingsSaveRequested());
+      await pumpEventQueue();
+
+      expect(commits, 0);
+      expect(bloc.state.isDirty, true);
+      expect(bloc.state.lastError, contains('expected 6'));
       await bloc.close();
     });
   });

@@ -10,12 +10,16 @@ class HubMouseCanvas extends StatelessWidget {
     super.key,
     required this.imageLarge,
     this.buttons = const [],
+    this.selectedButtonId,
     this.onButtonSelected,
     this.onResetToDefault,
   });
 
   final String imageLarge;
   final List<ButtonData> buttons;
+
+  /// Currently selected callout (label tap); orange highlight.
+  final int? selectedButtonId;
 
   /// Button Mapping: label tap opens mapping panel; dots are placement only.
   final ValueChanged<int>? onButtonSelected;
@@ -70,7 +74,10 @@ class HubMouseCanvas extends StatelessWidget {
                     ),
                     CustomPaint(
                       size: paneSize,
-                      painter: _HotspotPainter(targets: targets),
+                      painter: _HotspotPainter(
+                        targets: targets,
+                        selectedButtonId: selectedButtonId,
+                      ),
                     ),
                   ],
                 ),
@@ -149,12 +156,20 @@ class _CalloutTarget {
   Rect get labelHit => (labelOrigin & labelSize).inflate(4);
 }
 
+enum _StemKind { horizontalLeft, horizontalRight, vertical }
+
 class _CalloutLayout {
   // why: leader length in px — edit here
   static const double stemLength = 30.0;
 
   static const labelStyle = TextStyle(
     color: Colors.black,
+    fontSize: 12,
+    fontWeight: FontWeight.w500,
+  );
+
+  static const selectedLabelStyle = TextStyle(
+    color: Colors.orange,
     fontSize: 12,
     fontWeight: FontWeight.w500,
   );
@@ -190,27 +205,32 @@ class _CalloutLayout {
       late final Offset stemEnd;
       late final Offset labelOrigin;
 
-      if (_useVerticalStem(b.id)) {
-        stemStart = Offset(c.dx, c.dy - r);
-        stemEnd = Offset(c.dx, c.dy - r - stemLength);
-        var labelX = stemEnd.dx - tp.width / 2;
-        if (b.id == 1) {
-          labelX = stemEnd.dx - tp.width;
-        } else if (b.id == 2) {
-          labelX = stemEnd.dx;
-        }
-        labelX = labelX.clamp(0.0, _max(0.0, paneSize.width - tp.width));
-        final labelY = (stemEnd.dy - tp.height - 4)
-            .clamp(0.0, _max(0.0, paneSize.height - tp.height));
-        labelOrigin = Offset(labelX, labelY);
-      } else {
-        stemStart = Offset(c.dx - r, c.dy);
-        stemEnd = Offset(c.dx - r - stemLength, c.dy);
-        final labelX = (stemEnd.dx - tp.width - 4)
-            .clamp(0.0, _max(0.0, paneSize.width - tp.width));
-        final labelY = (c.dy - tp.height / 2)
-            .clamp(0.0, _max(0.0, paneSize.height - tp.height));
-        labelOrigin = Offset(labelX, labelY);
+      // why: 1 left←, 2 right→, 4/5 side← horizontal; middle/others vertical
+      switch (_stemKind(b.id)) {
+        case _StemKind.horizontalLeft:
+          stemStart = Offset(c.dx - r, c.dy);
+          stemEnd = Offset(c.dx - r - stemLength, c.dy);
+          final labelX = (stemEnd.dx - tp.width - 4)
+              .clamp(0.0, _max(0.0, paneSize.width - tp.width));
+          final labelY = (c.dy - tp.height / 2)
+              .clamp(0.0, _max(0.0, paneSize.height - tp.height));
+          labelOrigin = Offset(labelX, labelY);
+        case _StemKind.horizontalRight:
+          stemStart = Offset(c.dx + r, c.dy);
+          stemEnd = Offset(c.dx + r + stemLength, c.dy);
+          final labelX = (stemEnd.dx + 4)
+              .clamp(0.0, _max(0.0, paneSize.width - tp.width));
+          final labelY = (c.dy - tp.height / 2)
+              .clamp(0.0, _max(0.0, paneSize.height - tp.height));
+          labelOrigin = Offset(labelX, labelY);
+        case _StemKind.vertical:
+          stemStart = Offset(c.dx, c.dy - r);
+          stemEnd = Offset(c.dx, c.dy - r - stemLength);
+          final labelX = (stemEnd.dx - tp.width / 2)
+              .clamp(0.0, _max(0.0, paneSize.width - tp.width));
+          final labelY = (stemEnd.dy - tp.height - 4)
+              .clamp(0.0, _max(0.0, paneSize.height - tp.height));
+          labelOrigin = Offset(labelX, labelY);
       }
 
       out.add(
@@ -229,13 +249,16 @@ class _CalloutLayout {
     return out;
   }
 
-  static bool _useVerticalStem(int id) {
+  static _StemKind _stemKind(int id) {
     switch (id) {
-      case 4:
-      case 5:
-        return false;
-      default:
-        return true;
+      case 1: // left
+      case 4: // forward
+      case 5: // backward
+        return _StemKind.horizontalLeft;
+      case 2: // right
+        return _StemKind.horizontalRight;
+      default: // middle, dpi, …
+        return _StemKind.vertical;
     }
   }
 
@@ -243,29 +266,41 @@ class _CalloutLayout {
 }
 
 class _HotspotPainter extends CustomPainter {
-  _HotspotPainter({required this.targets});
+  _HotspotPainter({
+    required this.targets,
+    this.selectedButtonId,
+  });
 
   final List<_CalloutTarget> targets;
+  final int? selectedButtonId;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final fill = Paint()..color = Colors.white;
-    final stroke = Paint()
-      ..color = Colors.black87
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5;
-    final linePaint = Paint()
-      ..color = Colors.black87
-      ..strokeWidth = 1.5
-      ..style = PaintingStyle.stroke;
-
     for (final t in targets) {
+      final selected = t.id == selectedButtonId;
+      final accent = selected ? Colors.orange : Colors.black87;
+      final fill = Paint()
+        ..color = selected ? Colors.orange : Colors.white;
+      final stroke = Paint()
+        ..color = accent
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.5;
+      final linePaint = Paint()
+        ..color = accent
+        ..strokeWidth = 1.5
+        ..style = PaintingStyle.stroke;
+
       canvas.drawCircle(t.center, t.radius, fill);
       canvas.drawCircle(t.center, t.radius, stroke);
       canvas.drawLine(t.stemStart, t.stemEnd, linePaint);
 
       final tp = TextPainter(
-        text: TextSpan(text: t.label, style: _CalloutLayout.labelStyle),
+        text: TextSpan(
+          text: t.label,
+          style: selected
+              ? _CalloutLayout.selectedLabelStyle
+              : _CalloutLayout.labelStyle,
+        ),
         textDirection: TextDirection.ltr,
         maxLines: 1,
         ellipsis: '…',
@@ -276,6 +311,7 @@ class _HotspotPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _HotspotPainter oldDelegate) {
-    return oldDelegate.targets != targets;
+    return oldDelegate.targets != targets ||
+        oldDelegate.selectedButtonId != selectedButtonId;
   }
 }

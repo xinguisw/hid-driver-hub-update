@@ -197,6 +197,15 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                                   ),
                                 );
                               },
+                              onComboSelected: (modifierIds, keyChar) {
+                                _settingsBloc.add(
+                                  DeviceSettingsSpecialComboRequested(
+                                    buttonId: _selectedButtonId!,
+                                    modifierIds: modifierIds,
+                                    keyChar: keyChar,
+                                  ),
+                                );
+                              },
                             ),
                           ],
                         ],

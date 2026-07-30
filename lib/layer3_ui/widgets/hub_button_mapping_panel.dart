@@ -14,6 +14,7 @@ class HubButtonMappingPanel extends StatefulWidget {
     this.keyboardActionCatalog,
     this.specialActionCatalog,
     this.onActionSelected,
+    this.onComboSelected,
   });
 
   final int? selectedButtonId;
@@ -23,6 +24,9 @@ class HubButtonMappingPanel extends StatefulWidget {
 
   /// Called when user selects a catalog action (Mouse/Keyboard tabs).
   final ValueChanged<String>? onActionSelected;
+
+  /// Called when user completes a special combo (modifiers + key).
+  final void Function(List<String> modifierIds, String keyChar)? onComboSelected;
 
   static const double width = 280;
 
@@ -88,18 +92,65 @@ class _HubButtonMappingPanelState extends State<HubButtonMappingPanel> {
     if (!_anyKeyListening) return KeyEventResult.ignored;
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
 
+    String? ch;
+
+    // Try character first (printable keys: letters, digits, symbols)
     final raw = event.character;
-    if (raw == null || raw.isEmpty) return KeyEventResult.ignored;
-    // Single printable char (letter, digit, symbol); ignore empty/control.
-    final ch = raw.characters.first;
-    if (ch.codeUnitAt(0) < 0x20) return KeyEventResult.ignored;
+    if (raw != null && raw.isNotEmpty && raw.characters.first.codeUnitAt(0) >= 0x20) {
+      ch = raw.characters.first;
+    } else {
+      // Map logical keys to their character representations
+      ch = _logicalKeyToChar[event.logicalKey];
+    }
+
+    if (ch == null) return KeyEventResult.ignored;
 
     setState(() {
       _anyKeyChar = ch;
       _anyKeyListening = false;
     });
+
+    // Dispatch combo if modifiers are selected
+    if (_specialModOrder.isNotEmpty) {
+      widget.onComboSelected?.call(
+        List<String>.from(_specialModOrder),
+        ch,
+      );
+    }
+
     return KeyEventResult.handled;
   }
+
+  /// Map logical keys to their character representations for special keys.
+  static final Map<LogicalKeyboardKey, String> _logicalKeyToChar = {
+    LogicalKeyboardKey.escape: 'Esc',
+    LogicalKeyboardKey.enter: 'Enter',
+    LogicalKeyboardKey.tab: 'Tab',
+    LogicalKeyboardKey.backspace: 'Backspace',
+    LogicalKeyboardKey.space: ' ',
+    LogicalKeyboardKey.arrowUp: '↑',
+    LogicalKeyboardKey.arrowDown: '↓',
+    LogicalKeyboardKey.arrowLeft: '←',
+    LogicalKeyboardKey.arrowRight: '→',
+    LogicalKeyboardKey.home: 'Home',
+    LogicalKeyboardKey.end: 'End',
+    LogicalKeyboardKey.pageUp: 'PgUp',
+    LogicalKeyboardKey.pageDown: 'PgDn',
+    LogicalKeyboardKey.insert: 'Ins',
+    LogicalKeyboardKey.delete: 'Del',
+    LogicalKeyboardKey.f1: 'F1',
+    LogicalKeyboardKey.f2: 'F2',
+    LogicalKeyboardKey.f3: 'F3',
+    LogicalKeyboardKey.f4: 'F4',
+    LogicalKeyboardKey.f5: 'F5',
+    LogicalKeyboardKey.f6: 'F6',
+    LogicalKeyboardKey.f7: 'F7',
+    LogicalKeyboardKey.f8: 'F8',
+    LogicalKeyboardKey.f9: 'F9',
+    LogicalKeyboardKey.f10: 'F10',
+    LogicalKeyboardKey.f11: 'F11',
+    LogicalKeyboardKey.f12: 'F12',
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -151,6 +202,14 @@ class _HubButtonMappingPanelState extends State<HubButtonMappingPanel> {
                     anyKeyFocus: _anyKeyFocus,
                     onAnyKeyTap: _onAnyKeyFieldTap,
                     onAnyKeyEvent: _onAnyKeyEvent,
+                    onComboComplete: (keyChar) {
+                      if (_specialModOrder.isNotEmpty) {
+                        widget.onComboSelected?.call(
+                          List<String>.from(_specialModOrder),
+                          keyChar,
+                        );
+                      }
+                    },
                   ),
                 _ => const SizedBox.expand(),
               },
@@ -228,6 +287,7 @@ class _SpecialCombinationBody extends StatelessWidget {
     required this.anyKeyFocus,
     required this.onAnyKeyTap,
     required this.onAnyKeyEvent,
+    required this.onComboComplete,
   });
 
   final List<ActionCatalogSectionData> sections;
@@ -238,6 +298,7 @@ class _SpecialCombinationBody extends StatelessWidget {
   final FocusNode anyKeyFocus;
   final VoidCallback onAnyKeyTap;
   final KeyEventResult Function(FocusNode, KeyEvent) onAnyKeyEvent;
+  final ValueChanged<String> onComboComplete;
 
   @override
   Widget build(BuildContext context) {

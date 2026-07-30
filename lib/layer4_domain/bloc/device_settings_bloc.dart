@@ -1,6 +1,7 @@
 import 'package:driver_hub/layer2_capabilities/capabilities.dart';
 import 'package:driver_hub/layer4_domain/bloc/device_settings_event.dart';
 import 'package:driver_hub/layer4_domain/bloc/device_settings_state_view.dart';
+import 'package:driver_hub/layer4_domain/button_action_catalog_map.dart';
 import 'package:driver_hub/layer4_domain/button_mapping_reset.dart';
 import 'package:driver_hub/layer4_domain/button_mapping_validate.dart';
 import 'package:driver_hub/layer4_domain/models/button_mapping_slot.dart';
@@ -36,6 +37,7 @@ class DeviceSettingsBloc
     on<DeviceSettingsSaveRequested>(_onSave);
     on<DeviceSettingsCancelRequested>(_onCancel);
     on<DeviceSettingsNavigationRequested>(_onNavigationRequested);
+    on<DeviceSettingsButtonMappingSlotRequested>(_onButtonMappingSlotRequested);
   }
 
   final ButtonMappingCommit commitButtonMapping;
@@ -204,5 +206,54 @@ class DeviceSettingsBloc
       ),
     );
     debugPrint('[bloc] navigation: dirty sweep');
+  }
+
+  /// User selected a catalog action for a button slot.
+  ///
+  /// Translates catalog ID → wire bytes via [ButtonActionCatalogMap],
+  /// updates the staging buffer, and marks dirty.
+  void _onButtonMappingSlotRequested(
+    DeviceSettingsButtonMappingSlotRequested event,
+    Emitter<DeviceSettingsViewState> emit,
+  ) {
+    final synced = state.synced;
+    if (synced == null) {
+      emit(state.copyWith(lastError: 'no settings loaded'));
+      return;
+    }
+
+    // Translate catalog ID → wire slot
+    final slot = ButtonActionCatalogMap.catalogIdToSlot(event.catalogId);
+    if (slot == null) {
+      emit(state.copyWith(lastError: 'unknown catalog action: ${event.catalogId}'));
+      return;
+    }
+
+    // Initialize staging from synced if null
+    var staging = state.buttonMappingStaging ??
+        stageButtonMappingDefaults(synced.buttons);
+
+    // Update the slot for this button (1-based index)
+    final index = event.buttonId - 1;
+    if (index < 0 || index >= staging.length) {
+      emit(state.copyWith(lastError: 'button id out of range: ${event.buttonId}'));
+      return;
+    }
+
+    staging = List<ButtonMappingSlot>.from(staging);
+    staging[index] = slot;
+
+    emit(
+      state.copyWith(
+        buttonMappingStaging: staging,
+        isDirty: true,
+        clearError: true,
+      ),
+    );
+
+    debugPrint(
+      '[bloc] button B${event.buttonId} → ${event.catalogId} '
+      '(action=0x${slot.action.toRadixString(16)})',
+    );
   }
 }

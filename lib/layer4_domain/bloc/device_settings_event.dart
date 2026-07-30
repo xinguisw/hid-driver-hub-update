@@ -29,3 +29,20 @@ class DeviceSettingsCancelRequested extends DeviceSettingsEvent {
 class DeviceSettingsNavigationRequested extends DeviceSettingsEvent {
   const DeviceSettingsNavigationRequested();
 }
+
+/// User selected a catalog action for a button slot.
+///
+/// L3 passes only the catalog ID (e.g. `"mouse.left"`). L4 translates
+/// to wire bytes via [ButtonActionCatalogMap].
+class DeviceSettingsButtonMappingSlotRequested extends DeviceSettingsEvent {
+  const DeviceSettingsButtonMappingSlotRequested({
+    required this.buttonId,
+    required this.catalogId,
+  });
+
+  /// 1-based physical button index.
+  final int buttonId;
+
+  /// L2 catalog action ID (e.g. `"mouse.left"`, `"key.letter.a"`).
+  final String catalogId;
+}

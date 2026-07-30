@@ -107,6 +107,10 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                 card: selected,
                 selectedIndex: _selectedIndex,
                 onDestinationSelected: (index) {
+                  // FR-OPS-005: dirty sweep when navigating away from button mapping
+                  if (_selectedIndex == _buttonMappingIndex && index != _buttonMappingIndex) {
+                    _settingsBloc.add(const DeviceSettingsNavigationRequested());
+                  }
                   setState(() {
                     _selectedIndex = index;
                     if (index != _buttonMappingIndex) {

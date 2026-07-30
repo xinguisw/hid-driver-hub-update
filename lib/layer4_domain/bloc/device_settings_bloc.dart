@@ -17,6 +17,9 @@ typedef ButtonMappingCommit = Future<void> Function(
 /// L1 [DeviceScope] provides this to force session teardown/reconnect.
 typedef EscalationCallback = void Function(String reason);
 
+/// Save completed callback — UI uses this to dismiss sidebar.
+typedef SaveCompletedCallback = void Function();
+
 class DeviceSettingsBloc
     extends Bloc<DeviceSettingsEvent, DeviceSettingsViewState> {
   DeviceSettingsBloc({
@@ -26,6 +29,7 @@ class DeviceSettingsBloc
     DeviceSettingsViewState? initial,
     this.capabilities,
     this.onEscalationRequested,
+    this.onSaveCompleted,
   }) : super(
           (initial ?? DeviceSettingsViewState.empty).copyWith(
             actionLabelOf: actionLabelOf,
@@ -43,6 +47,7 @@ class DeviceSettingsBloc
   final ButtonMappingCommit commitButtonMapping;
   final DeviceCapabilities? capabilities;
   final EscalationCallback? onEscalationRequested;
+  final SaveCompletedCallback? onSaveCompleted;
 
   static const int failureEscalateThreshold = 3;
 
@@ -172,6 +177,7 @@ class DeviceSettingsBloc
       ),
     );
     debugPrint('[bloc] save buttonMapping: synced');
+    onSaveCompleted?.call();
   }
 
   void _onCancel(
@@ -229,9 +235,9 @@ class DeviceSettingsBloc
       return;
     }
 
-    // Initialize staging from synced if null
+    // Initialize staging from live device values if null
     var staging = state.buttonMappingStaging ??
-        stageButtonMappingDefaults(synced.buttons);
+        stageButtonMappingFromLive(synced.buttons);
 
     // Update the slot for this button (1-based index)
     final index = event.buttonId - 1;

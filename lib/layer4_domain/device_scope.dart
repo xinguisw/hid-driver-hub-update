@@ -208,7 +208,10 @@ class DeviceScope {
     return packed;
   }
 
-  DeviceSettingsBloc createSettingsBloc(DiscoveredCardState card) {
+  DeviceSettingsBloc createSettingsBloc(
+    DiscoveredCardState card, {
+    SaveCompletedCallback? onSaveCompleted,
+  }) {
     const translate = TranslationCodec();
     return DeviceSettingsBloc(
       commitButtonMapping: (slots) => commitButtonMapping(card, slots),
@@ -219,6 +222,7 @@ class DeviceScope {
         param3: p3,
       ),
       buttonIdLabelOf: translate.buttonIdToLabel,
+      onSaveCompleted: onSaveCompleted,
     );
   }
 

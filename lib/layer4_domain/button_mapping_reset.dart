@@ -17,6 +17,36 @@ List<ButtonMappingSlot> stageButtonMappingDefaults(
   ];
 }
 
+/// Build staging from live device values (not factory defaults).
+///
+/// Used when user first selects an action — preserves current device state.
+List<ButtonMappingSlot> stageButtonMappingFromLive(
+  List<ButtonData>? buttons, {
+  int slotCount = kButtonMappingSlotCount,
+}) {
+  return [
+    for (var i = 0; i < slotCount; i++)
+      _liveSlotEntry(id: i + 1, buttons: buttons),
+  ];
+}
+
+ButtonMappingSlot _liveSlotEntry({
+  required int id,
+  required List<ButtonData>? buttons,
+}) {
+  final live = buttons?.firstWhere(
+    (b) => b.id == id,
+    orElse: () => ButtonData(id: id, labelKey: 'button.$id', remappable: true),
+  );
+  if (live == null) return const ButtonMappingSlot(action: 0);
+  return ButtonMappingSlot(
+    action: live.action ?? 0,
+    param1: live.param1 ?? 0,
+    param2: live.param2 ?? 0,
+    param3: live.param3 ?? 0,
+  );
+}
+
 ButtonMappingSlot _slotEntry({
   required int id,
   required ButtonData? live,

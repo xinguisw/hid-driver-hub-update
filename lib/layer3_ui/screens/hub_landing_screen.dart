@@ -38,7 +38,15 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
   void initState() {
     super.initState();
     // why: Scope owns commit hook (L1->L5); L3 never sees sessions
-    _settingsBloc = widget.scope.createSettingsBloc(widget.card);
+    _settingsBloc = widget.scope.createSettingsBloc(
+      widget.card,
+      onSaveCompleted: () {
+        // Dismiss sidebar after successful save
+        if (mounted) {
+          setState(() => _selectedButtonId = null);
+        }
+      },
+    );
     final cached = widget.scope.settingsFor(widget.card);
     if (cached != null) {
       _settingsBloc.add(DeviceSettingsHydrated(cached));
@@ -181,6 +189,14 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                                   display?.keyboardActionCatalog,
                               specialActionCatalog:
                                   display?.specialActionCatalog,
+                              onActionSelected: (catalogId) {
+                                _settingsBloc.add(
+                                  DeviceSettingsButtonMappingSlotRequested(
+                                    buttonId: _selectedButtonId!,
+                                    catalogId: catalogId,
+                                  ),
+                                );
+                              },
                             ),
                           ],
                         ],

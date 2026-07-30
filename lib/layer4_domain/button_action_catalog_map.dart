@@ -46,6 +46,11 @@ class ButtonActionCatalogMap {
     'mouse.tilt_left': [0x09],
     'mouse.tilt_right': [0x0A],
 
+    // Multimedia (consumer keys: action 0x13, key byte in param1)
+    'mouse.volume_up': [0x13, 0xB3],
+    'mouse.volume_down': [0x13, 0xB4],
+    'mouse.volume_mute': [0x13, 0xB2],
+
     // --- Keyboard tab (action 0x12 = shortcut, key byte in param1) ---
     // Letters
     'key.letter.a': [0x12, 0x04],

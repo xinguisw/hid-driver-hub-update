@@ -103,30 +103,9 @@ String? _validateSlot({
     return 'button mapping B$id: value out of 0..255';
   }
 
-  final expected = _expectedResetSlot(id: id, live: live);
-  if (slot != expected) {
-    return 'button mapping B$id: staging does not match reset policy '
-        '(got 0x${slot.action.toRadixString(16)}, '
-        'expected 0x${expected.action.toRadixString(16)})';
-  }
+  // Note: Reset policy check removed from here.
+  // Reset validation happens separately in stageButtonMappingDefaults.
+  // Normal button mapping allows any valid action for remappable buttons.
   return null;
 }
 
-/// Same rules as [stageButtonMappingDefaults] for one physical id.
-ButtonMappingSlot _expectedResetSlot({
-  required int id,
-  required ButtonData? live,
-}) {
-  if (live == null || live.remappable) {
-    return identityButtonMappingDefault(id);
-  }
-  if (live.action != null) {
-    return ButtonMappingSlot(
-      action: live.action!,
-      param1: live.param1 ?? 0,
-      param2: live.param2 ?? 0,
-      param3: live.param3 ?? 0,
-    );
-  }
-  return const ButtonMappingSlot(action: 0);
-}

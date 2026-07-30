@@ -42,6 +42,7 @@ class DeviceSettingsBloc
     on<DeviceSettingsCancelRequested>(_onCancel);
     on<DeviceSettingsNavigationRequested>(_onNavigationRequested);
     on<DeviceSettingsButtonMappingSlotRequested>(_onButtonMappingSlotRequested);
+    on<DeviceSettingsSpecialComboRequested>(_onSpecialComboRequested);
   }
 
   final ButtonMappingCommit commitButtonMapping;
@@ -260,6 +261,64 @@ class DeviceSettingsBloc
     debugPrint(
       '[bloc] button B${event.buttonId} → ${event.catalogId} '
       '(action=0x${slot.action.toRadixString(16)})',
+    );
+  }
+
+  /// User selected a special combination (modifiers + key) for a button slot.
+  ///
+  /// Translates modifier IDs + character → wire bytes via
+  /// [ButtonActionCatalogMap.buildComboSlot], updates staging, marks dirty.
+  void _onSpecialComboRequested(
+    DeviceSettingsSpecialComboRequested event,
+    Emitter<DeviceSettingsViewState> emit,
+  ) {
+    final synced = state.synced;
+    if (synced == null) {
+      emit(state.copyWith(lastError: 'no settings loaded'));
+      return;
+    }
+
+    // Translate modifiers + char → wire slot
+    final slot = ButtonActionCatalogMap.buildComboSlot(
+      event.modifierIds,
+      event.keyChar,
+    );
+    if (slot == null) {
+      emit(state.copyWith(
+        lastError: 'invalid special combo: '
+            'mods=${event.modifierIds} char="${event.keyChar}"',
+      ));
+      return;
+    }
+
+    // Initialize staging from live device values if null
+    var staging = state.buttonMappingStaging ??
+        stageButtonMappingFromLive(synced.buttons);
+
+    // Update the slot for this button (1-based index)
+    final index = event.buttonId - 1;
+    if (index < 0 || index >= staging.length) {
+      emit(state.copyWith(lastError: 'button id out of range: ${event.buttonId}'));
+      return;
+    }
+
+    staging = List<ButtonMappingSlot>.from(staging);
+    staging[index] = slot;
+
+    emit(
+      state.copyWith(
+        buttonMappingStaging: staging,
+        isDirty: true,
+        clearError: true,
+      ),
+    );
+
+    debugPrint(
+      '[bloc] button B${event.buttonId} → special combo '
+      '(action=0x${slot.action.toRadixString(16)}, '
+      'p1=0x${slot.param1.toRadixString(16)}, '
+      'p2=0x${slot.param2.toRadixString(16)}, '
+      'p3=0x${slot.param3.toRadixString(16)})',
     );
   }
 }

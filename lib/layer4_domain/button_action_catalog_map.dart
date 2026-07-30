@@ -24,6 +24,109 @@ class ButtonActionCatalogMap {
     );
   }
 
+  /// Build a combo slot for the Special tab (modifiers + key).
+  ///
+  /// Returns `null` if:
+  /// - [char] is not a valid keyboard key (rejects multimedia/consumer/mouse/gamepad)
+  /// - any [modifierIds] is unknown
+  /// - [modifierIds] length > 2
+  ///
+  /// Wire format: action=0x12 (shortcut), param1=key, param2=mod1, param3=mod2.
+  /// Modifier order doesn't matter — L5 classifies by byte value.
+  static ButtonMappingSlot? buildComboSlot(
+    List<String> modifierIds,
+    String char,
+  ) {
+    if (modifierIds.length > 2) return null;
+
+    // Look up key byte from character
+    final keyByte = _charToKeyByte[char];
+    if (keyByte == null) return null; // Not a keyboard key
+
+    // Look up modifier bytes
+    final modBytes = <int>[];
+    for (final id in modifierIds) {
+      final byte = _modifierIdToByte[id];
+      if (byte == null) return null; // Unknown modifier
+      modBytes.add(byte);
+    }
+
+    // Build slot: action=0x12, param1=key, param2=mod1, param3=mod2
+    return ButtonMappingSlot(
+      action: 0x12,
+      param1: keyByte,
+      param2: modBytes.isNotEmpty ? modBytes[0] : 0,
+      param3: modBytes.length > 1 ? modBytes[1] : 0,
+    );
+  }
+
+  /// Modifier catalog ID → wire byte.
+  static const Map<String, int> _modifierIdToByte = {
+    'special.mod.ctrl': 0xE0,
+    'special.mod.shift': 0xE1,
+    'special.mod.alt': 0xE2,
+    'special.mod.win': 0xE3,
+    'special.mod.rctrl': 0xE4,
+    'special.mod.rshift': 0xE5,
+    'special.mod.ralt': 0xE6,
+    'special.mod.rwin': 0xE7,
+  };
+
+  /// Character → HID keyboard usage code.
+  ///
+  /// Only keyboard keys (letters, digits, symbols, special keys).
+  /// Excludes multimedia/consumer/mouse/gamepad/Fn.
+  static const Map<String, int> _charToKeyByte = {
+    // Letters (uppercase and lowercase map to the same key)
+    'A': 0x04, 'B': 0x05, 'C': 0x06, 'D': 0x07, 'E': 0x08, 'F': 0x09,
+    'G': 0x0A, 'H': 0x0B, 'I': 0x0C, 'J': 0x0D, 'K': 0x0E, 'L': 0x0F,
+    'M': 0x10, 'N': 0x11, 'O': 0x12, 'P': 0x13, 'Q': 0x14, 'R': 0x15,
+    'S': 0x16, 'T': 0x17, 'U': 0x18, 'V': 0x19, 'W': 0x1A, 'X': 0x1B,
+    'Y': 0x1C, 'Z': 0x1D,
+    'a': 0x04, 'b': 0x05, 'c': 0x06, 'd': 0x07, 'e': 0x08, 'f': 0x09,
+    'g': 0x0A, 'h': 0x0B, 'i': 0x0C, 'j': 0x0D, 'k': 0x0E, 'l': 0x0F,
+    'm': 0x10, 'n': 0x11, 'o': 0x12, 'p': 0x13, 'q': 0x14, 'r': 0x15,
+    's': 0x16, 't': 0x17, 'u': 0x18, 'v': 0x19, 'w': 0x1A, 'x': 0x1B,
+    'y': 0x1C, 'z': 0x1D,
+
+    // Digits
+    '1': 0x1E, '2': 0x1F, '3': 0x20, '4': 0x21, '5': 0x22,
+    '6': 0x23, '7': 0x24, '8': 0x25, '9': 0x26, '0': 0x27,
+
+    // Symbols
+    '-': 0x2D, '=': 0x2E, '[': 0x2F, ']': 0x30, '\\': 0x31,
+    ';': 0x33, "'": 0x34, '`': 0x35, ',': 0x36, '.': 0x37, '/': 0x38,
+    ' ': 0x2C,
+
+    // Special keys
+    'Esc': 0x29,
+    'Enter': 0x28,
+    'Tab': 0x2B,
+    'Backspace': 0x2A,
+    '↑': 0x52,
+    '↓': 0x51,
+    '←': 0x50,
+    '→': 0x4F,
+    'Home': 0x4A,
+    'End': 0x4D,
+    'PgUp': 0x4B,
+    'PgDn': 0x4E,
+    'Ins': 0x49,
+    'Del': 0x4C,
+    'F1': 0x3A,
+    'F2': 0x3B,
+    'F3': 0x3C,
+    'F4': 0x3D,
+    'F5': 0x3E,
+    'F6': 0x3F,
+    'F7': 0x40,
+    'F8': 0x41,
+    'F9': 0x42,
+    'F10': 0x43,
+    'F11': 0x44,
+    'F12': 0x45,
+  };
+
   /// Wire table: [action, param1?, param2?, param3?].
   ///
   /// Mouse actions: action byte only (0x00–0x14 range).
@@ -52,7 +155,6 @@ class ButtonActionCatalogMap {
     'mouse.volume_mute': [0x13, 0xB2],
 
     // --- Keyboard tab (action 0x12 = shortcut, key byte in param1) ---
-    // Letters
     'key.letter.a': [0x12, 0x04],
     'key.letter.b': [0x12, 0x05],
     'key.letter.c': [0x12, 0x06],
@@ -80,7 +182,6 @@ class ButtonActionCatalogMap {
     'key.letter.y': [0x12, 0x1C],
     'key.letter.z': [0x12, 0x1D],
 
-    // Digits
     'key.digit.1': [0x12, 0x1E],
     'key.digit.2': [0x12, 0x1F],
     'key.digit.3': [0x12, 0x20],
@@ -92,7 +193,6 @@ class ButtonActionCatalogMap {
     'key.digit.9': [0x12, 0x26],
     'key.digit.0': [0x12, 0x27],
 
-    // Symbols
     'key.sym.minus': [0x12, 0x2D],
     'key.sym.equals': [0x12, 0x2E],
     'key.sym.lbracket': [0x12, 0x2F],
@@ -110,7 +210,6 @@ class ButtonActionCatalogMap {
     'key.sym.backspace': [0x12, 0x2A],
     'key.sym.tab': [0x12, 0x2B],
 
-    // Function keys
     'key.f1': [0x12, 0x3A],
     'key.f2': [0x12, 0x3B],
     'key.f3': [0x12, 0x3C],
@@ -124,7 +223,6 @@ class ButtonActionCatalogMap {
     'key.f11': [0x12, 0x44],
     'key.f12': [0x12, 0x45],
 
-    // Navigation
     'key.nav.insert': [0x12, 0x49],
     'key.nav.home': [0x12, 0x4A],
     'key.nav.pageup': [0x12, 0x4B],
@@ -139,7 +237,6 @@ class ButtonActionCatalogMap {
     'key.nav.scroll': [0x12, 0x47],
     'key.nav.pause': [0x12, 0x48],
 
-    // Numpad
     'key.num.0': [0x12, 0x62],
     'key.num.1': [0x12, 0x59],
     'key.num.2': [0x12, 0x5A],
@@ -159,7 +256,6 @@ class ButtonActionCatalogMap {
     'key.num.lock': [0x12, 0x53],
     'key.num.eq': [0x12, 0x67],
 
-    // Modifiers (keyboard tab)
     'key.mod.capslk': [0x12, 0x39],
     'key.mod.shift': [0x12, 0xE1],
     'key.mod.ctrl': [0x12, 0xE0],

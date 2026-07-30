@@ -46,3 +46,24 @@ class DeviceSettingsButtonMappingSlotRequested extends DeviceSettingsEvent {
   /// L2 catalog action ID (e.g. `"mouse.left"`, `"key.letter.a"`).
   final String catalogId;
 }
+
+/// User selected a special combination (modifiers + key) for a button slot.
+///
+/// L3 passes modifier catalog IDs and the captured character. L4 translates
+/// to wire bytes via [ButtonActionCatalogMap.buildComboSlot].
+class DeviceSettingsSpecialComboRequested extends DeviceSettingsEvent {
+  const DeviceSettingsSpecialComboRequested({
+    required this.buttonId,
+    required this.modifierIds,
+    required this.keyChar,
+  });
+
+  /// 1-based physical button index.
+  final int buttonId;
+
+  /// Modifier catalog IDs (e.g. `["special.mod.ctrl", "special.mod.alt"]`).
+  final List<String> modifierIds;
+
+  /// Captured character (e.g. `"C"`).
+  final String keyChar;
+}

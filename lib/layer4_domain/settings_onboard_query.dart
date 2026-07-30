@@ -1,18 +1,18 @@
 import 'dart:async';
 
-import 'package:driver_hub/layer1_discovery/device_session.dart';
 import 'package:driver_hub/layer2_capabilities/action_catalog.dart';
 import 'package:driver_hub/layer2_capabilities/capabilities.dart';
 import 'package:driver_hub/layer2_capabilities/sensor_profiles.dart';
+import 'package:driver_hub/layer4_domain/device_repository.dart';
 import 'package:driver_hub/layer4_domain/models/device_settings_state.dart';
 import 'package:driver_hub/layer4_domain/models/discovered_card_state.dart';
 import 'package:driver_hub/layer4_domain/settings_capabilities_pack.dart';
 import 'package:driver_hub/layer5_codec/codecs/translation_codec.dart';
 import 'package:flutter/foundation.dart';
 
-/// L4: hydrate [DeviceSettingsState] from L2 blueprints + live GETs via [DeviceSession].
+/// L4: hydrate [DeviceSettingsState] from L2 blueprints + live GETs via [DeviceRepository].
 ///
-/// Not discovery lifecycle (L1). Not UI (L3). Caller supplies a live session.
+/// Not discovery lifecycle (L1). Not UI (L3). Caller supplies a live repository.
 
 /// Onboard config for settings (not at card load).
 ///
@@ -26,7 +26,7 @@ import 'package:flutter/foundation.dart';
 /// Handshake failure or [TimeoutException] on any GET →
 /// [DeviceSettingsState.error] (caller should pop home). Other errors soft-fail.
 Future<DeviceSettingsState> queryOnboardConfig(
-  DeviceSession session,
+  DeviceRepository session,
   DiscoveredCardState card, {
   void Function(DeviceSettingsState partial)? onPartial,
 }) async {
@@ -398,10 +398,10 @@ EncodingTable? _sensorEncodingTableFor(DiscoveredCardState card) {
 
 /// Load per-model caps + sensor tables. Null if asset missing / unknown devId.
 Future<DeviceCapabilities?> _loadCapabilitiesForSession(
-  DeviceSession session,
+  DeviceRepository session,
   DiscoveredCardState card,
 ) async {
-  final model = session.device.entry.model;
+  final model = session.card.displayName;
   try {
     await DeviceCapabilityStore.load(model);
   } catch (e) {

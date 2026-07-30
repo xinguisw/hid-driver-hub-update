@@ -1,5 +1,4 @@
 import 'package:driver_hub/layer2_capabilities/capabilities.dart';
-import 'package:driver_hub/layer4_domain/button_mapping_reset.dart';
 import 'package:driver_hub/layer4_domain/models/button_mapping_slot.dart';
 import 'package:driver_hub/layer4_domain/models/device_settings_state.dart';
 

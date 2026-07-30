@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:driver_hub/layer1_discovery/discovered_device.dart';
+import 'package:driver_hub/layer4_domain/device_repository.dart';
+import 'package:driver_hub/layer4_domain/models/discovered_card_state.dart';
 import 'package:driver_hub/layer6_transport/hid_session.dart';
 import 'package:flutter/foundation.dart';
 
@@ -35,7 +37,9 @@ class DeviceSessionState {
 enum Status { connecting, verified, rejected, error }
 
 /// Per-device orchestrator: open -> handshake -> verify against the catalog.
-class DeviceSession {
+///
+/// Implements [DeviceRepository] to bridge L1 discovery with L4 domain layer.
+class DeviceSession implements DeviceRepository {
   /// Max transport open attempts per [start] (total tries).
   static const int maxOpenAttempts = 2;
 
@@ -69,12 +73,30 @@ class DeviceSession {
   Stream<BatteryResult> get batteryPushes => _batteryPushes.stream;
 
   /// Whether the underlying transport is still open.
+  @override
   bool get isAlive => _session.isOpen;
+
+  /// The device card state for this session.
+  @override
+  DiscoveredCardState get card {
+    return DiscoveredCardState(
+      devId: device.entry.devId,
+      displayName: device.entry.model,
+      connectionMode: device.mode.mode == 0 ? 0 : 1,
+      firmwareVersion: '',
+      batteryPercentage: -1,
+      isCharging: false,
+      physicalHandle: device.hidDevice,
+      imageSmall: device.entry.image.small,
+      imageLarge: device.entry.image.large,
+    );
+  }
 
   /// Re-run A1 handshake on an open session.
   ///
   /// Firmware NAKs onboard config (reason 0x01) if handshake is not fresh
   /// when settings opens later. Does not re-open the device.
+  @override
   Future<bool> rehandshake() async {
     if (!isAlive) return false;
     final name = device.entry.model;
@@ -107,6 +129,7 @@ class DeviceSession {
     return _protocol.queryFirmware(_session);
   }
 
+  @override
   Future<ButtonMappingResult?> queryButtonMapping() async {
     if (!isAlive) return null;
     return _protocol.queryButtonMapping(_session);
@@ -120,26 +143,31 @@ class DeviceSession {
     await _protocol.setButtonMapping(_session, buttons);
   }
 
+  @override
   Future<ReportRateDpiInfoResult?> queryReportRateDpiInfo() async {
     if (!isAlive) return null;
     return _protocol.queryReportRateDpiInfo(_session);
   }
 
+  @override
   Future<DpiTableResult?> queryDpiTable() async {
     if (!isAlive) return null;
     return _protocol.queryDpiTable(_session);
   }
 
+  @override
   Future<DpiRgbResult?> queryDpiRgb() async {
     if (!isAlive) return null;
     return _protocol.queryDpiRgb(_session);
   }
 
+  @override
   Future<SensorOtherResult?> querySensorOther() async {
     if (!isAlive) return null;
     return _protocol.querySensorOther(_session);
   }
 
+  @override
   Future<RgbBacklightResult?> queryRgbBacklight() async {
     if (!isAlive) return null;
     return _protocol.queryRgbBacklight(_session);

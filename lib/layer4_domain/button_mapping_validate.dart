@@ -1,3 +1,4 @@
+import 'package:driver_hub/layer2_capabilities/capabilities.dart';
 import 'package:driver_hub/layer4_domain/button_mapping_reset.dart';
 import 'package:driver_hub/layer4_domain/models/button_mapping_slot.dart';
 import 'package:driver_hub/layer4_domain/models/device_settings_state.dart';
@@ -35,6 +36,58 @@ String? validateButtonMappingStaging({
     );
     if (err != null) return err;
   }
+  return null;
+}
+
+/// Validates button-map staging against L2 device capabilities.
+///
+/// Checks:
+/// - All staged button IDs exist in capabilities
+/// - Non-remappable buttons are not being changed from their default/live values
+///
+/// @returns null if OK; otherwise a short error message.
+String? validateButtonMappingAgainstCapabilities({
+  required List<ButtonMappingSlot> staging,
+  required DeviceSettingsState synced,
+  DeviceCapabilities? capabilities,
+}) {
+  if (capabilities == null) {
+    return null; // No capabilities loaded, skip L2 validation
+  }
+
+  final capButtons = capabilities.buttons;
+  if (capButtons == null) {
+    return null; // No button capabilities, skip validation
+  }
+
+  final capById = <int, ButtonDef>{
+    for (final b in capButtons.list) b.id: b,
+  };
+
+  for (var i = 0; i < staging.length; i++) {
+    final slot = staging[i];
+    final id = i + 1;
+    final cap = capById[id];
+
+    if (cap == null) {
+      return 'button mapping B$id: not in device capabilities';
+    }
+
+    // Check if trying to change a non-remappable button
+    if (!cap.remappable) {
+      final live = synced.buttons?.firstWhere(
+        (b) => b.id == id,
+        orElse: () => ButtonData(id: id, labelKey: 'button.$id', remappable: false),
+      );
+      final expectedAction = live?.action ?? 0;
+      if (slot.action != expectedAction) {
+        return 'button mapping B$id: cannot change non-remappable button '
+            '(got 0x${slot.action.toRadixString(16)}, '
+            'expected 0x${expectedAction.toRadixString(16)})';
+      }
+    }
+  }
+
   return null;
 }
 

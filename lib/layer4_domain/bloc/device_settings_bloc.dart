@@ -1,3 +1,4 @@
+import 'package:driver_hub/layer2_capabilities/capabilities.dart';
 import 'package:driver_hub/layer4_domain/bloc/device_settings_event.dart';
 import 'package:driver_hub/layer4_domain/bloc/device_settings_state_view.dart';
 import 'package:driver_hub/layer4_domain/button_mapping_reset.dart';
@@ -10,6 +11,11 @@ typedef ButtonMappingCommit = Future<void> Function(
   List<ButtonMappingSlot> slots,
 );
 
+/// FR-ARC-014c: escalation callback invoked when consecutive failures reach threshold.
+///
+/// L1 [DeviceScope] provides this to force session teardown/reconnect.
+typedef EscalationCallback = void Function(String reason);
+
 class DeviceSettingsBloc
     extends Bloc<DeviceSettingsEvent, DeviceSettingsViewState> {
   DeviceSettingsBloc({
@@ -17,6 +23,8 @@ class DeviceSettingsBloc
     ButtonActionLabelFn? actionLabelOf,
     ButtonIdLabelFn? buttonIdLabelOf,
     DeviceSettingsViewState? initial,
+    this.capabilities,
+    this.onEscalationRequested,
   }) : super(
           (initial ?? DeviceSettingsViewState.empty).copyWith(
             actionLabelOf: actionLabelOf,
@@ -27,9 +35,12 @@ class DeviceSettingsBloc
     on<DeviceSettingsResetButtonMappingRequested>(_onResetButtonMapping);
     on<DeviceSettingsSaveRequested>(_onSave);
     on<DeviceSettingsCancelRequested>(_onCancel);
+    on<DeviceSettingsNavigationRequested>(_onNavigationRequested);
   }
 
   final ButtonMappingCommit commitButtonMapping;
+  final DeviceCapabilities? capabilities;
+  final EscalationCallback? onEscalationRequested;
 
   static const int failureEscalateThreshold = 3;
 
@@ -103,6 +114,17 @@ class DeviceSettingsBloc
       return;
     }
 
+    // L2 boundary validation against device capabilities
+    final l2ValidationError = validateButtonMappingAgainstCapabilities(
+      staging: staging,
+      synced: synced,
+      capabilities: capabilities,
+    );
+    if (l2ValidationError != null) {
+      emit(state.copyWith(lastError: l2ValidationError));
+      return;
+    }
+
     emit(state.copyWith(committing: true, clearError: true));
 
     try {
@@ -119,7 +141,11 @@ class DeviceSettingsBloc
       );
       if (failures >= failureEscalateThreshold) {
         debugPrint(
-          '[bloc] consecutiveFailures=$failures >= $failureEscalateThreshold',
+          '[bloc] consecutiveFailures=$failures >= $failureEscalateThreshold '
+          '— escalating to L1 watcher',
+        );
+        onEscalationRequested?.call(
+          'button mapping save failed $failures consecutive times',
         );
       }
       return;
@@ -159,5 +185,24 @@ class DeviceSettingsBloc
       ),
     );
     debugPrint('[bloc] cancel: staging wiped');
+  }
+
+  /// FR-OPS-005: navigation guard — dirty sweep, no modal.
+  ///
+  /// Reuses the same wipe path as Cancel (per flowchart: Yes arrow from
+  /// "Is Sandbox buffer dirty?" loops back to "Wipe staging buffer for block").
+  void _onNavigationRequested(
+    DeviceSettingsNavigationRequested event,
+    Emitter<DeviceSettingsViewState> emit,
+  ) {
+    if (!state.isDirty && state.buttonMappingStaging == null) return;
+    emit(
+      state.copyWith(
+        clearStaging: true,
+        clearError: true,
+        committing: false,
+      ),
+    );
+    debugPrint('[bloc] navigation: dirty sweep');
   }
 }

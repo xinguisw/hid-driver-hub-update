@@ -22,3 +22,10 @@ class DeviceSettingsSaveRequested extends DeviceSettingsEvent {
 class DeviceSettingsCancelRequested extends DeviceSettingsEvent {
   const DeviceSettingsCancelRequested();
 }
+
+/// Navigation attempt with dirty sandbox (FR-OPS-005).
+///
+/// Per SDRD: allow navigation, dirty sweep silently (no modal).
+class DeviceSettingsNavigationRequested extends DeviceSettingsEvent {
+  const DeviceSettingsNavigationRequested();
+}

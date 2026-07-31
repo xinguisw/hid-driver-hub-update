@@ -144,11 +144,14 @@ class DeviceSession implements DeviceRepository {
   }
 
   /// Thin L1 forwarder for C2 SET (L5 encodes + CRC).
-  Future<void> setReportRate(int reportRateWire) async {
+  ///
+  /// [dataBlock] must be exactly 3 bytes:
+  /// `[reportRateWire, dpiCurrentLevel, dpiActiveLevel]`.
+  Future<void> setReportRate(Uint8List dataBlock) async {
     if (!isAlive) {
       throw StateError('setReportRate: session not alive');
     }
-    await _protocol.setReportRate(_session, reportRateWire);
+    await _protocol.setReportRate(_session, dataBlock);
   }
 
   @override

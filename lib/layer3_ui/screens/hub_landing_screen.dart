@@ -214,11 +214,47 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                 )
               else if (_selectedIndex == _performanceIndex)
                 Expanded(
-                  child: Column(
-                    children: [
-                      Expanded(child: HubPerformancePanel()),
-                      _PerformanceActionBar(),
-                    ],
+                  child: BlocBuilder<DeviceSettingsBloc, DeviceSettingsViewState>(
+                    buildWhen: (p, n) =>
+                        p.displaySettings != n.displaySettings ||
+                        p.reportRateStaging != n.reportRateStaging ||
+                        p.isDirty != n.isDirty ||
+                        p.committing != n.committing ||
+                        p.lastError != n.lastError,
+                    builder: (context, view) {
+                      final display = view.displaySettings;
+                      final bloc = context.read<DeviceSettingsBloc>();
+                      return Column(
+                        children: [
+                          Expanded(
+                            child: HubPerformancePanel(
+                              reportRateOptions: display?.reportRateOptions,
+                              reportRateHz: display?.reportRateHz,
+                              reportRateStaging: view.reportRateStaging,
+                              onReportRateChanged: (hz) {
+                                bloc.add(
+                                  DeviceSettingsReportRateRequested(hz: hz),
+                                );
+                              },
+                            ),
+                          ),
+                          _PerformanceActionBar(
+                            isDirty: view.isDirty,
+                            committing: view.committing,
+                            onSave: () {
+                              bloc.add(
+                                const DeviceSettingsSaveReportRateRequested(),
+                              );
+                            },
+                            onCancel: () {
+                              bloc.add(
+                                const DeviceSettingsCancelRequested(),
+                              );
+                            },
+                          ),
+                        ],
+                      );
+                    },
                   ),
                 )
               else
@@ -231,12 +267,21 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
   }
 }
 
-/// Bottom-right action bar for Performance Setting (skeleton).
+/// Bottom-right action bar for Performance Setting.
 ///
 /// Reset/Save/Cancel buttons docked right.
-/// No wiring yet; future subtask will connect to BLoC.
 class _PerformanceActionBar extends StatelessWidget {
-  const _PerformanceActionBar();
+  const _PerformanceActionBar({
+    this.isDirty = false,
+    this.committing = false,
+    this.onSave,
+    this.onCancel,
+  });
+
+  final bool isDirty;
+  final bool committing;
+  final VoidCallback? onSave;
+  final VoidCallback? onCancel;
 
   @override
   Widget build(BuildContext context) {
@@ -247,7 +292,7 @@ class _PerformanceActionBar extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
           OutlinedButton(
-            onPressed: null, // skeleton
+            onPressed: null, // reset not wired yet
             style: OutlinedButton.styleFrom(
               foregroundColor: theme.colorScheme.onSurface,
               side: BorderSide(color: theme.colorScheme.outline),
@@ -257,7 +302,7 @@ class _PerformanceActionBar extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           OutlinedButton(
-            onPressed: null, // skeleton
+            onPressed: (!isDirty || committing) ? null : onSave,
             style: OutlinedButton.styleFrom(
               foregroundColor: theme.colorScheme.onSurface,
               side: BorderSide(color: theme.colorScheme.outline),
@@ -267,7 +312,7 @@ class _PerformanceActionBar extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           OutlinedButton(
-            onPressed: null, // skeleton
+            onPressed: committing ? null : onCancel,
             style: OutlinedButton.styleFrom(
               foregroundColor: theme.colorScheme.onSurface,
               side: BorderSide(color: theme.colorScheme.outline),

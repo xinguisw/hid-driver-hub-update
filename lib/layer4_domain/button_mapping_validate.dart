@@ -20,19 +20,10 @@ String? validateButtonMappingStaging({
         'got ${staging.length}';
   }
 
-  final byId = <int, ButtonData>{
-    if (synced.buttons != null)
-      for (final b in synced.buttons!) b.id: b,
-  };
-
   for (var i = 0; i < staging.length; i++) {
     final slot = staging[i];
     final id = i + 1;
-    final err = _validateSlot(
-      id: id,
-      slot: slot,
-      live: byId[id],
-    );
+    final err = _validateSlot(id: id, slot: slot);
     if (err != null) return err;
   }
   return null;
@@ -59,9 +50,7 @@ String? validateButtonMappingAgainstCapabilities({
     return null; // No button capabilities, skip validation
   }
 
-  final capById = <int, ButtonDef>{
-    for (final b in capButtons.list) b.id: b,
-  };
+  final capById = <int, ButtonDef>{for (final b in capButtons.list) b.id: b};
 
   for (var i = 0; i < staging.length; i++) {
     final slot = staging[i];
@@ -76,7 +65,8 @@ String? validateButtonMappingAgainstCapabilities({
     if (!cap.remappable) {
       final live = synced.buttons?.firstWhere(
         (b) => b.id == id,
-        orElse: () => ButtonData(id: id, labelKey: 'button.$id', remappable: false),
+        orElse: () =>
+            ButtonData(id: id, labelKey: 'button.$id', remappable: false),
       );
       final expectedAction = live?.action ?? 0;
       if (slot.action != expectedAction) {
@@ -90,21 +80,12 @@ String? validateButtonMappingAgainstCapabilities({
   return null;
 }
 
-String? _validateSlot({
-  required int id,
-  required ButtonMappingSlot slot,
-  required ButtonData? live,
-}) {
+String? _validateSlot({required int id, required ButtonMappingSlot slot}) {
   if (!isButtonMappingByte(slot.action) ||
       !isButtonMappingByte(slot.param1) ||
       !isButtonMappingByte(slot.param2) ||
       !isButtonMappingByte(slot.param3)) {
     return 'button mapping B$id: value out of 0..255';
   }
-
-  // Note: Reset policy check removed from here.
-  // Reset validation happens separately in stageButtonMappingDefaults.
-  // Normal button mapping allows any valid action for remappable buttons.
   return null;
 }
-

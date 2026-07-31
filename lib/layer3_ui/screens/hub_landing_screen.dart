@@ -14,11 +14,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 /// L3 only: dispatch BLoC events + paint [displaySettings]. No L1 session,
 /// no SET, no codec (manager L3 + SDRD FR-OPS).
 class HubLandingScreen extends StatefulWidget {
-  const HubLandingScreen({
-    super.key,
-    required this.card,
-    required this.scope,
-  });
+  const HubLandingScreen({super.key, required this.card, required this.scope});
 
   final DiscoveredCardState card;
   final DeviceScope scope;
@@ -93,12 +89,6 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
     debugPrint('[hub] ${widget.card.displayName}: onboard config done');
   }
 
-  /// L3 only: Tip Confirm already done on canvas → dispatch BLoC event.
-  void _onResetToDefault() {
-    debugPrint('[hub] ${widget.card.displayName}: dispatch reset event');
-    _settingsBloc.add(const DeviceSettingsResetButtonMappingRequested());
-  }
-
   @override
   Widget build(BuildContext context) {
     final selected = widget.scope.resolveCard(widget.card);
@@ -122,8 +112,11 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                 selectedIndex: _selectedIndex,
                 onDestinationSelected: (index) {
                   // FR-OPS-005: dirty sweep when navigating away from button mapping
-                  if (_selectedIndex == _buttonMappingIndex && index != _buttonMappingIndex) {
-                    _settingsBloc.add(const DeviceSettingsNavigationRequested());
+                  if (_selectedIndex == _buttonMappingIndex &&
+                      index != _buttonMappingIndex) {
+                    _settingsBloc.add(
+                      const DeviceSettingsNavigationRequested(),
+                    );
                   }
                   setState(() {
                     _selectedIndex = index;
@@ -180,9 +173,7 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                                   '[hub] ${widget.card.displayName}: '
                                   'dispatch cancel',
                                 );
-                                bloc.add(
-                                  const DeviceSettingsCancelRequested(),
-                                );
+                                bloc.add(const DeviceSettingsCancelRequested());
                               },
                             ),
                           ),

@@ -67,3 +67,18 @@ class DeviceSettingsSpecialComboRequested extends DeviceSettingsEvent {
   /// Captured character (e.g. `"C"`).
   final String keyChar;
 }
+
+/// User selected a report rate value.
+///
+/// L3 passes the Hz value. L4 stages it and marks dirty.
+class DeviceSettingsReportRateRequested extends DeviceSettingsEvent {
+  const DeviceSettingsReportRateRequested({required this.hz});
+
+  /// Selected polling rate in Hz (e.g. 125, 250, 500, 1000).
+  final int hz;
+}
+
+/// Save report rate staging to device.
+class DeviceSettingsSaveReportRateRequested extends DeviceSettingsEvent {
+  const DeviceSettingsSaveReportRateRequested();
+}

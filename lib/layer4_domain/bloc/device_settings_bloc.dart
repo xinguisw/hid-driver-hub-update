@@ -1,15 +1,17 @@
 import 'package:driver_hub/layer2_capabilities/capabilities.dart';
 import 'package:driver_hub/layer4_domain/bloc/device_settings_event.dart';
 import 'package:driver_hub/layer4_domain/bloc/device_settings_state_view.dart';
-import 'package:driver_hub/layer4_domain/button_action_catalog_map.dart';
 import 'package:driver_hub/layer4_domain/button_mapping_reset.dart';
 import 'package:driver_hub/layer4_domain/button_mapping_validate.dart';
 import 'package:driver_hub/layer4_domain/models/button_mapping_slot.dart';
+import 'package:driver_hub/layer5_codec/button_action_catalog_map.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 typedef ButtonMappingCommit =
     Future<void> Function(List<ButtonMappingSlot> slots);
+
+typedef ReportRateCommit = Future<void> Function(int reportRateHz);
 
 /// FR-ARC-014c: escalation callback invoked when consecutive failures reach threshold.
 ///
@@ -23,6 +25,7 @@ class DeviceSettingsBloc
     extends Bloc<DeviceSettingsEvent, DeviceSettingsViewState> {
   DeviceSettingsBloc({
     required this.commitButtonMapping,
+    required this.commitReportRate,
     ButtonActionLabelFn? actionLabelOf,
     ButtonIdLabelFn? buttonIdLabelOf,
     DeviceSettingsViewState? initial,
@@ -42,9 +45,12 @@ class DeviceSettingsBloc
     on<DeviceSettingsNavigationRequested>(_onNavigationRequested);
     on<DeviceSettingsButtonMappingSlotRequested>(_onButtonMappingSlotRequested);
     on<DeviceSettingsSpecialComboRequested>(_onSpecialComboRequested);
+    on<DeviceSettingsReportRateRequested>(_onReportRateRequested);
+    on<DeviceSettingsSaveReportRateRequested>(_onSaveReportRate);
   }
 
   final ButtonMappingCommit commitButtonMapping;
+  final ReportRateCommit commitReportRate;
   final DeviceCapabilities? capabilities;
   final EscalationCallback? onEscalationRequested;
   final SaveCompletedCallback? onSaveCompleted;
@@ -372,5 +378,114 @@ class DeviceSettingsBloc
       'p2=0x${slot.param2.toRadixString(16)}, '
       'p3=0x${slot.param3.toRadixString(16)})',
     );
+  }
+
+  /// User selected a report rate value.
+  ///
+  /// Stages the Hz value and marks dirty. Save commits to device.
+  void _onReportRateRequested(
+    DeviceSettingsReportRateRequested event,
+    Emitter<DeviceSettingsViewState> emit,
+  ) {
+    final synced = state.synced;
+    if (synced == null) {
+      emit(state.copyWith(lastError: 'no settings loaded'));
+      return;
+    }
+
+    // Validate Hz is in allowed options
+    final options = synced.reportRateOptions;
+    if (options != null && !options.contains(event.hz)) {
+      emit(
+        state.copyWith(
+          lastError: 'report rate ${event.hz}Hz not in options $options',
+        ),
+      );
+      return;
+    }
+
+    emit(
+      state.copyWith(
+        reportRateStaging: event.hz,
+        isDirty: true,
+        clearError: true,
+      ),
+    );
+
+    debugPrint('[bloc] report rate staged: ${event.hz}Hz');
+  }
+
+  /// Save report rate staging to device.
+  Future<void> _onSaveReportRate(
+    DeviceSettingsSaveReportRateRequested event,
+    Emitter<DeviceSettingsViewState> emit,
+  ) async {
+    if (!state.isDirty || state.reportRateStaging == null) {
+      debugPrint('[bloc] save reportRate: nothing dirty');
+      return;
+    }
+    if (state.committing) return;
+
+    final staging = state.reportRateStaging!;
+    final synced = state.synced;
+    if (synced == null) {
+      emit(state.copyWith(lastError: 'save reportRate: no synced settings'));
+      return;
+    }
+
+    final options = synced.reportRateOptions;
+    if (options != null && !options.contains(staging)) {
+      emit(
+        state.copyWith(
+          lastError: 'report rate ${staging}Hz not in options $options',
+        ),
+      );
+      return;
+    }
+
+    emit(state.copyWith(committing: true, clearError: true));
+
+    try {
+      await commitReportRate(staging);
+    } catch (e) {
+      debugPrint('[bloc] save reportRate failed: $e');
+      final failures = state.consecutiveFailures + 1;
+      emit(
+        state.copyWith(
+          committing: false,
+          lastError: 'report rate save failed: $e',
+          consecutiveFailures: failures,
+        ),
+      );
+      if (failures >= failureEscalateThreshold) {
+        debugPrint(
+          '[bloc] consecutiveFailures=$failures >= $failureEscalateThreshold '
+          '— escalating to L1 watcher',
+        );
+        onEscalationRequested?.call(
+          'report rate save failed $failures consecutive times',
+        );
+      }
+      return;
+    }
+
+    final nextSynced = synced.copyWith(
+      reportRateHz: staging,
+      clearError: true,
+    );
+    emit(
+      DeviceSettingsViewState(
+        synced: nextSynced,
+        reportRateStaging: null,
+        isDirty: false,
+        committing: false,
+        consecutiveFailures: 0,
+        lastError: null,
+        actionLabelOf: state.actionLabelOf,
+        buttonIdLabelOf: state.buttonIdLabelOf,
+      ),
+    );
+    debugPrint('[bloc] save reportRate: synced');
+    onSaveCompleted?.call();
   }
 }

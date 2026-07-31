@@ -15,6 +15,7 @@ class DeviceSettingsViewState {
   const DeviceSettingsViewState({
     this.synced,
     this.buttonMappingStaging,
+    this.reportRateStaging,
     this.isDirty = false,
     this.committing = false,
     this.consecutiveFailures = 0,
@@ -25,6 +26,7 @@ class DeviceSettingsViewState {
 
   final DeviceSettingsState? synced;
   final List<ButtonMappingSlot>? buttonMappingStaging;
+  final int? reportRateStaging;
   final bool isDirty;
   final bool committing;
   final int consecutiveFailures;
@@ -51,6 +53,7 @@ class DeviceSettingsViewState {
   DeviceSettingsViewState copyWith({
     DeviceSettingsState? synced,
     List<ButtonMappingSlot>? buttonMappingStaging,
+    int? reportRateStaging,
     bool? isDirty,
     bool? committing,
     int? consecutiveFailures,
@@ -65,6 +68,9 @@ class DeviceSettingsViewState {
       buttonMappingStaging: clearStaging
           ? null
           : (buttonMappingStaging ?? this.buttonMappingStaging),
+      reportRateStaging: clearStaging
+          ? null
+          : (reportRateStaging ?? this.reportRateStaging),
       isDirty: clearStaging ? false : (isDirty ?? this.isDirty),
       committing: committing ?? this.committing,
       consecutiveFailures: consecutiveFailures ?? this.consecutiveFailures,

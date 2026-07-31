@@ -85,6 +85,22 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
     debugPrint('[hub] ${widget.card.displayName}: onboard config done');
   }
 
+  /// L3 only: Confirm already happened on canvas; dispatch to L4 (no CRC/HID).
+  Future<void> _onResetToDefault() async {
+    debugPrint('[hub] ${widget.card.displayName}: reset button mapping…');
+    final next =
+        await widget.scope.resetButtonMappingToDefault(widget.card);
+    if (!mounted) return;
+    setState(() => _state = next);
+    if (next.error != null) {
+      debugPrint(
+        '[hub] ${widget.card.displayName}: reset failed (${next.error})',
+      );
+    } else {
+      debugPrint('[hub] ${widget.card.displayName}: reset done');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final selected = widget.scope.resolveCard(widget.card);

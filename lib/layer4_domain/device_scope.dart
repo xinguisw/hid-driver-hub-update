@@ -215,6 +215,7 @@ class DeviceScope {
     const translate = TranslationCodec();
     return DeviceSettingsBloc(
       commitButtonMapping: (slots) => commitButtonMapping(card, slots),
+      commitReportRate: (hz) => commitReportRate(card, hz),
       actionLabelOf: (action, p1, p2, p3) => translate.buttonActionToLabel(
         action: action,
         param1: p1,
@@ -244,6 +245,37 @@ class DeviceScope {
         ),
     ];
     await session.setButtonMapping(entries);
+  }
+
+  Future<void> commitReportRate(
+    DiscoveredCardState card,
+    int reportRateHz,
+  ) async {
+    final session = _sessionForCard(card);
+    if (session == null || !session.isAlive) {
+      throw StateError('commitReportRate: no session');
+    }
+
+    // Convert Hz to wire value
+    const translate = TranslationCodec();
+    final wireValue = translate.reportRateHzToWire(reportRateHz);
+    if (wireValue == null) {
+      throw StateError('Unknown report rate Hz: $reportRateHz');
+    }
+
+    // Read current 3-byte block from device
+    final currentBlock = await session.queryReportRateDpiInfo();
+    if (currentBlock == null) {
+      throw StateError('Failed to read current report rate block');
+    }
+
+    // Build new block: [newReportRateWire, currentDpiLevel, currentDpiActive]
+    final dataBlock = Uint8List(3);
+    dataBlock[0] = wireValue;
+    dataBlock[1] = currentBlock.dpiCurrentLevel;
+    dataBlock[2] = currentBlock.dpiActiveLevel;
+
+    await session.setReportRate(dataBlock);
   }
 
   /// Persist BLoC-synced settings after successful Save (cache for re-entry).

@@ -78,22 +78,79 @@ class DeviceSettingsBloc
     }
     if (state.committing) return;
 
-    final staged = stageButtonMappingDefaults(synced.buttons);
+    // [COMMENTED OUT] Old staging approach - kept for reference
+    // final staged = stageButtonMappingDefaults(synced.buttons);
+    // debugPrint(
+    //   '[bloc] reset buttonMapping staged '
+    //   '${[
+    //     for (var i = 0; i < staged.length; i++)
+    //       'B${i + 1}=0x${staged[i].action.toRadixString(16)}'
+    //   ].join(' ')}',
+    // );
+    //
+    // emit(
+    //   state.copyWith(
+    //     buttonMappingStaging: staged,
+    //     isDirty: true,
+    //     clearError: true,
+    //   ),
+    // );
+
+    // New direct commit approach (no staging/Save/Cancel)
+    final defaults = stageButtonMappingDefaults(synced.buttons);
     debugPrint(
-      '[bloc] reset buttonMapping staged '
+      '[bloc] reset buttonMapping direct commit '
       '${[
-        for (var i = 0; i < staged.length; i++)
-          'B${i + 1}=0x${staged[i].action.toRadixString(16)}'
+        for (var i = 0; i < defaults.length; i++)
+          'B${i + 1}=0x${defaults[i].action.toRadixString(16)}'
       ].join(' ')}',
     );
 
+    emit(state.copyWith(committing: true, clearError: true));
+
+    try {
+      await commitButtonMapping(defaults);
+    } catch (e) {
+      debugPrint('[bloc] reset buttonMapping failed: $e');
+      final failures = state.consecutiveFailures + 1;
+      emit(
+        state.copyWith(
+          committing: false,
+          lastError: 'button mapping reset failed: $e',
+          consecutiveFailures: failures,
+        ),
+      );
+      if (failures >= failureEscalateThreshold) {
+        debugPrint(
+          '[bloc] consecutiveFailures=$failures >= $failureEscalateThreshold '
+          '— escalating to L1 watcher',
+        );
+        onEscalationRequested?.call(
+          'button mapping reset failed $failures consecutive times',
+        );
+      }
+      return;
+    }
+
+    final nextSynced = packButtonsOntoSettings(
+      synced,
+      defaults,
+      actionLabelOf: state.actionLabelOf,
+      buttonIdLabelOf: state.buttonIdLabelOf,
+    );
     emit(
-      state.copyWith(
-        buttonMappingStaging: staged,
-        isDirty: true,
-        clearError: true,
+      DeviceSettingsViewState(
+        synced: nextSynced,
+        buttonMappingStaging: null,
+        isDirty: false,
+        committing: false,
+        consecutiveFailures: 0,
+        lastError: null,
+        actionLabelOf: state.actionLabelOf,
+        buttonIdLabelOf: state.buttonIdLabelOf,
       ),
     );
+    debugPrint('[bloc] reset buttonMapping: synced');
   }
 
   Future<void> _onSave(

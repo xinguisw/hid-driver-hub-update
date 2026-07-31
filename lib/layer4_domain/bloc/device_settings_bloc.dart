@@ -8,9 +8,8 @@ import 'package:driver_hub/layer4_domain/models/button_mapping_slot.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-typedef ButtonMappingCommit = Future<void> Function(
-  List<ButtonMappingSlot> slots,
-);
+typedef ButtonMappingCommit =
+    Future<void> Function(List<ButtonMappingSlot> slots);
 
 /// FR-ARC-014c: escalation callback invoked when consecutive failures reach threshold.
 ///
@@ -31,11 +30,11 @@ class DeviceSettingsBloc
     this.onEscalationRequested,
     this.onSaveCompleted,
   }) : super(
-          (initial ?? DeviceSettingsViewState.empty).copyWith(
-            actionLabelOf: actionLabelOf,
-            buttonIdLabelOf: buttonIdLabelOf,
-          ),
-        ) {
+         (initial ?? DeviceSettingsViewState.empty).copyWith(
+           actionLabelOf: actionLabelOf,
+           buttonIdLabelOf: buttonIdLabelOf,
+         ),
+       ) {
     on<DeviceSettingsHydrated>(_onHydrated);
     on<DeviceSettingsResetButtonMappingRequested>(_onResetButtonMapping);
     on<DeviceSettingsSaveRequested>(_onSave);
@@ -78,33 +77,12 @@ class DeviceSettingsBloc
     }
     if (state.committing) return;
 
-    // Staging path (kept for reference):
-    // final staged = stageButtonMappingDefaults(synced.buttons);
-    // debugPrint(
-    //   '[bloc] reset buttonMapping staged '
-    //   '${[
-    //     for (var i = 0; i < staged.length; i++)
-    //       'B${i + 1}=0x${staged[i].action.toRadixString(16)}'
-    //   ].join(' ')}',
-    // );
-    // emit(
-    //   state.copyWith(
-    //     buttonMappingStaging: staged,
-    //     isDirty: true,
-    //     clearError: true,
-    //   ),
-    // );
-
     final defaults = stageButtonMappingDefaults(synced.buttons);
     debugPrint(
       '[bloc] reset buttonMapping immediate commit '
-      '${[
-        for (var i = 0; i < defaults.length; i++)
-          'B${i + 1}=0x${defaults[i].action.toRadixString(16)}'
-      ].join(' ')}',
+      '${[for (var i = 0; i < defaults.length; i++) 'B${i + 1}=0x${defaults[i].action.toRadixString(16)}'].join(' ')}',
     );
 
-    // Validate factory defaults (should always pass, but guard anyway)
     final validationError = validateButtonMappingStaging(
       staging: defaults,
       synced: synced,
@@ -258,11 +236,7 @@ class DeviceSettingsBloc
   ) {
     if (!state.isDirty && state.buttonMappingStaging == null) return;
     emit(
-      state.copyWith(
-        clearStaging: true,
-        clearError: true,
-        committing: false,
-      ),
+      state.copyWith(clearStaging: true, clearError: true, committing: false),
     );
     debugPrint('[bloc] cancel: staging wiped');
   }
@@ -277,11 +251,7 @@ class DeviceSettingsBloc
   ) {
     if (!state.isDirty && state.buttonMappingStaging == null) return;
     emit(
-      state.copyWith(
-        clearStaging: true,
-        clearError: true,
-        committing: false,
-      ),
+      state.copyWith(clearStaging: true, clearError: true, committing: false),
     );
     debugPrint('[bloc] navigation: dirty sweep');
   }
@@ -303,18 +273,23 @@ class DeviceSettingsBloc
     // Translate catalog ID → wire slot
     final slot = ButtonActionCatalogMap.catalogIdToSlot(event.catalogId);
     if (slot == null) {
-      emit(state.copyWith(lastError: 'unknown catalog action: ${event.catalogId}'));
+      emit(
+        state.copyWith(lastError: 'unknown catalog action: ${event.catalogId}'),
+      );
       return;
     }
 
     // Initialize staging from live device values if null
-    var staging = state.buttonMappingStaging ??
+    var staging =
+        state.buttonMappingStaging ??
         stageButtonMappingFromLive(synced.buttons);
 
     // Update the slot for this button (1-based index)
     final index = event.buttonId - 1;
     if (index < 0 || index >= staging.length) {
-      emit(state.copyWith(lastError: 'button id out of range: ${event.buttonId}'));
+      emit(
+        state.copyWith(lastError: 'button id out of range: ${event.buttonId}'),
+      );
       return;
     }
 
@@ -355,21 +330,27 @@ class DeviceSettingsBloc
       event.keyChar,
     );
     if (slot == null) {
-      emit(state.copyWith(
-        lastError: 'invalid special combo: '
-            'mods=${event.modifierIds} char="${event.keyChar}"',
-      ));
+      emit(
+        state.copyWith(
+          lastError:
+              'invalid special combo: '
+              'mods=${event.modifierIds} char="${event.keyChar}"',
+        ),
+      );
       return;
     }
 
     // Initialize staging from live device values if null
-    var staging = state.buttonMappingStaging ??
+    var staging =
+        state.buttonMappingStaging ??
         stageButtonMappingFromLive(synced.buttons);
 
     // Update the slot for this button (1-based index)
     final index = event.buttonId - 1;
     if (index < 0 || index >= staging.length) {
-      emit(state.copyWith(lastError: 'button id out of range: ${event.buttonId}'));
+      emit(
+        state.copyWith(lastError: 'button id out of range: ${event.buttonId}'),
+      );
       return;
     }
 

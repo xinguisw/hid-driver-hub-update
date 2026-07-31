@@ -10,7 +10,7 @@ class DeviceSettingsHydrated extends DeviceSettingsEvent {
   final DeviceSettingsState settings;
 }
 
-/// Stages identity button map (sandbox only).
+/// Commits the factory-default button mapping immediately.
 class DeviceSettingsResetButtonMappingRequested extends DeviceSettingsEvent {
   const DeviceSettingsResetButtonMappingRequested();
 }

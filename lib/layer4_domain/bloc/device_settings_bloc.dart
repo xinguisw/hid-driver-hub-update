@@ -78,7 +78,7 @@ class DeviceSettingsBloc
     }
     if (state.committing) return;
 
-    // [COMMENTED OUT] Old staging approach - kept for reference
+    // Staging path (kept for reference):
     // final staged = stageButtonMappingDefaults(synced.buttons);
     // debugPrint(
     //   '[bloc] reset buttonMapping staged '
@@ -87,7 +87,6 @@ class DeviceSettingsBloc
     //       'B${i + 1}=0x${staged[i].action.toRadixString(16)}'
     //   ].join(' ')}',
     // );
-    //
     // emit(
     //   state.copyWith(
     //     buttonMappingStaging: staged,
@@ -96,15 +95,34 @@ class DeviceSettingsBloc
     //   ),
     // );
 
-    // New direct commit approach (no staging/Save/Cancel)
     final defaults = stageButtonMappingDefaults(synced.buttons);
     debugPrint(
-      '[bloc] reset buttonMapping direct commit '
+      '[bloc] reset buttonMapping immediate commit '
       '${[
         for (var i = 0; i < defaults.length; i++)
           'B${i + 1}=0x${defaults[i].action.toRadixString(16)}'
       ].join(' ')}',
     );
+
+    // Validate factory defaults (should always pass, but guard anyway)
+    final validationError = validateButtonMappingStaging(
+      staging: defaults,
+      synced: synced,
+    );
+    if (validationError != null) {
+      emit(state.copyWith(lastError: validationError));
+      return;
+    }
+
+    final l2ValidationError = validateButtonMappingAgainstCapabilities(
+      staging: defaults,
+      synced: synced,
+      capabilities: capabilities,
+    );
+    if (l2ValidationError != null) {
+      emit(state.copyWith(lastError: l2ValidationError));
+      return;
+    }
 
     emit(state.copyWith(committing: true, clearError: true));
 
@@ -116,17 +134,13 @@ class DeviceSettingsBloc
       emit(
         state.copyWith(
           committing: false,
-          lastError: 'button mapping reset failed: $e',
+          lastError: 'reset buttonMapping failed: $e',
           consecutiveFailures: failures,
         ),
       );
       if (failures >= failureEscalateThreshold) {
-        debugPrint(
-          '[bloc] consecutiveFailures=$failures >= $failureEscalateThreshold '
-          '— escalating to L1 watcher',
-        );
         onEscalationRequested?.call(
-          'button mapping reset failed $failures consecutive times',
+          'reset buttonMapping failed $failures consecutive times',
         );
       }
       return;

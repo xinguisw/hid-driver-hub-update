@@ -73,6 +73,15 @@ class TranslationCodec {
   /// Current DPI stage: wire 0-based → 1-based index for domain state.
   int dpiCurrentLevelWireToDisplay(int wire) => wire + 1;
 
+  /// Display level (1-based) → wire 0-based. Reverse of [dpiCurrentLevelWireToDisplay].
+  ///
+  /// Returns `null` for out-of-range levels so the caller can reject rather than
+  /// silently encode a wrong byte.
+  int? dpiCurrentLevelDisplayToWire(int level) {
+    if (level < 1 || level > 8) return null;
+    return level - 1;
+  }
+
   /// Combine wire bytes into one unsigned integer ([endian] big/little).
   ///
   /// Example (`identity`): bytes `03 20` → `0x0320` → display 800.

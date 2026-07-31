@@ -93,6 +93,12 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
     debugPrint('[hub] ${widget.card.displayName}: onboard config done');
   }
 
+  /// L3 only: Tip Confirm already done on canvas → dispatch BLoC event.
+  void _onResetToDefault() {
+    debugPrint('[hub] ${widget.card.displayName}: dispatch reset event');
+    _settingsBloc.add(const DeviceSettingsResetButtonMappingRequested());
+  }
+
   @override
   Widget build(BuildContext context) {
     final selected = widget.scope.resolveCard(widget.card);

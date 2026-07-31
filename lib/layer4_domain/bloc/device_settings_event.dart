@@ -82,3 +82,18 @@ class DeviceSettingsReportRateRequested extends DeviceSettingsEvent {
 class DeviceSettingsSaveReportRateRequested extends DeviceSettingsEvent {
   const DeviceSettingsSaveReportRateRequested();
 }
+
+/// User selected a DPI level.
+///
+/// L3 passes the 1-based level (e.g. 1, 2, 3, ..., 8). L4 stages it and marks dirty.
+class DeviceSettingsDpiLevelRequested extends DeviceSettingsEvent {
+  const DeviceSettingsDpiLevelRequested({required this.level});
+
+  /// Selected DPI level (1-based, e.g. 1, 2, 3, ..., 8).
+  final int level;
+}
+
+/// Save DPI level staging to device.
+class DeviceSettingsSaveDpiLevelRequested extends DeviceSettingsEvent {
+  const DeviceSettingsSaveDpiLevelRequested();
+}

@@ -16,6 +16,7 @@ class DeviceSettingsViewState {
     this.synced,
     this.buttonMappingStaging,
     this.reportRateStaging,
+    this.dpiCurrentLevelStaging,
     this.isDirty = false,
     this.committing = false,
     this.consecutiveFailures = 0,
@@ -27,6 +28,7 @@ class DeviceSettingsViewState {
   final DeviceSettingsState? synced;
   final List<ButtonMappingSlot>? buttonMappingStaging;
   final int? reportRateStaging;
+  final int? dpiCurrentLevelStaging;
   final bool isDirty;
   final bool committing;
   final int consecutiveFailures;
@@ -54,6 +56,7 @@ class DeviceSettingsViewState {
     DeviceSettingsState? synced,
     List<ButtonMappingSlot>? buttonMappingStaging,
     int? reportRateStaging,
+    int? dpiCurrentLevelStaging,
     bool? isDirty,
     bool? committing,
     int? consecutiveFailures,
@@ -71,6 +74,9 @@ class DeviceSettingsViewState {
       reportRateStaging: clearStaging
           ? null
           : (reportRateStaging ?? this.reportRateStaging),
+      dpiCurrentLevelStaging: clearStaging
+          ? null
+          : (dpiCurrentLevelStaging ?? this.dpiCurrentLevelStaging),
       isDirty: clearStaging ? false : (isDirty ?? this.isDirty),
       committing: committing ?? this.committing,
       consecutiveFailures: consecutiveFailures ?? this.consecutiveFailures,

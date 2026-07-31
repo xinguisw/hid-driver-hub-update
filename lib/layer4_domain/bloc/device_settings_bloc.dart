@@ -13,6 +13,8 @@ typedef ButtonMappingCommit =
 
 typedef ReportRateCommit = Future<void> Function(int reportRateHz);
 
+typedef DpiLevelCommit = Future<void> Function(int dpiLevel);
+
 /// FR-ARC-014c: escalation callback invoked when consecutive failures reach threshold.
 ///
 /// L1 [DeviceScope] provides this to force session teardown/reconnect.
@@ -26,6 +28,7 @@ class DeviceSettingsBloc
   DeviceSettingsBloc({
     required this.commitButtonMapping,
     required this.commitReportRate,
+    required this.commitDpiLevel,
     ButtonActionLabelFn? actionLabelOf,
     ButtonIdLabelFn? buttonIdLabelOf,
     DeviceSettingsViewState? initial,
@@ -47,10 +50,13 @@ class DeviceSettingsBloc
     on<DeviceSettingsSpecialComboRequested>(_onSpecialComboRequested);
     on<DeviceSettingsReportRateRequested>(_onReportRateRequested);
     on<DeviceSettingsSaveReportRateRequested>(_onSaveReportRate);
+    on<DeviceSettingsDpiLevelRequested>(_onDpiLevelRequested);
+    on<DeviceSettingsSaveDpiLevelRequested>(_onSaveDpiLevel);
   }
 
   final ButtonMappingCommit commitButtonMapping;
   final ReportRateCommit commitReportRate;
+  final DpiLevelCommit commitDpiLevel;
   final DeviceCapabilities? capabilities;
   final EscalationCallback? onEscalationRequested;
   final SaveCompletedCallback? onSaveCompleted;
@@ -486,6 +492,122 @@ class DeviceSettingsBloc
       ),
     );
     debugPrint('[bloc] save reportRate: synced');
+    onSaveCompleted?.call();
+  }
+
+  /// User selected a DPI level.
+  ///
+  /// Validates against L2 capabilities, stages the level, and marks dirty.
+  void _onDpiLevelRequested(
+    DeviceSettingsDpiLevelRequested event,
+    Emitter<DeviceSettingsViewState> emit,
+  ) {
+    final synced = state.synced;
+    if (synced == null) {
+      emit(state.copyWith(lastError: 'no settings loaded'));
+      return;
+    }
+
+    // Validate level is in L2 capabilities
+    final dpiCaps = capabilities?.dpi;
+    if (dpiCaps != null) {
+      final validLevels = dpiCaps.levels.map((l) => l.level).toList();
+      if (!validLevels.contains(event.level)) {
+        emit(
+          state.copyWith(
+            lastError: 'DPI level ${event.level} not in capabilities $validLevels',
+          ),
+        );
+        return;
+      }
+    }
+
+    emit(
+      state.copyWith(
+        dpiCurrentLevelStaging: event.level,
+        isDirty: true,
+        clearError: true,
+      ),
+    );
+
+    debugPrint('[bloc] DPI level staged: ${event.level}');
+  }
+
+  /// Save DPI level staging to device.
+  Future<void> _onSaveDpiLevel(
+    DeviceSettingsSaveDpiLevelRequested event,
+    Emitter<DeviceSettingsViewState> emit,
+  ) async {
+    if (!state.isDirty || state.dpiCurrentLevelStaging == null) {
+      debugPrint('[bloc] save DPI level: nothing dirty');
+      return;
+    }
+    if (state.committing) return;
+
+    final staging = state.dpiCurrentLevelStaging!;
+    final synced = state.synced;
+    if (synced == null) {
+      emit(state.copyWith(lastError: 'save DPI level: no synced settings'));
+      return;
+    }
+
+    // Validate level is in L2 capabilities
+    final dpiCaps = capabilities?.dpi;
+    if (dpiCaps != null) {
+      final validLevels = dpiCaps.levels.map((l) => l.level).toList();
+      if (!validLevels.contains(staging)) {
+        emit(
+          state.copyWith(
+            lastError: 'DPI level $staging not in capabilities $validLevels',
+          ),
+        );
+        return;
+      }
+    }
+
+    emit(state.copyWith(committing: true, clearError: true));
+
+    try {
+      await commitDpiLevel(staging);
+    } catch (e) {
+      debugPrint('[bloc] save DPI level failed: $e');
+      final failures = state.consecutiveFailures + 1;
+      emit(
+        state.copyWith(
+          committing: false,
+          lastError: 'DPI level save failed: $e',
+          consecutiveFailures: failures,
+        ),
+      );
+      if (failures >= failureEscalateThreshold) {
+        debugPrint(
+          '[bloc] consecutiveFailures=$failures >= $failureEscalateThreshold '
+          '— escalating to L1 watcher',
+        );
+        onEscalationRequested?.call(
+          'DPI level save failed $failures consecutive times',
+        );
+      }
+      return;
+    }
+
+    final nextSynced = synced.copyWith(
+      dpiActiveIndex: staging,
+      clearError: true,
+    );
+    emit(
+      DeviceSettingsViewState(
+        synced: nextSynced,
+        dpiCurrentLevelStaging: null,
+        isDirty: false,
+        committing: false,
+        consecutiveFailures: 0,
+        lastError: null,
+        actionLabelOf: state.actionLabelOf,
+        buttonIdLabelOf: state.buttonIdLabelOf,
+      ),
+    );
+    debugPrint('[bloc] save DPI level: synced');
     onSaveCompleted?.call();
   }
 }

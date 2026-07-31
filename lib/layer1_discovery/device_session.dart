@@ -143,6 +143,14 @@ class DeviceSession implements DeviceRepository {
     await _protocol.setButtonMapping(_session, buttons);
   }
 
+  /// Thin L1 forwarder for C2 SET (L5 encodes + CRC).
+  Future<void> setReportRate(int reportRateWire) async {
+    if (!isAlive) {
+      throw StateError('setReportRate: session not alive');
+    }
+    await _protocol.setReportRate(_session, reportRateWire);
+  }
+
   @override
   Future<ReportRateDpiInfoResult?> queryReportRateDpiInfo() async {
     if (!isAlive) return null;

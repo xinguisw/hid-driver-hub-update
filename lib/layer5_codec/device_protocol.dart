@@ -207,8 +207,13 @@ abstract class DeviceProtocol {
     List<ButtonMappingEntry> buttons,
   );
 
-  /// SET addrs 0xC2 — write report rate (1 byte + CRC).
-  Future<void> setReportRate(HidSession session, int reportRateWire);
+  /// SET addrs 0xC2 — write report rate block (3 bytes + CRC).
+  ///
+  /// [dataBlock] must be exactly 3 bytes:
+  /// `[reportRateWire, dpiCurrentLevel, dpiActiveLevel]`.
+  /// The device stores all three fields at this address; a partial write
+  /// is rejected with NAK 0x04 (payload length mismatch).
+  Future<void> setReportRate(HidSession session, Uint8List dataBlock);
 
   Future<ReportRateDpiInfoResult> queryReportRateDpiInfo(HidSession session);
   Future<DpiTableResult> queryDpiTable(HidSession session);
@@ -514,13 +519,18 @@ class MouseProtocol implements DeviceProtocol {
   }
 
   @override
-  Future<void> setReportRate(HidSession session, int reportRateWire) async {
+  Future<void> setReportRate(HidSession session, Uint8List dataBlock) async {
     const label = 'reportRate';
-    final ask = buildReportRateSetFrame(reportRateWire);
+    final ask = buildReportRateSetFrame(dataBlock);
+
+    // Log SET frame: data bytes + CRC
+    final setData = ask.sublist(_dataOff, _dataOff + 3);
+    final setCrc = ask.sublist(_dataOff + 3, _dataOff + 5);
     debugPrint(
       '[proto] $label: SET addrs=0x${addrsReportRateDpi.toRadixString(16)} '
-      'ask ${_hex(ask)}',
+      'data=${_hex(setData)} crc=${_hex(setCrc)}',
     );
+
     final ack = await session.sendAndWait(
       data: ask,
       reportId: _reportId,
@@ -533,6 +543,13 @@ class MouseProtocol implements DeviceProtocol {
     final body = stripReportId(ack);
     final op = body.isEmpty ? -1 : body[_opOff];
     if (op == _getOpcode || op == _setOpcode) {
+      // Log ACK: data bytes + CRC from device
+      // Data is at _dataOff, CRC is at the last 2 bytes of the body
+      final ackData = body.sublist(_dataOff, _dataOff + 3);
+      final ackCrc = body.sublist(body.length - 2, body.length);
+      debugPrint(
+        '[proto] $label: ACK data=${_hex(ackData)} crc=${_hex(ackCrc)}',
+      );
       verifyConfigAckCrc(ack, label: label);
     } else {
       debugPrint(
@@ -550,17 +567,29 @@ class MouseProtocol implements DeviceProtocol {
     }
   }
 
-  /// Build SET body for C2 (no report id). 1 byte data + CRC.
-  static Uint8List buildReportRateSetFrame(int reportRateWire) {
+  /// Build SET body for C2 (no report id). 3 bytes data + CRC.
+  ///
+  /// [dataBlock] must be exactly 3 bytes:
+  /// `[reportRateWire, dpiCurrentLevel, dpiActiveLevel]`.
+  static Uint8List buildReportRateSetFrame(Uint8List dataBlock) {
+    if (dataBlock.length != 3) {
+      throw ArgumentError.value(
+        dataBlock.length,
+        'dataBlock.length',
+        'report rate SET requires exactly 3 bytes',
+      );
+    }
     final frame = Uint8List(_frameLength);
     frame[_opOff] = _setOpcode;
     frame[_addrsOff] = addrsReportRateDpi;
-    frame[_lenOff] = 1;
-    frame[_dataOff] = reportRateWire & 0xFF;
-    final payload = frame.sublist(_dataOff, _dataOff + 1);
+    frame[_lenOff] = 3;
+    frame[_dataOff] = dataBlock[0];
+    frame[_dataOff + 1] = dataBlock[1];
+    frame[_dataOff + 2] = dataBlock[2];
+    final payload = frame.sublist(_dataOff, _dataOff + 3);
     final crc = const Crc16().bytes(payload);
-    frame[_dataOff + 1] = crc[0];
-    frame[_dataOff + 2] = crc[1];
+    frame[_dataOff + 3] = crc[0];
+    frame[_dataOff + 4] = crc[1];
     return frame;
   }
 

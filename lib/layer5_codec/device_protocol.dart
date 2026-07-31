@@ -207,6 +207,9 @@ abstract class DeviceProtocol {
     List<ButtonMappingEntry> buttons,
   );
 
+  /// SET addrs 0xC2 — write report rate (1 byte + CRC).
+  Future<void> setReportRate(HidSession session, int reportRateWire);
+
   Future<ReportRateDpiInfoResult> queryReportRateDpiInfo(HidSession session);
   Future<DpiTableResult> queryDpiTable(HidSession session);
   Future<DpiRgbResult> queryDpiRgb(HidSession session);
@@ -508,6 +511,57 @@ class MouseProtocol implements DeviceProtocol {
       dpiActiveLevel: data[2],
       raw: raw,
     );
+  }
+
+  @override
+  Future<void> setReportRate(HidSession session, int reportRateWire) async {
+    const label = 'reportRate';
+    final ask = buildReportRateSetFrame(reportRateWire);
+    debugPrint(
+      '[proto] $label: SET addrs=0x${addrsReportRateDpi.toRadixString(16)} '
+      'ask ${_hex(ask)}',
+    );
+    final ack = await session.sendAndWait(
+      data: ask,
+      reportId: _reportId,
+      reportLength: _frameLength,
+      match: (raw) => matchesConfigAck(raw, addrs: addrsReportRateDpi),
+      timeout: _sendTimeout,
+    );
+    debugPrint('[proto] $label: SET ack ${_hex(ack)} (${ack.length}B)');
+    validateConfigAckFrame(ack, addrs: addrsReportRateDpi, label: label);
+    final body = stripReportId(ack);
+    final op = body.isEmpty ? -1 : body[_opOff];
+    if (op == _getOpcode || op == _setOpcode) {
+      verifyConfigAckCrc(ack, label: label);
+    } else {
+      debugPrint(
+        '[proto] $label: SET ack opcode 0x${op.toRadixString(16)} '
+        'not 07/08, skip CRC',
+      );
+    }
+    if (op == _nakOpcode) {
+      final reason = body.length > _dataOff ? body[_dataOff] : -1;
+      final meaning = const TranslationCodec().nakReasonToLabel(reason);
+      throw FormatException(
+        '$label SET NAK: $meaning '
+        '(reason=0x${(reason & 0xFF).toRadixString(16).padLeft(2, '0')})',
+      );
+    }
+  }
+
+  /// Build SET body for C2 (no report id). 1 byte data + CRC.
+  static Uint8List buildReportRateSetFrame(int reportRateWire) {
+    final frame = Uint8List(_frameLength);
+    frame[_opOff] = _setOpcode;
+    frame[_addrsOff] = addrsReportRateDpi;
+    frame[_lenOff] = 1;
+    frame[_dataOff] = reportRateWire & 0xFF;
+    final payload = frame.sublist(_dataOff, _dataOff + 1);
+    final crc = const Crc16().bytes(payload);
+    frame[_dataOff + 1] = crc[0];
+    frame[_dataOff + 2] = crc[1];
+    return frame;
   }
 
   @override

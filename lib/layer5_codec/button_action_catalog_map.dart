@@ -1,5 +1,10 @@
 import 'package:driver_hub/layer4_domain/models/button_mapping_slot.dart';
 
+/// L5: catalog action ID → wire [ButtonMappingSlot].
+///
+/// Translates L2 catalog IDs (e.g. `"mouse.left"`) into the wire bytes
+/// that L5 encodes. L4 calls this to get wire slots; L4 never builds them directly.
+
 /// L4 domain: catalog action ID → wire [ButtonMappingSlot].
 ///
 /// Translates L2 catalog IDs (e.g. `"mouse.left"`) into the wire bytes

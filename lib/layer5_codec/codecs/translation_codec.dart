@@ -34,6 +34,25 @@ class TranslationCodec {
     }
   }
 
+  /// Hz → report-rate wire value. Reverse of [reportRateWireToHz].
+  ///
+  /// Returns `null` for an unknown Hz so the caller can reject rather than
+  /// silently encode a wrong byte.
+  int? reportRateHzToWire(int hz) {
+    switch (hz) {
+      case 1000:
+        return 1;
+      case 500:
+        return 2;
+      case 250:
+        return 4;
+      case 125:
+        return 8;
+      default:
+        return null;
+    }
+  }
+
   /// Active-stage **bitmask** → count of active stages (`0x1F` → 5).
   int dpiActiveMaskToCount(int mask) {
     var n = 0;

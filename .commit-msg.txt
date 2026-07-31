@@ -1,0 +1,11 @@
+fix: L4 validation + multimedia actions + sidebar dismissal
+
+- button_mapping_validate: remove reset policy check from normal validation
+  (was rejecting valid user-selected actions)
+- button_action_catalog_map: add multimedia actions (volume up/down/mute)
+  using consumer key action 0x13
+- device_settings_bloc: add onSaveCompleted callback for sidebar dismissal
+- device_scope: wire onSaveCompleted through createSettingsBloc
+- hub_landing_screen: dismiss sidebar on save completion
+- hub_button_mapping_panel: add onActionSelected callback
+- hub_mouse_canvas: show Save/Cancel when sidebar open OR dirty

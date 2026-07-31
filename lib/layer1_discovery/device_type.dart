@@ -1,9 +1,8 @@
 /// Kind of peripheral a device reports as, on the wire and in the catalog.
 ///
-/// Lives in the device-descriptor layer (tier 3): both the catalog
-/// ([DeviceCatalogEntry.deviceType]) and the handshake result
-/// ([DeviceHandshake.deviceType]) speak this type, so the session's verify
-/// step compares like for like instead of bare ints.
+/// Lives in L1 (Discovery) — both the catalog ([DeviceCatalogEntry.deviceType])
+/// and the handshake result ([DeviceHandshake.deviceType]) speak this type,
+/// so the session's verify step compares like for like instead of bare ints.
 ///
 /// Codes match the firmware's device-type byte. Only [mouse] is verified
 /// against hardware; add a value (with its code) when a device of that kind

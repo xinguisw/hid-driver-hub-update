@@ -1,13 +1,11 @@
+import 'package:driver_hub/layer4_domain/button_mapping_validate.dart';
 import 'package:driver_hub/layer4_domain/models/button_mapping_slot.dart';
 import 'package:driver_hub/layer4_domain/models/device_settings_state.dart';
 
-/// L4: stage caps-aware identity defaults for button-map reset (no HID).
-///
-/// SDRD FR-OPS-001: sandbox only. Commit is [DeviceSettingsSaveRequested].
-/// Action codes match factory identity / L5 label enum (not catalog invent).
+/// Identity defaults for button-map reset (sandbox; no HID).
 List<ButtonMappingSlot> stageButtonMappingDefaults(
   List<ButtonData>? buttons, {
-  int slotCount = 6,
+  int slotCount = kButtonMappingSlotCount,
 }) {
   final byId = <int, ButtonData>{
     if (buttons != null)
@@ -17,6 +15,36 @@ List<ButtonMappingSlot> stageButtonMappingDefaults(
     for (var i = 0; i < slotCount; i++)
       _slotEntry(id: i + 1, live: byId[i + 1]),
   ];
+}
+
+/// Build staging from live device values (not factory defaults).
+///
+/// Used when user first selects an action — preserves current device state.
+List<ButtonMappingSlot> stageButtonMappingFromLive(
+  List<ButtonData>? buttons, {
+  int slotCount = kButtonMappingSlotCount,
+}) {
+  return [
+    for (var i = 0; i < slotCount; i++)
+      _liveSlotEntry(id: i + 1, buttons: buttons),
+  ];
+}
+
+ButtonMappingSlot _liveSlotEntry({
+  required int id,
+  required List<ButtonData>? buttons,
+}) {
+  final live = buttons?.firstWhere(
+    (b) => b.id == id,
+    orElse: () => ButtonData(id: id, labelKey: 'button.$id', remappable: true),
+  );
+  if (live == null) return const ButtonMappingSlot(action: 0);
+  return ButtonMappingSlot(
+    action: live.action ?? 0,
+    param1: live.param1 ?? 0,
+    param2: live.param2 ?? 0,
+    param3: live.param3 ?? 0,
+  );
 }
 
 ButtonMappingSlot _slotEntry({
@@ -37,9 +65,7 @@ ButtonMappingSlot _slotEntry({
   return const ButtonMappingSlot(action: 0);
 }
 
-/// Physical button id (1..6) → factory identity action (params 0).
-///
-/// 1 Left 0x02 … 6 DPI cycle 0x0E — same enum as L5 display maps.
+/// 1→0x02 … 6→0x0E (factory identity; params 0).
 ButtonMappingSlot identityButtonMappingDefault(int buttonId) {
   final action = switch (buttonId) {
     1 => 0x02,

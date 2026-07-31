@@ -1,35 +1,54 @@
+import 'package:driver_hub/layer2_capabilities/capabilities.dart';
 import 'package:driver_hub/layer4_domain/bloc/device_settings_event.dart';
 import 'package:driver_hub/layer4_domain/bloc/device_settings_state_view.dart';
+import 'package:driver_hub/layer4_domain/button_action_catalog_map.dart';
 import 'package:driver_hub/layer4_domain/button_mapping_reset.dart';
+import 'package:driver_hub/layer4_domain/button_mapping_validate.dart';
 import 'package:driver_hub/layer4_domain/models/button_mapping_slot.dart';
-import 'package:driver_hub/layer4_domain/models/device_settings_state.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-/// Domain → hardware commit. Implemented by [DeviceScope] only (L1→L5).
-///
-/// L3 must never supply this; L4 BLoC receives it from Scope factory.
 typedef ButtonMappingCommit = Future<void> Function(
   List<ButtonMappingSlot> slots,
 );
 
-/// L4 domain controller — SDRD FR-OPS sandbox + L4 architecture chart.
+/// FR-ARC-014c: escalation callback invoked when consecutive failures reach threshold.
 ///
-/// Adjust → stage only (FR-OPS-001). Save → validate → commit (FR-OPS-003).
-/// Cancel → wipe staging (FR-OPS-004). **No auto-write on adjust/reset.**
+/// L1 [DeviceScope] provides this to force session teardown/reconnect.
+typedef EscalationCallback = void Function(String reason);
+
+/// Save completed callback — UI uses this to dismiss sidebar.
+typedef SaveCompletedCallback = void Function();
+
 class DeviceSettingsBloc
     extends Bloc<DeviceSettingsEvent, DeviceSettingsViewState> {
   DeviceSettingsBloc({
     required this.commitButtonMapping,
+    ButtonActionLabelFn? actionLabelOf,
+    ButtonIdLabelFn? buttonIdLabelOf,
     DeviceSettingsViewState? initial,
-  }) : super(initial ?? DeviceSettingsViewState.empty) {
+    this.capabilities,
+    this.onEscalationRequested,
+    this.onSaveCompleted,
+  }) : super(
+          (initial ?? DeviceSettingsViewState.empty).copyWith(
+            actionLabelOf: actionLabelOf,
+            buttonIdLabelOf: buttonIdLabelOf,
+          ),
+        ) {
     on<DeviceSettingsHydrated>(_onHydrated);
     on<DeviceSettingsResetButtonMappingRequested>(_onResetButtonMapping);
     on<DeviceSettingsSaveRequested>(_onSave);
     on<DeviceSettingsCancelRequested>(_onCancel);
+    on<DeviceSettingsNavigationRequested>(_onNavigationRequested);
+    on<DeviceSettingsButtonMappingSlotRequested>(_onButtonMappingSlotRequested);
+    on<DeviceSettingsSpecialComboRequested>(_onSpecialComboRequested);
   }
 
   final ButtonMappingCommit commitButtonMapping;
+  final DeviceCapabilities? capabilities;
+  final EscalationCallback? onEscalationRequested;
+  final SaveCompletedCallback? onSaveCompleted;
 
   static const int failureEscalateThreshold = 3;
 
@@ -48,7 +67,6 @@ class DeviceSettingsBloc
     );
   }
 
-  /// FR-OPS-001: stage only — no packets.
   Future<void> _onResetButtonMapping(
     DeviceSettingsResetButtonMappingRequested event,
     Emitter<DeviceSettingsViewState> emit,
@@ -60,25 +78,95 @@ class DeviceSettingsBloc
     }
     if (state.committing) return;
 
-    final staged = stageButtonMappingDefaults(synced.buttons);
+    // Staging path (kept for reference):
+    // final staged = stageButtonMappingDefaults(synced.buttons);
+    // debugPrint(
+    //   '[bloc] reset buttonMapping staged '
+    //   '${[
+    //     for (var i = 0; i < staged.length; i++)
+    //       'B${i + 1}=0x${staged[i].action.toRadixString(16)}'
+    //   ].join(' ')}',
+    // );
+    // emit(
+    //   state.copyWith(
+    //     buttonMappingStaging: staged,
+    //     isDirty: true,
+    //     clearError: true,
+    //   ),
+    // );
+
+    final defaults = stageButtonMappingDefaults(synced.buttons);
     debugPrint(
-      '[bloc] reset buttonMapping staged '
+      '[bloc] reset buttonMapping immediate commit '
       '${[
-        for (var i = 0; i < staged.length; i++)
-          'B${i + 1}=0x${staged[i].action.toRadixString(16)}'
+        for (var i = 0; i < defaults.length; i++)
+          'B${i + 1}=0x${defaults[i].action.toRadixString(16)}'
       ].join(' ')}',
     );
 
+    // Validate factory defaults (should always pass, but guard anyway)
+    final validationError = validateButtonMappingStaging(
+      staging: defaults,
+      synced: synced,
+    );
+    if (validationError != null) {
+      emit(state.copyWith(lastError: validationError));
+      return;
+    }
+
+    final l2ValidationError = validateButtonMappingAgainstCapabilities(
+      staging: defaults,
+      synced: synced,
+      capabilities: capabilities,
+    );
+    if (l2ValidationError != null) {
+      emit(state.copyWith(lastError: l2ValidationError));
+      return;
+    }
+
+    emit(state.copyWith(committing: true, clearError: true));
+
+    try {
+      await commitButtonMapping(defaults);
+    } catch (e) {
+      debugPrint('[bloc] reset buttonMapping failed: $e');
+      final failures = state.consecutiveFailures + 1;
+      emit(
+        state.copyWith(
+          committing: false,
+          lastError: 'reset buttonMapping failed: $e',
+          consecutiveFailures: failures,
+        ),
+      );
+      if (failures >= failureEscalateThreshold) {
+        onEscalationRequested?.call(
+          'reset buttonMapping failed $failures consecutive times',
+        );
+      }
+      return;
+    }
+
+    final nextSynced = packButtonsOntoSettings(
+      synced,
+      defaults,
+      actionLabelOf: state.actionLabelOf,
+      buttonIdLabelOf: state.buttonIdLabelOf,
+    );
     emit(
-      state.copyWith(
-        buttonMappingStaging: staged,
-        isDirty: true,
-        clearError: true,
+      DeviceSettingsViewState(
+        synced: nextSynced,
+        buttonMappingStaging: null,
+        isDirty: false,
+        committing: false,
+        consecutiveFailures: 0,
+        lastError: null,
+        actionLabelOf: state.actionLabelOf,
+        buttonIdLabelOf: state.buttonIdLabelOf,
       ),
     );
+    debugPrint('[bloc] reset buttonMapping: synced');
   }
 
-  /// FR-OPS-003: validate → commit via Scope (L1/L5).
   Future<void> _onSave(
     DeviceSettingsSaveRequested event,
     Emitter<DeviceSettingsViewState> emit,
@@ -96,18 +184,23 @@ class DeviceSettingsBloc
       return;
     }
 
-    if (staging.length != 6) {
-      emit(
-        state.copyWith(
-          lastError: 'button mapping: expected 6 slots, got ${staging.length}',
-        ),
-      );
+    final validationError = validateButtonMappingStaging(
+      staging: staging,
+      synced: synced,
+    );
+    if (validationError != null) {
+      emit(state.copyWith(lastError: validationError));
       return;
     }
 
-    final capsErr = _validateButtonMappingAgainstCaps(synced, staging);
-    if (capsErr != null) {
-      emit(state.copyWith(lastError: capsErr));
+    // L2 boundary validation against device capabilities
+    final l2ValidationError = validateButtonMappingAgainstCapabilities(
+      staging: staging,
+      synced: synced,
+      capabilities: capabilities,
+    );
+    if (l2ValidationError != null) {
+      emit(state.copyWith(lastError: l2ValidationError));
       return;
     }
 
@@ -128,13 +221,21 @@ class DeviceSettingsBloc
       if (failures >= failureEscalateThreshold) {
         debugPrint(
           '[bloc] consecutiveFailures=$failures >= $failureEscalateThreshold '
-          '(chart escalate to L1 — not wired)',
+          '— escalating to L1 watcher',
+        );
+        onEscalationRequested?.call(
+          'button mapping save failed $failures consecutive times',
         );
       }
       return;
     }
 
-    final nextSynced = packButtonsOntoSettings(synced, staging);
+    final nextSynced = packButtonsOntoSettings(
+      synced,
+      staging,
+      actionLabelOf: state.actionLabelOf,
+      buttonIdLabelOf: state.buttonIdLabelOf,
+    );
     emit(
       DeviceSettingsViewState(
         synced: nextSynced,
@@ -143,12 +244,14 @@ class DeviceSettingsBloc
         committing: false,
         consecutiveFailures: 0,
         lastError: null,
+        actionLabelOf: state.actionLabelOf,
+        buttonIdLabelOf: state.buttonIdLabelOf,
       ),
     );
     debugPrint('[bloc] save buttonMapping: synced');
+    onSaveCompleted?.call();
   }
 
-  /// FR-OPS-004: wipe staging → last synchronized.
   void _onCancel(
     DeviceSettingsCancelRequested event,
     Emitter<DeviceSettingsViewState> emit,
@@ -164,13 +267,129 @@ class DeviceSettingsBloc
     debugPrint('[bloc] cancel: staging wiped');
   }
 
-  String? _validateButtonMappingAgainstCaps(
-    DeviceSettingsState synced,
-    List<ButtonMappingSlot> staging,
+  /// FR-OPS-005: navigation guard — dirty sweep, no modal.
+  ///
+  /// Reuses the same wipe path as Cancel (per flowchart: Yes arrow from
+  /// "Is Sandbox buffer dirty?" loops back to "Wipe staging buffer for block").
+  void _onNavigationRequested(
+    DeviceSettingsNavigationRequested event,
+    Emitter<DeviceSettingsViewState> emit,
   ) {
-    if (staging.length != 6) {
-      return 'button mapping length invalid';
+    if (!state.isDirty && state.buttonMappingStaging == null) return;
+    emit(
+      state.copyWith(
+        clearStaging: true,
+        clearError: true,
+        committing: false,
+      ),
+    );
+    debugPrint('[bloc] navigation: dirty sweep');
+  }
+
+  /// User selected a catalog action for a button slot.
+  ///
+  /// Translates catalog ID → wire bytes via [ButtonActionCatalogMap],
+  /// updates the staging buffer, and marks dirty.
+  void _onButtonMappingSlotRequested(
+    DeviceSettingsButtonMappingSlotRequested event,
+    Emitter<DeviceSettingsViewState> emit,
+  ) {
+    final synced = state.synced;
+    if (synced == null) {
+      emit(state.copyWith(lastError: 'no settings loaded'));
+      return;
     }
-    return null;
+
+    // Translate catalog ID → wire slot
+    final slot = ButtonActionCatalogMap.catalogIdToSlot(event.catalogId);
+    if (slot == null) {
+      emit(state.copyWith(lastError: 'unknown catalog action: ${event.catalogId}'));
+      return;
+    }
+
+    // Initialize staging from live device values if null
+    var staging = state.buttonMappingStaging ??
+        stageButtonMappingFromLive(synced.buttons);
+
+    // Update the slot for this button (1-based index)
+    final index = event.buttonId - 1;
+    if (index < 0 || index >= staging.length) {
+      emit(state.copyWith(lastError: 'button id out of range: ${event.buttonId}'));
+      return;
+    }
+
+    staging = List<ButtonMappingSlot>.from(staging);
+    staging[index] = slot;
+
+    emit(
+      state.copyWith(
+        buttonMappingStaging: staging,
+        isDirty: true,
+        clearError: true,
+      ),
+    );
+
+    debugPrint(
+      '[bloc] button B${event.buttonId} → ${event.catalogId} '
+      '(action=0x${slot.action.toRadixString(16)})',
+    );
+  }
+
+  /// User selected a special combination (modifiers + key) for a button slot.
+  ///
+  /// Translates modifier IDs + character → wire bytes via
+  /// [ButtonActionCatalogMap.buildComboSlot], updates staging, marks dirty.
+  void _onSpecialComboRequested(
+    DeviceSettingsSpecialComboRequested event,
+    Emitter<DeviceSettingsViewState> emit,
+  ) {
+    final synced = state.synced;
+    if (synced == null) {
+      emit(state.copyWith(lastError: 'no settings loaded'));
+      return;
+    }
+
+    // Translate modifiers + char → wire slot
+    final slot = ButtonActionCatalogMap.buildComboSlot(
+      event.modifierIds,
+      event.keyChar,
+    );
+    if (slot == null) {
+      emit(state.copyWith(
+        lastError: 'invalid special combo: '
+            'mods=${event.modifierIds} char="${event.keyChar}"',
+      ));
+      return;
+    }
+
+    // Initialize staging from live device values if null
+    var staging = state.buttonMappingStaging ??
+        stageButtonMappingFromLive(synced.buttons);
+
+    // Update the slot for this button (1-based index)
+    final index = event.buttonId - 1;
+    if (index < 0 || index >= staging.length) {
+      emit(state.copyWith(lastError: 'button id out of range: ${event.buttonId}'));
+      return;
+    }
+
+    staging = List<ButtonMappingSlot>.from(staging);
+    staging[index] = slot;
+
+    emit(
+      state.copyWith(
+        buttonMappingStaging: staging,
+        isDirty: true,
+        clearError: true,
+      ),
+    );
+
+    debugPrint(
+      '[bloc] button B${event.buttonId} → special combo '
+      '(action=0x${slot.action.toRadixString(16)}, '
+      'p1=0x${slot.param1.toRadixString(16)}, '
+      'p2=0x${slot.param2.toRadixString(16)}, '
+      'p3=0x${slot.param3.toRadixString(16)})',
+    );
   }
 }

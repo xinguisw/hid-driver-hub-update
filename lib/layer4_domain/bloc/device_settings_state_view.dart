@@ -1,11 +1,16 @@
 import 'package:driver_hub/layer4_domain/models/button_mapping_slot.dart';
 import 'package:driver_hub/layer4_domain/models/device_settings_state.dart';
-import 'package:driver_hub/layer5_codec/codecs/translation_codec.dart';
 
-/// L4 BLoC state: last synchronized profile + sandbox staging buffer.
-///
-/// SDRD FR-OPS-001: staging holds dirty edits with **no** transport packets
-/// until explicit Save (FR-OPS-003).
+/// Labels for staged/synced button rows (injected; no L5 import here).
+typedef ButtonActionLabelFn = String Function(
+  int action,
+  int param1,
+  int param2,
+  int param3,
+);
+typedef ButtonIdLabelFn = String Function(int buttonId);
+
+/// Synced profile + button-map sandbox for one device settings session.
 class DeviceSettingsViewState {
   const DeviceSettingsViewState({
     this.synced,
@@ -14,25 +19,31 @@ class DeviceSettingsViewState {
     this.committing = false,
     this.consecutiveFailures = 0,
     this.lastError,
+    this.actionLabelOf,
+    this.buttonIdLabelOf,
   });
 
   final DeviceSettingsState? synced;
-
-  /// Sandbox buffer (domain slots). Null when clean for that block.
   final List<ButtonMappingSlot>? buttonMappingStaging;
-
   final bool isDirty;
   final bool committing;
   final int consecutiveFailures;
   final String? lastError;
 
-  /// L3 paints staged button labels when dirty, else synced.
+  final ButtonActionLabelFn? actionLabelOf;
+  final ButtonIdLabelFn? buttonIdLabelOf;
+
   DeviceSettingsState? get displaySettings {
     final base = synced;
     if (base == null) return null;
     final staging = buttonMappingStaging;
     if (!isDirty || staging == null) return base;
-    return packButtonsOntoSettings(base, staging);
+    return packButtonsOntoSettings(
+      base,
+      staging,
+      actionLabelOf: actionLabelOf,
+      buttonIdLabelOf: buttonIdLabelOf,
+    );
   }
 
   static const empty = DeviceSettingsViewState();
@@ -44,6 +55,8 @@ class DeviceSettingsViewState {
     bool? committing,
     int? consecutiveFailures,
     String? lastError,
+    ButtonActionLabelFn? actionLabelOf,
+    ButtonIdLabelFn? buttonIdLabelOf,
     bool clearStaging = false,
     bool clearError = false,
   }) {
@@ -56,17 +69,32 @@ class DeviceSettingsViewState {
       committing: committing ?? this.committing,
       consecutiveFailures: consecutiveFailures ?? this.consecutiveFailures,
       lastError: clearError ? null : (lastError ?? this.lastError),
+      actionLabelOf: actionLabelOf ?? this.actionLabelOf,
+      buttonIdLabelOf: buttonIdLabelOf ?? this.buttonIdLabelOf,
     );
   }
 }
 
-/// Overlay staged domain slots onto [base] for L3 paint / post-Save synced.
 DeviceSettingsState packButtonsOntoSettings(
   DeviceSettingsState base,
   List<ButtonMappingSlot> staging, {
-  TranslationCodec translate = const TranslationCodec(),
+  ButtonActionLabelFn? actionLabelOf,
+  ButtonIdLabelFn? buttonIdLabelOf,
 }) {
   final baseButtons = base.buttons;
+  String labelForAction(ButtonMappingSlot s) {
+    if (actionLabelOf != null) {
+      return actionLabelOf(s.action, s.param1, s.param2, s.param3);
+    }
+    return '0x${s.action.toRadixString(16)}';
+  }
+
+  String labelForId(int id, ButtonData? baseRow) {
+    if (baseRow?.buttonLabel != null) return baseRow!.buttonLabel!;
+    if (buttonIdLabelOf != null) return buttonIdLabelOf(id);
+    return 'Button $id';
+  }
+
   final live = [
     for (var i = 0; i < staging.length; i++)
       ButtonData(
@@ -86,15 +114,11 @@ DeviceSettingsState packButtonsOntoSettings(
         hotspotR: baseButtons != null && i < baseButtons.length
             ? baseButtons[i].hotspotR
             : null,
-        buttonLabel: baseButtons != null && i < baseButtons.length
-            ? (baseButtons[i].buttonLabel ?? translate.buttonIdToLabel(i + 1))
-            : translate.buttonIdToLabel(i + 1),
-        actionLabel: translate.buttonActionToLabel(
-          action: staging[i].action,
-          param1: staging[i].param1,
-          param2: staging[i].param2,
-          param3: staging[i].param3,
+        buttonLabel: labelForId(
+          i + 1,
+          baseButtons != null && i < baseButtons.length ? baseButtons[i] : null,
         ),
+        actionLabel: labelForAction(staging[i]),
         action: staging[i].action,
         param1: staging[i].param1,
         param2: staging[i].param2,

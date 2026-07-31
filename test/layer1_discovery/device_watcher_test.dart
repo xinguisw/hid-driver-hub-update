@@ -3,7 +3,7 @@ import 'package:driver_hub/layer1_discovery/device_scanner.dart';
 import 'package:driver_hub/layer1_discovery/device_session.dart';
 import 'package:driver_hub/layer1_discovery/device_watcher.dart';
 import 'package:driver_hub/layer1_discovery/discovered_device.dart';
-import 'package:driver_hub/layer2_capabilities/device_type.dart';
+import 'package:driver_hub/layer1_discovery/device_type.dart';
 import 'package:driver_hub/layer5_codec/device_protocol.dart';
 import 'package:driver_hub/layer6_transport/hid_events.dart';
 import 'package:driver_hub/layer6_transport/hid_session.dart';

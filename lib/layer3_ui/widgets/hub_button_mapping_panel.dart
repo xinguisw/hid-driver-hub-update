@@ -13,12 +13,16 @@ class HubButtonMappingPanel extends StatefulWidget {
     this.mouseActionCatalog,
     this.keyboardActionCatalog,
     this.specialActionCatalog,
+    this.onActionSelected,
   });
 
   final int? selectedButtonId;
   final List<ActionCatalogSectionData>? mouseActionCatalog;
   final List<ActionCatalogSectionData>? keyboardActionCatalog;
   final List<ActionCatalogSectionData>? specialActionCatalog;
+
+  /// Called when user selects a catalog action (Mouse/Keyboard tabs).
+  final ValueChanged<String>? onActionSelected;
 
   static const double width = 280;
 
@@ -125,12 +129,18 @@ class _HubButtonMappingPanelState extends State<HubButtonMappingPanel> {
                 0 => _SectionCatalogList(
                     sections: widget.mouseActionCatalog ?? const [],
                     selectedId: _selectedCatalogId,
-                    onSelect: (id) => setState(() => _selectedCatalogId = id),
+                    onSelect: (id) {
+                      setState(() => _selectedCatalogId = id);
+                      widget.onActionSelected?.call(id);
+                    },
                   ),
                 1 => _SectionCatalogList(
                     sections: widget.keyboardActionCatalog ?? const [],
                     selectedId: _selectedCatalogId,
-                    onSelect: (id) => setState(() => _selectedCatalogId = id),
+                    onSelect: (id) {
+                      setState(() => _selectedCatalogId = id);
+                      widget.onActionSelected?.call(id);
+                    },
                   ),
                 2 => _SpecialCombinationBody(
                     sections: widget.specialActionCatalog ?? const [],

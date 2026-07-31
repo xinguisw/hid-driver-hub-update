@@ -120,15 +120,15 @@ class HubMouseCanvas extends StatelessWidget {
                       ),
                       child: const Text('Reset to Default'),
                     ),
-                    // why: always reserve second row height — hide buttons when clean
+                    // why: Save/Cancel when sidebar open OR dirty (after reset); Save disabled when clean
                     SizedBox(
                       height: 36,
-                      child: isDirty
+                      child: (selectedButtonId != null || isDirty)
                           ? Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 OutlinedButton(
-                                  onPressed: committing ? null : onSave,
+                                  onPressed: (!isDirty || committing) ? null : onSave,
                                   style: OutlinedButton.styleFrom(
                                     foregroundColor: Colors.black87,
                                     side: const BorderSide(

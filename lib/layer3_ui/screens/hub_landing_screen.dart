@@ -38,7 +38,15 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
   void initState() {
     super.initState();
     // why: Scope owns commit hook (L1->L5); L3 never sees sessions
-    _settingsBloc = widget.scope.createSettingsBloc(widget.card);
+    _settingsBloc = widget.scope.createSettingsBloc(
+      widget.card,
+      onSaveCompleted: () {
+        // Dismiss sidebar after successful save
+        if (mounted) {
+          setState(() => _selectedButtonId = null);
+        }
+      },
+    );
     final cached = widget.scope.settingsFor(widget.card);
     if (cached != null) {
       _settingsBloc.add(DeviceSettingsHydrated(cached));
@@ -85,20 +93,10 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
     debugPrint('[hub] ${widget.card.displayName}: onboard config done');
   }
 
-  /// L3 only: Confirm already happened on canvas; dispatch to L4 (no CRC/HID).
-  Future<void> _onResetToDefault() async {
-    debugPrint('[hub] ${widget.card.displayName}: reset button mapping…');
-    final next =
-        await widget.scope.resetButtonMappingToDefault(widget.card);
-    if (!mounted) return;
-    setState(() => _state = next);
-    if (next.error != null) {
-      debugPrint(
-        '[hub] ${widget.card.displayName}: reset failed (${next.error})',
-      );
-    } else {
-      debugPrint('[hub] ${widget.card.displayName}: reset done');
-    }
+  /// L3 only: Tip Confirm already done on canvas → dispatch BLoC event.
+  void _onResetToDefault() {
+    debugPrint('[hub] ${widget.card.displayName}: dispatch reset event');
+    _settingsBloc.add(const DeviceSettingsResetButtonMappingRequested());
   }
 
   @override
@@ -123,6 +121,10 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                 card: selected,
                 selectedIndex: _selectedIndex,
                 onDestinationSelected: (index) {
+                  // FR-OPS-005: dirty sweep when navigating away from button mapping
+                  if (_selectedIndex == _buttonMappingIndex && index != _buttonMappingIndex) {
+                    _settingsBloc.add(const DeviceSettingsNavigationRequested());
+                  }
                   setState(() {
                     _selectedIndex = index;
                     if (index != _buttonMappingIndex) {
@@ -193,6 +195,14 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                                   display?.keyboardActionCatalog,
                               specialActionCatalog:
                                   display?.specialActionCatalog,
+                              onActionSelected: (catalogId) {
+                                _settingsBloc.add(
+                                  DeviceSettingsButtonMappingSlotRequested(
+                                    buttonId: _selectedButtonId!,
+                                    catalogId: catalogId,
+                                  ),
+                                );
+                              },
                             ),
                           ],
                         ],

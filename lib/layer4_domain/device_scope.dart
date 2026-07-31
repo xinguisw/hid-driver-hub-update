@@ -10,6 +10,7 @@ import 'package:driver_hub/layer4_domain/models/button_mapping_slot.dart';
 import 'package:driver_hub/layer4_domain/models/device_settings_state.dart';
 import 'package:driver_hub/layer4_domain/models/discovered_card_state.dart';
 import 'package:driver_hub/layer4_domain/settings_onboard_query.dart';
+import 'package:driver_hub/layer5_codec/codecs/translation_codec.dart';
 import 'package:driver_hub/layer5_codec/device_protocol.dart';
 import 'package:driver_hub/layer6_transport/hid_session.dart';
 import 'package:driver_hub/layer6_transport/local_storage.dart';
@@ -207,18 +208,24 @@ class DeviceScope {
     return packed;
   }
 
-  /// L4 factory: BLoC whose Save commit stays inside domain (L1→L5).
-  ///
-  /// L3 only [BlocProvider]s this and dispatches events — never sessions.
-  DeviceSettingsBloc createSettingsBloc(DiscoveredCardState card) {
+  DeviceSettingsBloc createSettingsBloc(
+    DiscoveredCardState card, {
+    SaveCompletedCallback? onSaveCompleted,
+  }) {
+    const translate = TranslationCodec();
     return DeviceSettingsBloc(
       commitButtonMapping: (slots) => commitButtonMapping(card, slots),
+      actionLabelOf: (action, p1, p2, p3) => translate.buttonActionToLabel(
+        action: action,
+        param1: p1,
+        param2: p2,
+        param3: p3,
+      ),
+      buttonIdLabelOf: translate.buttonIdToLabel,
+      onSaveCompleted: onSaveCompleted,
     );
   }
 
-  /// Map domain staging slots → L5 entries and SET (FR-OPS-003 write path).
-  ///
-  /// Only [DeviceSettingsBloc] Save should call this (via factory hook).
   Future<void> commitButtonMapping(
     DiscoveredCardState card,
     List<ButtonMappingSlot> slots,

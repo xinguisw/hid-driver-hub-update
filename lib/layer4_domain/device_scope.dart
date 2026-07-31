@@ -278,6 +278,37 @@ class DeviceScope {
     await session.setReportRate(dataBlock);
   }
 
+  Future<void> commitDpiLevel(
+    DiscoveredCardState card,
+    int dpiLevel,
+  ) async {
+    final session = _sessionForCard(card);
+    if (session == null || !session.isAlive) {
+      throw StateError('commitDpiLevel: no session');
+    }
+
+    // Convert 1-based display level to 0-based wire value
+    const translate = TranslationCodec();
+    final wireValue = translate.dpiCurrentLevelDisplayToWire(dpiLevel);
+    if (wireValue == null) {
+      throw StateError('Invalid DPI level: $dpiLevel');
+    }
+
+    // Read current 3-byte block from device
+    final currentBlock = await session.queryReportRateDpiInfo();
+    if (currentBlock == null) {
+      throw StateError('Failed to read current DPI block');
+    }
+
+    // Build new block: [currentReportRateWire, newDpiLevelWire, currentDpiActive]
+    final dataBlock = Uint8List(3);
+    dataBlock[0] = currentBlock.reportRateWire;
+    dataBlock[1] = wireValue;
+    dataBlock[2] = currentBlock.dpiActiveLevel;
+
+    await session.setReportRate(dataBlock);
+  }
+
   /// Persist BLoC-synced settings after successful Save (cache for re-entry).
   void putSettings(DiscoveredCardState card, DeviceSettingsState settings) {
     final path = _pathForCard(card);

@@ -1,6 +1,7 @@
 import 'package:driver_hub/layer3_ui/widgets/hub_button_mapping_panel.dart';
 import 'package:driver_hub/layer3_ui/widgets/hub_left_sidebar.dart';
 import 'package:driver_hub/layer3_ui/widgets/hub_mouse_canvas.dart';
+import 'package:driver_hub/layer3_ui/widgets/hub_performance_panel.dart';
 import 'package:driver_hub/layer4_domain/bloc/device_settings_bloc.dart';
 import 'package:driver_hub/layer4_domain/bloc/device_settings_event.dart';
 import 'package:driver_hub/layer4_domain/bloc/device_settings_state_view.dart';
@@ -29,6 +30,7 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
   late final DeviceSettingsBloc _settingsBloc;
 
   static const int _buttonMappingIndex = 0;
+  static const int _performanceIndex = 2;
 
   @override
   void initState() {
@@ -210,11 +212,70 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                     },
                   ),
                 )
+              else if (_selectedIndex == _performanceIndex)
+                Expanded(
+                  child: Column(
+                    children: [
+                      Expanded(child: HubPerformancePanel()),
+                      _PerformanceActionBar(),
+                    ],
+                  ),
+                )
               else
                 const Expanded(child: Center(child: Text(''))),
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Bottom-right action bar for Performance Setting (skeleton).
+///
+/// Reset/Save/Cancel buttons docked right.
+/// No wiring yet; future subtask will connect to BLoC.
+class _PerformanceActionBar extends StatelessWidget {
+  const _PerformanceActionBar();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          OutlinedButton(
+            onPressed: null, // skeleton
+            style: OutlinedButton.styleFrom(
+              foregroundColor: theme.colorScheme.onSurface,
+              side: BorderSide(color: theme.colorScheme.outline),
+              shape: const StadiumBorder(),
+            ),
+            child: const Text('Reset to Default'),
+          ),
+          const SizedBox(width: 12),
+          OutlinedButton(
+            onPressed: null, // skeleton
+            style: OutlinedButton.styleFrom(
+              foregroundColor: theme.colorScheme.onSurface,
+              side: BorderSide(color: theme.colorScheme.outline),
+              shape: const StadiumBorder(),
+            ),
+            child: const Text('Save'),
+          ),
+          const SizedBox(width: 12),
+          OutlinedButton(
+            onPressed: null, // skeleton
+            style: OutlinedButton.styleFrom(
+              foregroundColor: theme.colorScheme.onSurface,
+              side: BorderSide(color: theme.colorScheme.outline),
+              shape: const StadiumBorder(),
+            ),
+            child: const Text('Cancel'),
+          ),
+        ],
       ),
     );
   }

@@ -199,7 +199,15 @@ class _DpiSliderRow extends StatelessWidget {
 /// Later, radio options will be filtered by L2 capabilities
 /// (e.g. device may only support 125/250/500 Hz).
 class _ReportRateGroup extends StatelessWidget {
-  const _ReportRateGroup();
+  const _ReportRateGroup({
+    required this.options,
+    required this.selectedHz,
+    required this.onChanged,
+  });
+
+  final List<int> options;
+  final int selectedHz;
+  final ValueChanged<int>? onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -226,11 +234,13 @@ class _ReportRateGroup extends StatelessWidget {
               borderRadius: BorderRadius.circular(6),
             ),
             child: RadioGroup<int>(
-              groupValue: 250,
-              onChanged: (_) {},
+              groupValue: selectedHz,
+              onChanged: (value) {
+                if (value != null) onChanged?.call(value);
+              },
               child: Row(
                 children: [
-                  for (final rate in [125, 250, 500, 1000])
+                  for (final rate in options)
                     Expanded(
                       child: Row(
                         children: [

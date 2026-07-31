@@ -1,12 +1,23 @@
 import 'package:flutter/material.dart';
 
-/// Performance Setting page skeleton — DPI levels + Report Rate.
+/// Performance Setting page — DPI levels + Report Rate.
 ///
-/// L3 only. Basic layout, no styling, no interaction.
+/// L3 only. Dispatches events to BLoC.
 /// Structure: outer group container → rows inside.
 /// All rows are data-driven for future L2 capability filtering.
 class HubPerformancePanel extends StatelessWidget {
-  const HubPerformancePanel({super.key});
+  const HubPerformancePanel({
+    super.key,
+    this.reportRateOptions,
+    this.reportRateHz,
+    this.reportRateStaging,
+    this.onReportRateChanged,
+  });
+
+  final List<int>? reportRateOptions;
+  final int? reportRateHz;
+  final int? reportRateStaging;
+  final ValueChanged<int>? onReportRateChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -23,7 +34,11 @@ class HubPerformancePanel extends StatelessWidget {
           // Report Rate
           const Text('Report rate'),
           const SizedBox(height: 8),
-          const _ReportRateGroup(),
+          _ReportRateGroup(
+            options: reportRateOptions ?? const [125, 250, 500, 1000],
+            selectedHz: reportRateStaging ?? reportRateHz ?? 250,
+            onChanged: onReportRateChanged,
+          ),
         ],
       ),
     );

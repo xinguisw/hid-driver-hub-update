@@ -1,3 +1,4 @@
+import 'package:driver_hub/layer4_domain/models/device_settings_state.dart';
 import 'package:flutter/material.dart';
 
 /// Performance Setting page — DPI levels + Report Rate.
@@ -8,12 +9,20 @@ import 'package:flutter/material.dart';
 class HubPerformancePanel extends StatelessWidget {
   const HubPerformancePanel({
     super.key,
+    this.dpiStages,
+    this.dpiCurrentLevel,
+    this.dpiCurrentLevelStaging,
+    this.onDpiLevelSelected,
     this.reportRateOptions,
     this.reportRateHz,
     this.reportRateStaging,
     this.onReportRateChanged,
   });
 
+  final List<DpiStageData>? dpiStages;
+  final int? dpiCurrentLevel;
+  final int? dpiCurrentLevelStaging;
+  final ValueChanged<int>? onDpiLevelSelected;
   final List<int>? reportRateOptions;
   final int? reportRateHz;
   final int? reportRateStaging;
@@ -29,7 +38,11 @@ class HubPerformancePanel extends StatelessWidget {
           // DPI Settings
           const Text('DPI settings'),
           const SizedBox(height: 8),
-          const _DpiSettingsGroup(),
+          _DpiSettingsGroup(
+            stages: dpiStages ?? const [],
+            selectedLevel: dpiCurrentLevelStaging ?? dpiCurrentLevel,
+            onLevelSelected: (level) => onDpiLevelSelected?.call(level),
+          ),
           const SizedBox(height: 24),
           // Report Rate
           const Text('Report rate'),
@@ -50,13 +63,19 @@ class HubPerformancePanel extends StatelessWidget {
 /// Later, levels and DPI rows will be filtered by L2 capabilities
 /// (e.g. if device only supports 4 levels, only 4 show).
 class _DpiSettingsGroup extends StatelessWidget {
-  const _DpiSettingsGroup();
+  const _DpiSettingsGroup({
+    required this.stages,
+    required this.selectedLevel,
+    required this.onLevelSelected,
+  });
+
+  final List<DpiStageData> stages;
+  final int? selectedLevel;
+  final ValueChanged<int> onLevelSelected;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    // Skeleton: 8 levels, all active
-    const levelCount = 8;
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -71,8 +90,12 @@ class _DpiSettingsGroup extends StatelessWidget {
             children: [
               const Text('Levels'),
               const SizedBox(width: 16),
-              for (var i = 1; i <= levelCount; i++)
-                _LevelChip(index: i),
+              for (final stage in stages)
+                _LevelChip(
+                  index: stage.level,
+                  isSelected: stage.level == selectedLevel,
+                  onTap: () => onLevelSelected(stage.level),
+                ),
               const Spacer(),
               const Text('+'),
               const SizedBox(width: 8),
@@ -93,9 +116,10 @@ class _DpiSettingsGroup extends StatelessWidget {
                   crossAxisSpacing: 8,
                   mainAxisExtent: 110,
                 ),
-                children: List.generate(levelCount, (index) {
-                  return _DpiSliderRow(index: index + 1);
-                }),
+                children: [
+                  for (final stage in stages)
+                    _DpiSliderRow(stage: stage),
+                ],
               );
             },
           ),
@@ -110,32 +134,41 @@ class _DpiSettingsGroup extends StatelessWidget {
 /// Later this will be conditionally rendered based on L2 capabilities
 /// (e.g. device may only support levels 1-4).
 class _LevelChip extends StatelessWidget {
-  const _LevelChip({required this.index});
+  const _LevelChip({
+    required this.index,
+    required this.isSelected,
+    required this.onTap,
+  });
 
   final int index;
+  final bool isSelected;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      margin: const EdgeInsets.only(right: 4),
-      decoration: BoxDecoration(
-        color: index == 1 ? theme.colorScheme.primary : Colors.transparent,
-        border: Border.all(
-          color: index == 1
-              ? theme.colorScheme.primary
-              : theme.colorScheme.outline,
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        margin: const EdgeInsets.only(right: 4),
+        decoration: BoxDecoration(
+          color: isSelected ? theme.colorScheme.primary : Colors.transparent,
+          border: Border.all(
+            color: isSelected
+                ? theme.colorScheme.primary
+                : theme.colorScheme.outline,
+          ),
+          borderRadius: BorderRadius.circular(4),
         ),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Text(
-        '$index',
-        style: TextStyle(
-          color: index == 1
-              ? theme.colorScheme.onPrimary
-              : theme.colorScheme.onSurface,
-          fontSize: 12,
+        child: Text(
+          '$index',
+          style: TextStyle(
+            color: isSelected
+                ? theme.colorScheme.onPrimary
+                : theme.colorScheme.onSurface,
+            fontSize: 12,
+          ),
         ),
       ),
     );
@@ -147,9 +180,9 @@ class _LevelChip extends StatelessWidget {
 /// Later this row will be conditionally rendered based on
 /// L2 capabilities (e.g. device may only have 4 DPI levels).
 class _DpiSliderRow extends StatelessWidget {
-  const _DpiSliderRow({required this.index});
+  const _DpiSliderRow({required this.stage});
 
-  final int index;
+  final DpiStageData stage;
 
   @override
   Widget build(BuildContext context) {
@@ -165,14 +198,14 @@ class _DpiSliderRow extends StatelessWidget {
         children: [
           Row(
             children: [
-              Text('DPI $index'),
+              Text('DPI ${stage.level}'),
               const Spacer(),
-              Text('${(index * 800)}'),
+              Text('${stage.value}'),
             ],
           ),
           const SizedBox(height: 4),
           Slider(
-            value: (index * 800).toDouble(),
+            value: stage.value.toDouble(),
             min: 500,
             max: 15000,
             onChanged: null,

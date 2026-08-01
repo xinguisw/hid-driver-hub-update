@@ -218,6 +218,7 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                     buildWhen: (p, n) =>
                         p.displaySettings != n.displaySettings ||
                         p.reportRateStaging != n.reportRateStaging ||
+                        p.dpiCurrentLevelStaging != n.dpiCurrentLevelStaging ||
                         p.isDirty != n.isDirty ||
                         p.committing != n.committing ||
                         p.lastError != n.lastError,
@@ -228,6 +229,14 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                         children: [
                           Expanded(
                             child: HubPerformancePanel(
+                              dpiStages: display?.dpiLevels,
+                              dpiCurrentLevel: display?.dpiActiveIndex,
+                              dpiCurrentLevelStaging: view.dpiCurrentLevelStaging,
+                              onDpiLevelSelected: (level) {
+                                bloc.add(
+                                  DeviceSettingsDpiLevelRequested(level: level),
+                                );
+                              },
                               reportRateOptions: display?.reportRateOptions,
                               reportRateHz: display?.reportRateHz,
                               reportRateStaging: view.reportRateStaging,
@@ -242,9 +251,17 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                             isDirty: view.isDirty,
                             committing: view.committing,
                             onSave: () {
-                              bloc.add(
-                                const DeviceSettingsSaveReportRateRequested(),
-                              );
+                              // Save both report rate and DPI if either is staged
+                              if (view.reportRateStaging != null) {
+                                bloc.add(
+                                  const DeviceSettingsSaveReportRateRequested(),
+                                );
+                              }
+                              if (view.dpiCurrentLevelStaging != null) {
+                                bloc.add(
+                                  const DeviceSettingsSaveDpiLevelRequested(),
+                                );
+                              }
                             },
                             onCancel: () {
                               bloc.add(

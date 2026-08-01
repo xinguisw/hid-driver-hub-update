@@ -57,7 +57,11 @@ void main() {
 
   group('DeviceSettingsBloc button mapping', () {
     test('hydrate seeds synced, not dirty', () async {
-      final bloc = DeviceSettingsBloc(commitButtonMapping: (_) async {});
+      final bloc = DeviceSettingsBloc(
+        commitButtonMapping: (_) async {},
+        commitReportRate: (_) async {},
+        commitDpiLevel: (_) async {},
+      );
       bloc.add(DeviceSettingsHydrated(baseSettings()));
       await pumpEventQueue();
       expect(bloc.state.synced?.devId, 'aa4ecd01');
@@ -72,6 +76,8 @@ void main() {
         commitButtonMapping: (slots) async {
           written = List<ButtonMappingSlot>.from(slots);
         },
+        commitReportRate: (_) async {},
+        commitDpiLevel: (_) async {},
       );
       bloc.add(DeviceSettingsHydrated(baseSettings()));
       await pumpEventQueue();
@@ -99,7 +105,11 @@ void main() {
     test(
       'cancel wipes staged action and restores synchronized state',
       () async {
-        final bloc = DeviceSettingsBloc(commitButtonMapping: (_) async {});
+        final bloc = DeviceSettingsBloc(
+          commitButtonMapping: (_) async {},
+          commitReportRate: (_) async {},
+          commitDpiLevel: (_) async {},
+        );
         bloc.add(DeviceSettingsHydrated(baseSettings()));
         await pumpEventQueue();
         bloc.add(
@@ -130,6 +140,8 @@ void main() {
         commitButtonMapping: (slots) async {
           written = slots;
         },
+        commitReportRate: (_) async {},
+        commitDpiLevel: (_) async {},
       );
       bloc.add(DeviceSettingsHydrated(baseSettings()));
       await pumpEventQueue();
@@ -165,6 +177,8 @@ void main() {
         commitButtonMapping: (_) async {
           throw Exception('nak');
         },
+        commitReportRate: (_) async {},
+        commitDpiLevel: (_) async {},
       );
       bloc.add(DeviceSettingsHydrated(baseSettings()));
       await pumpEventQueue();
@@ -193,6 +207,8 @@ void main() {
           commitButtonMapping: (_) async {
             throw Exception('nak');
           },
+          commitReportRate: (_) async {},
+          commitDpiLevel: (_) async {},
         );
         bloc.add(DeviceSettingsHydrated(baseSettings()));
         await pumpEventQueue();
@@ -215,6 +231,8 @@ void main() {
         commitButtonMapping: (_) async {
           commits++;
         },
+        commitReportRate: (_) async {},
+        commitDpiLevel: (_) async {},
         initial: DeviceSettingsViewState(
           synced: baseSettings(),
           buttonMappingStaging: const [ButtonMappingSlot(action: 0x02)],

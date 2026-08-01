@@ -216,6 +216,7 @@ class DeviceScope {
     return DeviceSettingsBloc(
       commitButtonMapping: (slots) => commitButtonMapping(card, slots),
       commitReportRate: (hz) => commitReportRate(card, hz),
+      commitDpiLevel: (level) => commitDpiLevel(card, level),
       actionLabelOf: (action, p1, p2, p3) => translate.buttonActionToLabel(
         action: action,
         param1: p1,
@@ -302,7 +303,7 @@ class DeviceScope {
 
     // Build new block: [currentReportRateWire, newDpiLevelWire, currentDpiActive]
     final dataBlock = Uint8List(3);
-    dataBlock[0] = currentBlock.reportRateWire;
+    dataBlock[0] = currentBlock.reportRate;
     dataBlock[1] = wireValue;
     dataBlock[2] = currentBlock.dpiActiveLevel;
 

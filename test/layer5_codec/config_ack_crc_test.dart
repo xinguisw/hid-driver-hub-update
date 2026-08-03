@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:driver_hub/layer5_codec/codec_exception.dart';
 import 'package:driver_hub/layer5_codec/device_protocol.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -30,7 +31,7 @@ void main() {
           Uint8List(8),
           addrs: 0xB2,
         ),
-        throwsA(isA<FormatException>()),
+        throwsA(isA<CodecException>()),
       );
     });
 
@@ -40,7 +41,7 @@ void main() {
           _b2Desktop(),
           addrs: 0xC2,
         ),
-        throwsA(isA<FormatException>()),
+        throwsA(isA<CodecException>()),
       );
     });
 
@@ -129,7 +130,7 @@ void main() {
       raw[31] = 0x00;
       expect(
         () => MouseProtocol.verifyConfigAckCrc(raw, label: 'buttonMapping'),
-        throwsA(isA<FormatException>()),
+        throwsA(isA<CodecException>()),
       );
     });
   });

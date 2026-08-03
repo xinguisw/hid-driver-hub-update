@@ -1,4 +1,5 @@
 import 'package:driver_hub/layer1_discovery/device_type.dart';
+import 'package:driver_hub/layer5_codec/codec_exception.dart';
 import 'package:driver_hub/layer5_codec/codecs/translation_codec.dart';
 import 'package:driver_hub/layer5_codec/utils/crc16.dart';
 import 'package:driver_hub/layer6_transport/hid_session.dart';
@@ -708,57 +709,63 @@ class MouseProtocol implements DeviceProtocol {
 
   /// Config frame: length + header addrs (B2/C2/C4/…). Opcode 07/08 not required here.
   ///
-  /// Throws [FormatException] on failure.
+  /// Throws [CodecException] on failure with raw bytes for logging.
   static void validateConfigAckFrame(
     Uint8List raw, {
     required int addrs,
     String label = 'config',
   }) {
     if (raw.isEmpty || raw.length > configRawMaxLength) {
-      // TODO: product error handling not finalized.
-      throw FormatException(
-        '$label size: raw length ${raw.length} '
-        '(max $configRawMaxLength)',
+      debugPrint('[proto] $label: REJECT raw length ${raw.length} (max $configRawMaxLength) raw=${_hex(raw)}');
+      throw CodecException(
+        label: label,
+        reason: 'raw length ${raw.length} (max $configRawMaxLength)',
+        raw: raw,
       );
     }
     final body = stripReportId(raw);
     if (body.length < configBodyLength) {
-      // TODO: product error handling not finalized.
-      throw FormatException(
-        '$label size: body length ${body.length} '
-        '(need $configBodyLength)',
+      debugPrint('[proto] $label: REJECT body length ${body.length} (need $configBodyLength) raw=${_hex(raw)}');
+      throw CodecException(
+        label: label,
+        reason: 'body length ${body.length} (need $configBodyLength)',
+        raw: raw,
       );
     }
     if (body.length > configBodyLength) {
-      // TODO: product error handling not finalized.
-      throw FormatException(
-        '$label size: body length ${body.length} '
-        '(max $configBodyLength)',
+      debugPrint('[proto] $label: REJECT body length ${body.length} (max $configBodyLength) raw=${_hex(raw)}');
+      throw CodecException(
+        label: label,
+        reason: 'body length ${body.length} (max $configBodyLength)',
+        raw: raw,
       );
     }
 
     // Header: block address (B2, C2, C4, C6, D4, E2, …).
     final gotAddrs = body[_addrsOff];
     if (gotAddrs != addrs) {
-      // TODO: product error handling not finalized.
-      throw FormatException(
-        '$label header: addrs 0x${gotAddrs.toRadixString(16)} '
-        '(want 0x${addrs.toRadixString(16)})',
+      debugPrint('[proto] $label: REJECT addrs=0x${gotAddrs.toRadixString(16)} want=0x${addrs.toRadixString(16)} raw=${_hex(raw)}');
+      throw CodecException(
+        label: label,
+        reason: 'addrs 0x${gotAddrs.toRadixString(16)} (want 0x${addrs.toRadixString(16)})',
+        raw: raw,
       );
     }
 
     final len = body[_lenOff];
     if (len > configCrcPayloadLength) {
-      // TODO: product error handling not finalized.
-      throw FormatException(
-        '$label size: len $len (max $configCrcPayloadLength)',
+      debugPrint('[proto] $label: REJECT len=$len (max $configCrcPayloadLength) raw=${_hex(raw)}');
+      throw CodecException(
+        label: label,
+        reason: 'len $len (max $configCrcPayloadLength)',
+        raw: raw,
       );
     }
   }
 
   /// CRC-16 over body[5..29), LE at [29..30]. Only for opcode 07/08.
   ///
-  /// Throws [FormatException] if CRC does not match.
+  /// Throws [CodecException] if CRC does not match with raw bytes for logging.
   static void verifyConfigAckCrc(Uint8List raw, {String label = 'config'}) {
     final body = stripReportId(raw);
     final payloadStart = _dataOff;
@@ -779,9 +786,11 @@ class MouseProtocol implements DeviceProtocol {
       'match=$match',
     );
     if (!match) {
-      // TODO: product error handling not finalized.
-      throw FormatException(
-        '$label CRC mismatch: calc=$calcHex wire=$wireHex',
+      debugPrint('[proto] $label: REJECT CRC mismatch calc=$calcHex wire=$wireHex raw=${_hex(raw)}');
+      throw CodecException(
+        label: label,
+        reason: 'CRC mismatch: calc=$calcHex wire=$wireHex',
+        raw: raw,
       );
     }
   }
@@ -864,6 +873,6 @@ class MouseProtocol implements DeviceProtocol {
     return body.isNotEmpty && body[0] == opcode;
   }
 
-  String _hex(Uint8List bytes) =>
+  static String _hex(Uint8List bytes) =>
       bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join(' ');
 }

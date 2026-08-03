@@ -23,6 +23,12 @@ typedef EscalationCallback = void Function(String reason);
 /// Save completed callback — UI uses this to dismiss sidebar.
 typedef SaveCompletedCallback = void Function();
 
+/// Late L2 capability lookup, resolved at validation time.
+///
+/// why: the bloc is constructed before L2 caps finish loading, so a value
+/// captured at construction is always null on first entry.
+typedef CapabilitiesLookup = DeviceCapabilities? Function();
+
 class DeviceSettingsBloc
     extends Bloc<DeviceSettingsEvent, DeviceSettingsViewState> {
   DeviceSettingsBloc({
@@ -33,6 +39,7 @@ class DeviceSettingsBloc
     ButtonIdLabelFn? buttonIdLabelOf,
     DeviceSettingsViewState? initial,
     this.capabilities,
+    this.capabilitiesLookup,
     this.onEscalationRequested,
     this.onSaveCompleted,
   }) : super(
@@ -58,7 +65,12 @@ class DeviceSettingsBloc
   final ReportRateCommit commitReportRate;
   final DpiLevelCommit commitDpiLevel;
   final DeviceCapabilities? capabilities;
+  final CapabilitiesLookup? capabilitiesLookup;
   final EscalationCallback? onEscalationRequested;
+
+  /// Caps in force right now: the constructor value wins, else the late lookup.
+  DeviceCapabilities? get activeCapabilities =>
+      capabilities ?? capabilitiesLookup?.call();
   final SaveCompletedCallback? onSaveCompleted;
 
   static const int failureEscalateThreshold = 3;
@@ -107,7 +119,7 @@ class DeviceSettingsBloc
     final l2ValidationError = validateButtonMappingAgainstCapabilities(
       staging: defaults,
       synced: synced,
-      capabilities: capabilities,
+      capabilities: activeCapabilities,
     );
     if (l2ValidationError != null) {
       emit(state.copyWith(lastError: l2ValidationError));
@@ -187,7 +199,7 @@ class DeviceSettingsBloc
     final l2ValidationError = validateButtonMappingAgainstCapabilities(
       staging: staging,
       synced: synced,
-      capabilities: capabilities,
+      capabilities: activeCapabilities,
     );
     if (l2ValidationError != null) {
       emit(state.copyWith(lastError: l2ValidationError));
@@ -533,7 +545,7 @@ class DeviceSettingsBloc
     }
 
     // Validate level is in L2 capabilities
-    final dpiCaps = capabilities?.dpi;
+    final dpiCaps = activeCapabilities?.dpi;
     if (dpiCaps != null) {
       final validLevels = dpiCaps.levels.map((l) => l.level).toList();
       if (!validLevels.contains(event.level)) {
@@ -576,7 +588,7 @@ class DeviceSettingsBloc
     }
 
     // Validate level is in L2 capabilities
-    final dpiCaps = capabilities?.dpi;
+    final dpiCaps = activeCapabilities?.dpi;
     if (dpiCaps != null) {
       final validLevels = dpiCaps.levels.map((l) => l.level).toList();
       if (!validLevels.contains(staging)) {

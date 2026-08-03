@@ -5,6 +5,7 @@ import 'package:driver_hub/layer1_discovery/device_scanner.dart';
 import 'package:driver_hub/layer1_discovery/device_session.dart';
 import 'package:driver_hub/layer1_discovery/device_watcher.dart';
 import 'package:driver_hub/layer1_discovery/discovered_device.dart';
+import 'package:driver_hub/layer2_capabilities/capabilities.dart';
 import 'package:driver_hub/layer4_domain/bloc/device_settings_bloc.dart';
 import 'package:driver_hub/layer4_domain/models/button_mapping_slot.dart';
 import 'package:driver_hub/layer4_domain/models/device_settings_state.dart';
@@ -224,6 +225,8 @@ class DeviceScope {
         param3: p3,
       ),
       buttonIdLabelOf: translate.buttonIdToLabel,
+      // why: caps load during loadOnboardSettings, after this bloc is built.
+      capabilitiesLookup: () => DeviceCapabilityStore.forDevice(card.devId),
       onSaveCompleted: onSaveCompleted,
     );
   }

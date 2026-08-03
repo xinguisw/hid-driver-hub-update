@@ -1,3 +1,4 @@
+import 'package:driver_hub/layer2_capabilities/capabilities.dart';
 import 'package:driver_hub/layer4_domain/bloc/device_settings_bloc.dart';
 import 'package:driver_hub/layer4_domain/bloc/device_settings_event.dart';
 import 'package:driver_hub/layer4_domain/bloc/device_settings_state_view.dart';
@@ -245,6 +246,72 @@ void main() {
       expect(commits, 0);
       expect(bloc.state.isDirty, true);
       expect(bloc.state.lastError, contains('expected 6'));
+      await bloc.close();
+    });
+  });
+
+  group('DeviceSettingsBloc capabilities lookup', () {
+    const dpiCaps = DeviceCapabilities(
+      devId: 'aa4ecd01',
+      displayNameKey: 'device.m7xse',
+      dpi: DpiCapabilities(
+        maxLevels: 4,
+        defaultLevel: 1,
+        maxDpi: 3200,
+        independentXY: false,
+        rgbPerStage: false,
+        levels: [
+          DpiLevel(level: 1, value: 800, color: '#FF0000'),
+          DpiLevel(level: 2, value: 1600, color: '#00FF00'),
+          DpiLevel(level: 3, value: 2400, color: '#0000FF'),
+          DpiLevel(level: 4, value: 3200, color: '#FFFF00'),
+        ],
+      ),
+    );
+
+    // why: reproduces the real wiring — caps are null when the bloc is built
+    // and only resolve once L2 finishes loading.
+    test('lookup resolved after construction gates DPI level', () async {
+      DeviceCapabilities? caps;
+      final bloc = DeviceSettingsBloc(
+        commitButtonMapping: (_) async {},
+        commitReportRate: (_) async {},
+        commitDpiLevel: (_) async {},
+        capabilitiesLookup: () => caps,
+      );
+      bloc.add(DeviceSettingsHydrated(baseSettings()));
+      await pumpEventQueue();
+
+      caps = dpiCaps;
+      bloc.add(const DeviceSettingsDpiLevelRequested(level: 9));
+      await pumpEventQueue();
+
+      expect(bloc.state.dpiCurrentLevelStaging, isNull);
+      expect(bloc.state.lastError, isNotNull);
+
+      bloc.add(const DeviceSettingsDpiLevelRequested(level: 3));
+      await pumpEventQueue();
+
+      expect(bloc.state.dpiCurrentLevelStaging, 3);
+      await bloc.close();
+    });
+
+    test('constructor capabilities win over the lookup', () async {
+      final bloc = DeviceSettingsBloc(
+        commitButtonMapping: (_) async {},
+        commitReportRate: (_) async {},
+        commitDpiLevel: (_) async {},
+        capabilities: dpiCaps,
+        capabilitiesLookup: () => null,
+      );
+      bloc.add(DeviceSettingsHydrated(baseSettings()));
+      await pumpEventQueue();
+
+      expect(bloc.activeCapabilities, same(dpiCaps));
+      bloc.add(const DeviceSettingsDpiLevelRequested(level: 9));
+      await pumpEventQueue();
+
+      expect(bloc.state.dpiCurrentLevelStaging, isNull);
       await bloc.close();
     });
   });

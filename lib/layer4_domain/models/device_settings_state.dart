@@ -17,6 +17,12 @@ class DeviceSettingsState {
   /// Soft error; settings can still show known fields.
   final String? error;
 
+  /// Config block labels whose L5 decode was rejected (e.g. `dpiTable`).
+  ///
+  /// why: a block that never decoded has no trustworthy baseline, so L4 must
+  /// not stage or dirty its controls (flow.drawio "Layer 5", decode-error box).
+  final Set<String> decodeErrors;
+
   // --- Report rate (matrix: options differ per product) ---
 
   /// Allowed Hz; null = product has no report-rate feature.
@@ -171,6 +177,7 @@ class DeviceSettingsState {
     required this.connectionMode,
     this.loading = false,
     this.error,
+    this.decodeErrors = const <String>{},
     this.reportRateOptions,
     this.reportRateHz,
     this.reportRateLabel,
@@ -291,6 +298,7 @@ class DeviceSettingsState {
     int? rgbB,
     int? rgbSleepTime,
     String? rgbSleepLabel,
+    Set<String>? decodeErrors,
     bool clearError = false,
   }) {
     return DeviceSettingsState(
@@ -299,6 +307,11 @@ class DeviceSettingsState {
       connectionMode: connectionMode ?? this.connectionMode,
       loading: loading ?? this.loading,
       error: clearError ? null : (error ?? this.error),
+      // why: clearError is the caller's "retry succeeded" signal; a stale
+      // decode error must not outlive it and keep a good block locked.
+      decodeErrors: clearError
+          ? const <String>{}
+          : (decodeErrors ?? this.decodeErrors),
       reportRateOptions: reportRateOptions ?? this.reportRateOptions,
       reportRateHz: reportRateHz ?? this.reportRateHz,
       reportRateLabel: reportRateLabel ?? this.reportRateLabel,

@@ -248,6 +248,91 @@ void main() {
       await bloc.close();
     });
   });
+
+  group('DeviceSettingsBloc decode-error guard', () {
+    DeviceSettingsBloc blocWith(Set<String> decodeErrors) {
+      final bloc = DeviceSettingsBloc(
+        commitButtonMapping: (_) async {},
+        commitReportRate: (_) async {},
+        commitDpiLevel: (_) async {},
+      );
+      bloc.add(
+        DeviceSettingsHydrated(
+          baseSettings().copyWith(
+            reportRateOptions: const [125, 250, 500, 1000],
+            reportRateHz: 250,
+            decodeErrors: decodeErrors,
+          ),
+        ),
+      );
+      return bloc;
+    }
+
+    test('locked reportRateDpi refuses report rate staging', () async {
+      final bloc = blocWith({'reportRateDpi'});
+      await pumpEventQueue();
+      bloc.add(const DeviceSettingsReportRateRequested(hz: 500));
+      await pumpEventQueue();
+
+      expect(bloc.state.reportRateStaging, isNull);
+      expect(bloc.state.isDirty, false);
+      expect(bloc.state.lastError, contains('decode error'));
+      await bloc.close();
+    });
+
+    test('locked reportRateDpi refuses DPI level staging', () async {
+      final bloc = blocWith({'reportRateDpi'});
+      await pumpEventQueue();
+      bloc.add(const DeviceSettingsDpiLevelRequested(level: 5));
+      await pumpEventQueue();
+
+      expect(bloc.state.dpiCurrentLevelStaging, isNull);
+      expect(bloc.state.isDirty, false);
+      expect(bloc.state.lastError, contains('decode error'));
+      await bloc.close();
+    });
+
+    test('locked buttonMapping refuses slot staging', () async {
+      final bloc = blocWith({'buttonMapping'});
+      await pumpEventQueue();
+      bloc.add(
+        const DeviceSettingsButtonMappingSlotRequested(
+          buttonId: 1,
+          catalogId: 'mouse.left',
+        ),
+      );
+      await pumpEventQueue();
+
+      expect(bloc.state.buttonMappingStaging, isNull);
+      expect(bloc.state.isDirty, false);
+      expect(bloc.state.lastError, contains('decode error'));
+      await bloc.close();
+    });
+
+    // why: a lock on one block must not freeze an unrelated one.
+    test('locked buttonMapping still allows report rate staging', () async {
+      final bloc = blocWith({'buttonMapping'});
+      await pumpEventQueue();
+      bloc.add(const DeviceSettingsReportRateRequested(hz: 500));
+      await pumpEventQueue();
+
+      expect(bloc.state.reportRateStaging, 500);
+      expect(bloc.state.isDirty, true);
+      expect(bloc.state.lastError, isNull);
+      await bloc.close();
+    });
+
+    test('no decode error leaves staging unblocked', () async {
+      final bloc = blocWith(const <String>{});
+      await pumpEventQueue();
+      bloc.add(const DeviceSettingsReportRateRequested(hz: 500));
+      await pumpEventQueue();
+
+      expect(bloc.state.reportRateStaging, 500);
+      expect(bloc.state.isDirty, true);
+      await bloc.close();
+    });
+  });
 }
 
 Future<void> pumpEventQueue([int times = 20]) async {

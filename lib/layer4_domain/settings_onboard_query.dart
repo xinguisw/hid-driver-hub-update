@@ -7,6 +7,7 @@ import 'package:driver_hub/layer4_domain/device_repository.dart';
 import 'package:driver_hub/layer4_domain/models/device_settings_state.dart';
 import 'package:driver_hub/layer4_domain/models/discovered_card_state.dart';
 import 'package:driver_hub/layer4_domain/settings_capabilities_pack.dart';
+import 'package:driver_hub/layer5_codec/codec_exception.dart';
 import 'package:driver_hub/layer5_codec/codecs/translation_codec.dart';
 import 'package:flutter/foundation.dart';
 
@@ -131,6 +132,7 @@ Future<DeviceSettingsState> queryOnboardConfig(
     if (fatal != null) {
       return state.copyWith(loading: false, error: fatal);
     }
+    state = _withDecodeError(state, e, 'buttonMapping');
   }
 
   // C2 active-stage bitmask (e.g. 0x1F = stages 0..4). Used to filter C4 table.
@@ -174,6 +176,7 @@ Future<DeviceSettingsState> queryOnboardConfig(
     if (fatal != null) {
       return state.copyWith(loading: false, error: fatal);
     }
+    state = _withDecodeError(state, e, 'reportRateDpi');
   }
 
   List<DpiStageData>? dpiLevels = state.dpiLevels;
@@ -254,6 +257,7 @@ Future<DeviceSettingsState> queryOnboardConfig(
     if (fatal != null) {
       return state.copyWith(loading: false, error: fatal);
     }
+    state = _withDecodeError(state, e, 'dpiTable');
   }
 
   try {
@@ -285,6 +289,7 @@ Future<DeviceSettingsState> queryOnboardConfig(
     if (fatal != null) {
       return state.copyWith(loading: false, error: fatal);
     }
+    state = _withDecodeError(state, e, 'dpiRgb');
   }
 
   try {
@@ -348,6 +353,7 @@ Future<DeviceSettingsState> queryOnboardConfig(
     if (fatal != null) {
       return state.copyWith(loading: false, error: fatal);
     }
+    state = _withDecodeError(state, e, 'sensorOther');
   }
 
   try {
@@ -383,6 +389,7 @@ Future<DeviceSettingsState> queryOnboardConfig(
     if (fatal != null) {
       return state.copyWith(loading: false, error: fatal);
     }
+    state = _withDecodeError(state, e, 'rgbBacklight');
   }
 
   return state.copyWith(loading: false);
@@ -424,6 +431,20 @@ String? _settingsLoadFatal(Object e, String name, String label) {
     return 'timeout';
   }
   return null;
+}
+
+/// Marks [label] undecodable when L5 rejected the frame; other errors pass through.
+///
+/// why: soft-fail leaves the block's fields unset, which is indistinguishable
+/// from "device has no such block" — L4 needs the difference to refuse staging.
+DeviceSettingsState _withDecodeError(
+  DeviceSettingsState state,
+  Object e,
+  String label,
+) {
+  if (e is! CodecException) return state;
+  debugPrint('[settings] decode error on $label — block locked until reload');
+  return state.copyWith(decodeErrors: {...state.decodeErrors, label});
 }
 
 String _rgbHex(int r, int g, int b) {

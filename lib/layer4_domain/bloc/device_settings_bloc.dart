@@ -282,6 +282,12 @@ class DeviceSettingsBloc
       return;
     }
 
+    // why: stageButtonMappingFromLive would seed from a baseline that never decoded
+    if (synced.decodeErrors.contains('buttonMapping')) {
+      emit(state.copyWith(lastError: 'button mapping unavailable: decode error'));
+      return;
+    }
+
     // Translate catalog ID → wire slot
     final slot = ButtonActionCatalogMap.catalogIdToSlot(event.catalogId);
     if (slot == null) {
@@ -333,6 +339,12 @@ class DeviceSettingsBloc
     final synced = state.synced;
     if (synced == null) {
       emit(state.copyWith(lastError: 'no settings loaded'));
+      return;
+    }
+
+    // why: same staging buffer as slot-requested — same undecoded baseline risk
+    if (synced.decodeErrors.contains('buttonMapping')) {
+      emit(state.copyWith(lastError: 'button mapping unavailable: decode error'));
       return;
     }
 
@@ -396,6 +408,12 @@ class DeviceSettingsBloc
     final synced = state.synced;
     if (synced == null) {
       emit(state.copyWith(lastError: 'no settings loaded'));
+      return;
+    }
+
+    // why: baseline never decoded — staging would diff against an unknown value
+    if (synced.decodeErrors.contains('reportRateDpi')) {
+      emit(state.copyWith(lastError: 'report rate unavailable: decode error'));
       return;
     }
 
@@ -505,6 +523,12 @@ class DeviceSettingsBloc
     final synced = state.synced;
     if (synced == null) {
       emit(state.copyWith(lastError: 'no settings loaded'));
+      return;
+    }
+
+    // why: baseline never decoded — staging would diff against an unknown value
+    if (synced.decodeErrors.contains('reportRateDpi')) {
+      emit(state.copyWith(lastError: 'DPI level unavailable: decode error'));
       return;
     }
 

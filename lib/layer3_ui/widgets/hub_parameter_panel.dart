@@ -51,38 +51,45 @@ class HubParameterPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hasSensorContent = hasSensorTuning || hasLod || hasAngleTune || hasPerformance;
+    final hasOtherContent = hasButtonDebounce || hasWheelInvert || hasSleepTime;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Sensor feature'),
-          const SizedBox(height: 8),
-          _SensorFeatureGroup(
-            lodOptions: lodOptions ?? const [],
-            performanceOptions: performanceOptions ?? const [0, 1, 2],
-            // why: staging paints ahead of synced so the switch follows the tap.
-            rippleOn: rippleStaging ?? rippleOn ?? false,
-            angleSnapOn: angleSnapStaging ?? angleSnapOn ?? false,
-            onRippleChanged: onRippleChanged,
-            onAngleSnapChanged: onAngleSnapChanged,
-            hasSensorTuning: hasSensorTuning,
-            hasLod: hasLod,
-            hasAngleTune: hasAngleTune,
-            hasPerformance: hasPerformance,
-          ),
-          const SizedBox(height: 24),
-          const Text('Other feature'),
-          const SizedBox(height: 8),
-          _OtherFeatureGroup(
-            buttonDebounceOptions:
-                buttonDebounceOptions ?? const [0, 1, 2, 4, 8, 16],
-            sleepTimeOptions:
-                sleepTimeOptions ?? const [30, 60, 120, 180, 300, 1500, 1800],
-            hasButtonDebounce: hasButtonDebounce,
-            hasWheelInvert: hasWheelInvert,
-            hasSleepTime: hasSleepTime,
-          ),
+          if (hasSensorContent) ...[
+            const Text('Sensor feature'),
+            const SizedBox(height: 8),
+            _SensorFeatureGroup(
+              lodOptions: lodOptions ?? const [],
+              performanceOptions: performanceOptions ?? const [0, 1, 2],
+              // why: staging paints ahead of synced so the switch follows the tap.
+              rippleOn: rippleStaging ?? rippleOn ?? false,
+              angleSnapOn: angleSnapStaging ?? angleSnapOn ?? false,
+              onRippleChanged: onRippleChanged,
+              onAngleSnapChanged: onAngleSnapChanged,
+              hasSensorTuning: hasSensorTuning,
+              hasLod: hasLod,
+              hasAngleTune: hasAngleTune,
+              hasPerformance: hasPerformance,
+            ),
+            const SizedBox(height: 24),
+          ],
+          if (hasOtherContent) ...[
+            const Text('Other feature'),
+            const SizedBox(height: 8),
+            _OtherFeatureGroup(
+              buttonDebounceOptions:
+                  buttonDebounceOptions ?? const [0, 1, 2, 4, 8, 16],
+              sleepTimeOptions:
+                  sleepTimeOptions ?? const [30, 60, 120, 180, 300, 1500, 1800],
+              hasButtonDebounce: hasButtonDebounce,
+              hasWheelInvert: hasWheelInvert,
+              hasSleepTime: hasSleepTime,
+            ),
+          ],
         ],
       ),
     );

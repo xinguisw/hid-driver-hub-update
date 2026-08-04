@@ -97,3 +97,28 @@ class DeviceSettingsDpiLevelRequested extends DeviceSettingsEvent {
 class DeviceSettingsSaveDpiLevelRequested extends DeviceSettingsEvent {
   const DeviceSettingsSaveDpiLevelRequested();
 }
+
+/// User toggled ripple control.
+///
+/// L3 passes the boolean value. L4 stages it and marks dirty.
+class DeviceSettingsRippleControlRequested extends DeviceSettingsEvent {
+  const DeviceSettingsRippleControlRequested({required this.enabled});
+
+  /// Whether ripple control is enabled.
+  final bool enabled;
+}
+
+/// User toggled angle snap.
+///
+/// L3 passes the boolean value. L4 stages it and marks dirty.
+class DeviceSettingsAngleSnapRequested extends DeviceSettingsEvent {
+  const DeviceSettingsAngleSnapRequested({required this.enabled});
+
+  /// Whether angle snap is enabled.
+  final bool enabled;
+}
+
+/// Save sensor tuning staging to device.
+class DeviceSettingsSaveSensorTuningRequested extends DeviceSettingsEvent {
+  const DeviceSettingsSaveSensorTuningRequested();
+}

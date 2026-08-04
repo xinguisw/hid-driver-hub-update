@@ -62,6 +62,7 @@ void main() {
         commitButtonMapping: (_) async {},
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
+        commitSensorTuning: (_, _) async {},
       );
       bloc.add(DeviceSettingsHydrated(baseSettings()));
       await pumpEventQueue();
@@ -79,6 +80,7 @@ void main() {
         },
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
+        commitSensorTuning: (_, _) async {},
       );
       bloc.add(DeviceSettingsHydrated(baseSettings()));
       await pumpEventQueue();
@@ -110,6 +112,7 @@ void main() {
           commitButtonMapping: (_) async {},
           commitReportRate: (_) async {},
           commitDpiLevel: (_) async {},
+        commitSensorTuning: (_, _) async {},
         );
         bloc.add(DeviceSettingsHydrated(baseSettings()));
         await pumpEventQueue();
@@ -143,6 +146,7 @@ void main() {
         },
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
+        commitSensorTuning: (_, _) async {},
       );
       bloc.add(DeviceSettingsHydrated(baseSettings()));
       await pumpEventQueue();
@@ -180,6 +184,7 @@ void main() {
         },
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
+        commitSensorTuning: (_, _) async {},
       );
       bloc.add(DeviceSettingsHydrated(baseSettings()));
       await pumpEventQueue();
@@ -210,6 +215,7 @@ void main() {
           },
           commitReportRate: (_) async {},
           commitDpiLevel: (_) async {},
+        commitSensorTuning: (_, _) async {},
         );
         bloc.add(DeviceSettingsHydrated(baseSettings()));
         await pumpEventQueue();
@@ -234,6 +240,7 @@ void main() {
         },
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
+        commitSensorTuning: (_, _) async {},
         initial: DeviceSettingsViewState(
           synced: baseSettings(),
           buttonMappingStaging: const [ButtonMappingSlot(action: 0x02)],
@@ -277,6 +284,7 @@ void main() {
         commitButtonMapping: (_) async {},
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
+        commitSensorTuning: (_, _) async {},
         capabilitiesLookup: () => caps,
       );
       bloc.add(DeviceSettingsHydrated(baseSettings()));
@@ -301,6 +309,7 @@ void main() {
         commitButtonMapping: (_) async {},
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
+        commitSensorTuning: (_, _) async {},
         capabilities: dpiCaps,
         capabilitiesLookup: () => null,
       );
@@ -322,6 +331,7 @@ void main() {
         commitButtonMapping: (_) async {},
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
+        commitSensorTuning: (_, _) async {},
       );
       bloc.add(
         DeviceSettingsHydrated(
@@ -397,6 +407,130 @@ void main() {
 
       expect(bloc.state.reportRateStaging, 500);
       expect(bloc.state.isDirty, true);
+      await bloc.close();
+    });
+
+    test('locked sensorOther refuses ripple staging', () async {
+      final bloc = blocWith({'sensorOther'});
+      await pumpEventQueue();
+      bloc.add(const DeviceSettingsRippleControlRequested(enabled: true));
+      await pumpEventQueue();
+
+      expect(bloc.state.rippleControlStaging, isNull);
+      expect(bloc.state.isDirty, false);
+      expect(bloc.state.lastError, contains('decode error'));
+      await bloc.close();
+    });
+
+    test('locked sensorOther refuses angle snap staging', () async {
+      final bloc = blocWith({'sensorOther'});
+      await pumpEventQueue();
+      bloc.add(const DeviceSettingsAngleSnapRequested(enabled: true));
+      await pumpEventQueue();
+
+      expect(bloc.state.angleSnapStaging, isNull);
+      expect(bloc.state.isDirty, false);
+      expect(bloc.state.lastError, contains('decode error'));
+      await bloc.close();
+    });
+  });
+
+  group('DeviceSettingsBloc sensor tuning', () {
+    DeviceSettingsState sensorSettings() => baseSettings().copyWith(
+      hasSensorTuning: true,
+      rippleOn: false,
+      angleSnapOn: false,
+    );
+
+    test('ripple staging marks dirty and leaves synced alone', () async {
+      final bloc = DeviceSettingsBloc(
+        commitButtonMapping: (_) async {},
+        commitReportRate: (_) async {},
+        commitDpiLevel: (_) async {},
+        commitSensorTuning: (_, _) async {},
+      );
+      bloc.add(DeviceSettingsHydrated(sensorSettings()));
+      await pumpEventQueue();
+      bloc.add(const DeviceSettingsRippleControlRequested(enabled: true));
+      await pumpEventQueue();
+
+      expect(bloc.state.rippleControlStaging, true);
+      expect(bloc.state.isDirty, true);
+      expect(bloc.state.synced?.rippleOn, false);
+      await bloc.close();
+    });
+
+    test('save commits both bytes and syncs state', () async {
+      bool? ripple;
+      bool? angleSnap;
+      final bloc = DeviceSettingsBloc(
+        commitButtonMapping: (_) async {},
+        commitReportRate: (_) async {},
+        commitDpiLevel: (_) async {},
+        commitSensorTuning: (r, a) async {
+          ripple = r;
+          angleSnap = a;
+        },
+      );
+      bloc.add(DeviceSettingsHydrated(sensorSettings()));
+      await pumpEventQueue();
+      bloc.add(const DeviceSettingsRippleControlRequested(enabled: true));
+      await pumpEventQueue();
+      bloc.add(const DeviceSettingsSaveSensorTuningRequested());
+      await pumpEventQueue();
+
+      expect(ripple, true);
+      // why: unstaged byte must carry the synced value, not a default.
+      expect(angleSnap, false);
+      expect(bloc.state.synced?.rippleOn, true);
+      expect(bloc.state.rippleControlStaging, isNull);
+      expect(bloc.state.isDirty, false);
+      expect(bloc.state.lastError, isNull);
+      await bloc.close();
+    });
+
+    test('save failure keeps staging and records the failure', () async {
+      final bloc = DeviceSettingsBloc(
+        commitButtonMapping: (_) async {},
+        commitReportRate: (_) async {},
+        commitDpiLevel: (_) async {},
+        commitSensorTuning: (_, _) async {
+          throw Exception('nak');
+        },
+      );
+      bloc.add(DeviceSettingsHydrated(sensorSettings()));
+      await pumpEventQueue();
+      bloc.add(const DeviceSettingsAngleSnapRequested(enabled: true));
+      await pumpEventQueue();
+      bloc.add(const DeviceSettingsSaveSensorTuningRequested());
+      await pumpEventQueue();
+
+      expect(bloc.state.angleSnapStaging, true);
+      expect(bloc.state.isDirty, true);
+      expect(bloc.state.synced?.angleSnapOn, false);
+      expect(bloc.state.consecutiveFailures, 1);
+      expect(bloc.state.lastError, contains('nak'));
+      expect(bloc.state.committing, false);
+      await bloc.close();
+    });
+
+    test('cancel wipes sensor staging', () async {
+      final bloc = DeviceSettingsBloc(
+        commitButtonMapping: (_) async {},
+        commitReportRate: (_) async {},
+        commitDpiLevel: (_) async {},
+        commitSensorTuning: (_, _) async {},
+      );
+      bloc.add(DeviceSettingsHydrated(sensorSettings()));
+      await pumpEventQueue();
+      bloc.add(const DeviceSettingsRippleControlRequested(enabled: true));
+      await pumpEventQueue();
+      bloc.add(const DeviceSettingsCancelRequested());
+      await pumpEventQueue();
+
+      expect(bloc.state.rippleControlStaging, isNull);
+      expect(bloc.state.isDirty, false);
+      expect(bloc.state.synced?.rippleOn, false);
       await bloc.close();
     });
   });

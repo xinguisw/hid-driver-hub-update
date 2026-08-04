@@ -1,3 +1,5 @@
+import 'package:driver_hub/layer2_capabilities/capabilities.dart';
+
 /// View model for one device's settings (same role as [DiscoveredCardState]).
 ///
 /// Pure data — no HID, no DeviceCapabilityStore, no widgets. Owner packs this from
@@ -99,8 +101,8 @@ class DeviceSettingsState {
 
   final bool hasLod;
 
-  /// LOD options in mm; null/empty = no LOD.
-  final List<int>? lodOptionsMm;
+  /// LOD options (wire + mm); null/empty = no LOD.
+  final List<LodOption>? lodOptions;
 
   /// Live LOD wire level (for later SET); prefer [lodLabel] for display.
   final int? lodMm;
@@ -201,7 +203,7 @@ class DeviceSettingsState {
     this.angleTune,
     this.angleTuneLabel,
     this.hasLod = false,
-    this.lodOptionsMm,
+    this.lodOptions,
     this.lodMm,
     this.lodLabel,
     this.hasPerformance = false,
@@ -265,7 +267,7 @@ class DeviceSettingsState {
     int? angleTune,
     String? angleTuneLabel,
     bool? hasLod,
-    List<int>? lodOptionsMm,
+    List<LodOption>? lodOptions,
     int? lodMm,
     String? lodLabel,
     bool? hasPerformance,
@@ -336,7 +338,7 @@ class DeviceSettingsState {
       angleTune: angleTune ?? this.angleTune,
       angleTuneLabel: angleTuneLabel ?? this.angleTuneLabel,
       hasLod: hasLod ?? this.hasLod,
-      lodOptionsMm: lodOptionsMm ?? this.lodOptionsMm,
+      lodOptions: lodOptions ?? this.lodOptions,
       lodMm: lodMm ?? this.lodMm,
       lodLabel: lodLabel ?? this.lodLabel,
       hasPerformance: hasPerformance ?? this.hasPerformance,
@@ -405,7 +407,7 @@ class DeviceSettingsState {
           angleTune == other.angleTune &&
           angleTuneLabel == other.angleTuneLabel &&
           hasLod == other.hasLod &&
-          _listEq(lodOptionsMm, other.lodOptionsMm) &&
+          _listEq(lodOptions, other.lodOptions) &&
           lodMm == other.lodMm &&
           lodLabel == other.lodLabel &&
           hasPerformance == other.hasPerformance &&
@@ -469,7 +471,7 @@ class DeviceSettingsState {
         angleTune,
         angleTuneLabel,
         hasLod,
-        Object.hashAll(lodOptionsMm ?? const []),
+        Object.hashAll(lodOptions ?? const []),
         lodMm,
         lodLabel,
         hasPerformance,

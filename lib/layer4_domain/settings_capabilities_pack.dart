@@ -64,7 +64,7 @@ DeviceSettingsState applyCapabilitiesToSettings(
       hasSensorTuning: sensor.sensorTuning,
       hasAngleTune: sensor.angleTune,
       hasLod: lod?.present ?? false,
-      lodOptionsMm: (lod != null && lod.present) ? lod.options : null,
+      lodOptions: (lod != null && lod.present) ? lod.options : null,
       hasPerformance: perf?.present ?? false,
     );
     final profile = SensorProfiles.forDevice(caps.devId);

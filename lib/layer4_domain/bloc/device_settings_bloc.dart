@@ -15,6 +15,11 @@ typedef ReportRateCommit = Future<void> Function(int reportRateHz);
 
 typedef DpiLevelCommit = Future<void> Function(int dpiLevel);
 
+typedef SensorTuningCommit = Future<void> Function(
+  bool rippleControl,
+  bool angleSnap,
+);
+
 /// FR-ARC-014c: escalation callback invoked when consecutive failures reach threshold.
 ///
 /// L1 [DeviceScope] provides this to force session teardown/reconnect.
@@ -35,6 +40,7 @@ class DeviceSettingsBloc
     required this.commitButtonMapping,
     required this.commitReportRate,
     required this.commitDpiLevel,
+    required this.commitSensorTuning,
     ButtonActionLabelFn? actionLabelOf,
     ButtonIdLabelFn? buttonIdLabelOf,
     DeviceSettingsViewState? initial,
@@ -59,11 +65,15 @@ class DeviceSettingsBloc
     on<DeviceSettingsSaveReportRateRequested>(_onSaveReportRate);
     on<DeviceSettingsDpiLevelRequested>(_onDpiLevelRequested);
     on<DeviceSettingsSaveDpiLevelRequested>(_onSaveDpiLevel);
+    on<DeviceSettingsRippleControlRequested>(_onRippleControlRequested);
+    on<DeviceSettingsAngleSnapRequested>(_onAngleSnapRequested);
+    on<DeviceSettingsSaveSensorTuningRequested>(_onSaveSensorTuning);
   }
 
   final ButtonMappingCommit commitButtonMapping;
   final ReportRateCommit commitReportRate;
   final DpiLevelCommit commitDpiLevel;
+  final SensorTuningCommit commitSensorTuning;
   final DeviceCapabilities? capabilities;
   final CapabilitiesLookup? capabilitiesLookup;
   final EscalationCallback? onEscalationRequested;
@@ -644,6 +654,140 @@ class DeviceSettingsBloc
       ),
     );
     debugPrint('[bloc] save DPI level: synced');
+    onSaveCompleted?.call();
+  }
+
+  /// User toggled ripple control.
+  ///
+  /// Stages the boolean value and marks dirty. Save commits to device.
+  void _onRippleControlRequested(
+    DeviceSettingsRippleControlRequested event,
+    Emitter<DeviceSettingsViewState> emit,
+  ) {
+    final synced = state.synced;
+    if (synced == null) {
+      emit(state.copyWith(lastError: 'no settings loaded'));
+      return;
+    }
+
+    // why: baseline never decoded — staging would diff against an unknown value
+    if (synced.decodeErrors.contains('sensorOther')) {
+      emit(
+        state.copyWith(lastError: 'ripple control unavailable: decode error'),
+      );
+      return;
+    }
+
+    emit(
+      state.copyWith(
+        rippleControlStaging: event.enabled,
+        isDirty: true,
+        clearError: true,
+      ),
+    );
+
+    debugPrint('[bloc] ripple control staged: ${event.enabled}');
+  }
+
+  /// User toggled angle snap.
+  ///
+  /// Stages the boolean value and marks dirty. Save commits to device.
+  void _onAngleSnapRequested(
+    DeviceSettingsAngleSnapRequested event,
+    Emitter<DeviceSettingsViewState> emit,
+  ) {
+    final synced = state.synced;
+    if (synced == null) {
+      emit(state.copyWith(lastError: 'no settings loaded'));
+      return;
+    }
+
+    // why: baseline never decoded — staging would diff against an unknown value
+    if (synced.decodeErrors.contains('sensorOther')) {
+      emit(state.copyWith(lastError: 'angle snap unavailable: decode error'));
+      return;
+    }
+
+    emit(
+      state.copyWith(
+        angleSnapStaging: event.enabled,
+        isDirty: true,
+        clearError: true,
+      ),
+    );
+
+    debugPrint('[bloc] angle snap staged: ${event.enabled}');
+  }
+
+  /// Save sensor tuning staging to device.
+  Future<void> _onSaveSensorTuning(
+    DeviceSettingsSaveSensorTuningRequested event,
+    Emitter<DeviceSettingsViewState> emit,
+  ) async {
+    final rippleStaging = state.rippleControlStaging;
+    final angleSnapStaging = state.angleSnapStaging;
+    if (rippleStaging == null && angleSnapStaging == null) {
+      debugPrint('[bloc] save sensor tuning: nothing dirty');
+      return;
+    }
+    if (state.committing) return;
+
+    final synced = state.synced;
+    if (synced == null) {
+      emit(state.copyWith(lastError: 'save sensor tuning: no synced settings'));
+      return;
+    }
+
+    // why: both bytes ship together — the unstaged one must carry its synced
+    // value or the SET would silently flip it.
+    final ripple = rippleStaging ?? synced.rippleOn ?? false;
+    final angleSnap = angleSnapStaging ?? synced.angleSnapOn ?? false;
+
+    emit(state.copyWith(committing: true, clearError: true));
+
+    try {
+      await commitSensorTuning(ripple, angleSnap);
+    } catch (e) {
+      debugPrint('[bloc] save sensor tuning failed: $e');
+      final failures = state.consecutiveFailures + 1;
+      emit(
+        state.copyWith(
+          committing: false,
+          lastError: 'sensor tuning save failed: $e',
+          consecutiveFailures: failures,
+        ),
+      );
+      if (failures >= failureEscalateThreshold) {
+        debugPrint(
+          '[bloc] consecutiveFailures=$failures >= $failureEscalateThreshold '
+          '— escalating to L1 watcher',
+        );
+        onEscalationRequested?.call(
+          'sensor tuning save failed $failures consecutive times',
+        );
+      }
+      return;
+    }
+
+    final nextSynced = synced.copyWith(
+      rippleOn: ripple,
+      angleSnapOn: angleSnap,
+      clearError: true,
+    );
+    emit(
+      DeviceSettingsViewState(
+        synced: nextSynced,
+        rippleControlStaging: null,
+        angleSnapStaging: null,
+        isDirty: false,
+        committing: false,
+        consecutiveFailures: 0,
+        lastError: null,
+        actionLabelOf: state.actionLabelOf,
+        buttonIdLabelOf: state.buttonIdLabelOf,
+      ),
+    );
+    debugPrint('[bloc] save sensor tuning: synced');
     onSaveCompleted?.call();
   }
 }

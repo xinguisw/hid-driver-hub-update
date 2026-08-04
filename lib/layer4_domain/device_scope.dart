@@ -218,6 +218,8 @@ class DeviceScope {
       commitButtonMapping: (slots) => commitButtonMapping(card, slots),
       commitReportRate: (hz) => commitReportRate(card, hz),
       commitDpiLevel: (level) => commitDpiLevel(card, level),
+      commitSensorTuning: (ripple, snap) =>
+          commitSensorTuning(card, ripple, snap),
       actionLabelOf: (action, p1, p2, p3) => translate.buttonActionToLabel(
         action: action,
         param1: p1,
@@ -311,6 +313,35 @@ class DeviceScope {
     dataBlock[2] = currentBlock.dpiActiveLevel;
 
     await session.setReportRate(dataBlock);
+  }
+
+  /// Commits ripple control + angle snap into the 14-byte 0xD4 block.
+  ///
+  /// why: sensor tuning shares one block with LOD/debounce/sleep/wheel, so the
+  /// current block is read first and only the two tuning bytes are replaced.
+  Future<void> commitSensorTuning(
+    DiscoveredCardState card,
+    bool rippleControl,
+    bool angleSnap,
+  ) async {
+    final session = _sessionForCard(card);
+    if (session == null || !session.isAlive) {
+      throw StateError('commitSensorTuning: no session');
+    }
+
+    final current = await session.querySensorOther();
+    if (current == null) {
+      throw StateError('Failed to read current sensor/other block');
+    }
+
+    // why: L5 owns wire encoding; these two bytes are tri-state (0xFF/0x0F),
+    // so a raw 1/0 would read back as neither on nor off.
+    const translate = TranslationCodec();
+    final dataBlock = Uint8List.fromList(current.data);
+    dataBlock[0] = translate.triStateBoolToWire(rippleControl);
+    dataBlock[1] = translate.triStateBoolToWire(angleSnap);
+
+    await session.setSensorOther(dataBlock);
   }
 
   /// Persist BLoC-synced settings after successful Save (cache for re-entry).

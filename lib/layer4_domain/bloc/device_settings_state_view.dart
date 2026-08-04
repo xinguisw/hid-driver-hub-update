@@ -17,6 +17,8 @@ class DeviceSettingsViewState {
     this.buttonMappingStaging,
     this.reportRateStaging,
     this.dpiCurrentLevelStaging,
+    this.rippleControlStaging,
+    this.angleSnapStaging,
     this.isDirty = false,
     this.committing = false,
     this.consecutiveFailures = 0,
@@ -29,6 +31,8 @@ class DeviceSettingsViewState {
   final List<ButtonMappingSlot>? buttonMappingStaging;
   final int? reportRateStaging;
   final int? dpiCurrentLevelStaging;
+  final bool? rippleControlStaging;
+  final bool? angleSnapStaging;
   final bool isDirty;
   final bool committing;
   final int consecutiveFailures;
@@ -57,6 +61,8 @@ class DeviceSettingsViewState {
     List<ButtonMappingSlot>? buttonMappingStaging,
     int? reportRateStaging,
     int? dpiCurrentLevelStaging,
+    bool? rippleControlStaging,
+    bool? angleSnapStaging,
     bool? isDirty,
     bool? committing,
     int? consecutiveFailures,
@@ -77,6 +83,12 @@ class DeviceSettingsViewState {
       dpiCurrentLevelStaging: clearStaging
           ? null
           : (dpiCurrentLevelStaging ?? this.dpiCurrentLevelStaging),
+      rippleControlStaging: clearStaging
+          ? null
+          : (rippleControlStaging ?? this.rippleControlStaging),
+      angleSnapStaging: clearStaging
+          ? null
+          : (angleSnapStaging ?? this.angleSnapStaging),
       isDirty: clearStaging ? false : (isDirty ?? this.isDirty),
       committing: committing ?? this.committing,
       consecutiveFailures: consecutiveFailures ?? this.consecutiveFailures,

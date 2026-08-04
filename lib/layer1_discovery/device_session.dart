@@ -178,6 +178,14 @@ class DeviceSession implements DeviceRepository {
     return _protocol.querySensorOther(_session);
   }
 
+  /// Thin L1 forwarder for D4 SET (L5 encodes + CRC).
+  Future<void> setSensorOther(Uint8List dataBlock) async {
+    if (!isAlive) {
+      throw StateError('setSensorOther: session not alive');
+    }
+    await _protocol.setSensorOther(_session, dataBlock);
+  }
+
   @override
   Future<RgbBacklightResult?> queryRgbBacklight() async {
     if (!isAlive) return null;

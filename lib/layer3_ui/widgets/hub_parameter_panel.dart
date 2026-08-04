@@ -14,6 +14,12 @@ class HubParameterPanel extends StatelessWidget {
     this.buttonDebounceOptions,
     this.sleepTimeOptions,
     this.hasSensorTuning = true,
+    this.hasLod = true,
+    this.hasAngleTune = true,
+    this.hasPerformance = true,
+    this.hasButtonDebounce = true,
+    this.hasWheelInvert = true,
+    this.hasSleepTime = true,
     this.rippleOn,
     this.rippleStaging,
     this.angleSnapOn,
@@ -27,8 +33,14 @@ class HubParameterPanel extends StatelessWidget {
   final List<int>? buttonDebounceOptions;
   final List<int>? sleepTimeOptions;
 
-  /// L2 gate: ripple + angle snap hide together when the device lacks them.
+  /// L2 gates: each feature hides when the device lacks it.
   final bool hasSensorTuning;
+  final bool hasLod;
+  final bool hasAngleTune;
+  final bool hasPerformance;
+  final bool hasButtonDebounce;
+  final bool hasWheelInvert;
+  final bool hasSleepTime;
 
   final bool? rippleOn;
   final bool? rippleStaging;
@@ -55,6 +67,9 @@ class HubParameterPanel extends StatelessWidget {
             onRippleChanged: onRippleChanged,
             onAngleSnapChanged: onAngleSnapChanged,
             hasSensorTuning: hasSensorTuning,
+            hasLod: hasLod,
+            hasAngleTune: hasAngleTune,
+            hasPerformance: hasPerformance,
           ),
           const SizedBox(height: 24),
           const Text('Other feature'),
@@ -64,6 +79,9 @@ class HubParameterPanel extends StatelessWidget {
                 buttonDebounceOptions ?? const [0, 1, 2, 4, 8, 16],
             sleepTimeOptions:
                 sleepTimeOptions ?? const [30, 60, 120, 180, 300, 1500, 1800],
+            hasButtonDebounce: hasButtonDebounce,
+            hasWheelInvert: hasWheelInvert,
+            hasSleepTime: hasSleepTime,
           ),
         ],
       ),
@@ -81,11 +99,17 @@ class _SensorFeatureGroup extends StatelessWidget {
     required this.onRippleChanged,
     required this.onAngleSnapChanged,
     required this.hasSensorTuning,
+    required this.hasLod,
+    required this.hasAngleTune,
+    required this.hasPerformance,
   });
 
   final List<LodOption> lodOptions;
   final List<int> performanceOptions;
   final bool hasSensorTuning;
+  final bool hasLod;
+  final bool hasAngleTune;
+  final bool hasPerformance;
   final bool rippleOn;
   final bool angleSnapOn;
   final ValueChanged<bool>? onRippleChanged;
@@ -118,13 +142,19 @@ class _SensorFeatureGroup extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
               ],
-              Expanded(child: _LodBox(options: lodOptions)),
-              const SizedBox(width: 8),
-              const Expanded(child: _AngleTuneBox()),
+              if (hasLod) ...[
+                Expanded(child: _LodBox(options: lodOptions)),
+                const SizedBox(width: 8),
+              ],
+              if (hasAngleTune) ...[
+                const Expanded(child: _AngleTuneBox()),
+              ],
             ],
           ),
-          const SizedBox(height: 8),
-          _PerformanceRow(options: performanceOptions),
+          if (hasPerformance) ...[
+            const SizedBox(height: 8),
+            _PerformanceRow(options: performanceOptions),
+          ],
         ],
       ),
     );
@@ -299,10 +329,16 @@ class _OtherFeatureGroup extends StatelessWidget {
   const _OtherFeatureGroup({
     required this.buttonDebounceOptions,
     required this.sleepTimeOptions,
+    required this.hasButtonDebounce,
+    required this.hasWheelInvert,
+    required this.hasSleepTime,
   });
 
   final List<int> buttonDebounceOptions;
   final List<int> sleepTimeOptions;
+  final bool hasButtonDebounce;
+  final bool hasWheelInvert;
+  final bool hasSleepTime;
 
   @override
   Widget build(BuildContext context) {
@@ -319,42 +355,48 @@ class _OtherFeatureGroup extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                flex: 2,
-                child: _OptionsBox(
-                  title: 'Button debounce',
-                  labels: [
-                    for (final ms in buttonDebounceOptions) '$ms ms',
-                  ],
+              if (hasButtonDebounce) ...[
+                Expanded(
+                  flex: 2,
+                  child: _OptionsBox(
+                    title: 'Button debounce',
+                    labels: [
+                      for (final ms in buttonDebounceOptions) '$ms ms',
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              const Expanded(
-                child: _OptionsBox(
-                  title: 'Wheel direction',
-                  labels: ['Forward', 'Reverse'],
+                const SizedBox(width: 8),
+              ],
+              if (hasWheelInvert) ...[
+                const Expanded(
+                  child: _OptionsBox(
+                    title: 'Wheel direction',
+                    labels: ['Forward', 'Reverse'],
+                  ),
                 ),
-              ),
+              ],
             ],
           ),
-          const SizedBox(height: 8),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                flex: 2,
-                child: _OptionsBox(
-                  title: 'Sleep time',
-                  labels: [
-                    for (final seconds in sleepTimeOptions)
-                      _sleepLabel(seconds),
-                  ],
+          if (hasSleepTime) ...[
+            const SizedBox(height: 8),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  flex: 2,
+                  child: _OptionsBox(
+                    title: 'Sleep time',
+                    labels: [
+                      for (final seconds in sleepTimeOptions)
+                        _sleepLabel(seconds),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              const Expanded(child: SizedBox()),
-            ],
-          ),
+                const SizedBox(width: 8),
+                const Expanded(child: SizedBox()),
+              ],
+            ),
+          ],
         ],
       ),
     );

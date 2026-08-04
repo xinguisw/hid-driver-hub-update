@@ -296,7 +296,19 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                                 child: HubParameterPanel(
                                   hasSensorTuning:
                                       synced?.hasSensorTuning ?? false,
+                                  hasLod: synced?.hasLod ?? false,
+                                  hasAngleTune: synced?.hasAngleTune ?? false,
+                                  hasPerformance:
+                                      synced?.hasPerformance ?? false,
+                                  hasButtonDebounce:
+                                      synced?.hasButtonDebounce ?? false,
+                                  hasWheelInvert:
+                                      synced?.hasWheelInvert ?? false,
+                                  hasSleepTime: synced?.hasSleepTime ?? false,
                                   lodOptions: synced?.lodOptions,
+                                  buttonDebounceOptions:
+                                      synced?.debounceOptionsMs,
+                                  sleepTimeOptions: synced?.sleepOptionsSeconds,
                                   rippleOn: synced?.rippleOn,
                                   rippleStaging: view.rippleControlStaging,
                                   angleSnapOn: synced?.angleSnapOn,

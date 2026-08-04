@@ -1,6 +1,7 @@
 import 'package:driver_hub/layer3_ui/widgets/hub_button_mapping_panel.dart';
 import 'package:driver_hub/layer3_ui/widgets/hub_left_sidebar.dart';
 import 'package:driver_hub/layer3_ui/widgets/hub_mouse_canvas.dart';
+import 'package:driver_hub/layer3_ui/widgets/hub_parameter_panel.dart';
 import 'package:driver_hub/layer3_ui/widgets/hub_performance_panel.dart';
 import 'package:driver_hub/layer4_domain/bloc/device_settings_bloc.dart';
 import 'package:driver_hub/layer4_domain/bloc/device_settings_event.dart';
@@ -31,6 +32,7 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
 
   static const int _buttonMappingIndex = 0;
   static const int _performanceIndex = 2;
+  static const int _parameterIndex = 3;
 
   @override
   void initState() {
@@ -274,11 +276,126 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                     },
                   ),
                 )
+              else if (_selectedIndex == _parameterIndex)
+                Expanded(
+                  child:
+                      BlocBuilder<DeviceSettingsBloc, DeviceSettingsViewState>(
+                        buildWhen: (p, n) =>
+                            p.synced != n.synced ||
+                            p.rippleControlStaging != n.rippleControlStaging ||
+                            p.angleSnapStaging != n.angleSnapStaging ||
+                            p.isDirty != n.isDirty ||
+                            p.committing != n.committing ||
+                            p.lastError != n.lastError,
+                        builder: (context, view) {
+                          final synced = view.synced;
+                          final bloc = context.read<DeviceSettingsBloc>();
+                          return Column(
+                            children: [
+                              Expanded(
+                                child: HubParameterPanel(
+                                  hasSensorTuning:
+                                      synced?.hasSensorTuning ?? false,
+                                  lodOptions: synced?.lodOptions,
+                                  rippleOn: synced?.rippleOn,
+                                  rippleStaging: view.rippleControlStaging,
+                                  angleSnapOn: synced?.angleSnapOn,
+                                  angleSnapStaging: view.angleSnapStaging,
+                                  onRippleChanged: (on) {
+                                    bloc.add(
+                                      DeviceSettingsRippleControlRequested(
+                                        enabled: on,
+                                      ),
+                                    );
+                                  },
+                                  onAngleSnapChanged: (on) {
+                                    bloc.add(
+                                      DeviceSettingsAngleSnapRequested(
+                                        enabled: on,
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                              _ParameterActionBar(
+                                isDirty: view.isDirty,
+                                committing: view.committing,
+                                onSave: () {
+                                  if (view.rippleControlStaging != null ||
+                                      view.angleSnapStaging != null) {
+                                    bloc.add(
+                                      const DeviceSettingsSaveSensorTuningRequested(),
+                                    );
+                                  }
+                                },
+                                onCancel: () {
+                                  bloc.add(
+                                    const DeviceSettingsCancelRequested(),
+                                  );
+                                },
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                )
               else
                 const Expanded(child: Center(child: Text(''))),
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Bottom-right action bar for Parameter Setting.
+///
+/// Reset/Save/Cancel buttons docked right.
+class _ParameterActionBar extends StatelessWidget {
+  const _ParameterActionBar({
+    this.isDirty = false,
+    this.committing = false,
+    this.onSave,
+    this.onCancel,
+  });
+
+  final bool isDirty;
+  final bool committing;
+  final VoidCallback? onSave;
+  final VoidCallback? onCancel;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final style = OutlinedButton.styleFrom(
+      foregroundColor: theme.colorScheme.onSurface,
+      side: BorderSide(color: theme.colorScheme.outline),
+      shape: const StadiumBorder(),
+    );
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          OutlinedButton(
+            onPressed: null, // reset not wired yet
+            style: style,
+            child: const Text('Reset to Default'),
+          ),
+          const SizedBox(width: 12),
+          OutlinedButton(
+            onPressed: (!isDirty || committing) ? null : onSave,
+            style: style,
+            child: const Text('Save'),
+          ),
+          const SizedBox(width: 12),
+          OutlinedButton(
+            onPressed: committing ? null : onCancel,
+            style: style,
+            child: const Text('Cancel'),
+          ),
+        ],
       ),
     );
   }

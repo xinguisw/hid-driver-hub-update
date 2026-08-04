@@ -297,6 +297,16 @@ void main() {
     });
   });
 
+  group('TranslationCodec.triStateBoolToWire', () {
+    test('true FF, false 0F, and round-trips through triStateWireToBool', () {
+      expect(t.triStateBoolToWire(true), 0xFF);
+      expect(t.triStateBoolToWire(false), 0x0F);
+      // why: a raw 1/0 write would decode to null, not on/off.
+      expect(t.triStateWireToBool(t.triStateBoolToWire(true)), isTrue);
+      expect(t.triStateWireToBool(t.triStateBoolToWire(false)), isFalse);
+    });
+  });
+
   group('TranslationCodec.debounceIndexToLabel', () {
     test('maps debounce table with unit', () {
       expect(t.debounceIndexToLabel(0x00), '2ms');

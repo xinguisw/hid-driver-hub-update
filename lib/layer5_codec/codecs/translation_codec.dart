@@ -1,3 +1,4 @@
+import 'package:driver_hub/layer2_capabilities/capabilities.dart';
 import 'package:driver_hub/layer5_codec/codecs/keyvalue_table.dart';
 
 /// L5 wire → meaning maps for settings (and later SET reverse maps).
@@ -292,6 +293,12 @@ class TranslationCodec {
     }
   }
 
+  /// Domain bool → ON / OFF wire byte for config SETs.
+  ///
+  /// Inverse of [triStateWireToBool]. Never emits `0x00` — "ignore" is a read
+  /// state, not something the host writes.
+  int triStateBoolToWire(bool on) => on ? _triOn : _triOff;
+
   /// ON / OFF / Ignore wire → bool for domain / controls.
   ///
   /// Display path: [triStateWireToLabel].
@@ -386,6 +393,30 @@ class TranslationCodec {
       default:
         return null;
     }
+  }
+
+  /// Generic LOD wire → mm using catalog options.
+  ///
+  /// Returns null if wire not found in options.
+  double? lodWireToMm(int wire, List<LodOption> options) {
+    for (final opt in options) {
+      if (opt.wire == (wire & 0xFF)) {
+        return opt.mm;
+      }
+    }
+    return null;
+  }
+
+  /// Generic LOD mm → wire using catalog options.
+  ///
+  /// Returns null if mm not found in options.
+  int? lodMmToWire(double mm, List<LodOption> options) {
+    for (final opt in options) {
+      if (opt.mm == mm) {
+        return opt.wire;
+      }
+    }
+    return null;
   }
 
   /// RGB mode id → label.

@@ -145,6 +145,9 @@ class SensorOtherResult {
   final int debounceTime;
   final int sleepTime;
   final int wheelDirection;
+
+  /// Config data payload only (14 bytes), for read-before-write SETs.
+  final Uint8List data;
   final Uint8List raw;
   const SensorOtherResult({
     required this.rippleControl,
@@ -155,6 +158,7 @@ class SensorOtherResult {
     required this.debounceTime,
     required this.sleepTime,
     required this.wheelDirection,
+    required this.data,
     required this.raw,
   });
 
@@ -220,6 +224,15 @@ abstract class DeviceProtocol {
   Future<DpiTableResult> queryDpiTable(HidSession session);
   Future<DpiRgbResult> queryDpiRgb(HidSession session);
   Future<SensorOtherResult> querySensorOther(HidSession session);
+
+  /// SET addrs 0xD4 — write sensor/other block (14 bytes + CRC).
+  ///
+  /// [dataBlock] must be exactly 14 bytes:
+  /// `[rippleControl, angleSnap, lod, angleTune, performance, 0, 0, 0, 0, 0, 0, debounceTime, sleepTime, wheelDirection]`.
+  /// The device stores all fields at this address; a partial write
+  /// is rejected with NAK 0x04 (payload length mismatch).
+  Future<void> setSensorOther(HidSession session, Uint8List dataBlock);
+
   Future<RgbBacklightResult> queryRgbBacklight(HidSession session);
 }
 
@@ -634,8 +647,70 @@ class MouseProtocol implements DeviceProtocol {
       debounceTime: data[11],
       sleepTime: data[12],
       wheelDirection: data[13],
+      data: Uint8List.sublistView(data, 0, 14),
       raw: raw,
     );
+  }
+
+  @override
+  Future<void> setSensorOther(HidSession session, Uint8List dataBlock) async {
+    const label = 'sensorOther';
+    if (dataBlock.length != 14) {
+      throw ArgumentError.value(
+        dataBlock.length,
+        'dataBlock.length',
+        'sensor/other SET requires exactly 14 bytes',
+      );
+    }
+    final frame = Uint8List(_frameLength);
+    frame[_opOff] = _setOpcode;
+    frame[_addrsOff] = addrsSensorOther;
+    frame[_lenOff] = 14;
+    for (var i = 0; i < 14; i++) {
+      frame[_dataOff + i] = dataBlock[i];
+    }
+    final payload = frame.sublist(_dataOff, _dataOff + 14);
+    final crc = const Crc16().bytes(payload);
+    frame[_dataOff + 14] = crc[0];
+    frame[_dataOff + 15] = crc[1];
+
+    debugPrint(
+      '[proto] $label: SET addrs=0x${addrsSensorOther.toRadixString(16)} '
+      'data=${_hex(payload)} crc=${_hex(crc)}',
+    );
+
+    final ack = await session.sendAndWait(
+      data: frame,
+      reportId: _reportId,
+      reportLength: _frameLength,
+      match: (raw) => matchesConfigAck(raw, addrs: addrsSensorOther),
+      timeout: _sendTimeout,
+    );
+    debugPrint('[proto] $label: SET ack ${_hex(ack)} (${ack.length}B)');
+    validateConfigAckFrame(ack, addrs: addrsSensorOther, label: label);
+    final body = stripReportId(ack);
+    final op = body.isEmpty ? -1 : body[_opOff];
+    if (op == _getOpcode || op == _setOpcode) {
+      final ackData = body.sublist(_dataOff, _dataOff + 14);
+      final ackCrc = body.sublist(body.length - 2, body.length);
+      debugPrint(
+        '[proto] $label: ACK data=${_hex(ackData)} crc=${_hex(ackCrc)}',
+      );
+      verifyConfigAckCrc(ack, label: label);
+    } else {
+      debugPrint(
+        '[proto] $label: SET ack opcode 0x${op.toRadixString(16)} '
+        'not 07/08, skip CRC',
+      );
+    }
+    if (op == _nakOpcode) {
+      final reason = body.length > _dataOff ? body[_dataOff] : -1;
+      final meaning = const TranslationCodec().nakReasonToLabel(reason);
+      throw FormatException(
+        '$label SET NAK: $meaning '
+        '(reason=0x${(reason & 0xFF).toRadixString(16).padLeft(2, '0')})',
+      );
+    }
   }
 
   @override

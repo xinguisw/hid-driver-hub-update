@@ -242,15 +242,38 @@ class SensorPerformance {
   }
 }
 
+class LodOption {
+  final int wire;
+  final double mm;
+  const LodOption({required this.wire, required this.mm});
+
+  factory LodOption.fromJson(Map<String, dynamic> json) {
+    return LodOption(
+      wire: json['wire'] as int,
+      mm: (json['mm'] as num).toDouble(),
+    );
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is LodOption && wire == other.wire && mm == other.mm;
+
+  @override
+  int get hashCode => Object.hash(wire, mm);
+}
+
 class LiftOffDistance {
   final bool present;
-  final List<int> options;
+  final List<LodOption> options;
   const LiftOffDistance({required this.present, required this.options});
 
   factory LiftOffDistance.fromJson(Map<String, dynamic> json) {
     return LiftOffDistance(
       present: json['present'] as bool,
-      options: (json['options'] as List).map((e) => e as int).toList(),
+      options: (json['options'] as List)
+          .map((e) => LodOption.fromJson(e as Map<String, dynamic>))
+          .toList(),
     );
   }
 }

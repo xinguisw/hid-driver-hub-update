@@ -27,7 +27,13 @@ void main() {
     expect(caps.sensor!.sensorTuning, isFalse);
     expect(caps.sensor!.angleTune, isFalse);
     expect(caps.sensor!.liftOffDistance!.present, isFalse);
-    expect(caps.sensor!.liftOffDistance!.options, [1, 2, 3]);
+    expect(caps.sensor!.liftOffDistance!.options.length, 3);
+    expect(caps.sensor!.liftOffDistance!.options[0].wire, 0);
+    expect(caps.sensor!.liftOffDistance!.options[0].mm, 0.7);
+    expect(caps.sensor!.liftOffDistance!.options[1].wire, 1);
+    expect(caps.sensor!.liftOffDistance!.options[1].mm, 1.0);
+    expect(caps.sensor!.liftOffDistance!.options[2].wire, 2);
+    expect(caps.sensor!.liftOffDistance!.options[2].mm, 2.0);
     expect(caps.otherFeatures!.buttonDebounce!.present, isFalse);
     expect(caps.otherFeatures!.buttonDebounce!.options, [4, 8, 16, 24]);
     expect(caps.otherFeatures!.sleepTime!.present, isTrue);

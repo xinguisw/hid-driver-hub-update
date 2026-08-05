@@ -141,12 +141,13 @@ class SensorOtherResult {
   final int angleSnap;
   final int lod;
   final int angleTune;
+  final int angleValue;
   final int performance;
   final int debounceTime;
   final int sleepTime;
   final int wheelDirection;
 
-  /// Config data payload only (14 bytes), for read-before-write SETs.
+  /// Config data payload only (18 bytes), for read-before-write SETs.
   final Uint8List data;
   final Uint8List raw;
   const SensorOtherResult({
@@ -154,6 +155,7 @@ class SensorOtherResult {
     required this.angleSnap,
     required this.lod,
     required this.angleTune,
+    required this.angleValue,
     required this.performance,
     required this.debounceTime,
     required this.sleepTime,
@@ -165,8 +167,8 @@ class SensorOtherResult {
   @override
   String toString() =>
       'SensorOther(ripple=$rippleControl, angleSnap=$angleSnap, lod=$lod, '
-      'angleTune=$angleTune, perf=$performance, debounce=$debounceTime, '
-      'sleep=$sleepTime, wheel=$wheelDirection)';
+      'angleTune=$angleTune, angleValue=$angleValue, perf=$performance, '
+      'debounce=$debounceTime, sleep=$sleepTime, wheel=$wheelDirection)';
 }
 
 /// addrs 0xE2 — RGB backlight (len 8).
@@ -229,10 +231,12 @@ abstract class DeviceProtocol {
   Future<DpiRgbResult> queryDpiRgb(HidSession session);
   Future<SensorOtherResult> querySensorOther(HidSession session);
 
-  /// SET addrs 0xD4 — write sensor/other block (14 bytes + CRC).
+  /// SET addrs 0xD4 — write sensor/other block (18 bytes + CRC).
   ///
-  /// [dataBlock] must be exactly 14 bytes:
-  /// `[rippleControl, angleSnap, lod, angleTune, performance, 0, 0, 0, 0, 0, 0, debounceTime, sleepTime, wheelDirection]`.
+  /// [dataBlock] must be exactly 18 bytes:
+  /// `[ripple(0), res(1), angleSnap(2), res(3), lod(4), res(5), angleTune(6),
+  /// angleValue(7), res(8), performance(9), res(10..12), debounce(13), res(14),
+  /// sleep(15), res(16), wheel(17)]`.
   /// The device stores all fields at this address; a partial write
   /// is rejected with NAK 0x04 (payload length mismatch).
   Future<void> setSensorOther(HidSession session, Uint8List dataBlock);
@@ -654,20 +658,24 @@ class MouseProtocol implements DeviceProtocol {
   Future<SensorOtherResult> querySensorOther(HidSession session) async {
     final raw = await _getConfig(session, addrsSensorOther, 'sensorOther');
     final data = _configData(raw, addrsSensorOther);
-    if (data.length < 14) {
+    if (data.length < 18) {
       throw FormatException('SensorOther data too short: ${data.length}');
     }
     return SensorOtherResult(
+      // 18-byte layout per TelinkB80 data reference (sheet row after len 18):
+      // [ripple(0)][res(1)][angleSnap(2)][res(3)][lod(4)][res(5)][angleTune(6)]
+      // [angleValue(7)][res(8)][perf(9)][res(10..12)][debounce(13)][res(14)]
+      // [sleep(15)][res(16)][wheel(17)].
       rippleControl: data[0],
-      angleSnap: data[1],
-      lod: data[2],
-      angleTune: data[3],
-      performance: data[4],
-      // data[5..10] reserved zeros per sheet
-      debounceTime: data[11],
-      sleepTime: data[12],
-      wheelDirection: data[13],
-      data: Uint8List.sublistView(data, 0, 14),
+      angleSnap: data[2],
+      lod: data[4],
+      angleTune: data[6],
+      angleValue: data[7],
+      performance: data[9],
+      debounceTime: data[13],
+      sleepTime: data[15],
+      wheelDirection: data[17],
+      data: Uint8List.sublistView(data, 0, 18),
       raw: raw,
     );
   }
@@ -675,24 +683,24 @@ class MouseProtocol implements DeviceProtocol {
   @override
   Future<void> setSensorOther(HidSession session, Uint8List dataBlock) async {
     const label = 'sensorOther';
-    if (dataBlock.length != 14) {
+    if (dataBlock.length != 18) {
       throw ArgumentError.value(
         dataBlock.length,
         'dataBlock.length',
-        'sensor/other SET requires exactly 14 bytes',
+        'sensor/other SET requires exactly 18 bytes',
       );
     }
     final frame = Uint8List(_frameLength);
     frame[_opOff] = _setOpcode;
     frame[_addrsOff] = addrsSensorOther;
-    frame[_lenOff] = 14;
-    for (var i = 0; i < 14; i++) {
+    frame[_lenOff] = 18;
+    for (var i = 0; i < 18; i++) {
       frame[_dataOff + i] = dataBlock[i];
     }
-    final payload = frame.sublist(_dataOff, _dataOff + 14);
+    final payload = frame.sublist(_dataOff, _dataOff + 18);
     final crc = const Crc16().bytes(payload);
-    frame[_dataOff + 14] = crc[0];
-    frame[_dataOff + 15] = crc[1];
+    frame[_dataOff + 18] = crc[0];
+    frame[_dataOff + 19] = crc[1];
 
     debugPrint(
       '[proto] $label: SET addrs=0x${addrsSensorOther.toRadixString(16)} '

@@ -200,7 +200,11 @@ class RgbBacklightResult {
 
 /// Mouse protocol. One implementation for all mice (same firmware family).
 abstract class DeviceProtocol {
-  Future<DeviceHandshake> handshake(HidSession session);
+  Future<DeviceHandshake> handshake(
+    HidSession session, {
+    required int deviceType,
+    required String deviceId,
+  });
   Future<BatteryResult> queryBattery(HidSession session);
   Future<FirmwareResult> queryFirmware(HidSession session);
 
@@ -299,8 +303,12 @@ class MouseProtocol implements DeviceProtocol {
   static const Duration _sendTimeout = Duration(milliseconds: 1000);
 
   @override
-  Future<DeviceHandshake> handshake(HidSession session) async {
-    final ask = _buildAskFrame();
+  Future<DeviceHandshake> handshake(
+    HidSession session, {
+    required int deviceType,
+    required String deviceId,
+  }) async {
+    final ask = _buildAskFrame(deviceType: deviceType, deviceId: deviceId);
     debugPrint('[proto] handshake: sending ask ${_hex(ask)}');
     final ack = await session.sendAndWait(
       data: ask,
@@ -316,13 +324,24 @@ class MouseProtocol implements DeviceProtocol {
     return result;
   }
 
-  Uint8List _buildAskFrame() {
+  /// Builds the A1 handshake ask with the expected device type + id.
+  ///
+  /// why: the firmware echoes the sent type/id back; an all-zero probe makes
+  /// it reply all zeros (no match). Offsets after report-id strip:
+  /// `[A1][0][0][0][len][deviceType][idLo][idHi]` — type at 5, id at 6-7.
+  Uint8List _buildAskFrame({
+    required int deviceType,
+    required String deviceId,
+  }) {
     final frame = Uint8List(_frameLength);
     frame[0] = _askOpcode;
-    // why: A1 handshake ask is a bare probe — opcode A1 then zeros, per the
-    // USB MOUSE CONFIG sheet. No device-id bytes are sent; the device replies
-    // with its type + 2-byte id in the ack. A hardcoded probe payload would
-    // be wrong for any device whose id differs.
+    frame[5] = deviceType;
+    // deviceId is a 4-hex-char catalog form (e.g. "02AA"): byte 0 = 0x02,
+    // byte 1 = 0xAA, sent in that order per "the id, 02 AA".
+    if (deviceId.length == 4) {
+      frame[6] = int.parse(deviceId.substring(0, 2), radix: 16);
+      frame[7] = int.parse(deviceId.substring(2, 4), radix: 16);
+    }
     return frame;
   }
 

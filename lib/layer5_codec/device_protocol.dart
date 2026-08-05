@@ -282,7 +282,10 @@ class MouseProtocol implements DeviceProtocol {
   static const int _ackOpcodeOffset = 0;
   static const int _ackDeviceTypeOffset = 5;
   static const int _ackDeviceIdOffset = 6;
-  static const int _deviceIdLength = 4;
+  // why: A1 ack payload is len 5: [deviceType][idLo][idHi][0][0]. The device
+  // id is 2 bytes (idLo + idHi), already in catalog order on the wire (the
+  // mock doc's "AA02" is the customer's display; the device sends 02AA).
+  static const int _deviceIdLength = 2;
 
   // A4 battery ack offsets (report id stripped).
   static const int _batteryPercentOffset = 5; // 0..100
@@ -316,12 +319,10 @@ class MouseProtocol implements DeviceProtocol {
   Uint8List _buildAskFrame() {
     final frame = Uint8List(_frameLength);
     frame[0] = _askOpcode;
-    frame[5] = 0x01;
-    frame[6] = 0xAA;
-    frame[7] = 0x4E;
-    frame[8] = 0xCD;
-    frame[9] = 0x01;
-    // Handshake is a fixed probe; CRC field stays zero per firmware contract.
+    // why: A1 handshake ask is a bare probe — opcode A1 then zeros, per the
+    // USB MOUSE CONFIG sheet. No device-id bytes are sent; the device replies
+    // with its type + 2-byte id in the ack. A hardcoded probe payload would
+    // be wrong for any device whose id differs.
     return frame;
   }
 

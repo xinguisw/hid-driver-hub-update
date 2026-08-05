@@ -103,7 +103,11 @@ class DeviceSession implements DeviceRepository {
     final mode = device.mode.desc;
     try {
       debugPrint('[session] rehandshake: $name…');
-      final hs = await _protocol.handshake(_session);
+      final hs = await _protocol.handshake(
+        _session,
+        deviceType: device.entry.deviceType.code,
+        deviceId: device.entry.devId,
+      );
       final typeMatch = hs.deviceType == device.entry.deviceType;
       final idMatch = _deviceIdMatches(hs.deviceId, device.entry.devId);
       debugPrint('[session] rehandshake: type=${hs.deviceType?.name} '
@@ -265,7 +269,11 @@ class DeviceSession implements DeviceRepository {
         debugPrint(
           '[session] handshake (attempt $attempt/$maxHandshakeAttempts)…',
         );
-        return await _protocol.handshake(_session);
+        return await _protocol.handshake(
+          _session,
+          deviceType: device.entry.deviceType.code,
+          deviceId: device.entry.devId,
+        );
       } catch (e) {
         lastError = e;
         debugPrint(

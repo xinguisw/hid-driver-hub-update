@@ -66,6 +66,9 @@ void main() {
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
         commitPerformance: (_) async {},
+        commitDebounce: (_) async {},
+        commitSleep: (_) async {},
+        commitWheelInvert: (_) async {},
       );
       bloc.add(DeviceSettingsHydrated(baseSettings()));
       await pumpEventQueue();
@@ -87,6 +90,9 @@ void main() {
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
         commitPerformance: (_) async {},
+        commitDebounce: (_) async {},
+        commitSleep: (_) async {},
+        commitWheelInvert: (_) async {},
       );
       bloc.add(DeviceSettingsHydrated(baseSettings()));
       await pumpEventQueue();
@@ -122,6 +128,9 @@ void main() {
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
         commitPerformance: (_) async {},
+        commitDebounce: (_) async {},
+        commitSleep: (_) async {},
+        commitWheelInvert: (_) async {},
         );
         bloc.add(DeviceSettingsHydrated(baseSettings()));
         await pumpEventQueue();
@@ -159,6 +168,9 @@ void main() {
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
         commitPerformance: (_) async {},
+        commitDebounce: (_) async {},
+        commitSleep: (_) async {},
+        commitWheelInvert: (_) async {},
       );
       bloc.add(DeviceSettingsHydrated(baseSettings()));
       await pumpEventQueue();
@@ -200,6 +212,9 @@ void main() {
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
         commitPerformance: (_) async {},
+        commitDebounce: (_) async {},
+        commitSleep: (_) async {},
+        commitWheelInvert: (_) async {},
       );
       bloc.add(DeviceSettingsHydrated(baseSettings()));
       await pumpEventQueue();
@@ -234,6 +249,9 @@ void main() {
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
         commitPerformance: (_) async {},
+        commitDebounce: (_) async {},
+        commitSleep: (_) async {},
+        commitWheelInvert: (_) async {},
         );
         bloc.add(DeviceSettingsHydrated(baseSettings()));
         await pumpEventQueue();
@@ -262,6 +280,9 @@ void main() {
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
         commitPerformance: (_) async {},
+        commitDebounce: (_) async {},
+        commitSleep: (_) async {},
+        commitWheelInvert: (_) async {},
         initial: DeviceSettingsViewState(
           synced: baseSettings(),
           buttonMappingStaging: const [ButtonMappingSlot(action: 0x02)],
@@ -309,6 +330,9 @@ void main() {
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
         commitPerformance: (_) async {},
+        commitDebounce: (_) async {},
+        commitSleep: (_) async {},
+        commitWheelInvert: (_) async {},
         capabilitiesLookup: () => caps,
       );
       bloc.add(DeviceSettingsHydrated(baseSettings()));
@@ -337,6 +361,9 @@ void main() {
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
         commitPerformance: (_) async {},
+        commitDebounce: (_) async {},
+        commitSleep: (_) async {},
+        commitWheelInvert: (_) async {},
         capabilities: dpiCaps,
         capabilitiesLookup: () => null,
       );
@@ -362,6 +389,9 @@ void main() {
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
         commitPerformance: (_) async {},
+        commitDebounce: (_) async {},
+        commitSleep: (_) async {},
+        commitWheelInvert: (_) async {},
       );
       bloc.add(
         DeviceSettingsHydrated(
@@ -481,6 +511,9 @@ void main() {
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
         commitPerformance: (_) async {},
+        commitDebounce: (_) async {},
+        commitSleep: (_) async {},
+        commitWheelInvert: (_) async {},
       );
       bloc.add(DeviceSettingsHydrated(sensorSettings()));
       await pumpEventQueue();
@@ -507,6 +540,9 @@ void main() {
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
         commitPerformance: (_) async {},
+        commitDebounce: (_) async {},
+        commitSleep: (_) async {},
+        commitWheelInvert: (_) async {},
       );
       bloc.add(DeviceSettingsHydrated(sensorSettings()));
       await pumpEventQueue();
@@ -536,6 +572,9 @@ void main() {
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
         commitPerformance: (_) async {},
+        commitDebounce: (_) async {},
+        commitSleep: (_) async {},
+        commitWheelInvert: (_) async {},
       );
       bloc.add(DeviceSettingsHydrated(sensorSettings()));
       await pumpEventQueue();
@@ -562,6 +601,9 @@ void main() {
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
         commitPerformance: (_) async {},
+        commitDebounce: (_) async {},
+        commitSleep: (_) async {},
+        commitWheelInvert: (_) async {},
       );
       bloc.add(DeviceSettingsHydrated(sensorSettings()));
       await pumpEventQueue();
@@ -593,6 +635,9 @@ void main() {
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
         commitPerformance: (_) async {},
+        commitDebounce: (_) async {},
+        commitSleep: (_) async {},
+        commitWheelInvert: (_) async {},
       );
       bloc.add(DeviceSettingsHydrated(angleTuneSettings()));
       await pumpEventQueue();
@@ -617,6 +662,9 @@ void main() {
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
         commitPerformance: (_) async {},
+        commitDebounce: (_) async {},
+        commitSleep: (_) async {},
+        commitWheelInvert: (_) async {},
       );
       bloc.add(DeviceSettingsHydrated(angleTuneSettings()));
       await pumpEventQueue();
@@ -640,6 +688,9 @@ void main() {
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
         commitPerformance: (_) async {},
+        commitDebounce: (_) async {},
+        commitSleep: (_) async {},
+        commitWheelInvert: (_) async {},
       );
       bloc.add(DeviceSettingsHydrated(angleTuneSettings()));
       await pumpEventQueue();
@@ -664,6 +715,9 @@ void main() {
         },
         commitLod: (_) async {},
         commitPerformance: (_) async {},
+        commitDebounce: (_) async {},
+        commitSleep: (_) async {},
+        commitWheelInvert: (_) async {},
       );
       bloc.add(DeviceSettingsHydrated(angleTuneSettings()));
       await pumpEventQueue();
@@ -691,6 +745,9 @@ void main() {
         },
         commitLod: (_) async {},
         commitPerformance: (_) async {},
+        commitDebounce: (_) async {},
+        commitSleep: (_) async {},
+        commitWheelInvert: (_) async {},
       );
       bloc.add(DeviceSettingsHydrated(angleTuneSettings()));
       await pumpEventQueue();
@@ -716,6 +773,9 @@ void main() {
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
         commitPerformance: (_) async {},
+        commitDebounce: (_) async {},
+        commitSleep: (_) async {},
+        commitWheelInvert: (_) async {},
       );
       bloc.add(DeviceSettingsHydrated(
         angleTuneSettings().copyWith(decodeErrors: {'sensorOther'}),
@@ -747,6 +807,9 @@ void main() {
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
         commitPerformance: (_) async {},
+        commitDebounce: (_) async {},
+        commitSleep: (_) async {},
+        commitWheelInvert: (_) async {},
       );
       bloc.add(DeviceSettingsHydrated(lodSettings()));
       await pumpEventQueue();
@@ -770,6 +833,9 @@ void main() {
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
         commitPerformance: (_) async {},
+        commitDebounce: (_) async {},
+        commitSleep: (_) async {},
+        commitWheelInvert: (_) async {},
       );
       bloc.add(DeviceSettingsHydrated(
         lodSettings().copyWith(decodeErrors: {'sensorOther'}),
@@ -793,6 +859,9 @@ void main() {
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
         commitPerformance: (_) async {},
+        commitDebounce: (_) async {},
+        commitSleep: (_) async {},
+        commitWheelInvert: (_) async {},
       );
       bloc.add(DeviceSettingsHydrated(lodSettings()));
       await pumpEventQueue();
@@ -818,6 +887,9 @@ void main() {
           written = wire;
         },
         commitPerformance: (_) async {},
+        commitDebounce: (_) async {},
+        commitSleep: (_) async {},
+        commitWheelInvert: (_) async {},
       );
       bloc.add(DeviceSettingsHydrated(lodSettings()));
       await pumpEventQueue();
@@ -845,6 +917,9 @@ void main() {
           throw Exception('nak');
         },
         commitPerformance: (_) async {},
+        commitDebounce: (_) async {},
+        commitSleep: (_) async {},
+        commitWheelInvert: (_) async {},
       );
       bloc.add(DeviceSettingsHydrated(lodSettings()));
       await pumpEventQueue();
@@ -877,6 +952,9 @@ void main() {
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
         commitPerformance: (_) async {},
+        commitDebounce: (_) async {},
+        commitSleep: (_) async {},
+        commitWheelInvert: (_) async {},
       );
       bloc.add(DeviceSettingsHydrated(perfSettings()));
       await pumpEventQueue();
@@ -902,6 +980,9 @@ void main() {
         commitPerformance: (wire) async {
           written = wire;
         },
+        commitDebounce: (_) async {},
+        commitSleep: (_) async {},
+        commitWheelInvert: (_) async {},
       );
       bloc.add(DeviceSettingsHydrated(perfSettings()));
       await pumpEventQueue();
@@ -929,6 +1010,9 @@ void main() {
         commitPerformance: (_) async {
           throw Exception('nak');
         },
+        commitDebounce: (_) async {},
+        commitSleep: (_) async {},
+        commitWheelInvert: (_) async {},
       );
       bloc.add(DeviceSettingsHydrated(perfSettings()));
       await pumpEventQueue();
@@ -954,6 +1038,9 @@ void main() {
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
         commitPerformance: (_) async {},
+        commitDebounce: (_) async {},
+        commitSleep: (_) async {},
+        commitWheelInvert: (_) async {},
       );
       bloc.add(DeviceSettingsHydrated(
         perfSettings().copyWith(decodeErrors: {'sensorOther'}),
@@ -965,6 +1052,208 @@ void main() {
       expect(bloc.state.performanceStaging, isNull);
       expect(bloc.state.isDirty, false);
       expect(bloc.state.lastError, contains('decode error'));
+      await bloc.close();
+    });
+  });
+
+  group('DeviceSettingsBloc other features (debounce/sleep/wheel)', () {
+    DeviceSettingsState otherSettings() => baseSettings().copyWith(
+      hasButtonDebounce: true,
+      debounceMs: 0,
+      hasSleepTime: true,
+      sleepSeconds: 0,
+      hasWheelInvert: true,
+      wheelInvert: false,
+    );
+
+    test('debounce selection marks dirty and leaves synced alone', () async {
+      final bloc = DeviceSettingsBloc(
+        commitButtonMapping: (_) async {},
+        commitReportRate: (_) async {},
+        commitDpiLevel: (_) async {},
+        commitSensorTuning: (_, _) async {},
+        commitAngleTune: (_) async {},
+        commitLod: (_) async {},
+        commitPerformance: (_) async {},
+        commitDebounce: (_) async {},
+        commitSleep: (_) async {},
+        commitWheelInvert: (_) async {},
+      );
+      bloc.add(DeviceSettingsHydrated(otherSettings()));
+      await pumpEventQueue();
+      bloc.add(const DeviceSettingsButtonDebounceRequested(wire: 4));
+      await pumpEventQueue();
+
+      expect(bloc.state.debounceStaging, 4);
+      expect(bloc.state.isDirty, true);
+      expect(bloc.state.synced?.debounceMs, 0);
+      await bloc.close();
+    });
+
+    test('sleep selection marks dirty and leaves synced alone', () async {
+      final bloc = DeviceSettingsBloc(
+        commitButtonMapping: (_) async {},
+        commitReportRate: (_) async {},
+        commitDpiLevel: (_) async {},
+        commitSensorTuning: (_, _) async {},
+        commitAngleTune: (_) async {},
+        commitLod: (_) async {},
+        commitPerformance: (_) async {},
+        commitDebounce: (_) async {},
+        commitSleep: (_) async {},
+        commitWheelInvert: (_) async {},
+      );
+      bloc.add(DeviceSettingsHydrated(otherSettings()));
+      await pumpEventQueue();
+      bloc.add(const DeviceSettingsSleepTimeRequested(wire: 5));
+      await pumpEventQueue();
+
+      expect(bloc.state.sleepStaging, 5);
+      expect(bloc.state.isDirty, true);
+      expect(bloc.state.synced?.sleepSeconds, 0);
+      await bloc.close();
+    });
+
+    test('wheel invert toggle stages bool and marks dirty', () async {
+      final bloc = DeviceSettingsBloc(
+        commitButtonMapping: (_) async {},
+        commitReportRate: (_) async {},
+        commitDpiLevel: (_) async {},
+        commitSensorTuning: (_, _) async {},
+        commitAngleTune: (_) async {},
+        commitLod: (_) async {},
+        commitPerformance: (_) async {},
+        commitDebounce: (_) async {},
+        commitSleep: (_) async {},
+        commitWheelInvert: (_) async {},
+      );
+      bloc.add(DeviceSettingsHydrated(otherSettings()));
+      await pumpEventQueue();
+      bloc.add(const DeviceSettingsWheelInvertRequested(invert: true));
+      await pumpEventQueue();
+
+      expect(bloc.state.wheelInvertStaging, true);
+      expect(bloc.state.isDirty, true);
+      expect(bloc.state.synced?.wheelInvert, false);
+      await bloc.close();
+    });
+
+    test('save debounce commits wire and syncs state', () async {
+      int? written;
+      final bloc = DeviceSettingsBloc(
+        commitButtonMapping: (_) async {},
+        commitReportRate: (_) async {},
+        commitDpiLevel: (_) async {},
+        commitSensorTuning: (_, _) async {},
+        commitAngleTune: (_) async {},
+        commitLod: (_) async {},
+        commitPerformance: (_) async {},
+        commitDebounce: (wire) async {
+          written = wire;
+        },
+        commitSleep: (_) async {},
+        commitWheelInvert: (_) async {},
+      );
+      bloc.add(DeviceSettingsHydrated(otherSettings()));
+      await pumpEventQueue();
+      bloc.add(const DeviceSettingsButtonDebounceRequested(wire: 4));
+      await pumpEventQueue();
+      bloc.add(const DeviceSettingsSaveButtonDebounceRequested());
+      await pumpEventQueue();
+
+      expect(written, 4);
+      expect(bloc.state.synced?.debounceMs, 4);
+      expect(bloc.state.debounceStaging, isNull);
+      expect(bloc.state.isDirty, false);
+      await bloc.close();
+    });
+
+    test('save sleep commits wire and syncs state', () async {
+      int? written;
+      final bloc = DeviceSettingsBloc(
+        commitButtonMapping: (_) async {},
+        commitReportRate: (_) async {},
+        commitDpiLevel: (_) async {},
+        commitSensorTuning: (_, _) async {},
+        commitAngleTune: (_) async {},
+        commitLod: (_) async {},
+        commitPerformance: (_) async {},
+        commitDebounce: (_) async {},
+        commitSleep: (wire) async {
+          written = wire;
+        },
+        commitWheelInvert: (_) async {},
+      );
+      bloc.add(DeviceSettingsHydrated(otherSettings()));
+      await pumpEventQueue();
+      bloc.add(const DeviceSettingsSleepTimeRequested(wire: 5));
+      await pumpEventQueue();
+      bloc.add(const DeviceSettingsSaveSleepTimeRequested());
+      await pumpEventQueue();
+
+      expect(written, 5);
+      expect(bloc.state.synced?.sleepSeconds, 5);
+      expect(bloc.state.sleepStaging, isNull);
+      expect(bloc.state.isDirty, false);
+      await bloc.close();
+    });
+
+    test('save wheel invert commits bool and syncs state', () async {
+      bool? written;
+      final bloc = DeviceSettingsBloc(
+        commitButtonMapping: (_) async {},
+        commitReportRate: (_) async {},
+        commitDpiLevel: (_) async {},
+        commitSensorTuning: (_, _) async {},
+        commitAngleTune: (_) async {},
+        commitLod: (_) async {},
+        commitPerformance: (_) async {},
+        commitDebounce: (_) async {},
+        commitSleep: (_) async {},
+        commitWheelInvert: (invert) async {
+          written = invert;
+        },
+      );
+      bloc.add(DeviceSettingsHydrated(otherSettings()));
+      await pumpEventQueue();
+      bloc.add(const DeviceSettingsWheelInvertRequested(invert: true));
+      await pumpEventQueue();
+      bloc.add(const DeviceSettingsSaveWheelInvertRequested());
+      await pumpEventQueue();
+
+      expect(written, true);
+      expect(bloc.state.synced?.wheelInvert, true);
+      expect(bloc.state.wheelInvertStaging, isNull);
+      expect(bloc.state.isDirty, false);
+      await bloc.close();
+    });
+
+    test('save failure keeps debounce staging and records failure', () async {
+      final bloc = DeviceSettingsBloc(
+        commitButtonMapping: (_) async {},
+        commitReportRate: (_) async {},
+        commitDpiLevel: (_) async {},
+        commitSensorTuning: (_, _) async {},
+        commitAngleTune: (_) async {},
+        commitLod: (_) async {},
+        commitPerformance: (_) async {},
+        commitDebounce: (_) async {
+          throw Exception('nak');
+        },
+        commitSleep: (_) async {},
+        commitWheelInvert: (_) async {},
+      );
+      bloc.add(DeviceSettingsHydrated(otherSettings()));
+      await pumpEventQueue();
+      bloc.add(const DeviceSettingsButtonDebounceRequested(wire: 4));
+      await pumpEventQueue();
+      bloc.add(const DeviceSettingsSaveButtonDebounceRequested());
+      await pumpEventQueue();
+
+      expect(bloc.state.debounceStaging, 4);
+      expect(bloc.state.isDirty, true);
+      expect(bloc.state.consecutiveFailures, 1);
+      expect(bloc.state.lastError, contains('nak'));
       await bloc.close();
     });
   });

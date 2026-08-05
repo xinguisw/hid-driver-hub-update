@@ -328,13 +328,19 @@ Future<DeviceSettingsState> queryOnboardConfig(
             ? sensor.debounceTime
             : state.debounceMs,
         debounceLabel: (showAll || state.hasButtonDebounce)
-            ? translate.debounceIndexToLabel(sensor.debounceTime)
+            ? translate.optionPairWireToLabel(
+                sensor.debounceTime,
+                state.debounceOptions ?? const <OptionPair>[],
+              )
             : state.debounceLabel,
         sleepSeconds: (showAll || state.hasSleepTime)
             ? sensor.sleepTime
             : state.sleepSeconds,
         sleepLabel: (showAll || state.hasSleepTime)
-            ? translate.sleepIndexToLabel(sensor.sleepTime)
+            ? translate.optionPairWireToLabel(
+                sensor.sleepTime,
+                state.sleepOptions ?? const <OptionPair>[],
+              )
             : state.sleepLabel,
         wheelInvert: (showAll || state.hasWheelInvert)
             ? translate.triStateWireToBool(sensor.wheelDirection)

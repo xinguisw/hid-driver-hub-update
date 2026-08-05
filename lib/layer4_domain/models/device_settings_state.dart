@@ -131,21 +131,21 @@ class DeviceSettingsState {
   // --- Other ---
 
   final bool hasSleepTime;
-  final List<int>? sleepOptionsSeconds;
+  final List<OptionPair>? sleepOptions;
 
   /// Live sleep wire index (for later SET); prefer [sleepLabel] for display.
   final int? sleepSeconds;
 
-  /// L5 [sleepIndexToLabel]; null if unknown / unmapped.
+  /// L5 [optionPairWireToLabel]; null if unknown / unmapped.
   final String? sleepLabel;
 
   final bool hasButtonDebounce;
-  final List<int>? debounceOptionsMs;
+  final List<OptionPair>? debounceOptions;
 
   /// Live debounce wire index (for later SET); prefer [debounceLabel] for display.
   final int? debounceMs;
 
-  /// L5 [debounceIndexToLabel]; null if unknown / unmapped.
+  /// L5 [optionPairWireToLabel]; null if unknown / unmapped.
   final String? debounceLabel;
 
   final bool hasWheelInvert;
@@ -227,11 +227,11 @@ class DeviceSettingsState {
     this.rippleOn,
     this.angleSnapOn,
     this.hasSleepTime = false,
-    this.sleepOptionsSeconds,
+    this.sleepOptions,
     this.sleepSeconds,
     this.sleepLabel,
     this.hasButtonDebounce = false,
-    this.debounceOptionsMs,
+    this.debounceOptions,
     this.debounceMs,
     this.debounceLabel,
     this.hasWheelInvert = false,
@@ -293,11 +293,11 @@ class DeviceSettingsState {
     bool? rippleOn,
     bool? angleSnapOn,
     bool? hasSleepTime,
-    List<int>? sleepOptionsSeconds,
+    List<OptionPair>? sleepOptions,
     int? sleepSeconds,
     String? sleepLabel,
     bool? hasButtonDebounce,
-    List<int>? debounceOptionsMs,
+    List<OptionPair>? debounceOptions,
     int? debounceMs,
     String? debounceLabel,
     bool? hasWheelInvert,
@@ -366,11 +366,11 @@ class DeviceSettingsState {
       rippleOn: rippleOn ?? this.rippleOn,
       angleSnapOn: angleSnapOn ?? this.angleSnapOn,
       hasSleepTime: hasSleepTime ?? this.hasSleepTime,
-      sleepOptionsSeconds: sleepOptionsSeconds ?? this.sleepOptionsSeconds,
+      sleepOptions: sleepOptions ?? this.sleepOptions,
       sleepSeconds: sleepSeconds ?? this.sleepSeconds,
       sleepLabel: sleepLabel ?? this.sleepLabel,
       hasButtonDebounce: hasButtonDebounce ?? this.hasButtonDebounce,
-      debounceOptionsMs: debounceOptionsMs ?? this.debounceOptionsMs,
+      debounceOptions: debounceOptions ?? this.debounceOptions,
       debounceMs: debounceMs ?? this.debounceMs,
       debounceLabel: debounceLabel ?? this.debounceLabel,
       hasWheelInvert: hasWheelInvert ?? this.hasWheelInvert,
@@ -437,11 +437,11 @@ class DeviceSettingsState {
           rippleOn == other.rippleOn &&
           angleSnapOn == other.angleSnapOn &&
           hasSleepTime == other.hasSleepTime &&
-          _listEq(sleepOptionsSeconds, other.sleepOptionsSeconds) &&
+          _listEq(sleepOptions, other.sleepOptions) &&
           sleepSeconds == other.sleepSeconds &&
           sleepLabel == other.sleepLabel &&
           hasButtonDebounce == other.hasButtonDebounce &&
-          _listEq(debounceOptionsMs, other.debounceOptionsMs) &&
+          _listEq(debounceOptions, other.debounceOptions) &&
           debounceMs == other.debounceMs &&
           debounceLabel == other.debounceLabel &&
           hasWheelInvert == other.hasWheelInvert &&
@@ -503,11 +503,11 @@ class DeviceSettingsState {
         rippleOn,
         angleSnapOn,
         hasSleepTime,
-        Object.hashAll(sleepOptionsSeconds ?? const []),
+        Object.hashAll(sleepOptions ?? const []),
         sleepSeconds,
         sleepLabel,
         hasButtonDebounce,
-        Object.hashAll(debounceOptionsMs ?? const []),
+        Object.hashAll(debounceOptions ?? const []),
         debounceMs,
         debounceLabel,
         hasWheelInvert,

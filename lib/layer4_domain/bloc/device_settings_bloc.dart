@@ -27,6 +27,10 @@ typedef LodCommit = Future<void> Function(int wire);
 
 typedef PerformanceCommit = Future<void> Function(int wire);
 
+typedef OtherFeatureCommit = Future<void> Function(int wire);
+
+typedef WheelInvertCommit = Future<void> Function(bool invert);
+
 /// FR-ARC-014c: escalation callback invoked when consecutive failures reach threshold.
 ///
 /// L1 [DeviceScope] provides this to force session teardown/reconnect.
@@ -51,6 +55,9 @@ class DeviceSettingsBloc
     required this.commitAngleTune,
     required this.commitLod,
     required this.commitPerformance,
+    required this.commitDebounce,
+    required this.commitSleep,
+    required this.commitWheelInvert,
     ButtonActionLabelFn? actionLabelOf,
     ButtonIdLabelFn? buttonIdLabelOf,
     DeviceSettingsViewState? initial,
@@ -85,6 +92,12 @@ class DeviceSettingsBloc
     on<DeviceSettingsSaveLodRequested>(_onSaveLod);
     on<DeviceSettingsPerformanceRequested>(_onPerformanceRequested);
     on<DeviceSettingsSavePerformanceRequested>(_onSavePerformance);
+    on<DeviceSettingsButtonDebounceRequested>(_onDebounceRequested);
+    on<DeviceSettingsSaveButtonDebounceRequested>(_onSaveDebounce);
+    on<DeviceSettingsSleepTimeRequested>(_onSleepRequested);
+    on<DeviceSettingsSaveSleepTimeRequested>(_onSaveSleep);
+    on<DeviceSettingsWheelInvertRequested>(_onWheelInvertRequested);
+    on<DeviceSettingsSaveWheelInvertRequested>(_onSaveWheelInvert);
   }
 
   final ButtonMappingCommit commitButtonMapping;
@@ -94,6 +107,9 @@ class DeviceSettingsBloc
   final AngleTuneCommit commitAngleTune;
   final LodCommit commitLod;
   final PerformanceCommit commitPerformance;
+  final OtherFeatureCommit commitDebounce;
+  final OtherFeatureCommit commitSleep;
+  final WheelInvertCommit commitWheelInvert;
   final DeviceCapabilities? capabilities;
   final CapabilitiesLookup? capabilitiesLookup;
   final EscalationCallback? onEscalationRequested;
@@ -1132,6 +1148,273 @@ class DeviceSettingsBloc
       ),
     );
     debugPrint('[bloc] save performance: synced');
+    onSaveCompleted?.call();
+  }
+
+  /// User selected a button debounce value (chip).
+  ///
+  /// Stages the new wire index and marks dirty. Commit happens on Save.
+  void _onDebounceRequested(
+    DeviceSettingsButtonDebounceRequested event,
+    Emitter<DeviceSettingsViewState> emit,
+  ) {
+    final synced = state.synced;
+    if (synced == null) {
+      emit(state.copyWith(lastError: 'no settings loaded'));
+      return;
+    }
+
+    if (synced.decodeErrors.contains('sensorOther')) {
+      emit(state.copyWith(lastError: 'debounce unavailable: decode error'));
+      return;
+    }
+
+    emit(
+      state.copyWith(
+        debounceStaging: event.wire,
+        isDirty: true,
+        clearError: true,
+      ),
+    );
+
+    debugPrint('[bloc] debounce staged: wire=${event.wire}');
+  }
+
+  /// Save button debounce staging to device.
+  Future<void> _onSaveDebounce(
+    DeviceSettingsSaveButtonDebounceRequested event,
+    Emitter<DeviceSettingsViewState> emit,
+  ) async {
+    final staging = state.debounceStaging;
+    if (staging == null) {
+      debugPrint('[bloc] save debounce: nothing dirty');
+      return;
+    }
+    if (state.committing) return;
+
+    final synced = state.synced;
+    if (synced == null) {
+      emit(state.copyWith(lastError: 'save debounce: no synced settings'));
+      return;
+    }
+
+    emit(state.copyWith(committing: true, clearError: true));
+
+    try {
+      await commitDebounce(staging);
+    } catch (e) {
+      debugPrint('[bloc] save debounce failed: $e');
+      final failures = state.consecutiveFailures + 1;
+      emit(
+        state.copyWith(
+          committing: false,
+          lastError: 'debounce save failed: $e',
+          consecutiveFailures: failures,
+        ),
+      );
+      if (failures >= failureEscalateThreshold) {
+        onEscalationRequested?.call(
+          'debounce save failed $failures consecutive times',
+        );
+      }
+      return;
+    }
+
+    final nextSynced = synced.copyWith(
+      debounceMs: staging,
+      debounceLabel: null,
+      clearError: true,
+    );
+    emit(
+      DeviceSettingsViewState(
+        synced: nextSynced,
+        debounceStaging: null,
+        isDirty: false,
+        committing: false,
+        consecutiveFailures: 0,
+        lastError: null,
+        actionLabelOf: state.actionLabelOf,
+        buttonIdLabelOf: state.buttonIdLabelOf,
+      ),
+    );
+    debugPrint('[bloc] save debounce: synced');
+    onSaveCompleted?.call();
+  }
+
+  /// User selected a sleep time value (chip).
+  void _onSleepRequested(
+    DeviceSettingsSleepTimeRequested event,
+    Emitter<DeviceSettingsViewState> emit,
+  ) {
+    final synced = state.synced;
+    if (synced == null) {
+      emit(state.copyWith(lastError: 'no settings loaded'));
+      return;
+    }
+
+    if (synced.decodeErrors.contains('sensorOther')) {
+      emit(state.copyWith(lastError: 'sleep time unavailable: decode error'));
+      return;
+    }
+
+    emit(
+      state.copyWith(
+        sleepStaging: event.wire,
+        isDirty: true,
+        clearError: true,
+      ),
+    );
+
+    debugPrint('[bloc] sleep time staged: wire=${event.wire}');
+  }
+
+  /// Save sleep time staging to device.
+  Future<void> _onSaveSleep(
+    DeviceSettingsSaveSleepTimeRequested event,
+    Emitter<DeviceSettingsViewState> emit,
+  ) async {
+    final staging = state.sleepStaging;
+    if (staging == null) {
+      debugPrint('[bloc] save sleep time: nothing dirty');
+      return;
+    }
+    if (state.committing) return;
+
+    final synced = state.synced;
+    if (synced == null) {
+      emit(state.copyWith(lastError: 'save sleep time: no synced settings'));
+      return;
+    }
+
+    emit(state.copyWith(committing: true, clearError: true));
+
+    try {
+      await commitSleep(staging);
+    } catch (e) {
+      debugPrint('[bloc] save sleep time failed: $e');
+      final failures = state.consecutiveFailures + 1;
+      emit(
+        state.copyWith(
+          committing: false,
+          lastError: 'sleep time save failed: $e',
+          consecutiveFailures: failures,
+        ),
+      );
+      if (failures >= failureEscalateThreshold) {
+        onEscalationRequested?.call(
+          'sleep time save failed $failures consecutive times',
+        );
+      }
+      return;
+    }
+
+    final nextSynced = synced.copyWith(
+      sleepSeconds: staging,
+      sleepLabel: null,
+      clearError: true,
+    );
+    emit(
+      DeviceSettingsViewState(
+        synced: nextSynced,
+        sleepStaging: null,
+        isDirty: false,
+        committing: false,
+        consecutiveFailures: 0,
+        lastError: null,
+        actionLabelOf: state.actionLabelOf,
+        buttonIdLabelOf: state.buttonIdLabelOf,
+      ),
+    );
+    debugPrint('[bloc] save sleep time: synced');
+    onSaveCompleted?.call();
+  }
+
+  /// User toggled wheel direction invert.
+  void _onWheelInvertRequested(
+    DeviceSettingsWheelInvertRequested event,
+    Emitter<DeviceSettingsViewState> emit,
+  ) {
+    final synced = state.synced;
+    if (synced == null) {
+      emit(state.copyWith(lastError: 'no settings loaded'));
+      return;
+    }
+
+    if (synced.decodeErrors.contains('sensorOther')) {
+      emit(
+        state.copyWith(lastError: 'wheel direction unavailable: decode error'),
+      );
+      return;
+    }
+
+    emit(
+      state.copyWith(
+        wheelInvertStaging: event.invert,
+        isDirty: true,
+        clearError: true,
+      ),
+    );
+
+    debugPrint('[bloc] wheel invert staged: ${event.invert}');
+  }
+
+  /// Save wheel direction staging to device.
+  Future<void> _onSaveWheelInvert(
+    DeviceSettingsSaveWheelInvertRequested event,
+    Emitter<DeviceSettingsViewState> emit,
+  ) async {
+    final staging = state.wheelInvertStaging;
+    if (staging == null) {
+      debugPrint('[bloc] save wheel direction: nothing dirty');
+      return;
+    }
+    if (state.committing) return;
+
+    final synced = state.synced;
+    if (synced == null) {
+      emit(state.copyWith(lastError: 'save wheel direction: no synced settings'));
+      return;
+    }
+
+    emit(state.copyWith(committing: true, clearError: true));
+
+    try {
+      await commitWheelInvert(staging);
+    } catch (e) {
+      debugPrint('[bloc] save wheel direction failed: $e');
+      final failures = state.consecutiveFailures + 1;
+      emit(
+        state.copyWith(
+          committing: false,
+          lastError: 'wheel direction save failed: $e',
+          consecutiveFailures: failures,
+        ),
+      );
+      if (failures >= failureEscalateThreshold) {
+        onEscalationRequested?.call(
+          'wheel direction save failed $failures consecutive times',
+        );
+      }
+      return;
+    }
+
+    final nextSynced = synced.copyWith(
+      wheelInvert: staging,
+      clearError: true,
+    );
+    emit(
+      DeviceSettingsViewState(
+        synced: nextSynced,
+        wheelInvertStaging: null,
+        isDirty: false,
+        committing: false,
+        consecutiveFailures: 0,
+        lastError: null,
+        actionLabelOf: state.actionLabelOf,
+        buttonIdLabelOf: state.buttonIdLabelOf,
+      ),
+    );
+    debugPrint('[bloc] save wheel direction: synced');
     onSaveCompleted?.call();
   }
 }

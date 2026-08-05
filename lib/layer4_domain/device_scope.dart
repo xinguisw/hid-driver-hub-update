@@ -223,6 +223,9 @@ class DeviceScope {
       commitAngleTune: (wireValue) => commitAngleTune(card, wireValue),
       commitLod: (wire) => commitLod(card, wire),
       commitPerformance: (wire) => commitPerformance(card, wire),
+      commitDebounce: (wire) => commitDebounce(card, wire),
+      commitSleep: (wire) => commitSleep(card, wire),
+      commitWheelInvert: (invert) => commitWheelInvert(card, invert),
       actionLabelOf: (action, p1, p2, p3) => translate.buttonActionToLabel(
         action: action,
         param1: p1,
@@ -422,6 +425,78 @@ class DeviceScope {
     // performance(4), ...].
     final dataBlock = Uint8List.fromList(current.data);
     dataBlock[4] = wire;
+
+    await session.setSensorOther(dataBlock);
+  }
+
+  /// Commits the button debounce index into the 14-byte 0xD4 block.
+  ///
+  /// why: debounce is at byte index 11, per the 14-byte layout
+  /// [... performance(4), 0..0, debounce(11), sleep(12), wheel(13)].
+  Future<void> commitDebounce(
+    DiscoveredCardState card,
+    int wire,
+  ) async {
+    final session = _sessionForCard(card);
+    if (session == null || !session.isAlive) {
+      throw StateError('commitDebounce: no session');
+    }
+
+    final current = await session.querySensorOther();
+    if (current == null) {
+      throw StateError('Failed to read current sensor/other block');
+    }
+
+    final dataBlock = Uint8List.fromList(current.data);
+    dataBlock[11] = wire;
+
+    await session.setSensorOther(dataBlock);
+  }
+
+  /// Commits the sleep time index into the 14-byte 0xD4 block.
+  ///
+  /// why: sleep is at byte index 12, per the 14-byte layout.
+  Future<void> commitSleep(
+    DiscoveredCardState card,
+    int wire,
+  ) async {
+    final session = _sessionForCard(card);
+    if (session == null || !session.isAlive) {
+      throw StateError('commitSleep: no session');
+    }
+
+    final current = await session.querySensorOther();
+    if (current == null) {
+      throw StateError('Failed to read current sensor/other block');
+    }
+
+    final dataBlock = Uint8List.fromList(current.data);
+    dataBlock[12] = wire;
+
+    await session.setSensorOther(dataBlock);
+  }
+
+  /// Commits the wheel direction invert into the 14-byte 0xD4 block.
+  ///
+  /// why: L5 owns wire encoding; wheel direction is tri-state (0xFF/0x0F),
+  /// so a raw 1/0 would read back as neither on nor off.
+  Future<void> commitWheelInvert(
+    DiscoveredCardState card,
+    bool invert,
+  ) async {
+    final session = _sessionForCard(card);
+    if (session == null || !session.isAlive) {
+      throw StateError('commitWheelInvert: no session');
+    }
+
+    final current = await session.querySensorOther();
+    if (current == null) {
+      throw StateError('Failed to read current sensor/other block');
+    }
+
+    const translate = TranslationCodec();
+    final dataBlock = Uint8List.fromList(current.data);
+    dataBlock[13] = translate.triStateBoolToWire(invert);
 
     await session.setSensorOther(dataBlock);
   }

@@ -37,7 +37,12 @@ void main() {
     expect(state.hasPerformance, isFalse);
     expect(state.hasButtonDebounce, isFalse);
     expect(state.hasSleepTime, isTrue);
-    expect(state.sleepOptionsSeconds, [900]);
+    expect(state.sleepOptions, isNotNull);
+    expect(state.sleepOptions!.length, 7);
+    expect(state.sleepOptions![0].wire, 0);
+    expect(state.sleepOptions![0].label, '30 sec');
+    expect(state.sleepOptions![5].wire, 5);
+    expect(state.sleepOptions![5].label, '15 min');
     expect(state.hasWheelInvert, isFalse);
     expect(state.hasRgbBacklight, isFalse);
   });

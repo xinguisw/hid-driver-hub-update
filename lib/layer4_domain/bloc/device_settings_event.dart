@@ -180,3 +180,48 @@ class DeviceSettingsPerformanceRequested extends DeviceSettingsEvent {
 class DeviceSettingsSavePerformanceRequested extends DeviceSettingsEvent {
   const DeviceSettingsSavePerformanceRequested();
 }
+
+/// User selected a button debounce value (chip).
+///
+/// L3 passes the new wire index. L4 stages it and marks dirty.
+class DeviceSettingsButtonDebounceRequested extends DeviceSettingsEvent {
+  const DeviceSettingsButtonDebounceRequested({required this.wire});
+
+  /// Wire index (into [ButtonDebounce.options], e.g. 0-6).
+  final int wire;
+}
+
+/// Save button debounce staging to device.
+class DeviceSettingsSaveButtonDebounceRequested extends DeviceSettingsEvent {
+  const DeviceSettingsSaveButtonDebounceRequested();
+}
+
+/// User selected a sleep time value (chip).
+///
+/// L3 passes the new wire index. L4 stages it and marks dirty.
+class DeviceSettingsSleepTimeRequested extends DeviceSettingsEvent {
+  const DeviceSettingsSleepTimeRequested({required this.wire});
+
+  /// Wire index (into [SleepTime.options], e.g. 0-6).
+  final int wire;
+}
+
+/// Save sleep time staging to device.
+class DeviceSettingsSaveSleepTimeRequested extends DeviceSettingsEvent {
+  const DeviceSettingsSaveSleepTimeRequested();
+}
+
+/// User toggled wheel direction invert (chip or switch).
+///
+/// L3 passes the new bool. L4 stages it and marks dirty.
+class DeviceSettingsWheelInvertRequested extends DeviceSettingsEvent {
+  const DeviceSettingsWheelInvertRequested({required this.invert});
+
+  /// Whether wheel direction is inverted.
+  final bool invert;
+}
+
+/// Save wheel direction staging to device.
+class DeviceSettingsSaveWheelInvertRequested extends DeviceSettingsEvent {
+  const DeviceSettingsSaveWheelInvertRequested();
+}

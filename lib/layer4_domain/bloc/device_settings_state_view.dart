@@ -24,6 +24,9 @@ class DeviceSettingsViewState {
     this.angleTuneEnabledStaging,
     this.lodStaging,
     this.performanceStaging,
+    this.debounceStaging,
+    this.sleepStaging,
+    this.wheelInvertStaging,
     this.isDirty = false,
     this.committing = false,
     this.consecutiveFailures = 0,
@@ -43,6 +46,9 @@ class DeviceSettingsViewState {
   final bool? angleTuneEnabledStaging;
   final int? lodStaging;
   final int? performanceStaging;
+  final int? debounceStaging;
+  final int? sleepStaging;
+  final bool? wheelInvertStaging;
   final bool isDirty;
   final bool committing;
   final int consecutiveFailures;
@@ -78,6 +84,9 @@ class DeviceSettingsViewState {
     bool? angleTuneEnabledStaging,
     int? lodStaging,
     int? performanceStaging,
+    int? debounceStaging,
+    int? sleepStaging,
+    bool? wheelInvertStaging,
     bool? isDirty,
     bool? committing,
     int? consecutiveFailures,
@@ -119,6 +128,15 @@ class DeviceSettingsViewState {
       performanceStaging: clearStaging
           ? null
           : (performanceStaging ?? this.performanceStaging),
+      debounceStaging: clearStaging
+          ? null
+          : (debounceStaging ?? this.debounceStaging),
+      sleepStaging: clearStaging
+          ? null
+          : (sleepStaging ?? this.sleepStaging),
+      wheelInvertStaging: clearStaging
+          ? null
+          : (wheelInvertStaging ?? this.wheelInvertStaging),
       isDirty: clearStaging ? false : (isDirty ?? this.isDirty),
       committing: committing ?? this.committing,
       consecutiveFailures: consecutiveFailures ?? this.consecutiveFailures,

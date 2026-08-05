@@ -85,12 +85,12 @@ DeviceSettingsState applyCapabilitiesToSettings(
     next = next.copyWith(
       hasButtonDebounce:
           other.present && (debounce?.present ?? false),
-      debounceOptionsMs:
+      debounceOptions:
           (other.present && debounce != null && debounce.present)
               ? debounce.options
               : null,
       hasSleepTime: other.present && (sleep?.present ?? false),
-      sleepOptionsSeconds:
+      sleepOptions:
           (other.present && sleep != null && sleep.present)
               ? sleep.options
               : null,

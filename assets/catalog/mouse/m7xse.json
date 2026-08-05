@@ -95,11 +95,26 @@
     "present": true,
     "buttonDebounce": {
       "present": false,
-      "options": [4, 8, 16, 24]
+      "options": [
+        {"wire": 0, "label": "2ms"},
+        {"wire": 2, "label": "4ms"},
+        {"wire": 3, "label": "6ms"},
+        {"wire": 4, "label": "8ms"},
+        {"wire": 5, "label": "10ms"},
+        {"wire": 6, "label": "12ms"}
+      ]
     },
     "sleepTime": {
       "present": true,
-      "options": [900]
+      "options": [
+        {"wire": 0, "label": "30 sec"},
+        {"wire": 1, "label": "1 min"},
+        {"wire": 2, "label": "2 min"},
+        {"wire": 3, "label": "5 min"},
+        {"wire": 4, "label": "10 min"},
+        {"wire": 5, "label": "15 min"},
+        {"wire": 6, "label": "30 min"}
+      ]
     },
     "wheelDirectionInvert": false
   },

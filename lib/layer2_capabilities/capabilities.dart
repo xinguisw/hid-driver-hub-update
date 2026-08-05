@@ -329,6 +329,32 @@ class LodOption {
   int get hashCode => Object.hash(wire, mm);
 }
 
+/// One wire→label mapping for a fixed-index option list (debounce, sleep).
+///
+/// Mirrors [LodOption] / [AngleTuneOption]: `wire` is the device byte, `label`
+/// is the display string (e.g. `2ms`, `30 sec`). L2 owns the per-mouse list;
+/// L5 owns the generic lookup.
+class OptionPair {
+  final int wire;
+  final String label;
+  const OptionPair({required this.wire, required this.label});
+
+  factory OptionPair.fromJson(Map<String, dynamic> json) {
+    return OptionPair(
+      wire: json['wire'] as int,
+      label: json['label'] as String,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is OptionPair && wire == other.wire && label == other.label;
+
+  @override
+  int get hashCode => Object.hash(wire, label);
+}
+
 class LiftOffDistance {
   final bool present;
   final List<LodOption> options;
@@ -373,26 +399,30 @@ class OtherFeaturesCapabilities {
 
 class ButtonDebounce {
   final bool present;
-  final List<int> options;
+  final List<OptionPair> options;
   const ButtonDebounce({required this.present, required this.options});
 
   factory ButtonDebounce.fromJson(Map<String, dynamic> json) {
     return ButtonDebounce(
       present: json['present'] as bool,
-      options: (json['options'] as List).map((e) => e as int).toList(),
+      options: (json['options'] as List)
+          .map((e) => OptionPair.fromJson(e as Map<String, dynamic>))
+          .toList(),
     );
   }
 }
 
 class SleepTime {
   final bool present;
-  final List<int> options;
+  final List<OptionPair> options;
   const SleepTime({required this.present, required this.options});
 
   factory SleepTime.fromJson(Map<String, dynamic> json) {
     return SleepTime(
       present: json['present'] as bool,
-      options: (json['options'] as List).map((e) => e as int).toList(),
+      options: (json['options'] as List)
+          .map((e) => OptionPair.fromJson(e as Map<String, dynamic>))
+          .toList(),
     );
   }
 }

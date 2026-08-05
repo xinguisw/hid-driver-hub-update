@@ -34,6 +34,9 @@ void main() {
     expect(caps.sensor!.angleTuneDetails!.options![0].label, '-30°');
     expect(caps.sensor!.angleTuneDetails!.options![2].wire, 2);
     expect(caps.sensor!.angleTuneDetails!.options![2].label, '0°');
+    expect(caps.sensor!.performance, isNotNull);
+    expect(caps.sensor!.performance!.present, isFalse);
+    expect(caps.sensor!.performance!.options, [0, 1, 2]);
     expect(caps.sensor!.liftOffDistance!.present, isFalse);
     expect(caps.sensor!.liftOffDistance!.options.length, 3);
     expect(caps.sensor!.liftOffDistance!.options[0].wire, 0);

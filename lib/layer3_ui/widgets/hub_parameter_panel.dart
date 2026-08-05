@@ -28,6 +28,9 @@ class HubParameterPanel extends StatelessWidget {
     this.angleTuneLabel,
     this.lodMm,
     this.performance,
+    this.debounceMs,
+    this.sleepSeconds,
+    this.wheelInvert,
     this.onRippleChanged,
     this.onAngleSnapChanged,
     this.onAngleTuneToggled,
@@ -35,12 +38,15 @@ class HubParameterPanel extends StatelessWidget {
     this.onAngleTuneIncrement,
     this.onLodChanged,
     this.onPerformanceChanged,
+    this.onDebounceChanged,
+    this.onSleepChanged,
+    this.onWheelInvertChanged,
   });
 
   final List<LodOption>? lodOptions;
   final List<int>? performanceOptions;
-  final List<int>? buttonDebounceOptions;
-  final List<int>? sleepTimeOptions;
+  final List<OptionPair>? buttonDebounceOptions;
+  final List<OptionPair>? sleepTimeOptions;
 
   /// L2 gates: each feature hides when the device lacks it.
   final bool hasSensorTuning;
@@ -59,6 +65,9 @@ class HubParameterPanel extends StatelessWidget {
   final String? angleTuneLabel;
   final int? lodMm;
   final int? performance;
+  final int? debounceMs;
+  final int? sleepSeconds;
+  final bool? wheelInvert;
   final ValueChanged<bool>? onRippleChanged;
   final ValueChanged<bool>? onAngleSnapChanged;
   final ValueChanged<bool>? onAngleTuneToggled;
@@ -66,6 +75,9 @@ class HubParameterPanel extends StatelessWidget {
   final VoidCallback? onAngleTuneIncrement;
   final ValueChanged<int>? onLodChanged;
   final ValueChanged<int>? onPerformanceChanged;
+  final ValueChanged<int>? onDebounceChanged;
+  final ValueChanged<int>? onSleepChanged;
+  final ValueChanged<bool>? onWheelInvertChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -109,10 +121,14 @@ class HubParameterPanel extends StatelessWidget {
             const Text('Other feature'),
             const SizedBox(height: 8),
             _OtherFeatureGroup(
-              buttonDebounceOptions:
-                  buttonDebounceOptions ?? const [0, 1, 2, 4, 8, 16],
-              sleepTimeOptions:
-                  sleepTimeOptions ?? const [30, 60, 120, 180, 300, 1500, 1800],
+              buttonDebounceOptions: buttonDebounceOptions ?? const [],
+              sleepTimeOptions: sleepTimeOptions ?? const [],
+              debounceMs: debounceMs,
+              sleepSeconds: sleepSeconds,
+              wheelInvert: wheelInvert,
+              onDebounceChanged: onDebounceChanged,
+              onSleepChanged: onSleepChanged,
+              onWheelInvertChanged: onWheelInvertChanged,
               hasButtonDebounce: hasButtonDebounce,
               hasWheelInvert: hasWheelInvert,
               hasSleepTime: hasSleepTime,
@@ -450,13 +466,25 @@ class _OtherFeatureGroup extends StatelessWidget {
   const _OtherFeatureGroup({
     required this.buttonDebounceOptions,
     required this.sleepTimeOptions,
+    required this.debounceMs,
+    required this.sleepSeconds,
+    required this.wheelInvert,
+    required this.onDebounceChanged,
+    required this.onSleepChanged,
+    required this.onWheelInvertChanged,
     required this.hasButtonDebounce,
     required this.hasWheelInvert,
     required this.hasSleepTime,
   });
 
-  final List<int> buttonDebounceOptions;
-  final List<int> sleepTimeOptions;
+  final List<OptionPair> buttonDebounceOptions;
+  final List<OptionPair> sleepTimeOptions;
+  final int? debounceMs;
+  final int? sleepSeconds;
+  final bool? wheelInvert;
+  final ValueChanged<int>? onDebounceChanged;
+  final ValueChanged<int>? onSleepChanged;
+  final ValueChanged<bool>? onWheelInvertChanged;
   final bool hasButtonDebounce;
   final bool hasWheelInvert;
   final bool hasSleepTime;
@@ -481,18 +509,18 @@ class _OtherFeatureGroup extends StatelessWidget {
                   flex: 2,
                   child: _OptionsBox(
                     title: 'Button debounce',
-                    labels: [
-                      for (final ms in buttonDebounceOptions) '$ms ms',
-                    ],
+                    options: buttonDebounceOptions,
+                    selectedWire: debounceMs,
+                    onSelected: onDebounceChanged,
                   ),
                 ),
                 const SizedBox(width: 8),
               ],
               if (hasWheelInvert) ...[
-                const Expanded(
-                  child: _OptionsBox(
-                    title: 'Wheel direction',
-                    labels: ['Forward', 'Reverse'],
+                Expanded(
+                  child: _WheelBox(
+                    invert: wheelInvert ?? false,
+                    onInvertChanged: onWheelInvertChanged,
                   ),
                 ),
               ],
@@ -507,10 +535,9 @@ class _OtherFeatureGroup extends StatelessWidget {
                   flex: 2,
                   child: _OptionsBox(
                     title: 'Sleep time',
-                    labels: [
-                      for (final seconds in sleepTimeOptions)
-                        _sleepLabel(seconds),
-                    ],
+                    options: sleepTimeOptions,
+                    selectedWire: sleepSeconds,
+                    onSelected: onSleepChanged,
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -522,27 +549,31 @@ class _OtherFeatureGroup extends StatelessWidget {
       ),
     );
   }
-
-  String _sleepLabel(int seconds) {
-    if (seconds < 60) return '$seconds s';
-    final mins = seconds ~/ 60;
-    return mins == 1 ? '1 min' : '$mins mins';
-  }
 }
 
 class _OptionsBox extends StatelessWidget {
-  const _OptionsBox({required this.title, required this.labels});
+  const _OptionsBox({
+    required this.title,
+    required this.options,
+    this.selectedWire,
+    this.onSelected,
+  });
 
   final String title;
-  final List<String> labels;
+  final List<OptionPair> options;
+
+  /// Wire value of the currently selected option (if any).
+  final int? selectedWire;
+
+  /// Called with the wire value of a tapped option; null = not selectable.
+  final ValueChanged<int>? onSelected;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Container(
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(6),
       ),
       child: Column(
@@ -554,7 +585,14 @@ class _OptionsBox extends StatelessWidget {
             spacing: 8,
             runSpacing: 8,
             children: [
-              for (final label in labels) _OptionChip(label: label),
+              for (final opt in options)
+                _SelectableChip(
+                  label: opt.label,
+                  selected: selectedWire == opt.wire,
+                  onTap: onSelected == null
+                      ? null
+                      : () => onSelected!(opt.wire),
+                ),
             ],
           ),
         ],
@@ -563,21 +601,54 @@ class _OptionsBox extends StatelessWidget {
   }
 }
 
-class _OptionChip extends StatelessWidget {
-  const _OptionChip({required this.label});
+/// Wheel direction box — two selectable states: Forward / Reverse.
+///
+/// Backed by the tri-state wheel-direction byte (0xFF/0x0F/0x00); the bool is
+/// the decoded "invert" flag. L4 owns encode/decode, L3 only paints.
+class _WheelBox extends StatelessWidget {
+  const _WheelBox({
+    required this.invert,
+    required this.onInvertChanged,
+  });
 
-  final String label;
+  final bool invert;
+  final ValueChanged<bool>? onInvertChanged;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        border: Border.all(color: theme.colorScheme.outline),
-        borderRadius: BorderRadius.circular(4),
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(6),
       ),
-      child: Text(label, style: const TextStyle(fontSize: 12)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Wheel direction'),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _SelectableChip(
+                label: 'Forward',
+                selected: !invert,
+                onTap: onInvertChanged == null || invert
+                    ? null
+                    : () => onInvertChanged!(false),
+              ),
+              _SelectableChip(
+                label: 'Reverse',
+                selected: invert,
+                onTap: onInvertChanged == null || !invert
+                    ? null
+                    : () => onInvertChanged!(true),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

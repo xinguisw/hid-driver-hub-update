@@ -291,6 +291,9 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                                 n.angleTuneEnabledStaging ||
                             p.lodStaging != n.lodStaging ||
                             p.performanceStaging != n.performanceStaging ||
+                            p.debounceStaging != n.debounceStaging ||
+                            p.sleepStaging != n.sleepStaging ||
+                            p.wheelInvertStaging != n.wheelInvertStaging ||
                             p.isDirty != n.isDirty ||
                             p.committing != n.committing ||
                             p.lastError != n.lastError,
@@ -314,8 +317,8 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                                   hasSleepTime: synced?.hasSleepTime ?? false,
                                   lodOptions: synced?.lodOptions,
                                   buttonDebounceOptions:
-                                      synced?.debounceOptionsMs,
-                                  sleepTimeOptions: synced?.sleepOptionsSeconds,
+                                      synced?.debounceOptions,
+                                  sleepTimeOptions: synced?.sleepOptions,
                                   rippleOn: synced?.rippleOn,
                                   rippleStaging: view.rippleControlStaging,
                                   angleSnapOn: synced?.angleSnapOn,
@@ -335,6 +338,33 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                                       view.lodStaging ?? synced?.lodMm,
                                   performance: view.performanceStaging ??
                                       synced?.performance,
+                                  debounceMs: view.debounceStaging ??
+                                      synced?.debounceMs,
+                                  sleepSeconds: view.sleepStaging ??
+                                      synced?.sleepSeconds,
+                                  wheelInvert: view.wheelInvertStaging ??
+                                      synced?.wheelInvert,
+                                  onDebounceChanged: (wire) {
+                                    bloc.add(
+                                      DeviceSettingsButtonDebounceRequested(
+                                        wire: wire,
+                                      ),
+                                    );
+                                  },
+                                  onSleepChanged: (wire) {
+                                    bloc.add(
+                                      DeviceSettingsSleepTimeRequested(
+                                        wire: wire,
+                                      ),
+                                    );
+                                  },
+                                  onWheelInvertChanged: (invert) {
+                                    bloc.add(
+                                      DeviceSettingsWheelInvertRequested(
+                                        invert: invert,
+                                      ),
+                                    );
+                                  },
                                   onLodChanged: (wire) {
                                     bloc.add(
                                       DeviceSettingsLodRequested(wire: wire),
@@ -427,6 +457,18 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                                   } else if (view.performanceStaging != null) {
                                     bloc.add(
                                       const DeviceSettingsSavePerformanceRequested(),
+                                    );
+                                  } else if (view.debounceStaging != null) {
+                                    bloc.add(
+                                      const DeviceSettingsSaveButtonDebounceRequested(),
+                                    );
+                                  } else if (view.sleepStaging != null) {
+                                    bloc.add(
+                                      const DeviceSettingsSaveSleepTimeRequested(),
+                                    );
+                                  } else if (view.wheelInvertStaging != null) {
+                                    bloc.add(
+                                      const DeviceSettingsSaveWheelInvertRequested(),
                                     );
                                   }
                                 },

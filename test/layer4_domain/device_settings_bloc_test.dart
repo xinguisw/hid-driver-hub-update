@@ -63,6 +63,7 @@ void main() {
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
         commitSensorTuning: (_, _) async {},
+        commitAngleTune: (_) async {},
       );
       bloc.add(DeviceSettingsHydrated(baseSettings()));
       await pumpEventQueue();
@@ -81,6 +82,7 @@ void main() {
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
         commitSensorTuning: (_, _) async {},
+        commitAngleTune: (_) async {},
       );
       bloc.add(DeviceSettingsHydrated(baseSettings()));
       await pumpEventQueue();
@@ -113,6 +115,7 @@ void main() {
           commitReportRate: (_) async {},
           commitDpiLevel: (_) async {},
         commitSensorTuning: (_, _) async {},
+        commitAngleTune: (_) async {},
         );
         bloc.add(DeviceSettingsHydrated(baseSettings()));
         await pumpEventQueue();
@@ -147,6 +150,7 @@ void main() {
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
         commitSensorTuning: (_, _) async {},
+        commitAngleTune: (_) async {},
       );
       bloc.add(DeviceSettingsHydrated(baseSettings()));
       await pumpEventQueue();
@@ -185,6 +189,7 @@ void main() {
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
         commitSensorTuning: (_, _) async {},
+        commitAngleTune: (_) async {},
       );
       bloc.add(DeviceSettingsHydrated(baseSettings()));
       await pumpEventQueue();
@@ -216,6 +221,7 @@ void main() {
           commitReportRate: (_) async {},
           commitDpiLevel: (_) async {},
         commitSensorTuning: (_, _) async {},
+        commitAngleTune: (_) async {},
         );
         bloc.add(DeviceSettingsHydrated(baseSettings()));
         await pumpEventQueue();
@@ -241,6 +247,7 @@ void main() {
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
         commitSensorTuning: (_, _) async {},
+        commitAngleTune: (_) async {},
         initial: DeviceSettingsViewState(
           synced: baseSettings(),
           buttonMappingStaging: const [ButtonMappingSlot(action: 0x02)],
@@ -285,6 +292,7 @@ void main() {
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
         commitSensorTuning: (_, _) async {},
+        commitAngleTune: (_) async {},
         capabilitiesLookup: () => caps,
       );
       bloc.add(DeviceSettingsHydrated(baseSettings()));
@@ -310,6 +318,7 @@ void main() {
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
         commitSensorTuning: (_, _) async {},
+        commitAngleTune: (_) async {},
         capabilities: dpiCaps,
         capabilitiesLookup: () => null,
       );
@@ -332,6 +341,7 @@ void main() {
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
         commitSensorTuning: (_, _) async {},
+        commitAngleTune: (_) async {},
       );
       bloc.add(
         DeviceSettingsHydrated(
@@ -448,6 +458,7 @@ void main() {
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
         commitSensorTuning: (_, _) async {},
+        commitAngleTune: (_) async {},
       );
       bloc.add(DeviceSettingsHydrated(sensorSettings()));
       await pumpEventQueue();
@@ -471,6 +482,7 @@ void main() {
           ripple = r;
           angleSnap = a;
         },
+        commitAngleTune: (_) async {},
       );
       bloc.add(DeviceSettingsHydrated(sensorSettings()));
       await pumpEventQueue();
@@ -497,6 +509,7 @@ void main() {
         commitSensorTuning: (_, _) async {
           throw Exception('nak');
         },
+        commitAngleTune: (_) async {},
       );
       bloc.add(DeviceSettingsHydrated(sensorSettings()));
       await pumpEventQueue();
@@ -520,6 +533,7 @@ void main() {
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
         commitSensorTuning: (_, _) async {},
+        commitAngleTune: (_) async {},
       );
       bloc.add(DeviceSettingsHydrated(sensorSettings()));
       await pumpEventQueue();
@@ -531,6 +545,148 @@ void main() {
       expect(bloc.state.rippleControlStaging, isNull);
       expect(bloc.state.isDirty, false);
       expect(bloc.state.synced?.rippleOn, false);
+      await bloc.close();
+    });
+  });
+
+  group('DeviceSettingsBloc angle tune', () {
+    DeviceSettingsState angleTuneSettings() => baseSettings().copyWith(
+      hasAngleTune: true,
+      angleTune: 2,
+      angleTuneLabel: '0°',
+    );
+
+    test('toggle stages enabled flag, keeps value, marks dirty', () async {
+      final bloc = DeviceSettingsBloc(
+        commitButtonMapping: (_) async {},
+        commitReportRate: (_) async {},
+        commitDpiLevel: (_) async {},
+        commitSensorTuning: (_, _) async {},
+        commitAngleTune: (_) async {},
+      );
+      bloc.add(DeviceSettingsHydrated(angleTuneSettings()));
+      await pumpEventQueue();
+      bloc.add(const DeviceSettingsAngleTuneToggled(enabled: true));
+      await pumpEventQueue();
+
+      expect(bloc.state.angleTuneEnabledStaging, true);
+      expect(bloc.state.angleTuneStaging, isNull);
+      expect(bloc.state.isDirty, true);
+      // why: value always shows live data, independent of the toggle.
+      expect(bloc.state.synced?.angleTune, 2);
+      expect(bloc.state.synced?.angleTuneLabel, '0°');
+      await bloc.close();
+    });
+
+    test('toggle off stages false, keeps value, still dirty', () async {
+      final bloc = DeviceSettingsBloc(
+        commitButtonMapping: (_) async {},
+        commitReportRate: (_) async {},
+        commitDpiLevel: (_) async {},
+        commitSensorTuning: (_, _) async {},
+        commitAngleTune: (_) async {},
+      );
+      bloc.add(DeviceSettingsHydrated(angleTuneSettings()));
+      await pumpEventQueue();
+      bloc.add(const DeviceSettingsAngleTuneToggled(enabled: false));
+      await pumpEventQueue();
+
+      expect(bloc.state.angleTuneEnabledStaging, false);
+      expect(bloc.state.isDirty, true);
+      // why: value is unaffected by toggling — live data stays visible.
+      expect(bloc.state.synced?.angleTune, 2);
+      expect(bloc.state.synced?.angleTuneLabel, '0°');
+      await bloc.close();
+    });
+
+    test('value change stages the wire index and marks dirty', () async {
+      final bloc = DeviceSettingsBloc(
+        commitButtonMapping: (_) async {},
+        commitReportRate: (_) async {},
+        commitDpiLevel: (_) async {},
+        commitSensorTuning: (_, _) async {},
+        commitAngleTune: (_) async {},
+      );
+      bloc.add(DeviceSettingsHydrated(angleTuneSettings()));
+      await pumpEventQueue();
+      bloc.add(const DeviceSettingsAngleTuneValueChanged(wireValue: 4));
+      await pumpEventQueue();
+
+      expect(bloc.state.angleTuneStaging, 4);
+      expect(bloc.state.isDirty, true);
+      expect(bloc.state.synced?.angleTune, 2);
+      await bloc.close();
+    });
+
+    test('save commits wire value and syncs state', () async {
+      int? written;
+      final bloc = DeviceSettingsBloc(
+        commitButtonMapping: (_) async {},
+        commitReportRate: (_) async {},
+        commitDpiLevel: (_) async {},
+        commitSensorTuning: (_, _) async {},
+        commitAngleTune: (wire) async {
+          written = wire;
+        },
+      );
+      bloc.add(DeviceSettingsHydrated(angleTuneSettings()));
+      await pumpEventQueue();
+      bloc.add(const DeviceSettingsAngleTuneValueChanged(wireValue: 4));
+      await pumpEventQueue();
+      bloc.add(const DeviceSettingsSaveAngleTuneRequested());
+      await pumpEventQueue();
+
+      expect(written, 4);
+      expect(bloc.state.synced?.angleTune, 4);
+      expect(bloc.state.angleTuneStaging, isNull);
+      expect(bloc.state.isDirty, false);
+      expect(bloc.state.lastError, isNull);
+      await bloc.close();
+    });
+
+    test('save failure keeps staging and records failure', () async {
+      final bloc = DeviceSettingsBloc(
+        commitButtonMapping: (_) async {},
+        commitReportRate: (_) async {},
+        commitDpiLevel: (_) async {},
+        commitSensorTuning: (_, _) async {},
+        commitAngleTune: (_) async {
+          throw Exception('nak');
+        },
+      );
+      bloc.add(DeviceSettingsHydrated(angleTuneSettings()));
+      await pumpEventQueue();
+      bloc.add(const DeviceSettingsAngleTuneValueChanged(wireValue: 3));
+      await pumpEventQueue();
+      bloc.add(const DeviceSettingsSaveAngleTuneRequested());
+      await pumpEventQueue();
+
+      expect(bloc.state.angleTuneStaging, 3);
+      expect(bloc.state.isDirty, true);
+      expect(bloc.state.consecutiveFailures, 1);
+      expect(bloc.state.lastError, contains('nak'));
+      expect(bloc.state.committing, false);
+      await bloc.close();
+    });
+
+    test('decode error on sensorOther blocks angle tune staging', () async {
+      final bloc = DeviceSettingsBloc(
+        commitButtonMapping: (_) async {},
+        commitReportRate: (_) async {},
+        commitDpiLevel: (_) async {},
+        commitSensorTuning: (_, _) async {},
+        commitAngleTune: (_) async {},
+      );
+      bloc.add(DeviceSettingsHydrated(
+        angleTuneSettings().copyWith(decodeErrors: {'sensorOther'}),
+      ));
+      await pumpEventQueue();
+      bloc.add(const DeviceSettingsAngleTuneValueChanged(wireValue: 1));
+      await pumpEventQueue();
+
+      expect(bloc.state.angleTuneStaging, isNull);
+      expect(bloc.state.isDirty, false);
+      expect(bloc.state.lastError, contains('decode error'));
       await bloc.close();
     });
   });

@@ -60,9 +60,12 @@ DeviceSettingsState applyCapabilitiesToSettings(
   if (sensor != null) {
     final lod = sensor.liftOffDistance;
     final perf = sensor.performance;
+    final angleTune = sensor.angleTuneDetails;
     next = next.copyWith(
       hasSensorTuning: sensor.sensorTuning,
       hasAngleTune: sensor.angleTune,
+      angleTuneOptions:
+          (angleTune != null && angleTune.present) ? angleTune.options : null,
       hasLod: lod?.present ?? false,
       lodOptions: (lod != null && lod.present) ? lod.options : null,
       hasPerformance: perf?.present ?? false,

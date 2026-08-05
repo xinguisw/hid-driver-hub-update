@@ -19,6 +19,8 @@ class DeviceSettingsViewState {
     this.dpiCurrentLevelStaging,
     this.rippleControlStaging,
     this.angleSnapStaging,
+    this.angleTuneStaging,
+    this.angleTuneEnabledStaging,
     this.isDirty = false,
     this.committing = false,
     this.consecutiveFailures = 0,
@@ -33,6 +35,8 @@ class DeviceSettingsViewState {
   final int? dpiCurrentLevelStaging;
   final bool? rippleControlStaging;
   final bool? angleSnapStaging;
+  final int? angleTuneStaging;
+  final bool? angleTuneEnabledStaging;
   final bool isDirty;
   final bool committing;
   final int consecutiveFailures;
@@ -63,6 +67,8 @@ class DeviceSettingsViewState {
     int? dpiCurrentLevelStaging,
     bool? rippleControlStaging,
     bool? angleSnapStaging,
+    int? angleTuneStaging,
+    bool? angleTuneEnabledStaging,
     bool? isDirty,
     bool? committing,
     int? consecutiveFailures,
@@ -89,6 +95,12 @@ class DeviceSettingsViewState {
       angleSnapStaging: clearStaging
           ? null
           : (angleSnapStaging ?? this.angleSnapStaging),
+      angleTuneStaging: clearStaging
+          ? null
+          : (angleTuneStaging ?? this.angleTuneStaging),
+      angleTuneEnabledStaging: clearStaging
+          ? null
+          : (angleTuneEnabledStaging ?? this.angleTuneEnabledStaging),
       isDirty: clearStaging ? false : (isDirty ?? this.isDirty),
       committing: committing ?? this.committing,
       consecutiveFailures: consecutiveFailures ?? this.consecutiveFailures,

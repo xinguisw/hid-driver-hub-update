@@ -122,3 +122,29 @@ class DeviceSettingsAngleSnapRequested extends DeviceSettingsEvent {
 class DeviceSettingsSaveSensorTuningRequested extends DeviceSettingsEvent {
   const DeviceSettingsSaveSensorTuningRequested();
 }
+
+/// User toggled angle tune enable/disable.
+///
+/// L3 passes the boolean value. L4 stages it and marks dirty.
+class DeviceSettingsAngleTuneToggled extends DeviceSettingsEvent {
+  const DeviceSettingsAngleTuneToggled({required this.enabled});
+
+  /// Whether angle tune is enabled.
+  final bool enabled;
+}
+
+/// User changed angle tune value (left/right arrow).
+///
+/// L3 passes the new wire value (index into the catalog options). L4 stages
+/// it and marks dirty.
+class DeviceSettingsAngleTuneValueChanged extends DeviceSettingsEvent {
+  const DeviceSettingsAngleTuneValueChanged({required this.wireValue});
+
+  /// Wire value (index into [AngleTuneCapabilities.options], e.g. 0-4).
+  final int wireValue;
+}
+
+/// Save angle tune staging to device.
+class DeviceSettingsSaveAngleTuneRequested extends DeviceSettingsEvent {
+  const DeviceSettingsSaveAngleTuneRequested();
+}

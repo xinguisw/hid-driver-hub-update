@@ -93,6 +93,14 @@ class DeviceSettingsState {
   /// Separate matrix row "Angle Tune Feature" (e.g. PRO only).
   final bool hasAngleTune;
 
+  /// Per-mouse angle tune options (wire + label); null = no catalog.
+  ///
+  /// Discrete form only. TODO(range): the newer firmware / range sensors
+  /// (e.g. 3950) use a continuous -30°..+30° instead of a lookup table;
+  /// when the wire formula is confirmed this becomes the options list and
+  /// the range is carried separately.
+  final List<AngleTuneOption>? angleTuneOptions;
+
   /// Live D4 angle tune wire value; null = unknown.
   final int? angleTune;
 
@@ -200,6 +208,7 @@ class DeviceSettingsState {
     this.sensorChip,
     this.hasSensorTuning = false,
     this.hasAngleTune = false,
+    this.angleTuneOptions,
     this.angleTune,
     this.angleTuneLabel,
     this.hasLod = false,
@@ -264,6 +273,7 @@ class DeviceSettingsState {
     String? sensorChip,
     bool? hasSensorTuning,
     bool? hasAngleTune,
+    List<AngleTuneOption>? angleTuneOptions,
     int? angleTune,
     String? angleTuneLabel,
     bool? hasLod,
@@ -335,6 +345,7 @@ class DeviceSettingsState {
       sensorChip: sensorChip ?? this.sensorChip,
       hasSensorTuning: hasSensorTuning ?? this.hasSensorTuning,
       hasAngleTune: hasAngleTune ?? this.hasAngleTune,
+      angleTuneOptions: angleTuneOptions ?? this.angleTuneOptions,
       angleTune: angleTune ?? this.angleTune,
       angleTuneLabel: angleTuneLabel ?? this.angleTuneLabel,
       hasLod: hasLod ?? this.hasLod,
@@ -404,6 +415,7 @@ class DeviceSettingsState {
           sensorChip == other.sensorChip &&
           hasSensorTuning == other.hasSensorTuning &&
           hasAngleTune == other.hasAngleTune &&
+          _listEq(angleTuneOptions, other.angleTuneOptions) &&
           angleTune == other.angleTune &&
           angleTuneLabel == other.angleTuneLabel &&
           hasLod == other.hasLod &&
@@ -468,6 +480,7 @@ class DeviceSettingsState {
         sensorChip,
         hasSensorTuning,
         hasAngleTune,
+        Object.hashAll(angleTuneOptions ?? const []),
         angleTune,
         angleTuneLabel,
         hasLod,

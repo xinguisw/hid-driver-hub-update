@@ -313,7 +313,10 @@ Future<DeviceSettingsState> queryOnboardConfig(
         angleTune:
             (showAll || state.hasAngleTune) ? sensor.angleTune : state.angleTune,
         angleTuneLabel: (showAll || state.hasAngleTune)
-            ? translate.angleTuneWireToLabel(sensor.angleTune)
+            ? translate.angleTuneWireToLabel(
+                sensor.angleTune,
+                state.angleTuneOptions ?? const <AngleTuneOption>[],
+              )
             : state.angleTuneLabel,
         performance: (showAll || state.hasPerformance)
             ? sensor.performance

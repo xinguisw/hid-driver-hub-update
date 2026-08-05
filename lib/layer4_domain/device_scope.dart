@@ -220,6 +220,7 @@ class DeviceScope {
       commitDpiLevel: (level) => commitDpiLevel(card, level),
       commitSensorTuning: (ripple, snap) =>
           commitSensorTuning(card, ripple, snap),
+      commitAngleTune: (wireValue) => commitAngleTune(card, wireValue),
       actionLabelOf: (action, p1, p2, p3) => translate.buttonActionToLabel(
         action: action,
         param1: p1,
@@ -340,6 +341,32 @@ class DeviceScope {
     final dataBlock = Uint8List.fromList(current.data);
     dataBlock[0] = translate.triStateBoolToWire(rippleControl);
     dataBlock[1] = translate.triStateBoolToWire(angleSnap);
+
+    await session.setSensorOther(dataBlock);
+  }
+
+  /// Commits angle tune value into the 14-byte 0xD4 block.
+  ///
+  /// why: angle tune shares one block with ripple/angle snap/LOD/debounce/sleep/wheel,
+  /// so the current block is read first and only the angle tune byte is replaced.
+  Future<void> commitAngleTune(
+    DiscoveredCardState card,
+    int wireValue,
+  ) async {
+    final session = _sessionForCard(card);
+    if (session == null || !session.isAlive) {
+      throw StateError('commitAngleTune: no session');
+    }
+
+    final current = await session.querySensorOther();
+    if (current == null) {
+      throw StateError('Failed to read current sensor/other block');
+    }
+
+    // why: angle tune is at byte index 3 in the 0xD4 block, per the 14-byte
+    // layout [rippleControl(0), angleSnap(1), lod(2), angleTune(3), ...].
+    final dataBlock = Uint8List.fromList(current.data);
+    dataBlock[3] = wireValue;
 
     await session.setSensorOther(dataBlock);
   }

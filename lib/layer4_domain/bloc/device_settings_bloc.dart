@@ -20,6 +20,8 @@ typedef SensorTuningCommit = Future<void> Function(
   bool angleSnap,
 );
 
+typedef AngleTuneCommit = Future<void> Function(int wireValue);
+
 /// FR-ARC-014c: escalation callback invoked when consecutive failures reach threshold.
 ///
 /// L1 [DeviceScope] provides this to force session teardown/reconnect.
@@ -41,6 +43,7 @@ class DeviceSettingsBloc
     required this.commitReportRate,
     required this.commitDpiLevel,
     required this.commitSensorTuning,
+    required this.commitAngleTune,
     ButtonActionLabelFn? actionLabelOf,
     ButtonIdLabelFn? buttonIdLabelOf,
     DeviceSettingsViewState? initial,
@@ -68,12 +71,16 @@ class DeviceSettingsBloc
     on<DeviceSettingsRippleControlRequested>(_onRippleControlRequested);
     on<DeviceSettingsAngleSnapRequested>(_onAngleSnapRequested);
     on<DeviceSettingsSaveSensorTuningRequested>(_onSaveSensorTuning);
+    on<DeviceSettingsAngleTuneToggled>(_onAngleTuneToggled);
+    on<DeviceSettingsAngleTuneValueChanged>(_onAngleTuneValueChanged);
+    on<DeviceSettingsSaveAngleTuneRequested>(_onSaveAngleTune);
   }
 
   final ButtonMappingCommit commitButtonMapping;
   final ReportRateCommit commitReportRate;
   final DpiLevelCommit commitDpiLevel;
   final SensorTuningCommit commitSensorTuning;
+  final AngleTuneCommit commitAngleTune;
   final DeviceCapabilities? capabilities;
   final CapabilitiesLookup? capabilitiesLookup;
   final EscalationCallback? onEscalationRequested;
@@ -788,6 +795,133 @@ class DeviceSettingsBloc
       ),
     );
     debugPrint('[bloc] save sensor tuning: synced');
+    onSaveCompleted?.call();
+  }
+
+  /// User toggled angle tune enable/disable.
+  ///
+  /// Stages the enabled flag separately from the value, so the displayed
+  /// angle always reflects live data even when the feature is toggled off.
+  /// The toggle tracks on/off; the value tracks the wire index.
+  void _onAngleTuneToggled(
+    DeviceSettingsAngleTuneToggled event,
+    Emitter<DeviceSettingsViewState> emit,
+  ) {
+    final synced = state.synced;
+    if (synced == null) {
+      emit(state.copyWith(lastError: 'no settings loaded'));
+      return;
+    }
+
+    // why: baseline never decoded — staging would diff against an unknown value
+    if (synced.decodeErrors.contains('sensorOther')) {
+      emit(state.copyWith(lastError: 'angle tune unavailable: decode error'));
+      return;
+    }
+
+    emit(
+      state.copyWith(
+        angleTuneEnabledStaging: event.enabled,
+        isDirty: true,
+        clearError: true,
+      ),
+    );
+
+    debugPrint('[bloc] angle tune toggled: ${event.enabled}');
+  }
+
+  /// User changed angle tune value (left/right arrow).
+  ///
+  /// Stages the new wire value (index into catalog options) and marks dirty.
+  void _onAngleTuneValueChanged(
+    DeviceSettingsAngleTuneValueChanged event,
+    Emitter<DeviceSettingsViewState> emit,
+  ) {
+    final synced = state.synced;
+    if (synced == null) {
+      emit(state.copyWith(lastError: 'no settings loaded'));
+      return;
+    }
+
+    // why: baseline never decoded — staging would diff against an unknown value
+    if (synced.decodeErrors.contains('sensorOther')) {
+      emit(state.copyWith(lastError: 'angle tune unavailable: decode error'));
+      return;
+    }
+
+    emit(
+      state.copyWith(
+        angleTuneStaging: event.wireValue,
+        isDirty: true,
+        clearError: true,
+      ),
+    );
+
+    debugPrint('[bloc] angle tune value staged: ${event.wireValue}');
+  }
+
+  /// Save angle tune staging to device.
+  Future<void> _onSaveAngleTune(
+    DeviceSettingsSaveAngleTuneRequested event,
+    Emitter<DeviceSettingsViewState> emit,
+  ) async {
+    final angleTuneStaging = state.angleTuneStaging;
+    if (angleTuneStaging == null) {
+      debugPrint('[bloc] save angle tune: nothing dirty');
+      return;
+    }
+    if (state.committing) return;
+
+    final synced = state.synced;
+    if (synced == null) {
+      emit(state.copyWith(lastError: 'save angle tune: no synced settings'));
+      return;
+    }
+
+    emit(state.copyWith(committing: true, clearError: true));
+
+    try {
+      await commitAngleTune(angleTuneStaging);
+    } catch (e) {
+      debugPrint('[bloc] save angle tune failed: $e');
+      final failures = state.consecutiveFailures + 1;
+      emit(
+        state.copyWith(
+          committing: false,
+          lastError: 'angle tune save failed: $e',
+          consecutiveFailures: failures,
+        ),
+      );
+      if (failures >= failureEscalateThreshold) {
+        debugPrint(
+          '[bloc] consecutiveFailures=$failures >= $failureEscalateThreshold '
+          '— escalating to L1 watcher',
+        );
+        onEscalationRequested?.call(
+          'angle tune save failed $failures consecutive times',
+        );
+      }
+      return;
+    }
+
+    final nextSynced = synced.copyWith(
+      angleTune: angleTuneStaging,
+      angleTuneLabel: null, // will be recomputed from wire value on next GET
+      clearError: true,
+    );
+    emit(
+      DeviceSettingsViewState(
+        synced: nextSynced,
+        angleTuneStaging: null,
+        isDirty: false,
+        committing: false,
+        consecutiveFailures: 0,
+        lastError: null,
+        actionLabelOf: state.actionLabelOf,
+        buttonIdLabelOf: state.buttonIdLabelOf,
+      ),
+    );
+    debugPrint('[bloc] save angle tune: synced');
     onSaveCompleted?.call();
   }
 }

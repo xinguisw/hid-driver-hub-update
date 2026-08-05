@@ -26,11 +26,13 @@ class HubParameterPanel extends StatelessWidget {
     this.angleSnapStaging,
     this.angleTuneOn,
     this.angleTuneLabel,
+    this.lodMm,
     this.onRippleChanged,
     this.onAngleSnapChanged,
     this.onAngleTuneToggled,
     this.onAngleTuneDecrement,
     this.onAngleTuneIncrement,
+    this.onLodChanged,
   });
 
   final List<LodOption>? lodOptions;
@@ -53,11 +55,13 @@ class HubParameterPanel extends StatelessWidget {
   final bool? angleSnapStaging;
   final bool? angleTuneOn;
   final String? angleTuneLabel;
+  final int? lodMm;
   final ValueChanged<bool>? onRippleChanged;
   final ValueChanged<bool>? onAngleSnapChanged;
   final ValueChanged<bool>? onAngleTuneToggled;
   final VoidCallback? onAngleTuneDecrement;
   final VoidCallback? onAngleTuneIncrement;
+  final ValueChanged<int>? onLodChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -81,11 +85,13 @@ class HubParameterPanel extends StatelessWidget {
               // why: value shows live data even when toggled off.
               angleTuneOn: angleTuneOn ?? false,
               angleTuneLabel: angleTuneLabel ?? '0°',
+              lodMm: lodMm,
               onRippleChanged: onRippleChanged,
               onAngleSnapChanged: onAngleSnapChanged,
               onAngleTuneToggled: onAngleTuneToggled,
               onAngleTuneDecrement: onAngleTuneDecrement,
               onAngleTuneIncrement: onAngleTuneIncrement,
+              onLodChanged: onLodChanged,
               hasSensorTuning: hasSensorTuning,
               hasLod: hasLod,
               hasAngleTune: hasAngleTune,
@@ -121,11 +127,13 @@ class _SensorFeatureGroup extends StatelessWidget {
     required this.angleSnapOn,
     required this.angleTuneOn,
     required this.angleTuneLabel,
+    required this.lodMm,
     required this.onRippleChanged,
     required this.onAngleSnapChanged,
     required this.onAngleTuneToggled,
     required this.onAngleTuneDecrement,
     required this.onAngleTuneIncrement,
+    required this.onLodChanged,
     required this.hasSensorTuning,
     required this.hasLod,
     required this.hasAngleTune,
@@ -142,11 +150,13 @@ class _SensorFeatureGroup extends StatelessWidget {
   final bool angleSnapOn;
   final bool angleTuneOn;
   final String angleTuneLabel;
+  final int? lodMm;
   final ValueChanged<bool>? onRippleChanged;
   final ValueChanged<bool>? onAngleSnapChanged;
   final ValueChanged<bool>? onAngleTuneToggled;
   final VoidCallback? onAngleTuneDecrement;
   final VoidCallback? onAngleTuneIncrement;
+  final ValueChanged<int>? onLodChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -176,7 +186,13 @@ class _SensorFeatureGroup extends StatelessWidget {
                 const SizedBox(width: 8),
               ],
               if (hasLod) ...[
-                Expanded(child: _LodBox(options: lodOptions)),
+                Expanded(
+                  child: _LodBox(
+                    options: lodOptions,
+                    lodMm: lodMm,
+                    onLodChanged: onLodChanged,
+                  ),
+                ),
                 const SizedBox(width: 8),
               ],
               if (hasAngleTune) ...[
@@ -245,9 +261,15 @@ class _SensorTuningBox extends StatelessWidget {
 }
 
 class _LodBox extends StatelessWidget {
-  const _LodBox({required this.options});
+  const _LodBox({
+    required this.options,
+    required this.lodMm,
+    required this.onLodChanged,
+  });
 
   final List<LodOption> options;
+  final int? lodMm;
+  final ValueChanged<int>? onLodChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -264,8 +286,12 @@ class _LodBox extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
             child: RadioGroup<int>(
-              groupValue: options.isEmpty ? null : options.last.wire,
-              onChanged: (_) {},
+              groupValue: lodMm,
+              // why: RadioGroup always fires with a value; null only means
+              // deselected, which a radio group cannot reach on its own.
+              onChanged: (value) {
+                if (value != null) onLodChanged?.call(value);
+              },
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [

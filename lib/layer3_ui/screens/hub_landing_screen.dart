@@ -289,6 +289,7 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                             p.angleTuneLabelStaging != n.angleTuneLabelStaging ||
                             p.angleTuneEnabledStaging !=
                                 n.angleTuneEnabledStaging ||
+                            p.lodStaging != n.lodStaging ||
                             p.isDirty != n.isDirty ||
                             p.committing != n.committing ||
                             p.lastError != n.lastError,
@@ -327,6 +328,15 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                                       view.angleTuneLabelStaging ??
                                           synced?.angleTuneLabel ??
                                           '0°',
+                                  // why: staging paints ahead of synced so the
+                                  // radio follows the tap.
+                                  lodMm:
+                                      view.lodStaging ?? synced?.lodMm,
+                                  onLodChanged: (wire) {
+                                    bloc.add(
+                                      DeviceSettingsLodRequested(wire: wire),
+                                    );
+                                  },
                                   onRippleChanged: (on) {
                                     bloc.add(
                                       DeviceSettingsRippleControlRequested(
@@ -399,6 +409,10 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                                       view.angleTuneEnabledStaging != null) {
                                     bloc.add(
                                       const DeviceSettingsSaveAngleTuneRequested(),
+                                    );
+                                  } else if (view.lodStaging != null) {
+                                    bloc.add(
+                                      const DeviceSettingsSaveLodRequested(),
                                     );
                                   }
                                 },

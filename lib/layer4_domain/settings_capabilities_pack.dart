@@ -69,6 +69,8 @@ DeviceSettingsState applyCapabilitiesToSettings(
       hasLod: lod?.present ?? false,
       lodOptions: (lod != null && lod.present) ? lod.options : null,
       hasPerformance: perf?.present ?? false,
+      performanceOptions:
+          (perf != null && perf.present) ? perf.options : null,
     );
     final profile = SensorProfiles.forDevice(caps.devId);
     if (profile != null) {

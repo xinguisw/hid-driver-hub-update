@@ -222,6 +222,7 @@ class DeviceScope {
           commitSensorTuning(card, ripple, snap),
       commitAngleTune: (wireValue) => commitAngleTune(card, wireValue),
       commitLod: (wire) => commitLod(card, wire),
+      commitPerformance: (wire) => commitPerformance(card, wire),
       actionLabelOf: (action, p1, p2, p3) => translate.buttonActionToLabel(
         action: action,
         param1: p1,
@@ -394,6 +395,33 @@ class DeviceScope {
     // [rippleControl(0), angleSnap(1), lod(2), angleTune(3), ...].
     final dataBlock = Uint8List.fromList(current.data);
     dataBlock[2] = wire;
+
+    await session.setSensorOther(dataBlock);
+  }
+
+  /// Commits the performance mode into the 14-byte 0xD4 block.
+  ///
+  /// TODO(mock): real performance semantics pending; this just writes the
+  /// selected wire value into the performance byte.
+  Future<void> commitPerformance(
+    DiscoveredCardState card,
+    int wire,
+  ) async {
+    final session = _sessionForCard(card);
+    if (session == null || !session.isAlive) {
+      throw StateError('commitPerformance: no session');
+    }
+
+    final current = await session.querySensorOther();
+    if (current == null) {
+      throw StateError('Failed to read current sensor/other block');
+    }
+
+    // why: performance is at byte index 4 in the 0xD4 block, per the 14-byte
+    // layout [rippleControl(0), angleSnap(1), lod(2), angleTune(3),
+    // performance(4), ...].
+    final dataBlock = Uint8List.fromList(current.data);
+    dataBlock[4] = wire;
 
     await session.setSensorOther(dataBlock);
   }

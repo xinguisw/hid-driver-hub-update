@@ -164,3 +164,19 @@ class DeviceSettingsLodRequested extends DeviceSettingsEvent {
 class DeviceSettingsSaveLodRequested extends DeviceSettingsEvent {
   const DeviceSettingsSaveLodRequested();
 }
+
+/// User selected a performance mode (chip button).
+///
+/// L3 passes the new wire value (index into catalog options). L4 stages it
+/// and marks dirty.
+class DeviceSettingsPerformanceRequested extends DeviceSettingsEvent {
+  const DeviceSettingsPerformanceRequested({required this.wire});
+
+  /// Wire value (index into [SensorPerformance.options], e.g. 0-2).
+  final int wire;
+}
+
+/// Save performance staging to device.
+class DeviceSettingsSavePerformanceRequested extends DeviceSettingsEvent {
+  const DeviceSettingsSavePerformanceRequested();
+}

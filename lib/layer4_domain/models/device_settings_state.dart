@@ -120,6 +120,12 @@ class DeviceSettingsState {
 
   /// D4 performance wire value; null = unknown.
   final bool hasPerformance;
+
+  /// Performance options (wire ids); null/empty = no performance feature.
+  ///
+  /// TODO(mock): real values pending; catalog currently carries [0,1,2].
+  final List<int>? performanceOptions;
+
   final int? performance;
 
   // --- Other ---
@@ -216,6 +222,7 @@ class DeviceSettingsState {
     this.lodMm,
     this.lodLabel,
     this.hasPerformance = false,
+    this.performanceOptions,
     this.performance,
     this.rippleOn,
     this.angleSnapOn,
@@ -281,6 +288,7 @@ class DeviceSettingsState {
     int? lodMm,
     String? lodLabel,
     bool? hasPerformance,
+    List<int>? performanceOptions,
     int? performance,
     bool? rippleOn,
     bool? angleSnapOn,
@@ -353,6 +361,7 @@ class DeviceSettingsState {
       lodMm: lodMm ?? this.lodMm,
       lodLabel: lodLabel ?? this.lodLabel,
       hasPerformance: hasPerformance ?? this.hasPerformance,
+      performanceOptions: performanceOptions ?? this.performanceOptions,
       performance: performance ?? this.performance,
       rippleOn: rippleOn ?? this.rippleOn,
       angleSnapOn: angleSnapOn ?? this.angleSnapOn,
@@ -423,6 +432,7 @@ class DeviceSettingsState {
           lodMm == other.lodMm &&
           lodLabel == other.lodLabel &&
           hasPerformance == other.hasPerformance &&
+          _listEq(performanceOptions, other.performanceOptions) &&
           performance == other.performance &&
           rippleOn == other.rippleOn &&
           angleSnapOn == other.angleSnapOn &&
@@ -488,6 +498,7 @@ class DeviceSettingsState {
         lodMm,
         lodLabel,
         hasPerformance,
+        Object.hashAll(performanceOptions ?? const []),
         performance,
         rippleOn,
         angleSnapOn,

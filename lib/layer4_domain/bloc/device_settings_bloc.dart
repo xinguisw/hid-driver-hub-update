@@ -25,6 +25,8 @@ typedef AngleTuneCommit = Future<void> Function(int wireValue);
 
 typedef LodCommit = Future<void> Function(int wire);
 
+typedef PerformanceCommit = Future<void> Function(int wire);
+
 /// FR-ARC-014c: escalation callback invoked when consecutive failures reach threshold.
 ///
 /// L1 [DeviceScope] provides this to force session teardown/reconnect.
@@ -48,6 +50,7 @@ class DeviceSettingsBloc
     required this.commitSensorTuning,
     required this.commitAngleTune,
     required this.commitLod,
+    required this.commitPerformance,
     ButtonActionLabelFn? actionLabelOf,
     ButtonIdLabelFn? buttonIdLabelOf,
     DeviceSettingsViewState? initial,
@@ -80,6 +83,8 @@ class DeviceSettingsBloc
     on<DeviceSettingsSaveAngleTuneRequested>(_onSaveAngleTune);
     on<DeviceSettingsLodRequested>(_onLodRequested);
     on<DeviceSettingsSaveLodRequested>(_onSaveLod);
+    on<DeviceSettingsPerformanceRequested>(_onPerformanceRequested);
+    on<DeviceSettingsSavePerformanceRequested>(_onSavePerformance);
   }
 
   final ButtonMappingCommit commitButtonMapping;
@@ -88,6 +93,7 @@ class DeviceSettingsBloc
   final SensorTuningCommit commitSensorTuning;
   final AngleTuneCommit commitAngleTune;
   final LodCommit commitLod;
+  final PerformanceCommit commitPerformance;
   final DeviceCapabilities? capabilities;
   final CapabilitiesLookup? capabilitiesLookup;
   final EscalationCallback? onEscalationRequested;
@@ -1032,6 +1038,100 @@ class DeviceSettingsBloc
       ),
     );
     debugPrint('[bloc] save LOD: synced');
+    onSaveCompleted?.call();
+  }
+
+  /// User selected a performance mode (chip button).
+  ///
+  /// Stages the new wire value and marks dirty. Commit happens on Save.
+  void _onPerformanceRequested(
+    DeviceSettingsPerformanceRequested event,
+    Emitter<DeviceSettingsViewState> emit,
+  ) {
+    final synced = state.synced;
+    if (synced == null) {
+      emit(state.copyWith(lastError: 'no settings loaded'));
+      return;
+    }
+
+    // why: baseline never decoded — staging would diff against an unknown value
+    if (synced.decodeErrors.contains('sensorOther')) {
+      emit(state.copyWith(lastError: 'performance unavailable: decode error'));
+      return;
+    }
+
+    emit(
+      state.copyWith(
+        performanceStaging: event.wire,
+        isDirty: true,
+        clearError: true,
+      ),
+    );
+
+    debugPrint('[bloc] performance staged: wire=${event.wire}');
+  }
+
+  /// Save performance staging to device.
+  Future<void> _onSavePerformance(
+    DeviceSettingsSavePerformanceRequested event,
+    Emitter<DeviceSettingsViewState> emit,
+  ) async {
+    final performanceStaging = state.performanceStaging;
+    if (performanceStaging == null) {
+      debugPrint('[bloc] save performance: nothing dirty');
+      return;
+    }
+    if (state.committing) return;
+
+    final synced = state.synced;
+    if (synced == null) {
+      emit(state.copyWith(lastError: 'save performance: no synced settings'));
+      return;
+    }
+
+    emit(state.copyWith(committing: true, clearError: true));
+
+    try {
+      await commitPerformance(performanceStaging);
+    } catch (e) {
+      debugPrint('[bloc] save performance failed: $e');
+      final failures = state.consecutiveFailures + 1;
+      emit(
+        state.copyWith(
+          committing: false,
+          lastError: 'performance save failed: $e',
+          consecutiveFailures: failures,
+        ),
+      );
+      if (failures >= failureEscalateThreshold) {
+        debugPrint(
+          '[bloc] consecutiveFailures=$failures >= $failureEscalateThreshold '
+          '— escalating to L1 watcher',
+        );
+        onEscalationRequested?.call(
+          'performance save failed $failures consecutive times',
+        );
+      }
+      return;
+    }
+
+    final nextSynced = synced.copyWith(
+      performance: performanceStaging,
+      clearError: true,
+    );
+    emit(
+      DeviceSettingsViewState(
+        synced: nextSynced,
+        performanceStaging: null,
+        isDirty: false,
+        committing: false,
+        consecutiveFailures: 0,
+        lastError: null,
+        actionLabelOf: state.actionLabelOf,
+        buttonIdLabelOf: state.buttonIdLabelOf,
+      ),
+    );
+    debugPrint('[bloc] save performance: synced');
     onSaveCompleted?.call();
   }
 }

@@ -203,12 +203,14 @@ class SensorCapabilities {
   final bool sensorTuning;
   /// Separate feature from [sensorTuning].
   final bool angleTune;
+  final AngleTuneCapabilities? angleTuneDetails;
   final LiftOffDistance? liftOffDistance;
   const SensorCapabilities({
     required this.present,
     this.performance,
     required this.sensorTuning,
     required this.angleTune,
+    this.angleTuneDetails,
     this.liftOffDistance,
   });
 
@@ -221,12 +223,76 @@ class SensorCapabilities {
               json['performance'] as Map<String, dynamic>),
       sensorTuning: json['sensorTuning'] as bool,
       angleTune: json['angleTune'] as bool,
+      angleTuneDetails: json['angleTuneDetails'] == null
+          ? null
+          : AngleTuneCapabilities.fromJson(
+              json['angleTuneDetails'] as Map<String, dynamic>),
       liftOffDistance: json['liftOffDistance'] == null
           ? null
           : LiftOffDistance.fromJson(
               json['liftOffDistance'] as Map<String, dynamic>),
     );
   }
+}
+
+/// Angle-tune value encoding, per mouse (not per sensor — two mice with the
+/// same sensor may differ).
+///
+/// Discrete form ([options]): a fixed wire→label lookup table. This is the
+/// current 14-byte firmware shape: `data[3]` of the 0xD4 block is the value
+/// byte.
+///
+/// TODO(range encoding): the newer firmware / range-based sensors (e.g. 3950)
+/// expose a continuous -30°..+30° range instead of a lookup table. When the
+/// wire formula is confirmed, add a `range` form here (e.g. `min/max/step`)
+/// alongside [options] — L5 decodes it by computation, L3 renders a counter
+/// bounded by min/max. Do NOT hardcode the formula in L5.
+class AngleTuneCapabilities {
+  final bool present;
+  final int? defaultWire;
+  final List<AngleTuneOption>? options;
+  const AngleTuneCapabilities({
+    required this.present,
+    this.defaultWire,
+    this.options,
+  });
+
+  factory AngleTuneCapabilities.fromJson(Map<String, dynamic> json) {
+    return AngleTuneCapabilities(
+      present: json['present'] as bool,
+      defaultWire: json['default'] as int?,
+      options: json['options'] == null
+          ? null
+          : (json['options'] as List)
+              .map((e) => AngleTuneOption.fromJson(e as Map<String, dynamic>))
+              .toList(),
+    );
+  }
+}
+
+/// One wire→label mapping for discrete angle tune.
+///
+/// Mirrors [LodOption]: `wire` is the device byte, `label` is the display
+/// string (e.g. `-30°`). L5 owns the lookup logic, L2 owns the per-mouse list.
+class AngleTuneOption {
+  final int wire;
+  final String label;
+  const AngleTuneOption({required this.wire, required this.label});
+
+  factory AngleTuneOption.fromJson(Map<String, dynamic> json) {
+    return AngleTuneOption(
+      wire: json['wire'] as int,
+      label: json['label'] as String,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is AngleTuneOption && wire == other.wire && label == other.label;
+
+  @override
+  int get hashCode => Object.hash(wire, label);
 }
 
 class SensorPerformance {

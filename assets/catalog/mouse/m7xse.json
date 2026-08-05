@@ -67,6 +67,17 @@
     "present": false,
     "sensorTuning": false,
     "angleTune": false,
+    "angleTuneDetails": {
+      "present": false,
+      "default": 2,
+      "options": [
+        {"wire": 0, "label": "-30°"},
+        {"wire": 1, "label": "-10°"},
+        {"wire": 2, "label": "0°"},
+        {"wire": 3, "label": "10°"},
+        {"wire": 4, "label": "30°"}
+      ]
+    },
     "liftOffDistance": {
       "present": false,
       "options": [

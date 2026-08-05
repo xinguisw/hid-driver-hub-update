@@ -313,11 +313,14 @@ Future<DeviceSettingsState> queryOnboardConfig(
                 state.lodOptions ?? const <LodOption>[],
               )
             : state.lodLabel,
+        angleTuneOn: (showAll || state.hasAngleTune)
+            ? translate.triStateWireToBool(sensor.angleTune)
+            : state.angleTuneOn,
         angleTune:
-            (showAll || state.hasAngleTune) ? sensor.angleTune : state.angleTune,
+            (showAll || state.hasAngleTune) ? sensor.angleValue : state.angleTune,
         angleTuneLabel: (showAll || state.hasAngleTune)
             ? translate.angleTuneWireToLabel(
-                sensor.angleTune,
+                sensor.angleValue,
                 state.angleTuneOptions ?? const <AngleTuneOption>[],
               )
             : state.angleTuneLabel,

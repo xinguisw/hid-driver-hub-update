@@ -101,6 +101,9 @@ class DeviceSettingsState {
   /// the range is carried separately.
   final List<AngleTuneOption>? angleTuneOptions;
 
+  /// Live angle tune enable flag (tri-state [6]); null = unknown.
+  final bool? angleTuneOn;
+
   /// Live D4 angle tune wire value; null = unknown.
   final int? angleTune;
 
@@ -215,6 +218,7 @@ class DeviceSettingsState {
     this.hasSensorTuning = false,
     this.hasAngleTune = false,
     this.angleTuneOptions,
+    this.angleTuneOn,
     this.angleTune,
     this.angleTuneLabel,
     this.hasLod = false,
@@ -281,6 +285,7 @@ class DeviceSettingsState {
     bool? hasSensorTuning,
     bool? hasAngleTune,
     List<AngleTuneOption>? angleTuneOptions,
+    bool? angleTuneOn,
     int? angleTune,
     String? angleTuneLabel,
     bool? hasLod,
@@ -354,6 +359,7 @@ class DeviceSettingsState {
       hasSensorTuning: hasSensorTuning ?? this.hasSensorTuning,
       hasAngleTune: hasAngleTune ?? this.hasAngleTune,
       angleTuneOptions: angleTuneOptions ?? this.angleTuneOptions,
+      angleTuneOn: angleTuneOn ?? this.angleTuneOn,
       angleTune: angleTune ?? this.angleTune,
       angleTuneLabel: angleTuneLabel ?? this.angleTuneLabel,
       hasLod: hasLod ?? this.hasLod,
@@ -425,6 +431,7 @@ class DeviceSettingsState {
           hasSensorTuning == other.hasSensorTuning &&
           hasAngleTune == other.hasAngleTune &&
           _listEq(angleTuneOptions, other.angleTuneOptions) &&
+          angleTuneOn == other.angleTuneOn &&
           angleTune == other.angleTune &&
           angleTuneLabel == other.angleTuneLabel &&
           hasLod == other.hasLod &&
@@ -491,6 +498,7 @@ class DeviceSettingsState {
         hasSensorTuning,
         hasAngleTune,
         Object.hashAll(angleTuneOptions ?? const []),
+        angleTuneOn,
         angleTune,
         angleTuneLabel,
         hasLod,

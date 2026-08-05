@@ -341,11 +341,12 @@ class DeviceScope {
     }
 
     // why: L5 owns wire encoding; these two bytes are tri-state (0xFF/0x0F),
-    // so a raw 1/0 would read back as neither on nor off.
+    // so a raw 1/0 would read back as neither on nor off. 18-byte layout:
+    // ripple at [0], angleSnap at [2].
     const translate = TranslationCodec();
     final dataBlock = Uint8List.fromList(current.data);
     dataBlock[0] = translate.triStateBoolToWire(rippleControl);
-    dataBlock[1] = translate.triStateBoolToWire(angleSnap);
+    dataBlock[2] = translate.triStateBoolToWire(angleSnap);
 
     await session.setSensorOther(dataBlock);
   }
@@ -368,10 +369,10 @@ class DeviceScope {
       throw StateError('Failed to read current sensor/other block');
     }
 
-    // why: angle tune is at byte index 3 in the 0xD4 block, per the 14-byte
-    // layout [rippleControl(0), angleSnap(1), lod(2), angleTune(3), ...].
+    // why: angle tune VALUE is at byte index 7 in the 18-byte 0xD4 block
+    // [angleTune(6), angleValue(7)]. The angleTune ON/OFF toggle is at [6].
     final dataBlock = Uint8List.fromList(current.data);
-    dataBlock[3] = wireValue;
+    dataBlock[7] = wireValue;
 
     await session.setSensorOther(dataBlock);
   }
@@ -394,10 +395,9 @@ class DeviceScope {
       throw StateError('Failed to read current sensor/other block');
     }
 
-    // why: LOD is at byte index 2 in the 0xD4 block, per the 14-byte layout
-    // [rippleControl(0), angleSnap(1), lod(2), angleTune(3), ...].
+    // why: LOD is at byte index 4 in the 18-byte 0xD4 block.
     final dataBlock = Uint8List.fromList(current.data);
-    dataBlock[2] = wire;
+    dataBlock[4] = wire;
 
     await session.setSensorOther(dataBlock);
   }
@@ -420,11 +420,9 @@ class DeviceScope {
       throw StateError('Failed to read current sensor/other block');
     }
 
-    // why: performance is at byte index 4 in the 0xD4 block, per the 14-byte
-    // layout [rippleControl(0), angleSnap(1), lod(2), angleTune(3),
-    // performance(4), ...].
+    // why: performance is at byte index 9 in the 18-byte 0xD4 block.
     final dataBlock = Uint8List.fromList(current.data);
-    dataBlock[4] = wire;
+    dataBlock[9] = wire;
 
     await session.setSensorOther(dataBlock);
   }
@@ -448,7 +446,7 @@ class DeviceScope {
     }
 
     final dataBlock = Uint8List.fromList(current.data);
-    dataBlock[11] = wire;
+    dataBlock[13] = wire;
 
     await session.setSensorOther(dataBlock);
   }
@@ -471,7 +469,7 @@ class DeviceScope {
     }
 
     final dataBlock = Uint8List.fromList(current.data);
-    dataBlock[12] = wire;
+    dataBlock[15] = wire;
 
     await session.setSensorOther(dataBlock);
   }
@@ -496,7 +494,7 @@ class DeviceScope {
 
     const translate = TranslationCodec();
     final dataBlock = Uint8List.fromList(current.data);
-    dataBlock[13] = translate.triStateBoolToWire(invert);
+    dataBlock[17] = translate.triStateBoolToWire(invert);
 
     await session.setSensorOther(dataBlock);
   }

@@ -148,3 +148,14 @@ class DeviceSettingsAngleTuneValueChanged extends DeviceSettingsEvent {
 class DeviceSettingsSaveAngleTuneRequested extends DeviceSettingsEvent {
   const DeviceSettingsSaveAngleTuneRequested();
 }
+
+/// User selected an LOD value (radio button).
+///
+/// L3 passes the new wire value (index into catalog options). L4 stages it
+/// and marks dirty.
+class DeviceSettingsLodRequested extends DeviceSettingsEvent {
+  const DeviceSettingsLodRequested({required this.wire});
+
+  /// Wire value (index into [LiftOffDistance.options], e.g. 0-2).
+  final int wire;
+}

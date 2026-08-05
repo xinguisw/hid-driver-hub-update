@@ -22,6 +22,7 @@ class DeviceSettingsViewState {
     this.angleTuneStaging,
     this.angleTuneLabelStaging,
     this.angleTuneEnabledStaging,
+    this.lodStaging,
     this.isDirty = false,
     this.committing = false,
     this.consecutiveFailures = 0,
@@ -39,6 +40,7 @@ class DeviceSettingsViewState {
   final int? angleTuneStaging;
   final String? angleTuneLabelStaging;
   final bool? angleTuneEnabledStaging;
+  final int? lodStaging;
   final bool isDirty;
   final bool committing;
   final int consecutiveFailures;
@@ -72,6 +74,7 @@ class DeviceSettingsViewState {
     int? angleTuneStaging,
     String? angleTuneLabelStaging,
     bool? angleTuneEnabledStaging,
+    int? lodStaging,
     bool? isDirty,
     bool? committing,
     int? consecutiveFailures,
@@ -107,6 +110,9 @@ class DeviceSettingsViewState {
       angleTuneEnabledStaging: clearStaging
           ? null
           : (angleTuneEnabledStaging ?? this.angleTuneEnabledStaging),
+      lodStaging: clearStaging
+          ? null
+          : (lodStaging ?? this.lodStaging),
       isDirty: clearStaging ? false : (isDirty ?? this.isDirty),
       committing: committing ?? this.committing,
       consecutiveFailures: consecutiveFailures ?? this.consecutiveFailures,

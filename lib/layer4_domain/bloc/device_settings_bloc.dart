@@ -23,6 +23,8 @@ typedef SensorTuningCommit = Future<void> Function(
 
 typedef AngleTuneCommit = Future<void> Function(int wireValue);
 
+typedef LodCommit = Future<void> Function(int wire);
+
 /// FR-ARC-014c: escalation callback invoked when consecutive failures reach threshold.
 ///
 /// L1 [DeviceScope] provides this to force session teardown/reconnect.
@@ -45,6 +47,7 @@ class DeviceSettingsBloc
     required this.commitDpiLevel,
     required this.commitSensorTuning,
     required this.commitAngleTune,
+    required this.commitLod,
     ButtonActionLabelFn? actionLabelOf,
     ButtonIdLabelFn? buttonIdLabelOf,
     DeviceSettingsViewState? initial,
@@ -75,6 +78,7 @@ class DeviceSettingsBloc
     on<DeviceSettingsAngleTuneToggled>(_onAngleTuneToggled);
     on<DeviceSettingsAngleTuneValueChanged>(_onAngleTuneValueChanged);
     on<DeviceSettingsSaveAngleTuneRequested>(_onSaveAngleTune);
+    on<DeviceSettingsLodRequested>(_onLodRequested);
   }
 
   final ButtonMappingCommit commitButtonMapping;
@@ -82,6 +86,7 @@ class DeviceSettingsBloc
   final DpiLevelCommit commitDpiLevel;
   final SensorTuningCommit commitSensorTuning;
   final AngleTuneCommit commitAngleTune;
+  final LodCommit commitLod;
   final DeviceCapabilities? capabilities;
   final CapabilitiesLookup? capabilitiesLookup;
   final EscalationCallback? onEscalationRequested;
@@ -932,5 +937,35 @@ class DeviceSettingsBloc
     );
     debugPrint('[bloc] save angle tune: synced');
     onSaveCompleted?.call();
+  }
+
+  /// User selected an LOD value (radio button).
+  ///
+  /// Stages the new wire value and marks dirty. Commit happens on Save.
+  void _onLodRequested(
+    DeviceSettingsLodRequested event,
+    Emitter<DeviceSettingsViewState> emit,
+  ) {
+    final synced = state.synced;
+    if (synced == null) {
+      emit(state.copyWith(lastError: 'no settings loaded'));
+      return;
+    }
+
+    // why: baseline never decoded — staging would diff against an unknown value
+    if (synced.decodeErrors.contains('sensorOther')) {
+      emit(state.copyWith(lastError: 'LOD unavailable: decode error'));
+      return;
+    }
+
+    emit(
+      state.copyWith(
+        lodStaging: event.wire,
+        isDirty: true,
+        clearError: true,
+      ),
+    );
+
+    debugPrint('[bloc] LOD staged: wire=${event.wire}');
   }
 }

@@ -221,6 +221,7 @@ class DeviceScope {
       commitSensorTuning: (ripple, snap) =>
           commitSensorTuning(card, ripple, snap),
       commitAngleTune: (wireValue) => commitAngleTune(card, wireValue),
+      commitLod: (wire) => commitLod(card, wire),
       actionLabelOf: (action, p1, p2, p3) => translate.buttonActionToLabel(
         action: action,
         param1: p1,
@@ -367,6 +368,32 @@ class DeviceScope {
     // layout [rippleControl(0), angleSnap(1), lod(2), angleTune(3), ...].
     final dataBlock = Uint8List.fromList(current.data);
     dataBlock[3] = wireValue;
+
+    await session.setSensorOther(dataBlock);
+  }
+
+  /// Commits the LOD value into the 14-byte 0xD4 block.
+  ///
+  /// why: LOD shares one block with ripple/angle snap/angle tune/debounce/sleep/wheel,
+  /// so the current block is read first and only the LOD byte is replaced.
+  Future<void> commitLod(
+    DiscoveredCardState card,
+    int wire,
+  ) async {
+    final session = _sessionForCard(card);
+    if (session == null || !session.isAlive) {
+      throw StateError('commitLod: no session');
+    }
+
+    final current = await session.querySensorOther();
+    if (current == null) {
+      throw StateError('Failed to read current sensor/other block');
+    }
+
+    // why: LOD is at byte index 2 in the 0xD4 block, per the 14-byte layout
+    // [rippleControl(0), angleSnap(1), lod(2), angleTune(3), ...].
+    final dataBlock = Uint8List.fromList(current.data);
+    dataBlock[2] = wire;
 
     await session.setSensorOther(dataBlock);
   }

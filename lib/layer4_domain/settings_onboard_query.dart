@@ -308,7 +308,10 @@ Future<DeviceSettingsState> queryOnboardConfig(
             : state.angleSnapOn,
         lodMm: (showAll || state.hasLod) ? sensor.lod : state.lodMm,
         lodLabel: (showAll || state.hasLod)
-            ? translate.lodWireToLabel(sensor.lod)
+            ? translate.lodWireToLabel(
+                sensor.lod,
+                state.lodOptions ?? const <LodOption>[],
+              )
             : state.lodLabel,
         angleTune:
             (showAll || state.hasAngleTune) ? sensor.angleTune : state.angleTune,

@@ -20,6 +20,7 @@ class DeviceSettingsViewState {
     this.rippleControlStaging,
     this.angleSnapStaging,
     this.angleTuneStaging,
+    this.angleTuneLabelStaging,
     this.angleTuneEnabledStaging,
     this.isDirty = false,
     this.committing = false,
@@ -36,6 +37,7 @@ class DeviceSettingsViewState {
   final bool? rippleControlStaging;
   final bool? angleSnapStaging;
   final int? angleTuneStaging;
+  final String? angleTuneLabelStaging;
   final bool? angleTuneEnabledStaging;
   final bool isDirty;
   final bool committing;
@@ -68,6 +70,7 @@ class DeviceSettingsViewState {
     bool? rippleControlStaging,
     bool? angleSnapStaging,
     int? angleTuneStaging,
+    String? angleTuneLabelStaging,
     bool? angleTuneEnabledStaging,
     bool? isDirty,
     bool? committing,
@@ -98,6 +101,9 @@ class DeviceSettingsViewState {
       angleTuneStaging: clearStaging
           ? null
           : (angleTuneStaging ?? this.angleTuneStaging),
+      angleTuneLabelStaging: clearStaging
+          ? null
+          : (angleTuneLabelStaging ?? this.angleTuneLabelStaging),
       angleTuneEnabledStaging: clearStaging
           ? null
           : (angleTuneEnabledStaging ?? this.angleTuneEnabledStaging),

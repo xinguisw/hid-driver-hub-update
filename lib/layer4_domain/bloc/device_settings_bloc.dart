@@ -5,6 +5,7 @@ import 'package:driver_hub/layer4_domain/button_mapping_reset.dart';
 import 'package:driver_hub/layer4_domain/button_mapping_validate.dart';
 import 'package:driver_hub/layer4_domain/models/button_mapping_slot.dart';
 import 'package:driver_hub/layer5_codec/button_action_catalog_map.dart';
+import 'package:driver_hub/layer5_codec/codecs/translation_codec.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -849,9 +850,17 @@ class DeviceSettingsBloc
       return;
     }
 
+    // why: L5 owns wire→label; the catalog options come from synced state.
+    const translate = TranslationCodec();
+    final label = translate.angleTuneWireToLabel(
+      event.wireValue,
+      synced.angleTuneOptions ?? const <AngleTuneOption>[],
+    );
+
     emit(
       state.copyWith(
         angleTuneStaging: event.wireValue,
+        angleTuneLabelStaging: label,
         isDirty: true,
         clearError: true,
       ),

@@ -87,7 +87,7 @@ DiscoveredDevice _discovered(String path) {
   const mode = DeviceMode(mode: 0, desc: 'USB', vid: 0x248A, pid: 0x8208);
   return DiscoveredDevice(
     entry: const DeviceCatalogEntry(
-      devId: 'aa4ecd01',
+      devId: '02AA',
       deviceType: DeviceType.mouse,
       model: 'M7XSE',
       deviceAttr: 'mouse_m7xse',

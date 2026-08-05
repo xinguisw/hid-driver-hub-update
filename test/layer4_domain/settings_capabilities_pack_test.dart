@@ -8,11 +8,11 @@ void main() {
 
   test('applyCapabilitiesToSettings seeds M7XSE matrix presence', () async {
     await DeviceCapabilityStore.load('m7xse');
-    final caps = DeviceCapabilityStore.forDevice('aa4ecd01');
+    final caps = DeviceCapabilityStore.forDevice('02AA');
     expect(caps, isNotNull);
 
     final base = const DeviceSettingsState(
-      devId: 'aa4ecd01',
+      devId: '02AA',
       displayName: 'M7XSE',
       connectionMode: 0,
       loading: true,

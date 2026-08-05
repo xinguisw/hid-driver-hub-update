@@ -8,7 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   DeviceSettingsState baseSettings() => const DeviceSettingsState(
-    devId: 'aa4ecd01',
+    devId: '02AA',
     displayName: 'M7XSE',
     connectionMode: 0,
     loading: false,
@@ -72,7 +72,7 @@ void main() {
       );
       bloc.add(DeviceSettingsHydrated(baseSettings()));
       await pumpEventQueue();
-      expect(bloc.state.synced?.devId, 'aa4ecd01');
+      expect(bloc.state.synced?.devId, '02AA');
       expect(bloc.state.isDirty, false);
       expect(bloc.state.buttonMappingStaging, isNull);
       await bloc.close();
@@ -301,7 +301,7 @@ void main() {
 
   group('DeviceSettingsBloc capabilities lookup', () {
     const dpiCaps = DeviceCapabilities(
-      devId: 'aa4ecd01',
+      devId: '02AA',
       displayNameKey: 'device.m7xse',
       dpi: DpiCapabilities(
         maxLevels: 4,

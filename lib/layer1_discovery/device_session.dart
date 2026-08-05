@@ -105,7 +105,7 @@ class DeviceSession implements DeviceRepository {
       debugPrint('[session] rehandshake: $name…');
       final hs = await _protocol.handshake(_session);
       final typeMatch = hs.deviceType == device.entry.deviceType;
-      final idMatch = hs.deviceId == device.entry.devId;
+      final idMatch = _deviceIdMatches(hs.deviceId, device.entry.devId);
       debugPrint('[session] rehandshake: type=${hs.deviceType?.name} '
           'id="${hs.deviceId}" match=${typeMatch && idMatch}');
       if (typeMatch && idMatch) {
@@ -207,7 +207,7 @@ class DeviceSession implements DeviceRepository {
       final hs = await _handshakeWithRetry();
 
       final typeMatch = hs.deviceType == device.entry.deviceType;
-      final idMatch = hs.deviceId == device.entry.devId;
+      final idMatch = _deviceIdMatches(hs.deviceId, device.entry.devId);
       debugPrint('[session] verify: reported type=${hs.deviceType?.name ?? 'unknown'} '
           '(match=$typeMatch), reported id="${hs.deviceId}" (match=$idMatch)');
 
@@ -296,6 +296,11 @@ class DeviceSession implements DeviceRepository {
 
   String _hex(List<int> bytes) =>
       bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join(' ');
+
+  /// Case-insensitive device-id match between the handshake-reported id
+  /// (lowercase hex from L5 parse) and the catalog `devId` (uppercase in JSON).
+  static bool _deviceIdMatches(String reported, String catalog) =>
+      reported.toLowerCase() == catalog.toLowerCase();
 
   Future<void> dispose() async {
     await _unsolicitedSub?.cancel();

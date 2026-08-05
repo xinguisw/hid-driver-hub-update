@@ -8,7 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   DeviceSettingsState synced({List<ButtonData>? buttons}) =>
       DeviceSettingsState(
-        devId: 'aa4ecd01',
+        devId: '02AA',
         displayName: 'M7XSE',
         connectionMode: 0,
         buttonCount: 6,
@@ -113,7 +113,7 @@ void main() {
   group('validateButtonMappingAgainstCapabilities', () {
     const hotspot = Hotspot(x: 0.5, y: 0.5, r: 0.1);
     const capabilities = DeviceCapabilities(
-      devId: 'aa4ecd01',
+      devId: '02AA',
       displayNameKey: 'device.m7xse',
       buttons: ButtonCapabilities(
         count: 6,

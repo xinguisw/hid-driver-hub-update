@@ -7,9 +7,9 @@ void main() {
 
   test('DeviceCapabilityStore loads m7xse.json from product matrix', () async {
     await DeviceCapabilityStore.load('m7xse');
-    final caps = DeviceCapabilityStore.forDevice('aa4ecd01');
+    final caps = DeviceCapabilityStore.forDevice('02AA');
     expect(caps, isNotNull);
-    expect(caps!.devId, 'aa4ecd01');
+    expect(caps!.devId, '02AA');
     expect(caps.displayNameKey, 'device.m7xse.name');
     expect(caps.buttons!.count, 6);
     expect(caps.buttons!.list.length, 6);
@@ -68,7 +68,7 @@ void main() {
   test('SensorProfiles loads SG8925 for M7XSE; keeps PAW3311 and PAW3395 tables', () async {
     SensorProfiles.debugReset();
     await SensorProfiles.load();
-    final profile = SensorProfiles.forDevice('aa4ecd01');
+    final profile = SensorProfiles.forDevice('02AA');
     expect(profile, isNotNull);
     expect(profile!.chip, 'SG8925');
     expect(profile.table, 'SG8925/std');

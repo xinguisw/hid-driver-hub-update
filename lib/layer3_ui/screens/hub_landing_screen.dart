@@ -1,3 +1,4 @@
+import 'package:driver_hub/layer2_capabilities/capabilities.dart';
 import 'package:driver_hub/layer3_ui/widgets/hub_button_mapping_panel.dart';
 import 'package:driver_hub/layer3_ui/widgets/hub_left_sidebar.dart';
 import 'package:driver_hub/layer3_ui/widgets/hub_mouse_canvas.dart';
@@ -284,6 +285,10 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                             p.synced != n.synced ||
                             p.rippleControlStaging != n.rippleControlStaging ||
                             p.angleSnapStaging != n.angleSnapStaging ||
+                            p.angleTuneStaging != n.angleTuneStaging ||
+                            p.angleTuneLabelStaging != n.angleTuneLabelStaging ||
+                            p.angleTuneEnabledStaging !=
+                                n.angleTuneEnabledStaging ||
                             p.isDirty != n.isDirty ||
                             p.committing != n.committing ||
                             p.lastError != n.lastError,
@@ -313,6 +318,15 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                                   rippleStaging: view.rippleControlStaging,
                                   angleSnapOn: synced?.angleSnapOn,
                                   angleSnapStaging: view.angleSnapStaging,
+                                  angleTuneOn:
+                                      view.angleTuneEnabledStaging ?? false,
+                                  // why: staged label when dirty, else live
+                                  // synced label (value always visible even
+                                  // when toggled off).
+                                  angleTuneLabel:
+                                      view.angleTuneLabelStaging ??
+                                          synced?.angleTuneLabel ??
+                                          '0°',
                                   onRippleChanged: (on) {
                                     bloc.add(
                                       DeviceSettingsRippleControlRequested(
@@ -327,6 +341,49 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                                       ),
                                     );
                                   },
+                                  onAngleTuneToggled: (on) {
+                                    bloc.add(
+                                      DeviceSettingsAngleTuneToggled(
+                                        enabled: on,
+                                      ),
+                                    );
+                                  },
+                                  onAngleTuneDecrement: () {
+                                    final current =
+                                        view.angleTuneStaging ??
+                                            (synced?.angleTune ?? 0);
+                                    final options = synced?.angleTuneOptions ??
+                                        const <AngleTuneOption>[];
+                                    final idx = options.indexWhere(
+                                      (o) => o.wire == current,
+                                    );
+                                    if (idx > 0) {
+                                      bloc.add(
+                                        DeviceSettingsAngleTuneValueChanged(
+                                          wireValue:
+                                              options[idx - 1].wire,
+                                        ),
+                                      );
+                                    }
+                                  },
+                                  onAngleTuneIncrement: () {
+                                    final current =
+                                        view.angleTuneStaging ??
+                                            (synced?.angleTune ?? 0);
+                                    final options = synced?.angleTuneOptions ??
+                                        const <AngleTuneOption>[];
+                                    final idx = options.indexWhere(
+                                      (o) => o.wire == current,
+                                    );
+                                    if (idx >= 0 && idx < options.length - 1) {
+                                      bloc.add(
+                                        DeviceSettingsAngleTuneValueChanged(
+                                          wireValue:
+                                              options[idx + 1].wire,
+                                        ),
+                                      );
+                                    }
+                                  },
                                 ),
                               ),
                               _ParameterActionBar(
@@ -337,6 +394,11 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                                       view.angleSnapStaging != null) {
                                     bloc.add(
                                       const DeviceSettingsSaveSensorTuningRequested(),
+                                    );
+                                  } else if (view.angleTuneStaging != null ||
+                                      view.angleTuneEnabledStaging != null) {
+                                    bloc.add(
+                                      const DeviceSettingsSaveAngleTuneRequested(),
                                     );
                                   }
                                 },

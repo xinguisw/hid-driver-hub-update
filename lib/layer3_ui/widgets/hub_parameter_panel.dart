@@ -24,8 +24,13 @@ class HubParameterPanel extends StatelessWidget {
     this.rippleStaging,
     this.angleSnapOn,
     this.angleSnapStaging,
+    this.angleTuneOn,
+    this.angleTuneLabel,
     this.onRippleChanged,
     this.onAngleSnapChanged,
+    this.onAngleTuneToggled,
+    this.onAngleTuneDecrement,
+    this.onAngleTuneIncrement,
   });
 
   final List<LodOption>? lodOptions;
@@ -46,8 +51,13 @@ class HubParameterPanel extends StatelessWidget {
   final bool? rippleStaging;
   final bool? angleSnapOn;
   final bool? angleSnapStaging;
+  final bool? angleTuneOn;
+  final String? angleTuneLabel;
   final ValueChanged<bool>? onRippleChanged;
   final ValueChanged<bool>? onAngleSnapChanged;
+  final ValueChanged<bool>? onAngleTuneToggled;
+  final VoidCallback? onAngleTuneDecrement;
+  final VoidCallback? onAngleTuneIncrement;
 
   @override
   Widget build(BuildContext context) {
@@ -68,8 +78,14 @@ class HubParameterPanel extends StatelessWidget {
               // why: staging paints ahead of synced so the switch follows the tap.
               rippleOn: rippleStaging ?? rippleOn ?? false,
               angleSnapOn: angleSnapStaging ?? angleSnapOn ?? false,
+              // why: value shows live data even when toggled off.
+              angleTuneOn: angleTuneOn ?? false,
+              angleTuneLabel: angleTuneLabel ?? '0°',
               onRippleChanged: onRippleChanged,
               onAngleSnapChanged: onAngleSnapChanged,
+              onAngleTuneToggled: onAngleTuneToggled,
+              onAngleTuneDecrement: onAngleTuneDecrement,
+              onAngleTuneIncrement: onAngleTuneIncrement,
               hasSensorTuning: hasSensorTuning,
               hasLod: hasLod,
               hasAngleTune: hasAngleTune,
@@ -103,8 +119,13 @@ class _SensorFeatureGroup extends StatelessWidget {
     required this.performanceOptions,
     required this.rippleOn,
     required this.angleSnapOn,
+    required this.angleTuneOn,
+    required this.angleTuneLabel,
     required this.onRippleChanged,
     required this.onAngleSnapChanged,
+    required this.onAngleTuneToggled,
+    required this.onAngleTuneDecrement,
+    required this.onAngleTuneIncrement,
     required this.hasSensorTuning,
     required this.hasLod,
     required this.hasAngleTune,
@@ -119,8 +140,13 @@ class _SensorFeatureGroup extends StatelessWidget {
   final bool hasPerformance;
   final bool rippleOn;
   final bool angleSnapOn;
+  final bool angleTuneOn;
+  final String angleTuneLabel;
   final ValueChanged<bool>? onRippleChanged;
   final ValueChanged<bool>? onAngleSnapChanged;
+  final ValueChanged<bool>? onAngleTuneToggled;
+  final VoidCallback? onAngleTuneDecrement;
+  final VoidCallback? onAngleTuneIncrement;
 
   @override
   Widget build(BuildContext context) {
@@ -154,7 +180,15 @@ class _SensorFeatureGroup extends StatelessWidget {
                 const SizedBox(width: 8),
               ],
               if (hasAngleTune) ...[
-                const Expanded(child: _AngleTuneBox()),
+                Expanded(
+                  child: _AngleTuneBox(
+                    angleTuneOn: angleTuneOn,
+                    angleTuneLabel: angleTuneLabel,
+                    onAngleTuneToggled: onAngleTuneToggled,
+                    onAngleTuneDecrement: onAngleTuneDecrement,
+                    onAngleTuneIncrement: onAngleTuneIncrement,
+                  ),
+                ),
               ],
             ],
           ),
@@ -254,7 +288,19 @@ class _LodBox extends StatelessWidget {
 }
 
 class _AngleTuneBox extends StatelessWidget {
-  const _AngleTuneBox();
+  const _AngleTuneBox({
+    required this.angleTuneOn,
+    required this.angleTuneLabel,
+    required this.onAngleTuneToggled,
+    required this.onAngleTuneDecrement,
+    required this.onAngleTuneIncrement,
+  });
+
+  final bool angleTuneOn;
+  final String angleTuneLabel;
+  final ValueChanged<bool>? onAngleTuneToggled;
+  final VoidCallback? onAngleTuneDecrement;
+  final VoidCallback? onAngleTuneIncrement;
 
   @override
   Widget build(BuildContext context) {
@@ -271,18 +317,28 @@ class _AngleTuneBox extends StatelessWidget {
           Row(
             children: [
               const Expanded(child: Text('Angle Tune')),
-              Switch(value: false, onChanged: null),
+              Switch(value: angleTuneOn, onChanged: onAngleTuneToggled),
             ],
           ),
           const SizedBox(height: 4),
-          const Row(
+          Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text('<'),
-              SizedBox(width: 16),
-              Text('0'),
-              SizedBox(width: 16),
-              Text('>'),
+              InkWell(
+                onTap: onAngleTuneDecrement,
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 8),
+                  child: Text('<'),
+                ),
+              ),
+              Text(angleTuneLabel),
+              InkWell(
+                onTap: onAngleTuneIncrement,
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 8),
+                  child: Text('>'),
+                ),
+              ),
             ],
           ),
         ],

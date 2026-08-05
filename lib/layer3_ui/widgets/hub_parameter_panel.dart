@@ -27,12 +27,14 @@ class HubParameterPanel extends StatelessWidget {
     this.angleTuneOn,
     this.angleTuneLabel,
     this.lodMm,
+    this.performance,
     this.onRippleChanged,
     this.onAngleSnapChanged,
     this.onAngleTuneToggled,
     this.onAngleTuneDecrement,
     this.onAngleTuneIncrement,
     this.onLodChanged,
+    this.onPerformanceChanged,
   });
 
   final List<LodOption>? lodOptions;
@@ -56,12 +58,14 @@ class HubParameterPanel extends StatelessWidget {
   final bool? angleTuneOn;
   final String? angleTuneLabel;
   final int? lodMm;
+  final int? performance;
   final ValueChanged<bool>? onRippleChanged;
   final ValueChanged<bool>? onAngleSnapChanged;
   final ValueChanged<bool>? onAngleTuneToggled;
   final VoidCallback? onAngleTuneDecrement;
   final VoidCallback? onAngleTuneIncrement;
   final ValueChanged<int>? onLodChanged;
+  final ValueChanged<int>? onPerformanceChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -86,12 +90,14 @@ class HubParameterPanel extends StatelessWidget {
               angleTuneOn: angleTuneOn ?? false,
               angleTuneLabel: angleTuneLabel ?? '0°',
               lodMm: lodMm,
+              performance: performance,
               onRippleChanged: onRippleChanged,
               onAngleSnapChanged: onAngleSnapChanged,
               onAngleTuneToggled: onAngleTuneToggled,
               onAngleTuneDecrement: onAngleTuneDecrement,
               onAngleTuneIncrement: onAngleTuneIncrement,
               onLodChanged: onLodChanged,
+              onPerformanceChanged: onPerformanceChanged,
               hasSensorTuning: hasSensorTuning,
               hasLod: hasLod,
               hasAngleTune: hasAngleTune,
@@ -128,12 +134,14 @@ class _SensorFeatureGroup extends StatelessWidget {
     required this.angleTuneOn,
     required this.angleTuneLabel,
     required this.lodMm,
+    required this.performance,
     required this.onRippleChanged,
     required this.onAngleSnapChanged,
     required this.onAngleTuneToggled,
     required this.onAngleTuneDecrement,
     required this.onAngleTuneIncrement,
     required this.onLodChanged,
+    required this.onPerformanceChanged,
     required this.hasSensorTuning,
     required this.hasLod,
     required this.hasAngleTune,
@@ -151,12 +159,14 @@ class _SensorFeatureGroup extends StatelessWidget {
   final bool angleTuneOn;
   final String angleTuneLabel;
   final int? lodMm;
+  final int? performance;
   final ValueChanged<bool>? onRippleChanged;
   final ValueChanged<bool>? onAngleSnapChanged;
   final ValueChanged<bool>? onAngleTuneToggled;
   final VoidCallback? onAngleTuneDecrement;
   final VoidCallback? onAngleTuneIncrement;
   final ValueChanged<int>? onLodChanged;
+  final ValueChanged<int>? onPerformanceChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -210,7 +220,11 @@ class _SensorFeatureGroup extends StatelessWidget {
           ),
           if (hasPerformance) ...[
             const SizedBox(height: 8),
-            _PerformanceRow(options: performanceOptions),
+            _PerformanceRow(
+              options: performanceOptions,
+              performance: performance,
+              onPerformanceChanged: onPerformanceChanged,
+            ),
           ],
         ],
       ),
@@ -374,9 +388,15 @@ class _AngleTuneBox extends StatelessWidget {
 }
 
 class _PerformanceRow extends StatelessWidget {
-  const _PerformanceRow({required this.options});
+  const _PerformanceRow({
+    required this.options,
+    required this.performance,
+    required this.onPerformanceChanged,
+  });
 
   final List<int> options;
+  final int? performance;
+  final ValueChanged<int>? onPerformanceChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -391,10 +411,22 @@ class _PerformanceRow extends StatelessWidget {
         children: [
           const Text('Performance'),
           const SizedBox(width: 16),
-          for (final wire in options) ...[
-            _OptionChip(label: _performanceLabel(wire)),
-            const SizedBox(width: 8),
-          ],
+          Expanded(
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final wire in options)
+                  _SelectableChip(
+                    label: _performanceLabel(wire),
+                    selected: performance == wire,
+                    onTap: onPerformanceChanged == null
+                        ? null
+                        : () => onPerformanceChanged!(wire),
+                  ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -546,6 +578,49 @@ class _OptionChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(4),
       ),
       child: Text(label, style: const TextStyle(fontSize: 12)),
+    );
+  }
+}
+
+/// Tappable chip that highlights when [selected].
+class _SelectableChip extends StatelessWidget {
+  const _SelectableChip({
+    required this.label,
+    required this.selected,
+    this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(4),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: selected
+              ? theme.colorScheme.secondaryContainer
+              : Colors.transparent,
+          border: Border.all(
+            color: selected
+                ? theme.colorScheme.secondary
+                : theme.colorScheme.outline,
+          ),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+          ),
+        ),
+      ),
     );
   }
 }

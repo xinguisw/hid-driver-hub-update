@@ -290,6 +290,7 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                             p.angleTuneEnabledStaging !=
                                 n.angleTuneEnabledStaging ||
                             p.lodStaging != n.lodStaging ||
+                            p.performanceStaging != n.performanceStaging ||
                             p.isDirty != n.isDirty ||
                             p.committing != n.committing ||
                             p.lastError != n.lastError,
@@ -332,9 +333,18 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                                   // radio follows the tap.
                                   lodMm:
                                       view.lodStaging ?? synced?.lodMm,
+                                  performance: view.performanceStaging ??
+                                      synced?.performance,
                                   onLodChanged: (wire) {
                                     bloc.add(
                                       DeviceSettingsLodRequested(wire: wire),
+                                    );
+                                  },
+                                  onPerformanceChanged: (wire) {
+                                    bloc.add(
+                                      DeviceSettingsPerformanceRequested(
+                                        wire: wire,
+                                      ),
                                     );
                                   },
                                   onRippleChanged: (on) {
@@ -413,6 +423,10 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                                   } else if (view.lodStaging != null) {
                                     bloc.add(
                                       const DeviceSettingsSaveLodRequested(),
+                                    );
+                                  } else if (view.performanceStaging != null) {
+                                    bloc.add(
+                                      const DeviceSettingsSavePerformanceRequested(),
                                     );
                                   }
                                 },

@@ -782,6 +782,59 @@ void main() {
       expect(bloc.state.isDirty, false);
       await bloc.close();
     });
+
+    test('save commits LOD wire and syncs state', () async {
+      int? written;
+      final bloc = DeviceSettingsBloc(
+        commitButtonMapping: (_) async {},
+        commitReportRate: (_) async {},
+        commitDpiLevel: (_) async {},
+        commitSensorTuning: (_, _) async {},
+        commitAngleTune: (_) async {},
+        commitLod: (wire) async {
+          written = wire;
+        },
+      );
+      bloc.add(DeviceSettingsHydrated(lodSettings()));
+      await pumpEventQueue();
+      bloc.add(const DeviceSettingsLodRequested(wire: 2));
+      await pumpEventQueue();
+      bloc.add(const DeviceSettingsSaveLodRequested());
+      await pumpEventQueue();
+
+      expect(written, 2);
+      expect(bloc.state.synced?.lodMm, 2);
+      expect(bloc.state.lodStaging, isNull);
+      expect(bloc.state.isDirty, false);
+      expect(bloc.state.lastError, isNull);
+      await bloc.close();
+    });
+
+    test('save failure keeps staging and records failure', () async {
+      final bloc = DeviceSettingsBloc(
+        commitButtonMapping: (_) async {},
+        commitReportRate: (_) async {},
+        commitDpiLevel: (_) async {},
+        commitSensorTuning: (_, _) async {},
+        commitAngleTune: (_) async {},
+        commitLod: (_) async {
+          throw Exception('nak');
+        },
+      );
+      bloc.add(DeviceSettingsHydrated(lodSettings()));
+      await pumpEventQueue();
+      bloc.add(const DeviceSettingsLodRequested(wire: 2));
+      await pumpEventQueue();
+      bloc.add(const DeviceSettingsSaveLodRequested());
+      await pumpEventQueue();
+
+      expect(bloc.state.lodStaging, 2);
+      expect(bloc.state.isDirty, true);
+      expect(bloc.state.consecutiveFailures, 1);
+      expect(bloc.state.lastError, contains('nak'));
+      expect(bloc.state.committing, false);
+      await bloc.close();
+    });
   });
 }
 

@@ -79,6 +79,7 @@ class DeviceSettingsBloc
     on<DeviceSettingsAngleTuneValueChanged>(_onAngleTuneValueChanged);
     on<DeviceSettingsSaveAngleTuneRequested>(_onSaveAngleTune);
     on<DeviceSettingsLodRequested>(_onLodRequested);
+    on<DeviceSettingsSaveLodRequested>(_onSaveLod);
   }
 
   final ButtonMappingCommit commitButtonMapping;
@@ -967,5 +968,70 @@ class DeviceSettingsBloc
     );
 
     debugPrint('[bloc] LOD staged: wire=${event.wire}');
+  }
+
+  /// Save LOD staging to device.
+  Future<void> _onSaveLod(
+    DeviceSettingsSaveLodRequested event,
+    Emitter<DeviceSettingsViewState> emit,
+  ) async {
+    final lodStaging = state.lodStaging;
+    if (lodStaging == null) {
+      debugPrint('[bloc] save LOD: nothing dirty');
+      return;
+    }
+    if (state.committing) return;
+
+    final synced = state.synced;
+    if (synced == null) {
+      emit(state.copyWith(lastError: 'save LOD: no synced settings'));
+      return;
+    }
+
+    emit(state.copyWith(committing: true, clearError: true));
+
+    try {
+      await commitLod(lodStaging);
+    } catch (e) {
+      debugPrint('[bloc] save LOD failed: $e');
+      final failures = state.consecutiveFailures + 1;
+      emit(
+        state.copyWith(
+          committing: false,
+          lastError: 'LOD save failed: $e',
+          consecutiveFailures: failures,
+        ),
+      );
+      if (failures >= failureEscalateThreshold) {
+        debugPrint(
+          '[bloc] consecutiveFailures=$failures >= $failureEscalateThreshold '
+          '— escalating to L1 watcher',
+        );
+        onEscalationRequested?.call(
+          'LOD save failed $failures consecutive times',
+        );
+      }
+      return;
+    }
+
+    final nextSynced = synced.copyWith(
+      lodMm: lodStaging,
+      lodLabel: null, // will be recomputed from wire value on next GET
+      clearError: true,
+    );
+    emit(
+      DeviceSettingsViewState(
+        synced: nextSynced,
+        lodStaging: null,
+        isDirty: false,
+        committing: false,
+        consecutiveFailures: 0,
+        lastError: null,
+        actionLabelOf: state.actionLabelOf,
+        buttonIdLabelOf: state.buttonIdLabelOf,
+      ),
+    );
+    debugPrint('[bloc] save LOD: synced');
+    onSaveCompleted?.call();
   }
 }

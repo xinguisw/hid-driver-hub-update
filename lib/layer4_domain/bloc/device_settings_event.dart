@@ -159,3 +159,8 @@ class DeviceSettingsLodRequested extends DeviceSettingsEvent {
   /// Wire value (index into [LiftOffDistance.options], e.g. 0-2).
   final int wire;
 }
+
+/// Save LOD staging to device.
+class DeviceSettingsSaveLodRequested extends DeviceSettingsEvent {
+  const DeviceSettingsSaveLodRequested();
+}

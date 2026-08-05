@@ -634,14 +634,16 @@ class _WheelBox extends StatelessWidget {
               _SelectableChip(
                 label: 'Forward',
                 selected: !invert,
-                onTap: onInvertChanged == null || invert
+                // why: both chips stay tappable so the user can switch away
+                // from the current selection; selection only paints state.
+                onTap: onInvertChanged == null
                     ? null
                     : () => onInvertChanged!(false),
               ),
               _SelectableChip(
                 label: 'Reverse',
                 selected: invert,
-                onTap: onInvertChanged == null || !invert
+                onTap: onInvertChanged == null
                     ? null
                     : () => onInvertChanged!(true),
               ),

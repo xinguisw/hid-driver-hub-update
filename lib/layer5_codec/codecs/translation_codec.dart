@@ -380,15 +380,28 @@ class TranslationCodec {
   /// PAW3395 lift-off distance level → display label.
   ///
   /// `0`→`1mm`, `1`→`2mm`.
-  String? lodWireToLabel(int wire) {
-    switch (wire & 0xFF) {
-      case 0:
-        return '1mm';
-      case 1:
-        return '2mm';
-      default:
-        return null;
+  /// Generic LOD wire → display label using catalog options.
+  ///
+  /// Returns `null` if the wire is not in [options].
+  ///
+  /// Mirrors [angleTuneWireToLabel]: L5 owns wire→meaning, L2 owns the
+  /// per-mouse options. The old fixed `0→1mm, 1→2mm` table was removed
+  /// because it disagreed with the per-mouse catalog (e.g. wire 0 = 0.7mm).
+  String? lodWireToLabel(int wire, List<LodOption> options) {
+    for (final opt in options) {
+      if (opt.wire == (wire & 0xFF)) {
+        return '${_formatMm(opt.mm)}mm';
+      }
     }
+    return null;
+  }
+
+  /// `0.7` → `0.7`, `1.0` → `1` (drop trailing `.0`).
+  static String _formatMm(double mm) {
+    if (mm == mm.roundToDouble()) {
+      return mm.toInt().toString();
+    }
+    return mm.toString();
   }
 
   /// Generic LOD wire → mm using catalog options.

@@ -345,10 +345,16 @@ void main() {
   });
 
   group('TranslationCodec.lodWireToLabel', () {
-    test('PAW3395 lift-off distance labels', () {
-      expect(t.lodWireToLabel(0), '1mm');
-      expect(t.lodWireToLabel(1), '2mm');
-      expect(t.lodWireToLabel(2), isNull);
+    test('catalog-driven lift-off distance labels', () {
+      const options = [
+        LodOption(wire: 0, mm: 0.7),
+        LodOption(wire: 1, mm: 1.0),
+        LodOption(wire: 2, mm: 2.0),
+      ];
+      expect(t.lodWireToLabel(0, options), '0.7mm');
+      expect(t.lodWireToLabel(1, options), '1mm');
+      expect(t.lodWireToLabel(2, options), '2mm');
+      expect(t.lodWireToLabel(3, options), isNull);
     });
   });
 

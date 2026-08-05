@@ -324,7 +324,9 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                                   angleSnapOn: synced?.angleSnapOn,
                                   angleSnapStaging: view.angleSnapStaging,
                                   angleTuneOn:
-                                      view.angleTuneEnabledStaging ?? false,
+                                      view.angleTuneEnabledStaging ??
+                                          synced?.angleTuneOn ??
+                                          false,
                                   // why: staged label when dirty, else live
                                   // synced label (value always visible even
                                   // when toggled off).

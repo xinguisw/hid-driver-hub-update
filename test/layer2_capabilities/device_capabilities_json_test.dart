@@ -23,11 +23,11 @@ void main() {
     expect(caps.dpi!.levels.length, 8);
     expect(caps.dpi!.levels.map((e) => e.value).toList(),
         [800, 1600, 2400, 3200, 5000, 1600, 1600, 1600]);
-    expect(caps.sensor!.present, isFalse);
-    expect(caps.sensor!.sensorTuning, isFalse);
-    expect(caps.sensor!.angleTune, isFalse);
+    expect(caps.sensor!.present, isTrue);
+    expect(caps.sensor!.sensorTuning, isTrue);
+    expect(caps.sensor!.angleTune, isTrue);
     expect(caps.sensor!.angleTuneDetails, isNotNull);
-    expect(caps.sensor!.angleTuneDetails!.present, isFalse);
+    expect(caps.sensor!.angleTuneDetails!.present, isTrue);
     expect(caps.sensor!.angleTuneDetails!.defaultWire, 2);
     expect(caps.sensor!.angleTuneDetails!.options!.length, 5);
     expect(caps.sensor!.angleTuneDetails!.options![0].wire, 0);
@@ -35,9 +35,9 @@ void main() {
     expect(caps.sensor!.angleTuneDetails!.options![2].wire, 2);
     expect(caps.sensor!.angleTuneDetails!.options![2].label, '0°');
     expect(caps.sensor!.performance, isNotNull);
-    expect(caps.sensor!.performance!.present, isFalse);
+    expect(caps.sensor!.performance!.present, isTrue);
     expect(caps.sensor!.performance!.options, [0, 1, 2]);
-    expect(caps.sensor!.liftOffDistance!.present, isFalse);
+    expect(caps.sensor!.liftOffDistance!.present, isTrue);
     expect(caps.sensor!.liftOffDistance!.options.length, 3);
     expect(caps.sensor!.liftOffDistance!.options[0].wire, 0);
     expect(caps.sensor!.liftOffDistance!.options[0].mm, 0.7);
@@ -45,7 +45,7 @@ void main() {
     expect(caps.sensor!.liftOffDistance!.options[1].mm, 1.0);
     expect(caps.sensor!.liftOffDistance!.options[2].wire, 2);
     expect(caps.sensor!.liftOffDistance!.options[2].mm, 2.0);
-    expect(caps.otherFeatures!.buttonDebounce!.present, isFalse);
+    expect(caps.otherFeatures!.buttonDebounce!.present, isTrue);
     expect(caps.otherFeatures!.buttonDebounce!.options.length, 6);
     expect(caps.otherFeatures!.buttonDebounce!.options[0].wire, 0);
     expect(caps.otherFeatures!.buttonDebounce!.options[0].label, '2ms');
@@ -57,7 +57,7 @@ void main() {
     expect(caps.otherFeatures!.sleepTime!.options[0].label, '30 sec');
     expect(caps.otherFeatures!.sleepTime!.options[5].wire, 5);
     expect(caps.otherFeatures!.sleepTime!.options[5].label, '15 min');
-    expect(caps.otherFeatures!.wheelDirectionInvert, isFalse);
+    expect(caps.otherFeatures!.wheelDirectionInvert, isTrue);
     expect(caps.rgbBacklight!.present, isFalse);
     expect(caps.rgbBacklight!.modes.length, 4);
     expect(caps.macro, isNull);

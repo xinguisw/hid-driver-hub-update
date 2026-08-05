@@ -1,4 +1,5 @@
 import 'package:driver_hub/layer2_capabilities/capabilities.dart';
+import 'package:driver_hub/layer3_ui/widgets/hub_backlight_panel.dart';
 import 'package:driver_hub/layer3_ui/widgets/hub_button_mapping_panel.dart';
 import 'package:driver_hub/layer3_ui/widgets/hub_left_sidebar.dart';
 import 'package:driver_hub/layer3_ui/widgets/hub_mouse_canvas.dart';
@@ -8,6 +9,7 @@ import 'package:driver_hub/layer4_domain/bloc/device_settings_bloc.dart';
 import 'package:driver_hub/layer4_domain/bloc/device_settings_event.dart';
 import 'package:driver_hub/layer4_domain/bloc/device_settings_state_view.dart';
 import 'package:driver_hub/layer4_domain/device_scope.dart';
+import 'package:driver_hub/layer4_domain/models/device_settings_state.dart';
 import 'package:driver_hub/layer4_domain/models/discovered_card_state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -34,6 +36,7 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
   static const int _buttonMappingIndex = 0;
   static const int _performanceIndex = 2;
   static const int _parameterIndex = 3;
+  static const int _backlightIndex = 4;
 
   @override
   void initState() {
@@ -484,6 +487,35 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                           );
                         },
                       ),
+                )
+              else if (_selectedIndex == _backlightIndex)
+                Expanded(
+                  child: BlocBuilder<DeviceSettingsBloc, DeviceSettingsViewState>(
+                    buildWhen: (p, n) => p.synced != n.synced,
+                    builder: (context, view) {
+                      final synced = view.synced;
+                      return HubBacklightPanel(
+                        rgbModes: [
+                          for (final m in synced?.rgbModes ?? const <RgbModeData>[])
+                            RgbMode(
+                              id: m.id,
+                              nameKey: m.nameKey,
+                              supportsColor: m.supportsColor,
+                            ),
+                        ],
+                        rgbEnable: synced?.rgbEnable,
+                        rgbModeId: synced?.rgbModeId,
+                        rgbBrightnessLevels: synced?.rgbBrightnessLevels,
+                        rgbBrightness: synced?.rgbBrightness,
+                        rgbSpeedLevels: synced?.rgbSpeedLevels,
+                        rgbSpeed: synced?.rgbSpeed,
+                        rgbR: synced?.rgbR,
+                        rgbG: synced?.rgbG,
+                        rgbB: synced?.rgbB,
+                        rgbSleepTime: synced?.rgbSleepTime,
+                      );
+                    },
+                  ),
                 )
               else
                 const Expanded(child: Center(child: Text(''))),

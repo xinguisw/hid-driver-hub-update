@@ -30,12 +30,12 @@ void main() {
     expect(state.dpiLevels, isNotNull);
     expect(state.dpiLevels!.length, 8);
 
-    // M7XSE matrix: sensor + other features on (testing flip); rgb off.
-    expect(state.hasSensorTuning, isTrue);
-    expect(state.hasAngleTune, isTrue);
-    expect(state.hasLod, isTrue);
-    expect(state.hasPerformance, isTrue);
-    expect(state.hasButtonDebounce, isTrue);
+    // M7XSE matrix: only report rate, DPI, buttons, sleep time; rgb off.
+    expect(state.hasSensorTuning, isFalse);
+    expect(state.hasAngleTune, isFalse);
+    expect(state.hasLod, isFalse);
+    expect(state.hasPerformance, isFalse);
+    expect(state.hasButtonDebounce, isFalse);
     expect(state.hasSleepTime, isTrue);
     expect(state.sleepOptions, isNotNull);
     expect(state.sleepOptions!.length, 7);
@@ -43,7 +43,7 @@ void main() {
     expect(state.sleepOptions![0].label, '30 sec');
     expect(state.sleepOptions![5].wire, 5);
     expect(state.sleepOptions![5].label, '15 min');
-    expect(state.hasWheelInvert, isTrue);
+    expect(state.hasWheelInvert, isFalse);
     expect(state.hasRgbBacklight, isFalse);
   });
 }

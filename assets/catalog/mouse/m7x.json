@@ -1,6 +1,6 @@
 {
-  "devId": "02AA",
-  "displayNameKey": "device.m7xse.name",
+  "devId": "01AA",
+  "displayNameKey": "device.m7x.name",
   "buttons": {
     "count": 6,
     "list": [
@@ -43,15 +43,15 @@
     ]
   },
   "reportRate": {
-    "options": [500, 250, 125],
-    "defaultValue": 500
+    "options": [1000, 500, 250, 125],
+    "defaultValue": 1000
   },
   "dpi": {
     "maxLevels": 8,
     "defaultLevel": 2,
-    "maxDpi": 5000,
+    "maxDpi": 12000,
     "independentXY": false,
-    "rgbPerStage": false,
+    "rgbPerStage": true,
     "levels": [
       { "level": 1, "value": 800, "color": "" },
       { "level": 2, "value": 1600, "color": "" },
@@ -65,7 +65,7 @@
   },
   "sensor": {
     "present": true,
-    "sensorTuning": false,
+    "sensorTuning": true,
     "angleTune": false,
     "performance": {
       "present": false,

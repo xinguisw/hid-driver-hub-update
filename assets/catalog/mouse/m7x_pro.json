@@ -1,6 +1,6 @@
 {
-  "devId": "02AA",
-  "displayNameKey": "device.m7xse.name",
+  "devId": "03AA",
+  "displayNameKey": "device.m7x_pro.name",
   "buttons": {
     "count": 6,
     "list": [
@@ -43,15 +43,15 @@
     ]
   },
   "reportRate": {
-    "options": [500, 250, 125],
-    "defaultValue": 500
+    "options": [1000, 500, 250, 125],
+    "defaultValue": 1000
   },
   "dpi": {
     "maxLevels": 8,
     "defaultLevel": 2,
-    "maxDpi": 5000,
+    "maxDpi": 24000,
     "independentXY": false,
-    "rgbPerStage": false,
+    "rgbPerStage": true,
     "levels": [
       { "level": 1, "value": 800, "color": "" },
       { "level": 2, "value": 1600, "color": "" },
@@ -65,18 +65,28 @@
   },
   "sensor": {
     "present": true,
-    "sensorTuning": false,
-    "angleTune": false,
+    "sensorTuning": true,
+    "angleTune": true,
+    "angleTuneDetails": {
+      "present": true,
+      "default": 2,
+      "options": [
+        {"wire": 0, "label": "-30°"},
+        {"wire": 1, "label": "-10°"},
+        {"wire": 2, "label": "0°"},
+        {"wire": 3, "label": "10°"},
+        {"wire": 4, "label": "30°"}
+      ]
+    },
     "performance": {
       "present": false,
       "options": [0, 1, 2]
     },
     "liftOffDistance": {
-      "present": false,
+      "present": true,
       "options": [
-        {"wire": 0, "mm": 0.7},
-        {"wire": 1, "mm": 1.0},
-        {"wire": 2, "mm": 2.0}
+        {"wire": 0, "mm": 1.0},
+        {"wire": 1, "mm": 2.0}
       ]
     }
   },
@@ -108,7 +118,7 @@
     "wheelDirectionInvert": false
   },
   "rgbBacklight": {
-    "present": false,
+    "present": true,
     "modes": [
       {
         "id": 1,

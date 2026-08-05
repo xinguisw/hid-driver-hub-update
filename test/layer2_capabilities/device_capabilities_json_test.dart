@@ -24,20 +24,12 @@ void main() {
     expect(caps.dpi!.levels.map((e) => e.value).toList(),
         [800, 1600, 2400, 3200, 5000, 1600, 1600, 1600]);
     expect(caps.sensor!.present, isTrue);
-    expect(caps.sensor!.sensorTuning, isTrue);
-    expect(caps.sensor!.angleTune, isTrue);
-    expect(caps.sensor!.angleTuneDetails, isNotNull);
-    expect(caps.sensor!.angleTuneDetails!.present, isTrue);
-    expect(caps.sensor!.angleTuneDetails!.defaultWire, 2);
-    expect(caps.sensor!.angleTuneDetails!.options!.length, 5);
-    expect(caps.sensor!.angleTuneDetails!.options![0].wire, 0);
-    expect(caps.sensor!.angleTuneDetails!.options![0].label, '-30°');
-    expect(caps.sensor!.angleTuneDetails!.options![2].wire, 2);
-    expect(caps.sensor!.angleTuneDetails!.options![2].label, '0°');
+    expect(caps.sensor!.sensorTuning, isFalse);
+    expect(caps.sensor!.angleTune, isFalse);
     expect(caps.sensor!.performance, isNotNull);
-    expect(caps.sensor!.performance!.present, isTrue);
+    expect(caps.sensor!.performance!.present, isFalse);
     expect(caps.sensor!.performance!.options, [0, 1, 2]);
-    expect(caps.sensor!.liftOffDistance!.present, isTrue);
+    expect(caps.sensor!.liftOffDistance!.present, isFalse);
     expect(caps.sensor!.liftOffDistance!.options.length, 3);
     expect(caps.sensor!.liftOffDistance!.options[0].wire, 0);
     expect(caps.sensor!.liftOffDistance!.options[0].mm, 0.7);
@@ -45,7 +37,7 @@ void main() {
     expect(caps.sensor!.liftOffDistance!.options[1].mm, 1.0);
     expect(caps.sensor!.liftOffDistance!.options[2].wire, 2);
     expect(caps.sensor!.liftOffDistance!.options[2].mm, 2.0);
-    expect(caps.otherFeatures!.buttonDebounce!.present, isTrue);
+    expect(caps.otherFeatures!.buttonDebounce!.present, isFalse);
     expect(caps.otherFeatures!.buttonDebounce!.options.length, 6);
     expect(caps.otherFeatures!.buttonDebounce!.options[0].wire, 0);
     expect(caps.otherFeatures!.buttonDebounce!.options[0].label, '2ms');
@@ -57,7 +49,7 @@ void main() {
     expect(caps.otherFeatures!.sleepTime!.options[0].label, '30 sec');
     expect(caps.otherFeatures!.sleepTime!.options[5].wire, 5);
     expect(caps.otherFeatures!.sleepTime!.options[5].label, '15 min');
-    expect(caps.otherFeatures!.wheelDirectionInvert, isTrue);
+    expect(caps.otherFeatures!.wheelDirectionInvert, isFalse);
     expect(caps.rgbBacklight!.present, isFalse);
     expect(caps.rgbBacklight!.modes.length, 4);
     expect(caps.macro, isNull);
@@ -65,13 +57,47 @@ void main() {
     expect(DeviceCapabilityStore.forDevice('unknown'), isNull);
   });
 
-  test('SensorProfiles loads SG8925 for M7XSE; keeps PAW3311 and PAW3395 tables', () async {
+  test('DeviceCapabilityStore loads m7x.json (M7X, PAW3311, DPI RGB)', () async {
+    await DeviceCapabilityStore.load('m7x');
+    final caps = DeviceCapabilityStore.forDevice('01AA');
+    expect(caps, isNotNull);
+    expect(caps!.devId, '01AA');
+    expect(caps.displayNameKey, 'device.m7x.name');
+    expect(caps.reportRate!.options, [1000, 500, 250, 125]);
+    expect(caps.dpi!.maxDpi, 12000);
+    expect(caps.dpi!.rgbPerStage, isTrue);
+    expect(caps.sensor!.sensorTuning, isTrue);
+    expect(caps.sensor!.angleTune, isFalse);
+    expect(caps.sensor!.liftOffDistance!.present, isFalse);
+    expect(caps.otherFeatures!.sleepTime!.present, isTrue);
+    expect(caps.rgbBacklight!.present, isFalse);
+  });
+
+  test('DeviceCapabilityStore loads m7x_pro.json (M7X PRO, PAW3395, backlight)', () async {
+    await DeviceCapabilityStore.load('m7x pro');
+    final caps = DeviceCapabilityStore.forDevice('03AA');
+    expect(caps, isNotNull);
+    expect(caps!.devId, '03AA');
+    expect(caps.displayNameKey, 'device.m7x_pro.name');
+    expect(caps.reportRate!.options, [1000, 500, 250, 125]);
+    expect(caps.dpi!.maxDpi, 24000);
+    expect(caps.dpi!.rgbPerStage, isTrue);
+    expect(caps.sensor!.sensorTuning, isTrue);
+    expect(caps.sensor!.angleTune, isTrue);
+    expect(caps.sensor!.angleTuneDetails!.options!.length, 5);
+    expect(caps.sensor!.liftOffDistance!.present, isTrue);
+    expect(caps.sensor!.liftOffDistance!.options.length, 2);
+    expect(caps.rgbBacklight!.present, isTrue);
+    expect(caps.rgbBacklight!.modes.length, 4);
+  });
+
+  test('SensorProfiles maps all three mice to their sensors', () async {
     SensorProfiles.debugReset();
     await SensorProfiles.load();
-    final profile = SensorProfiles.forDevice('02AA');
-    expect(profile, isNotNull);
-    expect(profile!.chip, 'SG8925');
-    expect(profile.table, 'SG8925/std');
+    expect(SensorProfiles.forDevice('02AA')!.chip, 'SG8925');
+    expect(SensorProfiles.forDevice('01AA')!.chip, 'PAW3311');
+    expect(SensorProfiles.forDevice('03AA')!.chip, 'PAW3395');
+    expect(SensorProfiles.forDevice('03AA')!.table, 'PAW3395/high_res');
     final sigma = SensorProfiles.table('SG8925/std');
     expect(sigma, isNotNull);
     expect(sigma!.dpiEncoding.transform, 'identity');

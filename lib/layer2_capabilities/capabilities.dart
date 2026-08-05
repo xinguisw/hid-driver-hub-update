@@ -512,9 +512,11 @@ class DeviceCapabilityStore {
   static final Map<String, DeviceCapabilities> _byDevId = {};
   static final Set<String> _loadedSlugs = {};
 
-  /// Asset path for a catalog model name (e.g. `M7XSE` → `.../m7xse.json`).
+  /// Asset path for a catalog model name (e.g. `M7XSE` → `.../m7xse.json`,
+  /// `M7X PRO` → `.../m7x_pro.json`). Lowercased; spaces become underscores
+  /// so a space in a display name maps to the snake_case asset file.
   static String assetPathForModel(String model) =>
-      '$_dir/${model.toLowerCase()}.json';
+      '$_dir/${model.toLowerCase().replaceAll(' ', '_')}.json';
 
   /// Loads one mouse capabilities file. Cached per model slug.
   /// Call when entering mouse settings, not at app start.

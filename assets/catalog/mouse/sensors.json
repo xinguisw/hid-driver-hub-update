@@ -72,10 +72,20 @@
     }
   },
   "devices": {
-    "aa4ecd01": {
+    "02AA": {
       "chip": "SG8925",
       "mode": "std",
       "table": "SG8925/std"
+    },
+    "01AA": {
+      "chip": "PAW3311",
+      "mode": "std",
+      "table": "PAW3311/std"
+    },
+    "03AA": {
+      "chip": "PAW3395",
+      "mode": "high_res",
+      "table": "PAW3395/high_res"
     }
   }
 }

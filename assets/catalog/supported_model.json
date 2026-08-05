@@ -1,7 +1,7 @@
 {
   "devices": [
     {
-      "devId": "aa4ecd01",
+      "devId": "02AA",
       "deviceType": 1,
       "model": "M7XSE",
       "deviceAttr": "mouse_m7xse",
@@ -12,8 +12,40 @@
         "large" : "assets/images/m7xse/large.png"
       },
       "modes": [
-        { "mode": 0, "desc": "USB", "vid": "0x248A", "pid": "0x8208" },
-        { "mode": 1, "desc": "2.4G", "vid": "0x248A", "pid": "0x8373" }
+        { "mode": 0, "desc": "USB", "vid": "0x17ef", "pid": "0x629f" },
+        { "mode": 1, "desc": "2.4G", "vid": "0x17ef", "pid": "0x62a0" }
+      ]
+    },
+    {
+      "devId": "01AA",
+      "deviceType": 1,
+      "model": "M7X",
+      "deviceAttr": "mouse_m7x",
+      "interfaceId": 2,
+      "usagePage": "0xFF02",
+      "image":{
+        "small" : "assets/images/m7x/small.png",
+        "large" : "assets/images/m7x/large.png"
+      },
+      "modes": [
+        { "mode": 0, "desc": "USB", "vid": "0x17ef", "pid": "0x6289" },
+        { "mode": 1, "desc": "2.4G", "vid": "0x17ef", "pid": "0x628a" }
+      ]
+    },
+    {
+      "devId": "03AA",
+      "deviceType": 1,
+      "model": "M7X PRO",
+      "deviceAttr": "mouse_m7x_pro",
+      "interfaceId": 2,
+      "usagePage": "0xFF02",
+      "image":{
+        "small" : "assets/images/m7xpro/small.png",
+        "large" : "assets/images/m7xpro/large.png"
+      },
+      "modes": [
+        { "mode": 0, "desc": "USB", "vid": "0x17ef", "pid": "0x629c" },
+        { "mode": 1, "desc": "2.4G", "vid": "0x17ef", "pid": "0x629e" }
       ]
     }
   ]

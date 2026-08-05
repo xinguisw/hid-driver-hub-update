@@ -315,6 +315,22 @@ class TranslationCodec {
   }
 
   /// Button debounce index → display label.
+  /// Generic wire→label lookup using catalog [OptionPair]s (debounce, sleep).
+  ///
+  /// Returns null if the wire is not in [options].
+  ///
+  /// Mirrors [lodWireToMm] / [angleTuneWireToLabel]: L5 owns the lookup logic,
+  /// L2 owns the per-mouse mapping. Per SDRD "codec does not hardcode
+  /// conversion parameters; depends on Layer 2".
+  String? optionPairWireToLabel(int wire, List<OptionPair> options) {
+    for (final opt in options) {
+      if (opt.wire == (wire & 0xFF)) {
+        return opt.label;
+      }
+    }
+    return null;
+  }
+
   ///
   /// `0x00`/`0x01`→`2ms` … `0x06`→`12ms`.
   String? debounceIndexToLabel(int index) {

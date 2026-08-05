@@ -308,6 +308,30 @@ void main() {
     });
   });
 
+  group('TranslationCodec.optionPairWireToLabel', () {
+    test('maps catalog option pairs (debounce)', () {
+      const options = [
+        OptionPair(wire: 0, label: '2ms'),
+        OptionPair(wire: 4, label: '8ms'),
+        OptionPair(wire: 6, label: '12ms'),
+      ];
+      expect(t.optionPairWireToLabel(0x00, options), '2ms');
+      expect(t.optionPairWireToLabel(0x04, options), '8ms');
+      expect(t.optionPairWireToLabel(0x06, options), '12ms');
+      expect(t.optionPairWireToLabel(0x07, options), isNull);
+    });
+
+    test('maps catalog option pairs (sleep)', () {
+      const options = [
+        OptionPair(wire: 0, label: '30 sec'),
+        OptionPair(wire: 5, label: '15 min'),
+      ];
+      expect(t.optionPairWireToLabel(0x00, options), '30 sec');
+      expect(t.optionPairWireToLabel(0x05, options), '15 min');
+      expect(t.optionPairWireToLabel(0x06, options), isNull);
+    });
+  });
+
   group('TranslationCodec.debounceIndexToLabel', () {
     test('maps debounce table with unit', () {
       expect(t.debounceIndexToLabel(0x00), '2ms');

@@ -1,3 +1,4 @@
+import 'package:driver_hub/layer2_capabilities/capabilities.dart';
 import 'package:driver_hub/layer5_codec/codecs/keyvalue_table.dart';
 import 'package:driver_hub/layer5_codec/codecs/translation_codec.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -328,11 +329,18 @@ void main() {
   });
 
   group('TranslationCodec.angleTuneWireToLabel', () {
-    test('PAW3395 angle tune labels', () {
-      expect(t.angleTuneWireToLabel(0x00), '-30°');
-      expect(t.angleTuneWireToLabel(0x02), '0°');
-      expect(t.angleTuneWireToLabel(0x04), '30°');
-      expect(t.angleTuneWireToLabel(0x05), isNull);
+    test('PAW3395 angle tune labels from catalog options', () {
+      const options = [
+        AngleTuneOption(wire: 0, label: '-30°'),
+        AngleTuneOption(wire: 1, label: '-10°'),
+        AngleTuneOption(wire: 2, label: '0°'),
+        AngleTuneOption(wire: 3, label: '10°'),
+        AngleTuneOption(wire: 4, label: '30°'),
+      ];
+      expect(t.angleTuneWireToLabel(0x00, options), '-30°');
+      expect(t.angleTuneWireToLabel(0x02, options), '0°');
+      expect(t.angleTuneWireToLabel(0x04, options), '30°');
+      expect(t.angleTuneWireToLabel(0x05, options), isNull);
     });
   });
 

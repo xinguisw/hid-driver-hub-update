@@ -361,24 +361,20 @@ class TranslationCodec {
     }
   }
 
-  /// PAW3395 angle-tune wire → display label.
+  /// Angle-tune wire → display label using the catalog's per-mouse options.
   ///
-  /// `0x00`→`-30°` … `0x04`→`30°`.
-  String? angleTuneWireToLabel(int wire) {
-    switch (wire & 0xFF) {
-      case 0x00:
-        return '-30°';
-      case 0x01:
-        return '-10°';
-      case 0x02:
-        return '0°';
-      case 0x03:
-        return '10°';
-      case 0x04:
-        return '30°';
-      default:
-        return null;
+  /// `wire` is the device byte; the label comes from the matching
+  /// [AngleTuneOption]. Returns null if the wire is not in [options].
+  ///
+  /// The options come from the mouse catalog (not this codec) so the same
+  /// sensor can be discrete on one mouse and (future) range on another.
+  String? angleTuneWireToLabel(int wire, List<AngleTuneOption> options) {
+    for (final opt in options) {
+      if (opt.wire == (wire & 0xFF)) {
+        return opt.label;
+      }
     }
+    return null;
   }
 
   /// PAW3395 lift-off distance level → display label.

@@ -610,4 +610,11 @@ class DeviceCapabilityStore {
 
   /// Returns the device capabilities for [devId], or null if unsupported / not loaded.
   static DeviceCapabilities? forDevice(String devId) => _byDevId[devId];
+
+  /// Dev/test-only: clear the loaded cache so the next [load] re-reads the
+  /// catalog JSON from the asset bundle (mirrors `SensorProfiles.debugReset`).
+  static void debugReset() {
+    _byDevId.clear();
+    _loadedSlugs.clear();
+  }
 }

@@ -116,7 +116,15 @@ void main() {
     final paw3311 = SensorProfiles.table('PAW3311/std');
     expect(paw3311, isNotNull);
     expect(paw3311!.dpiEncoding.transform, 'paw3311');
-    expect(paw3311.dpiEncoding.cpiMap[0x13], 840);
+    // PAW3311 Setting 2 tables: mode 0x50 covers 50-10000, mode 0xD0 covers
+    // 10100-12000. Spot-check known wire->cpi entries.
+    final mode50 = paw3311.dpiEncoding.cpiTables[0x50]!;
+    expect(mode50[0x01], 50);
+    expect(mode50[0x13], 800);
+    expect(mode50[0xED], 10000);
+    final modeD0 = paw3311.dpiEncoding.cpiTables[0xD0]!;
+    expect(modeD0[0x76], 10100);
+    expect(modeD0[0x8D], 12000);
     final paw = SensorProfiles.table('PAW3395/high_res');
     expect(paw, isNotNull);
     expect(paw!.dpiEncoding.factor, 50);

@@ -31,6 +31,7 @@ class HubLandingScreen extends StatefulWidget {
 class _HubLandingScreenState extends State<HubLandingScreen> {
   int _selectedIndex = 0;
   int? _selectedButtonId;
+  int? _selectedDpiLevel;
   late final DeviceSettingsBloc _settingsBloc;
 
   static const int _buttonMappingIndex = 0;
@@ -226,6 +227,10 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                         p.reportRateStaging != n.reportRateStaging ||
                         p.dpiCurrentLevelStaging != n.dpiCurrentLevelStaging ||
                         p.dpiValueStaging != n.dpiValueStaging ||
+                        p.dpiStageAddStaging != n.dpiStageAddStaging ||
+                        p.dpiStageRemoveLevelStaging !=
+                            n.dpiStageRemoveLevelStaging ||
+                        p.dpiStageLevelsStaging != n.dpiStageLevelsStaging ||
                         p.isDirty != n.isDirty ||
                         p.committing != n.committing ||
                         p.lastError != n.lastError,
@@ -236,10 +241,17 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                         children: [
                           Expanded(
                             child: HubPerformancePanel(
-                              dpiStages: display?.dpiLevels,
-                              dpiCurrentLevel: display?.dpiActiveIndex,
+                              // why: staged add/remove level list paints the
+                              // rearranged containers live before Save.
+                              dpiStages: view.dpiStageLevelsStaging ??
+                                  display?.dpiLevels,
+                              // why: highlight the user's UI selection; fall
+                              // back to the device's active level initially.
+                              dpiCurrentLevel:
+                                  _selectedDpiLevel ?? display?.dpiActiveIndex,
                               dpiCurrentLevelStaging: view.dpiCurrentLevelStaging,
                               onDpiLevelSelected: (level) {
+                                setState(() => _selectedDpiLevel = level);
                                 bloc.add(
                                   DeviceSettingsDpiLevelRequested(level: level),
                                 );
@@ -255,6 +267,27 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                                     value: pair.value,
                                   ),
                                 );
+                              },
+                              dpiActiveLevelCount:
+                                  display?.dpiActiveLevelCount,
+                              dpiMaxLevels: display?.dpiMaxLevels,
+                              onDpiStageAdd: () {
+                                bloc.add(
+                                  const DeviceSettingsDpiStageAddRequested(),
+                                );
+                              },
+                              // why: `x` only removes the user's clicked
+                              // level; disabled until a level is selected.
+                              dpiRemoveEnabled: _selectedDpiLevel != null,
+                              onDpiStageRemove: () {
+                                final level = _selectedDpiLevel;
+                                if (level != null) {
+                                  bloc.add(
+                                    DeviceSettingsDpiStageRemoveRequested(
+                                      level: level,
+                                    ),
+                                  );
+                                }
                               },
                               reportRateOptions: display?.reportRateOptions,
                               reportRateHz: display?.reportRateHz,
@@ -285,6 +318,12 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                                   view.dpiValueStaging!.isNotEmpty) {
                                 bloc.add(
                                   const DeviceSettingsSaveDpiValuesRequested(),
+                                );
+                              }
+                              if (view.dpiStageAddStaging ||
+                                  view.dpiStageRemoveLevelStaging != null) {
+                                bloc.add(
+                                  const DeviceSettingsSaveDpiStagesRequested(),
                                 );
                               }
                             },

@@ -18,6 +18,11 @@ class HubPerformancePanel extends StatelessWidget {
     this.dpiStep,
     this.dpiValueStaging,
     this.onDpiValueChanged,
+    this.dpiActiveLevelCount,
+    this.dpiMaxLevels,
+    this.onDpiStageAdd,
+    this.onDpiStageRemove,
+    this.dpiRemoveEnabled = false,
     this.reportRateOptions,
     this.reportRateHz,
     this.reportRateStaging,
@@ -33,6 +38,11 @@ class HubPerformancePanel extends StatelessWidget {
   final int? dpiStep;
   final Map<int, int>? dpiValueStaging;
   final ValueChanged<({int level, int value})>? onDpiValueChanged;
+  final int? dpiActiveLevelCount;
+  final int? dpiMaxLevels;
+  final VoidCallback? onDpiStageAdd;
+  final VoidCallback? onDpiStageRemove;
+  final bool dpiRemoveEnabled;
   final List<int>? reportRateOptions;
   final int? reportRateHz;
   final int? reportRateStaging;
@@ -57,6 +67,11 @@ class HubPerformancePanel extends StatelessWidget {
             dpiStep: dpiStep,
             valueStaging: dpiValueStaging ?? const {},
             onValueChanged: (pair) => onDpiValueChanged?.call(pair),
+            activeCount: dpiActiveLevelCount ?? 0,
+            maxLevels: dpiMaxLevels ?? 8,
+            onAddStage: () => onDpiStageAdd?.call(),
+            onRemoveStage: () => onDpiStageRemove?.call(),
+            removeEnabled: dpiRemoveEnabled,
           ),
           const SizedBox(height: 24),
           // Report Rate
@@ -87,6 +102,11 @@ class _DpiSettingsGroup extends StatelessWidget {
     this.dpiStep,
     required this.valueStaging,
     required this.onValueChanged,
+    required this.activeCount,
+    required this.maxLevels,
+    required this.onAddStage,
+    required this.onRemoveStage,
+    this.removeEnabled = false,
   });
 
   final List<DpiStageData> stages;
@@ -100,6 +120,14 @@ class _DpiSettingsGroup extends StatelessWidget {
   final Map<int, int> valueStaging;
 
   final ValueChanged<({int level, int value})> onValueChanged;
+  final int activeCount;
+  final int maxLevels;
+  final VoidCallback onAddStage;
+  final VoidCallback onRemoveStage;
+
+  /// True only when the user has selected a level (so `x` removes the
+  /// selection, not the device's default active level).
+  final bool removeEnabled;
 
   @override
   Widget build(BuildContext context) {
@@ -125,9 +153,29 @@ class _DpiSettingsGroup extends StatelessWidget {
                   onTap: () => onLevelSelected(stage.level),
                 ),
               const Spacer(),
-              const Text('+'),
+              // Add stage: disabled at max levels.
+              InkWell(
+                onTap: activeCount >= maxLevels ? null : onAddStage,
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 6),
+                  child: Text(
+                    '+',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ),
               const SizedBox(width: 8),
-              const Text('x'),
+              // Remove stage: disabled when only one remains or no selection.
+              InkWell(
+                onTap: activeCount <= 1 || !removeEnabled ? null : onRemoveStage,
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 6),
+                  child: Text(
+                    'x',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 12),

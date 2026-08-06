@@ -190,6 +190,14 @@ class DeviceSession implements DeviceRepository {
     await _protocol.setSensorOther(_session, dataBlock);
   }
 
+  /// Thin L1 forwarder for C4 SET (L5 encodes + CRC).
+  Future<void> setDpiTable(Uint8List dataBlock) async {
+    if (!isAlive) {
+      throw StateError('setDpiTable: session not alive');
+    }
+    await _protocol.setDpiTable(_session, dataBlock);
+  }
+
   @override
   Future<RgbBacklightResult?> queryRgbBacklight() async {
     if (!isAlive) return null;

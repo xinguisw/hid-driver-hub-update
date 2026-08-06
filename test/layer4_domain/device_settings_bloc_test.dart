@@ -699,6 +699,58 @@ void main() {
       expect(committed!.map((s) => s.level), [1, 2, 3, 4, 5]);
       await bloc.close();
     });
+
+    test('remove staging survives a paired level save', () async {
+      DeviceCapabilities? caps = dpiCaps;
+      List<DpiStageData>? committed;
+      final bloc = DeviceSettingsBloc(
+        commitButtonMapping: (_) async {},
+        commitReportRate: (_) async {},
+        commitDpiLevel: (_) async {},
+        commitDpiValues: (_) async {},
+        commitDpiStages: (staged, _) async {
+          committed = staged;
+        },
+        commitSensorTuning: (_, _) async {},
+        commitAngleTune: (_) async {},
+        commitLod: (_) async {},
+        commitPerformance: (_) async {},
+        commitDebounce: (_) async {},
+        commitSleep: (_) async {},
+        commitWheelInvert: (_) async {},
+        capabilitiesLookup: () => caps,
+      );
+      bloc.add(DeviceSettingsHydrated(
+        baseSettings().copyWith(
+          dpiActiveLevelCount: 5,
+          dpiMaxLevels: 8,
+          dpiLevels: const [
+            DpiStageData(level: 1, value: 800),
+            DpiStageData(level: 2, value: 1600),
+            DpiStageData(level: 3, value: 2400),
+            DpiStageData(level: 4, value: 3200),
+            DpiStageData(level: 5, value: 5000),
+          ],
+        ),
+      ));
+      await pumpEventQueue();
+
+      // User clicks stage 6 (level staging) AND removes it — the two stagings
+      // coexist; Save must run BOTH commitDpiLevel and commitDpiStages.
+      bloc.add(const DeviceSettingsDpiLevelRequested(level: 6));
+      bloc.add(const DeviceSettingsDpiStageRemoveRequested(level: 6));
+      await pumpEventQueue();
+
+      // Save level first, then stages (as the screen dispatches).
+      bloc.add(const DeviceSettingsSaveDpiLevelRequested());
+      bloc.add(const DeviceSettingsSaveDpiStagesRequested());
+      await pumpEventQueue();
+
+      // The remove staging must survive the level save and commit the list.
+      expect(committed, isNotNull);
+      expect(committed!.map((s) => s.level), [1, 2, 3, 4, 5]);
+      await bloc.close();
+    });
   });
 
   group('DeviceSettingsBloc decode-error guard', () {

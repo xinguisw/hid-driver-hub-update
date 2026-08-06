@@ -444,28 +444,22 @@ class DeviceScope {
     }
     await session.setDpiTable(dataBlock);
 
-    // 0xC6 DPI RGB: shift colors with the values + refill slot 8 with the
-    // catalog default color (only when the product supports per-stage RGB).
-    final caps2 = DeviceCapabilityStore.forDevice(card.devId);
-    if (caps2?.dpi?.rgbPerStage ?? false) {
-      final rgb = await session.queryDpiRgb();
-      if (rgb == null) {
-        throw StateError('Failed to read current DPI RGB block');
-      }
-      final defaultColor = _defaultDpiColorHex(card);
-      final defaultRgb = _hexToRgb(defaultColor);
-      final rgbBlock = Uint8List(24);
-      for (var i = 0; i < 8; i++) {
-        final stage = i < stagedLevels.length ? stagedLevels[i] : null;
-        final colorHex = stage?.color;
-        final isDefault = colorHex == null || colorHex.isEmpty;
-        final c = isDefault ? defaultRgb : _hexToRgb(colorHex);
-        rgbBlock[i * 3] = c[0];
-        rgbBlock[i * 3 + 1] = c[1];
-        rgbBlock[i * 3 + 2] = c[2];
-      }
-      await session.setDpiRgb(rgbBlock);
+    // 0xC6 DPI RGB: the default per-stage colors apply to ALL devices (the
+    // mock gives every mouse the same Red..White defaults). rgbPerStage:false
+    // only hides CUSTOMIZATION, not the default color application.
+    final defaultColor = _defaultDpiColorHex(card);
+    final defaultRgb = _hexToRgb(defaultColor);
+    final rgbBlock = Uint8List(24);
+    for (var i = 0; i < 8; i++) {
+      final stage = i < stagedLevels.length ? stagedLevels[i] : null;
+      final colorHex = stage?.color;
+      final isDefault = colorHex == null || colorHex.isEmpty;
+      final c = isDefault ? defaultRgb : _hexToRgb(colorHex);
+      rgbBlock[i * 3] = c[0];
+      rgbBlock[i * 3 + 1] = c[1];
+      rgbBlock[i * 3 + 2] = c[2];
     }
+    await session.setDpiRgb(rgbBlock);
 
     // 0xC2 active mask: first activeCount bits set.
     final current = await session.queryReportRateDpiInfo();

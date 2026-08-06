@@ -694,16 +694,17 @@ class DeviceSettingsBloc
       dpiActiveIndex: staging,
       clearError: true,
     );
+    // why: preserve unrelated staging (e.g. dpiStageLevelsStaging for a
+    // pending add/remove) — a fresh DeviceSettingsViewState would drop them,
+    // so a paired SaveDpiStagesRequested would see nothing dirty.
     emit(
-      DeviceSettingsViewState(
+      state.copyWith(
         synced: nextSynced,
         dpiCurrentLevelStaging: null,
         isDirty: false,
         committing: false,
         consecutiveFailures: 0,
         lastError: null,
-        actionLabelOf: state.actionLabelOf,
-        buttonIdLabelOf: state.buttonIdLabelOf,
       ),
     );
     debugPrint('[bloc] save DPI level: synced');

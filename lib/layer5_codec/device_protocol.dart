@@ -685,7 +685,7 @@ class MouseProtocol implements DeviceProtocol {
       timeout: _sendTimeout,
     );
 
-    validateConfigAckFrame(ack, label: label);
+    validateConfigAckFrame(ack, addrs: addrsDpiTable, label: label);
     verifyConfigAckCrc(ack, label: label);
     debugPrint('[proto] $label: SET ack ${_hex(ack)} (${ack.length}B)');
   }

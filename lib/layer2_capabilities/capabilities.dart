@@ -146,14 +146,14 @@ class ReportRateCapabilities {
 class DpiCapabilities {
   final int maxLevels;
   final int defaultLevel;
-  final int maxDpi;
+  final DpiRange range;
   final bool independentXY;
   final bool rgbPerStage;
   final List<DpiLevel> levels;
   const DpiCapabilities({
     required this.maxLevels,
     required this.defaultLevel,
-    required this.maxDpi,
+    required this.range,
     required this.independentXY,
     required this.rgbPerStage,
     required this.levels,
@@ -163,12 +163,90 @@ class DpiCapabilities {
     return DpiCapabilities(
       maxLevels: json['maxLevels'] as int,
       defaultLevel: json['defaultLevel'] as int,
-      maxDpi: json['maxDpi'] as int,
+      range: DpiRange.fromJson(json['range'] as Map<String, dynamic>),
       independentXY: json['independentXY'] as bool,
       rgbPerStage: json['rgbPerStage'] as bool,
       levels: (json['levels'] as List)
           .map((e) => DpiLevel.fromJson(e as Map<String, dynamic>))
           .toList(growable: false),
+    );
+  }
+}
+
+/// DPI value bounds + step model for one product.
+///
+/// Single source of truth for the slider / validation. Per the mock
+/// description, different sensors encode DPI differently:
+/// - `fixed`: one step (e.g. step 50 → 800, 850, 900...)
+/// - `tiered`: variable step by value range (e.g. M7X: step 50 below 10000,
+///   step 100 above)
+/// - `any`: any value in [minDpi, maxDpi] (no step constraint)
+class DpiRange {
+  final int minDpi;
+  final int maxDpi;
+  final String stepMode; // 'fixed' | 'tiered' | 'any'
+  final int? step; // fixed mode
+  final List<DpiStepTier>? tiers; // tiered mode
+  const DpiRange({
+    required this.minDpi,
+    required this.maxDpi,
+    required this.stepMode,
+    this.step,
+    this.tiers,
+  });
+
+  factory DpiRange.fromJson(Map<String, dynamic> json) {
+    return DpiRange(
+      minDpi: json['minDpi'] as int,
+      maxDpi: json['maxDpi'] as int,
+      stepMode: json['stepMode'] as String,
+      step: json['step'] as int?,
+      tiers: json['tiers'] == null
+          ? null
+          : (json['tiers'] as List)
+              .map((e) => DpiStepTier.fromJson(e as Map<String, dynamic>))
+              .toList(growable: false),
+    );
+  }
+
+  /// Validates that [value] is within range and on-step for this model.
+  ///
+  /// Returns the snapped value, or null if out of range. `fixed` snaps to the
+  /// nearest step; `tiered` uses the matching tier's step; `any` clamps only.
+  int? snap(int value) {
+    if (value < minDpi || value > maxDpi) return null;
+    switch (stepMode) {
+      case 'fixed':
+        final s = step ?? 1;
+        return minDpi + ((value - minDpi) ~/ s) * s;
+      case 'tiered':
+        final s = stepFor(value) ?? 1;
+        return minDpi + ((value - minDpi) ~/ s) * s;
+      case 'any':
+      default:
+        return value;
+    }
+  }
+
+  /// Step that applies to [value] under a tiered model; null if no tier.
+  int? stepFor(int value) {
+    for (final tier in tiers ?? const <DpiStepTier>[]) {
+      if (value <= tier.max) return tier.step;
+    }
+    return tiers?.isNotEmpty == true ? tiers!.last.step : null;
+  }
+}
+
+/// One step tier: values up to [max] use [step].
+class DpiStepTier {
+  final int max;
+  final int step;
+  const DpiStepTier({required this.max, required this.step});
+
+  factory DpiStepTier.fromJson(Map<String, dynamic> json) {
+    return DpiStepTier(
+      max: json['max'] as int,
+      step: json['step'] as int,
     );
   }
 }

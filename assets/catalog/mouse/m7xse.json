@@ -49,7 +49,12 @@
   "dpi": {
     "maxLevels": 8,
     "defaultLevel": 2,
-    "maxDpi": 5000,
+    "range": {
+      "minDpi": 50,
+      "maxDpi": 5000,
+      "stepMode": "fixed",
+      "step": 50
+    },
     "independentXY": false,
     "rgbPerStage": false,
     "levels": [

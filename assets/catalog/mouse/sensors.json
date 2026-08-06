@@ -9,11 +9,6 @@
         "bytesPerAxis": 1,
         "endian": "big",
         "independentXY": true
-      },
-      "dpiRange": {
-        "minDpi": 100,
-        "maxDpi": 26000,
-        "step": 50
       }
     },
     "PAW3395/std_res": {
@@ -25,11 +20,6 @@
         "bytesPerAxis": 1,
         "endian": "big",
         "independentXY": true
-      },
-      "dpiRange": {
-        "minDpi": 100,
-        "maxDpi": 16000,
-        "step": 50
       }
     },
     "SG8925/std": {
@@ -41,11 +31,6 @@
         "bytesPerAxis": 2,
         "endian": "big",
         "independentXY": false
-      },
-      "dpiRange": {
-        "minDpi": 50,
-        "maxDpi": 5000,
-        "step": 50
       }
     },
     "PAW3311/std": {
@@ -63,11 +48,6 @@
           "0x39": 1620,
           "0x55": 3180
         }
-      },
-      "dpiRange": {
-        "minDpi": 50,
-        "maxDpi": 12000,
-        "step": 50
       }
     }
   },

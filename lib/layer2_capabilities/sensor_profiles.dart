@@ -61,37 +61,15 @@ class DpiEncoding {
   }
 }
 
-/// The DPI range a sensor supports.
-class DpiRange {
-  final int minDpi;
-  final int maxDpi;
-  final int step;
-  const DpiRange({
-    required this.minDpi,
-    required this.maxDpi,
-    required this.step,
-  });
-
-  factory DpiRange.fromJson(Map<String, dynamic> json) {
-    return DpiRange(
-      minDpi: json['minDpi'] as int,
-      maxDpi: json['maxDpi'] as int,
-      step: json['step'] as int,
-    );
-  }
-}
-
 /// One encoding table, keyed by `<chip>/<mode>`.
 class EncodingTable {
   final String chip;
   final String mode;
   final DpiEncoding dpiEncoding;
-  final DpiRange dpiRange;
   const EncodingTable({
     required this.chip,
     required this.mode,
     required this.dpiEncoding,
-    required this.dpiRange,
   });
 
   factory EncodingTable.fromJson(Map<String, dynamic> json) {
@@ -100,7 +78,6 @@ class EncodingTable {
       mode: json['mode'] as String,
       dpiEncoding: DpiEncoding.fromJson(
           json['dpiEncoding'] as Map<String, dynamic>),
-      dpiRange: DpiRange.fromJson(json['dpiRange'] as Map<String, dynamic>),
     );
   }
 }

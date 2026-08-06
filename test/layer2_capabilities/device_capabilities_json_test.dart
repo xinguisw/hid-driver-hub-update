@@ -18,7 +18,10 @@ void main() {
     expect(caps.reportRate!.defaultValue, 500);
     expect(caps.dpi!.maxLevels, 8);
     expect(caps.dpi!.defaultLevel, 2);
-    expect(caps.dpi!.maxDpi, 5000);
+    expect(caps.dpi!.range.minDpi, 50);
+    expect(caps.dpi!.range.maxDpi, 5000);
+    expect(caps.dpi!.range.stepMode, 'fixed');
+    expect(caps.dpi!.range.step, 50);
     expect(caps.dpi!.rgbPerStage, isFalse);
     expect(caps.dpi!.levels.length, 8);
     expect(caps.dpi!.levels.map((e) => e.value).toList(),
@@ -64,7 +67,13 @@ void main() {
     expect(caps!.devId, '01AA');
     expect(caps.displayNameKey, 'device.m7x.name');
     expect(caps.reportRate!.options, [1000, 500, 250, 125]);
-    expect(caps.dpi!.maxDpi, 12000);
+    expect(caps.dpi!.range.maxDpi, 12000);
+    expect(caps.dpi!.range.stepMode, 'tiered');
+    expect(caps.dpi!.range.tiers!.length, 2);
+    expect(caps.dpi!.range.tiers![0].max, 10000);
+    expect(caps.dpi!.range.tiers![0].step, 50);
+    expect(caps.dpi!.range.tiers![1].max, 12000);
+    expect(caps.dpi!.range.tiers![1].step, 100);
     expect(caps.dpi!.rgbPerStage, isTrue);
     expect(caps.sensor!.sensorTuning, isTrue);
     expect(caps.sensor!.angleTune, isFalse);
@@ -80,7 +89,9 @@ void main() {
     expect(caps!.devId, '03AA');
     expect(caps.displayNameKey, 'device.m7x_pro.name');
     expect(caps.reportRate!.options, [1000, 500, 250, 125]);
-    expect(caps.dpi!.maxDpi, 24000);
+    expect(caps.dpi!.range.maxDpi, 24000);
+    expect(caps.dpi!.range.stepMode, 'fixed');
+    expect(caps.dpi!.range.step, 50);
     expect(caps.dpi!.rgbPerStage, isTrue);
     expect(caps.sensor!.sensorTuning, isTrue);
     expect(caps.sensor!.angleTune, isTrue);
@@ -102,7 +113,6 @@ void main() {
     expect(sigma, isNotNull);
     expect(sigma!.dpiEncoding.transform, 'identity');
     expect(sigma.dpiEncoding.bytesPerAxis, 2);
-    expect(sigma.dpiRange.maxDpi, 5000);
     final paw3311 = SensorProfiles.table('PAW3311/std');
     expect(paw3311, isNotNull);
     expect(paw3311!.dpiEncoding.transform, 'paw3311');

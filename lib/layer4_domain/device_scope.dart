@@ -444,6 +444,29 @@ class DeviceScope {
     }
     await session.setDpiTable(dataBlock);
 
+    // 0xC6 DPI RGB: shift colors with the values + refill slot 8 with the
+    // catalog default color (only when the product supports per-stage RGB).
+    final caps2 = DeviceCapabilityStore.forDevice(card.devId);
+    if (caps2?.dpi?.rgbPerStage ?? false) {
+      final rgb = await session.queryDpiRgb();
+      if (rgb == null) {
+        throw StateError('Failed to read current DPI RGB block');
+      }
+      final defaultColor = _defaultDpiColorHex(card);
+      final defaultRgb = _hexToRgb(defaultColor);
+      final rgbBlock = Uint8List(24);
+      for (var i = 0; i < 8; i++) {
+        final stage = i < stagedLevels.length ? stagedLevels[i] : null;
+        final colorHex = stage?.color;
+        final isDefault = colorHex == null || colorHex.isEmpty;
+        final c = isDefault ? defaultRgb : _hexToRgb(colorHex);
+        rgbBlock[i * 3] = c[0];
+        rgbBlock[i * 3 + 1] = c[1];
+        rgbBlock[i * 3 + 2] = c[2];
+      }
+      await session.setDpiRgb(rgbBlock);
+    }
+
     // 0xC2 active mask: first activeCount bits set.
     final current = await session.queryReportRateDpiInfo();
     if (current == null) {
@@ -455,6 +478,28 @@ class DeviceScope {
     infoBlock[1] = current.dpiCurrentLevel;
     infoBlock[2] = newMask;
     await session.setReportRate(infoBlock);
+  }
+
+  /// Default RGB color (hex) for the refilled slot, from the catalog.
+  String _defaultDpiColorHex(DiscoveredCardState card) {
+    final caps = DeviceCapabilityStore.forDevice(card.devId);
+    final levels = caps?.dpi?.levels;
+    if (levels != null && levels.isNotEmpty) {
+      final last = levels.last.color;
+      if (last.isNotEmpty) return last;
+    }
+    return '#FFFFFF'; // mock default slot 8 = White
+  }
+
+  /// Parse `#RRGGBB` → [r, g, b].
+  static List<int> _hexToRgb(String hex) {
+    final s = hex.replaceAll('#', '');
+    if (s.length != 6) return [255, 255, 255];
+    return [
+      int.parse(s.substring(0, 2), radix: 16),
+      int.parse(s.substring(2, 4), radix: 16),
+      int.parse(s.substring(4, 6), radix: 16),
+    ];
   }
 
   /// Commits ripple control + angle snap into the 14-byte 0xD4 block.

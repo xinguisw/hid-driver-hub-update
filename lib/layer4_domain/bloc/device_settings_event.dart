@@ -120,6 +120,24 @@ class DeviceSettingsSaveDpiValuesRequested extends DeviceSettingsEvent {
   const DeviceSettingsSaveDpiValuesRequested();
 }
 
+/// User pressed `+` to add a DPI stage (enable the next-lowest inactive slot).
+class DeviceSettingsDpiStageAddRequested extends DeviceSettingsEvent {
+  const DeviceSettingsDpiStageAddRequested();
+}
+
+/// User pressed `x` to remove a DPI stage (per FR-DPI-003 rearrange).
+class DeviceSettingsDpiStageRemoveRequested extends DeviceSettingsEvent {
+  const DeviceSettingsDpiStageRemoveRequested({required this.level});
+
+  /// 1-based DPI level to remove.
+  final int level;
+}
+
+/// Save staged DPI add/remove to device.
+class DeviceSettingsSaveDpiStagesRequested extends DeviceSettingsEvent {
+  const DeviceSettingsSaveDpiStagesRequested();
+}
+
 /// User toggled ripple control.
 ///
 /// L3 passes the boolean value. L4 stages it and marks dirty.

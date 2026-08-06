@@ -19,6 +19,10 @@ typedef DpiLevelCommit = Future<void> Function(int dpiLevel);
 
 typedef DpiValuesCommit = Future<void> Function(Map<int, int> levelValues);
 
+typedef DpiStageAddCommit = Future<void> Function();
+
+typedef DpiStageRemoveCommit = Future<void> Function(int level);
+
 typedef SensorTuningCommit = Future<void> Function(
   bool rippleControl,
   bool angleSnap,
@@ -55,6 +59,8 @@ class DeviceSettingsBloc
     required this.commitReportRate,
     required this.commitDpiLevel,
     required this.commitDpiValues,
+    required this.commitDpiStageAdd,
+    required this.commitDpiStageRemove,
     required this.commitSensorTuning,
     required this.commitAngleTune,
     required this.commitLod,
@@ -88,6 +94,9 @@ class DeviceSettingsBloc
     on<DeviceSettingsSaveDpiLevelRequested>(_onSaveDpiLevel);
     on<DeviceSettingsDpiValueRequested>(_onDpiValueRequested);
     on<DeviceSettingsSaveDpiValuesRequested>(_onSaveDpiValues);
+    on<DeviceSettingsDpiStageAddRequested>(_onDpiStageAddRequested);
+    on<DeviceSettingsDpiStageRemoveRequested>(_onDpiStageRemoveRequested);
+    on<DeviceSettingsSaveDpiStagesRequested>(_onSaveDpiStages);
     on<DeviceSettingsRippleControlRequested>(_onRippleControlRequested);
     on<DeviceSettingsAngleSnapRequested>(_onAngleSnapRequested);
     on<DeviceSettingsSaveSensorTuningRequested>(_onSaveSensorTuning);
@@ -110,6 +119,8 @@ class DeviceSettingsBloc
   final ReportRateCommit commitReportRate;
   final DpiLevelCommit commitDpiLevel;
   final DpiValuesCommit commitDpiValues;
+  final DpiStageAddCommit commitDpiStageAdd;
+  final DpiStageRemoveCommit commitDpiStageRemove;
   final SensorTuningCommit commitSensorTuning;
   final AngleTuneCommit commitAngleTune;
   final LodCommit commitLod;
@@ -818,6 +829,127 @@ class DeviceSettingsBloc
       ),
     );
     debugPrint('[bloc] save DPI values: synced');
+    onSaveCompleted?.call();
+  }
+
+  /// User pressed `+` — add a DPI stage (append next-lowest inactive).
+  ///
+  /// Stages the add and marks dirty; commit happens on Save.
+  void _onDpiStageAddRequested(
+    DeviceSettingsDpiStageAddRequested event,
+    Emitter<DeviceSettingsViewState> emit,
+  ) {
+    final synced = state.synced;
+    if (synced == null) {
+      emit(state.copyWith(lastError: 'no settings loaded'));
+      return;
+    }
+    final activeCount = synced.dpiActiveLevelCount ?? 0;
+    final maxLevels = synced.dpiMaxLevels ?? 8;
+    if (activeCount >= maxLevels) {
+      emit(state.copyWith(lastError: 'cannot add: max DPI stages reached'));
+      return;
+    }
+    emit(
+      state.copyWith(
+        dpiStageAddStaging: true,
+        isDirty: true,
+        clearError: true,
+      ),
+    );
+    debugPrint('[bloc] DPI stage add staged');
+  }
+
+  /// User pressed `x` — remove a DPI stage (per FR-DPI-003 rearrange).
+  void _onDpiStageRemoveRequested(
+    DeviceSettingsDpiStageRemoveRequested event,
+    Emitter<DeviceSettingsViewState> emit,
+  ) {
+    final synced = state.synced;
+    if (synced == null) {
+      emit(state.copyWith(lastError: 'no settings loaded'));
+      return;
+    }
+    final activeCount = synced.dpiActiveLevelCount ?? 0;
+    if (activeCount <= 1) {
+      emit(state.copyWith(lastError: 'cannot remove: at least one stage'));
+      return;
+    }
+    emit(
+      state.copyWith(
+        dpiStageRemoveLevelStaging: event.level,
+        isDirty: true,
+        clearError: true,
+      ),
+    );
+    debugPrint('[bloc] DPI stage remove staged: level=${event.level}');
+  }
+
+  /// Save the staged DPI add/remove to device.
+  Future<void> _onSaveDpiStages(
+    DeviceSettingsSaveDpiStagesRequested event,
+    Emitter<DeviceSettingsViewState> emit,
+  ) async {
+    if (state.committing) return;
+    if (!state.dpiStageAddStaging && state.dpiStageRemoveLevelStaging == null) {
+      debugPrint('[bloc] save DPI stages: nothing dirty');
+      return;
+    }
+    final synced = state.synced;
+    if (synced == null) {
+      emit(state.copyWith(lastError: 'save DPI stages: no synced settings'));
+      return;
+    }
+
+    emit(state.copyWith(committing: true, clearError: true));
+
+    try {
+      if (state.dpiStageAddStaging) {
+        await commitDpiStageAdd();
+      }
+      final removeLevel = state.dpiStageRemoveLevelStaging;
+      if (removeLevel != null) {
+        await commitDpiStageRemove(removeLevel);
+      }
+    } catch (e) {
+      debugPrint('[bloc] save DPI stages failed: $e');
+      final failures = state.consecutiveFailures + 1;
+      emit(
+        state.copyWith(
+          committing: false,
+          lastError: 'DPI stages save failed: $e',
+          consecutiveFailures: failures,
+        ),
+      );
+      if (failures >= failureEscalateThreshold) {
+        onEscalationRequested?.call(
+          'DPI stages save failed $failures consecutive times',
+        );
+      }
+      return;
+    }
+
+    final count = state.dpiStageAddStaging
+        ? (synced.dpiActiveLevelCount ?? 0) + 1
+        : (synced.dpiActiveLevelCount ?? 0) - 1;
+    final nextSynced = synced.copyWith(
+      dpiActiveLevelCount: count,
+      clearError: true,
+    );
+    emit(
+      DeviceSettingsViewState(
+        synced: nextSynced,
+        dpiStageAddStaging: false,
+        dpiStageRemoveLevelStaging: null,
+        isDirty: false,
+        committing: false,
+        consecutiveFailures: 0,
+        lastError: null,
+        actionLabelOf: state.actionLabelOf,
+        buttonIdLabelOf: state.buttonIdLabelOf,
+      ),
+    );
+    debugPrint('[bloc] save DPI stages: synced (count=$count)');
     onSaveCompleted?.call();
   }
 

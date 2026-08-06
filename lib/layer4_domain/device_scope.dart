@@ -220,6 +220,8 @@ class DeviceScope {
       commitReportRate: (hz) => commitReportRate(card, hz),
       commitDpiLevel: (level) => commitDpiLevel(card, level),
       commitDpiValues: (values) => commitDpiValues(card, values),
+      commitDpiStageAdd: () => commitDpiStageAdd(card),
+      commitDpiStageRemove: (level) => commitDpiStageRemove(card, level),
       commitSensorTuning: (ripple, snap) =>
           commitSensorTuning(card, ripple, snap),
       commitAngleTune: (wireValue) => commitAngleTune(card, wireValue),
@@ -375,6 +377,124 @@ class DeviceScope {
     }
 
     await session.setDpiTable(dataBlock);
+  }
+
+  /// Adds a DPI stage: sets the next-lowest inactive bit in the 0xC2 active
+  /// mask (append in sequence). The DPI table value stays as its slot has.
+  Future<void> commitDpiStageAdd(DiscoveredCardState card) async {
+    final session = _sessionForCard(card);
+    if (session == null || !session.isAlive) {
+      throw StateError('commitDpiStageAdd: no session');
+    }
+    final current = await session.queryReportRateDpiInfo();
+    if (current == null) {
+      throw StateError('Failed to read current report rate/DPI block');
+    }
+    final mask = current.dpiActiveLevel;
+    final nextBit = _lowestClearBit(mask);
+    if (nextBit == null || nextBit >= 8) {
+      throw StateError('commitDpiStageAdd: no free stage slot');
+    }
+    final newMask = mask | (1 << nextBit);
+    final dataBlock = Uint8List(3);
+    dataBlock[0] = current.reportRate;
+    dataBlock[1] = current.dpiCurrentLevel;
+    dataBlock[2] = newMask;
+    await session.setReportRate(dataBlock);
+  }
+
+  /// Removes a DPI stage per FR-DPI-003: shifts later stages toward slot 1,
+  /// fills slot 8 with the catalog default value, and updates the 0xC2 active
+  /// mask (clear the removed bit, shift higher bits down).
+  Future<void> commitDpiStageRemove(DiscoveredCardState card, int level) async {
+    final session = _sessionForCard(card);
+    if (session == null || !session.isAlive) {
+      throw StateError('commitDpiStageRemove: no session');
+    }
+
+    final profile = SensorProfiles.forDevice(card.devId);
+    final table = profile == null ? null : SensorProfiles.table(profile.table);
+    final enc = table?.dpiEncoding;
+    if (enc == null) {
+      throw StateError('commitDpiStageRemove: no sensor encoding for ${card.devId}');
+    }
+    final caps = DeviceCapabilityStore.forDevice(card.devId);
+    final levels = caps?.dpi?.levels;
+    final defaultDpi =
+        (levels != null && levels.isNotEmpty) ? levels.last.value : 1600;
+    const translate = TranslationCodec();
+    final defaultWire = translate.dpiDisplayToWireUnit(
+      defaultDpi,
+      transform: enc.transform,
+      factor: enc.factor,
+      cpiMap: enc.cpiMap,
+      cpiTables: enc.cpiTables,
+    );
+    if (defaultWire == null) {
+      throw StateError('commitDpiStageRemove: default DPI not encodable');
+    }
+
+    final dpiTable = await session.queryDpiTable();
+    if (dpiTable == null) {
+      throw StateError('Failed to read current DPI table');
+    }
+    // Remove the target stage's 2 bytes, shift the rest toward slot 1, fill
+    // the freed slot 8 with the default wire value.
+    final removedIdx = level - 1;
+    if (removedIdx < 0 || removedIdx >= 8) {
+      throw StateError('commitDpiStageRemove: invalid level $level');
+    }
+    final dataBlock = Uint8List.fromList(dpiTable.data);
+    // Shift bytes [removedIdx+1 .. 7] up by one slot (2 bytes each).
+    for (var i = removedIdx; i < 7; i++) {
+      dataBlock[i * 2] = dataBlock[(i + 1) * 2];
+      dataBlock[i * 2 + 1] = dataBlock[(i + 1) * 2 + 1];
+    }
+    // Fill slot 8 (index 7) with the default.
+    if (enc.bytesPerAxis == 1) {
+      dataBlock[7] = defaultWire & 0xFF;
+      dataBlock[7] = defaultWire & 0xFF;
+    } else {
+      dataBlock[14] = (defaultWire >> 8) & 0xFF;
+      dataBlock[15] = defaultWire & 0xFF;
+    }
+    await session.setDpiTable(dataBlock);
+
+    // Update the 0xC2 active mask: clear the removed bit and shift higher
+    // bits down by one.
+    final current = await session.queryReportRateDpiInfo();
+    if (current == null) {
+      throw StateError('Failed to read current report rate/DPI block');
+    }
+    final mask = current.dpiActiveLevel;
+    final newMask = _shiftMaskAfterRemove(mask, removedIdx);
+    final infoBlock = Uint8List(3);
+    infoBlock[0] = current.reportRate;
+    infoBlock[1] = current.dpiCurrentLevel;
+    infoBlock[2] = newMask;
+    await session.setReportRate(infoBlock);
+  }
+
+  /// Lowest clear (0) bit index in [mask]; null if all bits set.
+  static int? _lowestClearBit(int mask) {
+    for (var i = 0; i < 8; i++) {
+      if ((mask & (1 << i)) == 0) return i;
+    }
+    return null;
+  }
+
+  /// After removing stage at [removedIdx], clear its bit and shift every higher
+  /// bit down one position, keeping the active set packed.
+  static int _shiftMaskAfterRemove(int mask, int removedIdx) {
+    var result = 0;
+    for (var i = 0; i < 8; i++) {
+      final isSet = (mask & (1 << i)) != 0;
+      if (!isSet) continue;
+      var dest = i;
+      if (i > removedIdx) dest = i - 1;
+      result |= (1 << dest);
+    }
+    return result;
   }
 
   /// Commits ripple control + angle snap into the 14-byte 0xD4 block.

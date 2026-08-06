@@ -63,6 +63,8 @@ void main() {
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
+        commitDpiStageAdd: () async {},
+        commitDpiStageRemove: (_) async {},
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -88,6 +90,8 @@ void main() {
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
+        commitDpiStageAdd: () async {},
+        commitDpiStageRemove: (_) async {},
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -127,6 +131,8 @@ void main() {
           commitReportRate: (_) async {},
           commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
+        commitDpiStageAdd: () async {},
+        commitDpiStageRemove: (_) async {},
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -168,6 +174,8 @@ void main() {
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
+        commitDpiStageAdd: () async {},
+        commitDpiStageRemove: (_) async {},
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -213,6 +221,8 @@ void main() {
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
+        commitDpiStageAdd: () async {},
+        commitDpiStageRemove: (_) async {},
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -251,6 +261,8 @@ void main() {
           commitReportRate: (_) async {},
           commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
+        commitDpiStageAdd: () async {},
+        commitDpiStageRemove: (_) async {},
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -283,6 +295,8 @@ void main() {
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
+        commitDpiStageAdd: () async {},
+        commitDpiStageRemove: (_) async {},
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -339,6 +353,8 @@ void main() {
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
+        commitDpiStageAdd: () async {},
+        commitDpiStageRemove: (_) async {},
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -371,6 +387,8 @@ void main() {
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
+        commitDpiStageAdd: () async {},
+        commitDpiStageRemove: (_) async {},
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -399,6 +417,8 @@ void main() {
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
+        commitDpiStageAdd: () async {},
+        commitDpiStageRemove: (_) async {},
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -432,6 +452,8 @@ void main() {
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
+        commitDpiStageAdd: () async {},
+        commitDpiStageRemove: (_) async {},
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -463,6 +485,8 @@ void main() {
         commitDpiValues: (values) async {
           written = values;
         },
+        commitDpiStageAdd: () async {},
+        commitDpiStageRemove: (_) async {},
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -486,6 +510,100 @@ void main() {
       expect(bloc.state.isDirty, false);
       await bloc.close();
     });
+
+    test('DPI stage add stages and prevents over-max', () async {
+      DeviceCapabilities? caps = dpiCaps;
+      final bloc = DeviceSettingsBloc(
+        commitButtonMapping: (_) async {},
+        commitReportRate: (_) async {},
+        commitDpiLevel: (_) async {},
+        commitDpiValues: (_) async {},
+        commitDpiStageAdd: () async {},
+        commitDpiStageRemove: (_) async {},
+        commitSensorTuning: (_, _) async {},
+        commitAngleTune: (_) async {},
+        commitLod: (_) async {},
+        commitPerformance: (_) async {},
+        commitDebounce: (_) async {},
+        commitSleep: (_) async {},
+        commitWheelInvert: (_) async {},
+        capabilitiesLookup: () => caps,
+      );
+      bloc.add(DeviceSettingsHydrated(
+        baseSettings().copyWith(dpiActiveLevelCount: 4, dpiMaxLevels: 8),
+      ));
+      await pumpEventQueue();
+      bloc.add(const DeviceSettingsDpiStageAddRequested());
+      await pumpEventQueue();
+      expect(bloc.state.dpiStageAddStaging, isTrue);
+      expect(bloc.state.isDirty, true);
+      await bloc.close();
+    });
+
+    test('DPI stage remove stages the level and prevents last removal', () async {
+      DeviceCapabilities? caps = dpiCaps;
+      final bloc = DeviceSettingsBloc(
+        commitButtonMapping: (_) async {},
+        commitReportRate: (_) async {},
+        commitDpiLevel: (_) async {},
+        commitDpiValues: (_) async {},
+        commitDpiStageAdd: () async {},
+        commitDpiStageRemove: (_) async {},
+        commitSensorTuning: (_, _) async {},
+        commitAngleTune: (_) async {},
+        commitLod: (_) async {},
+        commitPerformance: (_) async {},
+        commitDebounce: (_) async {},
+        commitSleep: (_) async {},
+        commitWheelInvert: (_) async {},
+        capabilitiesLookup: () => caps,
+      );
+      bloc.add(DeviceSettingsHydrated(
+        baseSettings().copyWith(dpiActiveLevelCount: 1),
+      ));
+      await pumpEventQueue();
+      bloc.add(const DeviceSettingsDpiStageRemoveRequested(level: 1));
+      await pumpEventQueue();
+      expect(bloc.state.dpiStageRemoveLevelStaging, isNull);
+      expect(bloc.state.lastError, isNotNull);
+      await bloc.close();
+    });
+
+    test('save DPI stage add commits and syncs count', () async {
+      DeviceCapabilities? caps = dpiCaps;
+      var addCalled = false;
+      final bloc = DeviceSettingsBloc(
+        commitButtonMapping: (_) async {},
+        commitReportRate: (_) async {},
+        commitDpiLevel: (_) async {},
+        commitDpiValues: (_) async {},
+        commitDpiStageAdd: () async {
+          addCalled = true;
+        },
+        commitDpiStageRemove: (_) async {},
+        commitSensorTuning: (_, _) async {},
+        commitAngleTune: (_) async {},
+        commitLod: (_) async {},
+        commitPerformance: (_) async {},
+        commitDebounce: (_) async {},
+        commitSleep: (_) async {},
+        commitWheelInvert: (_) async {},
+        capabilitiesLookup: () => caps,
+      );
+      bloc.add(DeviceSettingsHydrated(
+        baseSettings().copyWith(dpiActiveLevelCount: 4),
+      ));
+      await pumpEventQueue();
+      bloc.add(const DeviceSettingsDpiStageAddRequested());
+      await pumpEventQueue();
+      bloc.add(const DeviceSettingsSaveDpiStagesRequested());
+      await pumpEventQueue();
+      expect(addCalled, isTrue);
+      expect(bloc.state.synced?.dpiActiveLevelCount, 5);
+      expect(bloc.state.dpiStageAddStaging, isFalse);
+      expect(bloc.state.isDirty, false);
+      await bloc.close();
+    });
   });
 
   group('DeviceSettingsBloc decode-error guard', () {
@@ -495,6 +613,8 @@ void main() {
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
+        commitDpiStageAdd: () async {},
+        commitDpiStageRemove: (_) async {},
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -618,6 +738,8 @@ void main() {
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
+        commitDpiStageAdd: () async {},
+        commitDpiStageRemove: (_) async {},
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -645,6 +767,8 @@ void main() {
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
+        commitDpiStageAdd: () async {},
+        commitDpiStageRemove: (_) async {},
         commitSensorTuning: (r, a) async {
           ripple = r;
           angleSnap = a;
@@ -679,6 +803,8 @@ void main() {
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
+        commitDpiStageAdd: () async {},
+        commitDpiStageRemove: (_) async {},
         commitSensorTuning: (_, _) async {
           throw Exception('nak');
         },
@@ -711,6 +837,8 @@ void main() {
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
+        commitDpiStageAdd: () async {},
+        commitDpiStageRemove: (_) async {},
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -746,6 +874,8 @@ void main() {
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
+        commitDpiStageAdd: () async {},
+        commitDpiStageRemove: (_) async {},
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -774,6 +904,8 @@ void main() {
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
+        commitDpiStageAdd: () async {},
+        commitDpiStageRemove: (_) async {},
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -801,6 +933,8 @@ void main() {
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
+        commitDpiStageAdd: () async {},
+        commitDpiStageRemove: (_) async {},
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -827,6 +961,8 @@ void main() {
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
+        commitDpiStageAdd: () async {},
+        commitDpiStageRemove: (_) async {},
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (wire) async {
           written = wire;
@@ -858,6 +994,8 @@ void main() {
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
+        commitDpiStageAdd: () async {},
+        commitDpiStageRemove: (_) async {},
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {
           throw Exception('nak');
@@ -889,6 +1027,8 @@ void main() {
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
+        commitDpiStageAdd: () async {},
+        commitDpiStageRemove: (_) async {},
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -924,6 +1064,8 @@ void main() {
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
+        commitDpiStageAdd: () async {},
+        commitDpiStageRemove: (_) async {},
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -951,6 +1093,8 @@ void main() {
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
+        commitDpiStageAdd: () async {},
+        commitDpiStageRemove: (_) async {},
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -978,6 +1122,8 @@ void main() {
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
+        commitDpiStageAdd: () async {},
+        commitDpiStageRemove: (_) async {},
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -1005,6 +1151,8 @@ void main() {
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
+        commitDpiStageAdd: () async {},
+        commitDpiStageRemove: (_) async {},
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (wire) async {
@@ -1036,6 +1184,8 @@ void main() {
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
+        commitDpiStageAdd: () async {},
+        commitDpiStageRemove: (_) async {},
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {
@@ -1074,6 +1224,8 @@ void main() {
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
+        commitDpiStageAdd: () async {},
+        commitDpiStageRemove: (_) async {},
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -1101,6 +1253,8 @@ void main() {
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
+        commitDpiStageAdd: () async {},
+        commitDpiStageRemove: (_) async {},
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -1132,6 +1286,8 @@ void main() {
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
+        commitDpiStageAdd: () async {},
+        commitDpiStageRemove: (_) async {},
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -1163,6 +1319,8 @@ void main() {
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
+        commitDpiStageAdd: () async {},
+        commitDpiStageRemove: (_) async {},
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -1201,6 +1359,8 @@ void main() {
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
+        commitDpiStageAdd: () async {},
+        commitDpiStageRemove: (_) async {},
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -1226,6 +1386,8 @@ void main() {
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
+        commitDpiStageAdd: () async {},
+        commitDpiStageRemove: (_) async {},
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -1251,6 +1413,8 @@ void main() {
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
+        commitDpiStageAdd: () async {},
+        commitDpiStageRemove: (_) async {},
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -1277,6 +1441,8 @@ void main() {
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
+        commitDpiStageAdd: () async {},
+        commitDpiStageRemove: (_) async {},
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -1308,6 +1474,8 @@ void main() {
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
+        commitDpiStageAdd: () async {},
+        commitDpiStageRemove: (_) async {},
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -1339,6 +1507,8 @@ void main() {
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
+        commitDpiStageAdd: () async {},
+        commitDpiStageRemove: (_) async {},
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -1369,6 +1539,8 @@ void main() {
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
+        commitDpiStageAdd: () async {},
+        commitDpiStageRemove: (_) async {},
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},

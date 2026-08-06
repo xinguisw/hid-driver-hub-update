@@ -18,6 +18,8 @@ class DeviceSettingsViewState {
     this.reportRateStaging,
     this.dpiCurrentLevelStaging,
     this.dpiValueStaging,
+    this.dpiStageAddStaging = false,
+    this.dpiStageRemoveLevelStaging,
     this.rippleControlStaging,
     this.angleSnapStaging,
     this.angleTuneStaging,
@@ -43,6 +45,12 @@ class DeviceSettingsViewState {
 
   /// Staged DPI value per level (1-based level → value); null = no change.
   final Map<int, int>? dpiValueStaging;
+
+  /// True when a `+` add-stage is staged, pending Save.
+  final bool dpiStageAddStaging;
+
+  /// 1-based level staged for removal (null = none).
+  final int? dpiStageRemoveLevelStaging;
 
   final bool? rippleControlStaging;
   final bool? angleSnapStaging;
@@ -83,6 +91,8 @@ class DeviceSettingsViewState {
     int? reportRateStaging,
     int? dpiCurrentLevelStaging,
     Map<int, int>? dpiValueStaging,
+    bool? dpiStageAddStaging,
+    int? dpiStageRemoveLevelStaging,
     bool? rippleControlStaging,
     bool? angleSnapStaging,
     int? angleTuneStaging,
@@ -116,6 +126,12 @@ class DeviceSettingsViewState {
       dpiValueStaging: clearStaging
           ? null
           : (dpiValueStaging ?? this.dpiValueStaging),
+      dpiStageAddStaging: clearStaging
+          ? false
+          : (dpiStageAddStaging ?? this.dpiStageAddStaging),
+      dpiStageRemoveLevelStaging: clearStaging
+          ? null
+          : (dpiStageRemoveLevelStaging ?? this.dpiStageRemoveLevelStaging),
       rippleControlStaging: clearStaging
           ? null
           : (rippleControlStaging ?? this.rippleControlStaging),

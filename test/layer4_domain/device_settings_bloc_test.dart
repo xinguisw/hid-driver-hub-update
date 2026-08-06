@@ -62,6 +62,7 @@ void main() {
         commitButtonMapping: (_) async {},
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
+        commitDpiValues: (_) async {},
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -86,6 +87,7 @@ void main() {
         },
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
+        commitDpiValues: (_) async {},
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -124,6 +126,7 @@ void main() {
           commitButtonMapping: (_) async {},
           commitReportRate: (_) async {},
           commitDpiLevel: (_) async {},
+        commitDpiValues: (_) async {},
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -164,6 +167,7 @@ void main() {
         },
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
+        commitDpiValues: (_) async {},
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -208,6 +212,7 @@ void main() {
         },
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
+        commitDpiValues: (_) async {},
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -245,6 +250,7 @@ void main() {
           },
           commitReportRate: (_) async {},
           commitDpiLevel: (_) async {},
+        commitDpiValues: (_) async {},
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -276,6 +282,7 @@ void main() {
         },
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
+        commitDpiValues: (_) async {},
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -306,7 +313,12 @@ void main() {
       dpi: DpiCapabilities(
         maxLevels: 4,
         defaultLevel: 1,
-        maxDpi: 3200,
+        range: DpiRange(
+          minDpi: 50,
+          maxDpi: 3200,
+          stepMode: 'fixed',
+          step: 50,
+        ),
         independentXY: false,
         rgbPerStage: false,
         levels: [
@@ -326,6 +338,7 @@ void main() {
         commitButtonMapping: (_) async {},
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
+        commitDpiValues: (_) async {},
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -357,6 +370,7 @@ void main() {
         commitButtonMapping: (_) async {},
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
+        commitDpiValues: (_) async {},
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -377,6 +391,101 @@ void main() {
       expect(bloc.state.dpiCurrentLevelStaging, isNull);
       await bloc.close();
     });
+
+    test('DPI value stages per level and snaps to step', () async {
+      DeviceCapabilities? caps = dpiCaps;
+      final bloc = DeviceSettingsBloc(
+        commitButtonMapping: (_) async {},
+        commitReportRate: (_) async {},
+        commitDpiLevel: (_) async {},
+        commitDpiValues: (_) async {},
+        commitSensorTuning: (_, _) async {},
+        commitAngleTune: (_) async {},
+        commitLod: (_) async {},
+        commitPerformance: (_) async {},
+        commitDebounce: (_) async {},
+        commitSleep: (_) async {},
+        commitWheelInvert: (_) async {},
+        capabilitiesLookup: () => caps,
+      );
+      bloc.add(DeviceSettingsHydrated(baseSettings()));
+      await pumpEventQueue();
+
+      // 800 is on-step (50-step); 815 snaps to 800.
+      bloc.add(const DeviceSettingsDpiValueRequested(level: 1, value: 815));
+      await pumpEventQueue();
+      expect(bloc.state.dpiValueStaging, {1: 800});
+      expect(bloc.state.isDirty, true);
+
+      // Stage a second level independently.
+      bloc.add(const DeviceSettingsDpiValueRequested(level: 2, value: 1600));
+      await pumpEventQueue();
+      expect(bloc.state.dpiValueStaging, {1: 800, 2: 1600});
+
+      await bloc.close();
+    });
+
+    test('DPI value out of range is rejected', () async {
+      DeviceCapabilities? caps = dpiCaps;
+      final bloc = DeviceSettingsBloc(
+        commitButtonMapping: (_) async {},
+        commitReportRate: (_) async {},
+        commitDpiLevel: (_) async {},
+        commitDpiValues: (_) async {},
+        commitSensorTuning: (_, _) async {},
+        commitAngleTune: (_) async {},
+        commitLod: (_) async {},
+        commitPerformance: (_) async {},
+        commitDebounce: (_) async {},
+        commitSleep: (_) async {},
+        commitWheelInvert: (_) async {},
+        capabilitiesLookup: () => caps,
+      );
+      bloc.add(DeviceSettingsHydrated(baseSettings()));
+      await pumpEventQueue();
+
+      // 5000 > max 3200 -> rejected.
+      bloc.add(const DeviceSettingsDpiValueRequested(level: 1, value: 5000));
+      await pumpEventQueue();
+      expect(bloc.state.dpiValueStaging, isNull);
+      expect(bloc.state.lastError, isNotNull);
+
+      await bloc.close();
+    });
+
+    test('save DPI values commits and syncs', () async {
+      DeviceCapabilities? caps = dpiCaps;
+      Map<int, int>? written;
+      final bloc = DeviceSettingsBloc(
+        commitButtonMapping: (_) async {},
+        commitReportRate: (_) async {},
+        commitDpiLevel: (_) async {},
+        commitDpiValues: (values) async {
+          written = values;
+        },
+        commitSensorTuning: (_, _) async {},
+        commitAngleTune: (_) async {},
+        commitLod: (_) async {},
+        commitPerformance: (_) async {},
+        commitDebounce: (_) async {},
+        commitSleep: (_) async {},
+        commitWheelInvert: (_) async {},
+        capabilitiesLookup: () => caps,
+      );
+      bloc.add(DeviceSettingsHydrated(baseSettings()));
+      await pumpEventQueue();
+
+      bloc.add(const DeviceSettingsDpiValueRequested(level: 1, value: 800));
+      bloc.add(const DeviceSettingsDpiValueRequested(level: 2, value: 1600));
+      await pumpEventQueue();
+      bloc.add(const DeviceSettingsSaveDpiValuesRequested());
+      await pumpEventQueue();
+
+      expect(written, {1: 800, 2: 1600});
+      expect(bloc.state.dpiValueStaging, isNull);
+      expect(bloc.state.isDirty, false);
+      await bloc.close();
+    });
   });
 
   group('DeviceSettingsBloc decode-error guard', () {
@@ -385,6 +494,7 @@ void main() {
         commitButtonMapping: (_) async {},
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
+        commitDpiValues: (_) async {},
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -507,6 +617,7 @@ void main() {
         commitButtonMapping: (_) async {},
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
+        commitDpiValues: (_) async {},
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -533,6 +644,7 @@ void main() {
         commitButtonMapping: (_) async {},
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
+        commitDpiValues: (_) async {},
         commitSensorTuning: (r, a) async {
           ripple = r;
           angleSnap = a;
@@ -566,6 +678,7 @@ void main() {
         commitButtonMapping: (_) async {},
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
+        commitDpiValues: (_) async {},
         commitSensorTuning: (_, _) async {
           throw Exception('nak');
         },
@@ -597,6 +710,7 @@ void main() {
         commitButtonMapping: (_) async {},
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
+        commitDpiValues: (_) async {},
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -631,6 +745,7 @@ void main() {
         commitButtonMapping: (_) async {},
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
+        commitDpiValues: (_) async {},
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -658,6 +773,7 @@ void main() {
         commitButtonMapping: (_) async {},
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
+        commitDpiValues: (_) async {},
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -684,6 +800,7 @@ void main() {
         commitButtonMapping: (_) async {},
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
+        commitDpiValues: (_) async {},
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -709,6 +826,7 @@ void main() {
         commitButtonMapping: (_) async {},
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
+        commitDpiValues: (_) async {},
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (wire) async {
           written = wire;
@@ -739,6 +857,7 @@ void main() {
         commitButtonMapping: (_) async {},
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
+        commitDpiValues: (_) async {},
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {
           throw Exception('nak');
@@ -769,6 +888,7 @@ void main() {
         commitButtonMapping: (_) async {},
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
+        commitDpiValues: (_) async {},
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -803,6 +923,7 @@ void main() {
         commitButtonMapping: (_) async {},
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
+        commitDpiValues: (_) async {},
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -829,6 +950,7 @@ void main() {
         commitButtonMapping: (_) async {},
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
+        commitDpiValues: (_) async {},
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -855,6 +977,7 @@ void main() {
         commitButtonMapping: (_) async {},
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
+        commitDpiValues: (_) async {},
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -881,6 +1004,7 @@ void main() {
         commitButtonMapping: (_) async {},
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
+        commitDpiValues: (_) async {},
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (wire) async {
@@ -911,6 +1035,7 @@ void main() {
         commitButtonMapping: (_) async {},
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
+        commitDpiValues: (_) async {},
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {
@@ -948,6 +1073,7 @@ void main() {
         commitButtonMapping: (_) async {},
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
+        commitDpiValues: (_) async {},
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -974,6 +1100,7 @@ void main() {
         commitButtonMapping: (_) async {},
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
+        commitDpiValues: (_) async {},
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -1004,6 +1131,7 @@ void main() {
         commitButtonMapping: (_) async {},
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
+        commitDpiValues: (_) async {},
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -1034,6 +1162,7 @@ void main() {
         commitButtonMapping: (_) async {},
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
+        commitDpiValues: (_) async {},
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -1071,6 +1200,7 @@ void main() {
         commitButtonMapping: (_) async {},
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
+        commitDpiValues: (_) async {},
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -1095,6 +1225,7 @@ void main() {
         commitButtonMapping: (_) async {},
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
+        commitDpiValues: (_) async {},
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -1119,6 +1250,7 @@ void main() {
         commitButtonMapping: (_) async {},
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
+        commitDpiValues: (_) async {},
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -1144,6 +1276,7 @@ void main() {
         commitButtonMapping: (_) async {},
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
+        commitDpiValues: (_) async {},
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -1174,6 +1307,7 @@ void main() {
         commitButtonMapping: (_) async {},
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
+        commitDpiValues: (_) async {},
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -1204,6 +1338,7 @@ void main() {
         commitButtonMapping: (_) async {},
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
+        commitDpiValues: (_) async {},
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -1233,6 +1368,7 @@ void main() {
         commitButtonMapping: (_) async {},
         commitReportRate: (_) async {},
         commitDpiLevel: (_) async {},
+        commitDpiValues: (_) async {},
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},

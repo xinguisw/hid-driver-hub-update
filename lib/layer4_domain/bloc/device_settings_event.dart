@@ -98,6 +98,28 @@ class DeviceSettingsSaveDpiLevelRequested extends DeviceSettingsEvent {
   const DeviceSettingsSaveDpiLevelRequested();
 }
 
+/// User dragged a DPI value slider for a level.
+///
+/// L3 passes the 1-based level + the new value. L4 snaps/validates against
+/// the mouse catalog's DPI range and stages it per level.
+class DeviceSettingsDpiValueRequested extends DeviceSettingsEvent {
+  const DeviceSettingsDpiValueRequested({
+    required this.level,
+    required this.value,
+  });
+
+  /// 1-based DPI level (1..maxLevels).
+  final int level;
+
+  /// DPI value (e.g. 800).
+  final int value;
+}
+
+/// Save all staged DPI value changes to device.
+class DeviceSettingsSaveDpiValuesRequested extends DeviceSettingsEvent {
+  const DeviceSettingsSaveDpiValuesRequested();
+}
+
 /// User toggled ripple control.
 ///
 /// L3 passes the boolean value. L4 stages it and marks dirty.

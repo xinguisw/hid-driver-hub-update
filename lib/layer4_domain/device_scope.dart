@@ -6,6 +6,7 @@ import 'package:driver_hub/layer1_discovery/device_session.dart';
 import 'package:driver_hub/layer1_discovery/device_watcher.dart';
 import 'package:driver_hub/layer1_discovery/discovered_device.dart';
 import 'package:driver_hub/layer2_capabilities/capabilities.dart';
+import 'package:driver_hub/layer2_capabilities/sensor_profiles.dart';
 import 'package:driver_hub/layer4_domain/bloc/device_settings_bloc.dart';
 import 'package:driver_hub/layer4_domain/models/button_mapping_slot.dart';
 import 'package:driver_hub/layer4_domain/models/device_settings_state.dart';
@@ -218,6 +219,7 @@ class DeviceScope {
       commitButtonMapping: (slots) => commitButtonMapping(card, slots),
       commitReportRate: (hz) => commitReportRate(card, hz),
       commitDpiLevel: (level) => commitDpiLevel(card, level),
+      commitDpiValues: (values) => commitDpiValues(card, values),
       commitSensorTuning: (ripple, snap) =>
           commitSensorTuning(card, ripple, snap),
       commitAngleTune: (wireValue) => commitAngleTune(card, wireValue),
@@ -319,6 +321,60 @@ class DeviceScope {
     dataBlock[2] = currentBlock.dpiActiveLevel;
 
     await session.setReportRate(dataBlock);
+  }
+
+  /// Commits staged DPI value changes into the 0xC4 table.
+  ///
+  /// Reads the current table, encodes each staged level's DPI number to wire
+  /// bytes using the device's sensor encoding, and writes the full 16-byte
+  /// block back (read-before-write; the C4 table is a shared block).
+  Future<void> commitDpiValues(
+    DiscoveredCardState card,
+    Map<int, int> levelValues,
+  ) async {
+    final session = _sessionForCard(card);
+    if (session == null || !session.isAlive) {
+      throw StateError('commitDpiValues: no session');
+    }
+
+    final profile = SensorProfiles.forDevice(card.devId);
+    final table = profile == null ? null : SensorProfiles.table(profile.table);
+    final enc = table?.dpiEncoding;
+    if (enc == null) {
+      throw StateError('commitDpiValues: no sensor encoding for ${card.devId}');
+    }
+
+    final current = await session.queryDpiTable();
+    if (current == null) {
+      throw StateError('Failed to read current DPI table');
+    }
+
+    const translate = TranslationCodec();
+    final dataBlock = Uint8List.fromList(current.data);
+    for (final e in levelValues.entries) {
+      final idx = e.key - 1; // 1-based level -> 0-based slot
+      if (idx < 0 || idx >= 8) continue;
+      final wire = translate.dpiDisplayToWireUnit(
+        e.value,
+        transform: enc.transform,
+        factor: enc.factor,
+        cpiMap: enc.cpiMap,
+        cpiTables: enc.cpiTables,
+      );
+      if (wire == null) {
+        throw StateError('DPI value ${e.value} not encodable on this sensor');
+      }
+      if (enc.bytesPerAxis == 1) {
+        dataBlock[idx] = wire & 0xFF;
+      } else {
+        final hi = (wire >> 8) & 0xFF;
+        final lo = wire & 0xFF;
+        dataBlock[idx * 2] = hi;
+        dataBlock[idx * 2 + 1] = lo;
+      }
+    }
+
+    await session.setDpiTable(dataBlock);
   }
 
   /// Commits ripple control + angle snap into the 14-byte 0xD4 block.

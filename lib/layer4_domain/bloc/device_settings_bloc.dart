@@ -4,6 +4,7 @@ import 'package:driver_hub/layer4_domain/bloc/device_settings_state_view.dart';
 import 'package:driver_hub/layer4_domain/button_mapping_reset.dart';
 import 'package:driver_hub/layer4_domain/button_mapping_validate.dart';
 import 'package:driver_hub/layer4_domain/models/button_mapping_slot.dart';
+import 'package:driver_hub/layer4_domain/models/device_settings_state.dart';
 import 'package:driver_hub/layer5_codec/button_action_catalog_map.dart';
 import 'package:driver_hub/layer5_codec/codecs/translation_codec.dart';
 import 'package:flutter/foundation.dart';
@@ -15,6 +16,8 @@ typedef ButtonMappingCommit =
 typedef ReportRateCommit = Future<void> Function(int reportRateHz);
 
 typedef DpiLevelCommit = Future<void> Function(int dpiLevel);
+
+typedef DpiValuesCommit = Future<void> Function(Map<int, int> levelValues);
 
 typedef SensorTuningCommit = Future<void> Function(
   bool rippleControl,
@@ -51,6 +54,7 @@ class DeviceSettingsBloc
     required this.commitButtonMapping,
     required this.commitReportRate,
     required this.commitDpiLevel,
+    required this.commitDpiValues,
     required this.commitSensorTuning,
     required this.commitAngleTune,
     required this.commitLod,
@@ -82,6 +86,8 @@ class DeviceSettingsBloc
     on<DeviceSettingsSaveReportRateRequested>(_onSaveReportRate);
     on<DeviceSettingsDpiLevelRequested>(_onDpiLevelRequested);
     on<DeviceSettingsSaveDpiLevelRequested>(_onSaveDpiLevel);
+    on<DeviceSettingsDpiValueRequested>(_onDpiValueRequested);
+    on<DeviceSettingsSaveDpiValuesRequested>(_onSaveDpiValues);
     on<DeviceSettingsRippleControlRequested>(_onRippleControlRequested);
     on<DeviceSettingsAngleSnapRequested>(_onAngleSnapRequested);
     on<DeviceSettingsSaveSensorTuningRequested>(_onSaveSensorTuning);
@@ -103,6 +109,7 @@ class DeviceSettingsBloc
   final ButtonMappingCommit commitButtonMapping;
   final ReportRateCommit commitReportRate;
   final DpiLevelCommit commitDpiLevel;
+  final DpiValuesCommit commitDpiValues;
   final SensorTuningCommit commitSensorTuning;
   final AngleTuneCommit commitAngleTune;
   final LodCommit commitLod;
@@ -690,6 +697,127 @@ class DeviceSettingsBloc
       ),
     );
     debugPrint('[bloc] save DPI level: synced');
+    onSaveCompleted?.call();
+  }
+
+  /// User dragged a DPI value slider for a level.
+  ///
+  /// Snaps/validates the value against the mouse catalog's DPI range
+  /// (stepMode fixed/tiered/any) and stages it per level.
+  void _onDpiValueRequested(
+    DeviceSettingsDpiValueRequested event,
+    Emitter<DeviceSettingsViewState> emit,
+  ) {
+    final synced = state.synced;
+    if (synced == null) {
+      emit(state.copyWith(lastError: 'no settings loaded'));
+      return;
+    }
+
+    if (synced.decodeErrors.contains('reportRateDpi')) {
+      emit(state.copyWith(lastError: 'DPI value unavailable: decode error'));
+      return;
+    }
+
+    final range = activeCapabilities?.dpi?.range;
+    if (range == null) {
+      emit(state.copyWith(lastError: 'DPI value: no range in capabilities'));
+      return;
+    }
+
+    final snapped = range.snap(event.value);
+    if (snapped == null) {
+      emit(
+        state.copyWith(
+          lastError:
+              'DPI value ${event.value} out of range '
+              '[${range.minDpi}, ${range.maxDpi}]',
+        ),
+      );
+      return;
+    }
+
+    final next = {...?state.dpiValueStaging};
+    next[event.level] = snapped;
+    emit(
+      state.copyWith(
+        dpiValueStaging: next,
+        isDirty: true,
+        clearError: true,
+      ),
+    );
+
+    debugPrint('[bloc] DPI value staged: level=${event.level} value=$snapped');
+  }
+
+  /// Save all staged DPI value changes to device.
+  Future<void> _onSaveDpiValues(
+    DeviceSettingsSaveDpiValuesRequested event,
+    Emitter<DeviceSettingsViewState> emit,
+  ) async {
+    final staging = state.dpiValueStaging;
+    if (staging == null || staging.isEmpty) {
+      debugPrint('[bloc] save DPI values: nothing dirty');
+      return;
+    }
+    if (state.committing) return;
+
+    final synced = state.synced;
+    if (synced == null) {
+      emit(state.copyWith(lastError: 'save DPI values: no synced settings'));
+      return;
+    }
+
+    emit(state.copyWith(committing: true, clearError: true));
+
+    try {
+      await commitDpiValues(staging);
+    } catch (e) {
+      debugPrint('[bloc] save DPI values failed: $e');
+      final failures = state.consecutiveFailures + 1;
+      emit(
+        state.copyWith(
+          committing: false,
+          lastError: 'DPI values save failed: $e',
+          consecutiveFailures: failures,
+        ),
+      );
+      if (failures >= failureEscalateThreshold) {
+        onEscalationRequested?.call(
+          'DPI values save failed $failures consecutive times',
+        );
+      }
+      return;
+    }
+
+    final levels = [...?synced.dpiLevels];
+    for (final e in staging.entries) {
+      final idx = levels.indexWhere((l) => l.level == e.key);
+      if (idx >= 0) {
+        levels[idx] = DpiStageData(
+          level: e.key,
+          value: e.value,
+          color: levels[idx].color,
+        );
+      }
+    }
+    final nextSynced = synced.copyWith(
+      dpiLevels: levels,
+      clearError: true,
+    );
+    emit(
+      DeviceSettingsViewState(
+        synced: nextSynced,
+        dpiValueStaging: null,
+        isDirty: false,
+        committing: false,
+        consecutiveFailures: 0,
+        lastError: null,
+        actionLabelOf: state.actionLabelOf,
+        buttonIdLabelOf: state.buttonIdLabelOf,
+      ),
+    );
+    debugPrint('[bloc] save DPI values: synced');
     onSaveCompleted?.call();
   }
 

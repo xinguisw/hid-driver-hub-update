@@ -21,7 +21,10 @@ DeviceSettingsState applyCapabilitiesToSettings(
   final dpi = caps.dpi;
   if (dpi != null) {
     next = next.copyWith(
-      dpiMax: dpi.maxDpi,
+      dpiMax: dpi.range.maxDpi,
+      dpiMin: dpi.range.minDpi,
+      dpiStep: dpi.range.step,
+      dpiStepMode: dpi.range.stepMode,
       dpiMaxLevels: dpi.maxLevels,
       dpiDefaultLevel: dpi.defaultLevel,
       dpiRgbPerStage: dpi.rgbPerStage,

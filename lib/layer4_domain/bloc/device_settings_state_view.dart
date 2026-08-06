@@ -17,6 +17,7 @@ class DeviceSettingsViewState {
     this.buttonMappingStaging,
     this.reportRateStaging,
     this.dpiCurrentLevelStaging,
+    this.dpiValueStaging,
     this.rippleControlStaging,
     this.angleSnapStaging,
     this.angleTuneStaging,
@@ -39,6 +40,10 @@ class DeviceSettingsViewState {
   final List<ButtonMappingSlot>? buttonMappingStaging;
   final int? reportRateStaging;
   final int? dpiCurrentLevelStaging;
+
+  /// Staged DPI value per level (1-based level → value); null = no change.
+  final Map<int, int>? dpiValueStaging;
+
   final bool? rippleControlStaging;
   final bool? angleSnapStaging;
   final int? angleTuneStaging;
@@ -77,6 +82,7 @@ class DeviceSettingsViewState {
     List<ButtonMappingSlot>? buttonMappingStaging,
     int? reportRateStaging,
     int? dpiCurrentLevelStaging,
+    Map<int, int>? dpiValueStaging,
     bool? rippleControlStaging,
     bool? angleSnapStaging,
     int? angleTuneStaging,
@@ -107,6 +113,9 @@ class DeviceSettingsViewState {
       dpiCurrentLevelStaging: clearStaging
           ? null
           : (dpiCurrentLevelStaging ?? this.dpiCurrentLevelStaging),
+      dpiValueStaging: clearStaging
+          ? null
+          : (dpiValueStaging ?? this.dpiValueStaging),
       rippleControlStaging: clearStaging
           ? null
           : (rippleControlStaging ?? this.rippleControlStaging),

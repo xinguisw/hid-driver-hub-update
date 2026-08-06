@@ -540,6 +540,44 @@ void main() {
       await bloc.close();
     });
 
+    test('DPI stage add accumulates multiple clicks before save', () async {
+      DeviceCapabilities? caps = dpiCaps;
+      final bloc = DeviceSettingsBloc(
+        commitButtonMapping: (_) async {},
+        commitReportRate: (_) async {},
+        commitDpiLevel: (_) async {},
+        commitDpiValues: (_) async {},
+        commitDpiStageAdd: () async {},
+        commitDpiStageRemove: (_) async {},
+        commitSensorTuning: (_, _) async {},
+        commitAngleTune: (_) async {},
+        commitLod: (_) async {},
+        commitPerformance: (_) async {},
+        commitDebounce: (_) async {},
+        commitSleep: (_) async {},
+        commitWheelInvert: (_) async {},
+        capabilitiesLookup: () => caps,
+      );
+      bloc.add(DeviceSettingsHydrated(
+        baseSettings().copyWith(
+          dpiActiveLevelCount: 4,
+          dpiMaxLevels: 8,
+          dpiLevels: const [
+            DpiStageData(level: 1, value: 800),
+            DpiStageData(level: 2, value: 1600),
+            DpiStageData(level: 3, value: 2400),
+            DpiStageData(level: 4, value: 3200),
+          ],
+        ),
+      ));
+      await pumpEventQueue();
+      bloc.add(const DeviceSettingsDpiStageAddRequested());
+      bloc.add(const DeviceSettingsDpiStageAddRequested());
+      await pumpEventQueue();
+      expect(bloc.state.dpiStageLevelsStaging?.length, 6);
+      await bloc.close();
+    });
+
     test('DPI stage remove stages the level and prevents last removal', () async {
       DeviceCapabilities? caps = dpiCaps;
       final bloc = DeviceSettingsBloc(
@@ -591,7 +629,15 @@ void main() {
         capabilitiesLookup: () => caps,
       );
       bloc.add(DeviceSettingsHydrated(
-        baseSettings().copyWith(dpiActiveLevelCount: 4),
+        baseSettings().copyWith(
+          dpiActiveLevelCount: 4,
+          dpiLevels: const [
+            DpiStageData(level: 1, value: 800),
+            DpiStageData(level: 2, value: 1600),
+            DpiStageData(level: 3, value: 2400),
+            DpiStageData(level: 4, value: 3200),
+          ],
+        ),
       ));
       await pumpEventQueue();
       bloc.add(const DeviceSettingsDpiStageAddRequested());

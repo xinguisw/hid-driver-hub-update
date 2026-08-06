@@ -844,15 +844,19 @@ class DeviceSettingsBloc
       emit(state.copyWith(lastError: 'no settings loaded'));
       return;
     }
-    final activeCount = synced.dpiActiveLevelCount ?? 0;
+    // why: accumulate onto the staged list so multiple `+` clicks add
+    // multiple stages before Save. The base is the staged list if present,
+    // else the synced levels; the count comes from that same base.
+    final staged = state.dpiStageLevelsStaging;
+    final baseLevels = staged ?? synced.dpiLevels;
+    final currentCount = baseLevels?.length ?? 0;
     final maxLevels = synced.dpiMaxLevels ?? 8;
-    if (activeCount >= maxLevels) {
+    if (currentCount >= maxLevels) {
       emit(state.copyWith(lastError: 'cannot add: max DPI stages reached'));
       return;
     }
-    // Append a new stage to the level list (default value from catalog).
-    final levels = [...?synced.dpiLevels];
-    final newLevel = activeCount + 1;
+    final levels = [...?baseLevels];
+    final newLevel = currentCount + 1;
     final defaultDpi = _defaultDpiValue(synced) ?? 1600;
     levels.add(DpiStageData(level: newLevel, value: defaultDpi));
     emit(
@@ -876,13 +880,17 @@ class DeviceSettingsBloc
       emit(state.copyWith(lastError: 'no settings loaded'));
       return;
     }
-    final activeCount = synced.dpiActiveLevelCount ?? 0;
+    // why: accumulate onto the staged list so multiple `x` clicks remove
+    // multiple stages before Save.
+    final staged = state.dpiStageLevelsStaging;
+    final baseLevels = staged ?? synced.dpiLevels;
+    final activeCount = baseLevels?.length ?? 0;
     if (activeCount <= 1) {
       emit(state.copyWith(lastError: 'cannot remove: at least one stage'));
       return;
     }
     // Remove the selected level; shift later stages toward slot 1.
-    final levels = [...?synced.dpiLevels];
+    final levels = [...?baseLevels];
     final removed = levels.where((l) => l.level != event.level).toList();
     final reindexed = <DpiStageData>[];
     for (var i = 0; i < removed.length; i++) {
@@ -947,10 +955,10 @@ class DeviceSettingsBloc
       return;
     }
 
-    final count = state.dpiStageAddStaging
-        ? (synced.dpiActiveLevelCount ?? 0) + 1
-        : (synced.dpiActiveLevelCount ?? 0) - 1;
     final stagedLevels = state.dpiStageLevelsStaging;
+    // why: the staged list IS the post-add/remove result; its length is the
+    // authoritative new count (handles multiple adds, single/multi removes).
+    final count = stagedLevels?.length ?? synced.dpiActiveLevelCount ?? 0;
     final nextSynced = synced.copyWith(
       dpiActiveLevelCount: count,
       dpiLevels: stagedLevels ?? synced.dpiLevels,

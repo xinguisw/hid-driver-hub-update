@@ -552,10 +552,24 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                     buildWhen: (p, n) =>
                         p.synced != n.synced ||
                         p.isDirty != n.isDirty ||
-                        p.committing != n.committing,
+                        p.committing != n.committing ||
+                        p.rgbEnableStaging != n.rgbEnableStaging ||
+                        p.rgbModeIdStaging != n.rgbModeIdStaging ||
+                        p.rgbBrightnessStaging != n.rgbBrightnessStaging ||
+                        p.rgbSpeedStaging != n.rgbSpeedStaging ||
+                        p.rgbRStaging != n.rgbRStaging ||
+                        p.rgbGStaging != n.rgbGStaging ||
+                        p.rgbBStaging != n.rgbBStaging ||
+                        p.rgbSleepTimeStaging != n.rgbSleepTimeStaging,
                     builder: (context, view) {
                       final synced = view.synced;
                       final bloc = context.read<DeviceSettingsBloc>();
+                      // why: sleep options live in L2 capability schema, not in
+                      // synced state — sourced from RgbBacklightCapabilities
+                      // (never hardcoded) per FR-RGB-004 / FR-ARC-001.
+                      final sleepOpts = DeviceCapabilityStore.forDevice(
+                        widget.card.devId,
+                      )?.rgbBacklight?.sleepTimeOptions;
                       return Column(
                         children: [
                           Expanded(
@@ -569,16 +583,49 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                                     supportsColor: m.supportsColor,
                                   ),
                               ],
-                              rgbEnable: synced?.rgbEnable,
-                              rgbModeId: synced?.rgbModeId,
+                              rgbEnable: view.displayRgbEnable,
+                              rgbModeId: view.displayRgbModeId,
                               rgbBrightnessLevels: synced?.rgbBrightnessLevels,
-                              rgbBrightness: synced?.rgbBrightness,
+                              rgbBrightness: view.displayRgbBrightness,
                               rgbSpeedLevels: synced?.rgbSpeedLevels,
-                              rgbSpeed: synced?.rgbSpeed,
-                              rgbR: synced?.rgbR,
-                              rgbG: synced?.rgbG,
-                              rgbB: synced?.rgbB,
-                              rgbSleepTime: synced?.rgbSleepTime,
+                              rgbSpeed: view.displayRgbSpeed,
+                              rgbR: view.displayRgbR,
+                              rgbG: view.displayRgbG,
+                              rgbB: view.displayRgbB,
+                              rgbSleepTime: view.displayRgbSleepTime,
+                              rgbSleepOptions: sleepOpts,
+                              onEnableChanged: (v) => bloc.add(
+                                DeviceSettingsBacklightEnableRequested(
+                                  enable: v,
+                                ),
+                              ),
+                              onModeChanged: (id) => bloc.add(
+                                DeviceSettingsBacklightModeRequested(
+                                  modeId: id,
+                                ),
+                              ),
+                              onColorChanged: (c) => bloc.add(
+                                DeviceSettingsBacklightColorRequested(
+                                  r: (c.r * 255.0).round().clamp(0, 255),
+                                  g: (c.g * 255.0).round().clamp(0, 255),
+                                  b: (c.b * 255.0).round().clamp(0, 255),
+                                ),
+                              ),
+                              onBrightnessChanged: (lvl) => bloc.add(
+                                DeviceSettingsBacklightBrightnessRequested(
+                                  level: lvl,
+                                ),
+                              ),
+                              onSpeedChanged: (lvl) => bloc.add(
+                                DeviceSettingsBacklightSpeedRequested(
+                                  level: lvl,
+                                ),
+                              ),
+                              onSleepChanged: (idx) => bloc.add(
+                                DeviceSettingsBacklightSleepRequested(
+                                  wire: idx,
+                                ),
+                              ),
                             ),
                           ),
                           _BacklightActionBar(
@@ -586,7 +633,7 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                             committing: view.committing,
                             onSave: () {
                               bloc.add(
-                                const DeviceSettingsSaveRequested(),
+                                const DeviceSettingsSaveBacklightRequested(),
                               );
                             },
                             onCancel: () {

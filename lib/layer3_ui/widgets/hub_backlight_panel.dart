@@ -21,9 +21,13 @@ class HubBacklightPanel extends StatelessWidget {
     this.rgbG,
     this.rgbB,
     this.rgbSleepTime,
+    this.rgbSleepOptions,
     this.onEnableChanged,
     this.onModeChanged,
     this.onColorChanged,
+    this.onBrightnessChanged,
+    this.onSpeedChanged,
+    this.onSleepChanged,
   });
 
   final List<RgbMode>? rgbModes;
@@ -36,10 +40,25 @@ class HubBacklightPanel extends StatelessWidget {
   final int? rgbR;
   final int? rgbG;
   final int? rgbB;
+
+  /// Selected RGB power-saving index (into [rgbSleepOptions]).
   final int? rgbSleepTime;
+
+  /// RGB power-saving options from the device capability schema
+  /// (`RgbBacklightCapabilities.sleepTimeOptions`, seconds). Not hardcoded.
+  final List<int>? rgbSleepOptions;
   final ValueChanged<bool>? onEnableChanged;
   final ValueChanged<int>? onModeChanged;
   final ValueChanged<Color>? onColorChanged;
+
+  /// Emits the selected brightness level index `0 .. brightnessLevels-1`.
+  final ValueChanged<int>? onBrightnessChanged;
+
+  /// Emits the selected speed level index `0 .. speedLevels-1`.
+  final ValueChanged<int>? onSpeedChanged;
+
+  /// Emits the selected RGB power-saving index into [rgbSleepOptions].
+  final ValueChanged<int>? onSleepChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -68,17 +87,23 @@ class HubBacklightPanel extends StatelessWidget {
           const SizedBox(height: 8),
           _LevelBox(
             title: 'Brightness',
-            levels: rgbBrightnessLevels ?? 5,
+            levels: rgbBrightnessLevels ?? 0,
             selected: rgbBrightness,
+            onChanged: onBrightnessChanged,
           ),
           const SizedBox(height: 8),
           _LevelBox(
             title: 'Speed',
-            levels: rgbSpeedLevels ?? 5,
+            levels: rgbSpeedLevels ?? 0,
             selected: rgbSpeed,
+            onChanged: onSpeedChanged,
           ),
           const SizedBox(height: 8),
-          _PowerSavingBox(rgbSleepTime: rgbSleepTime),
+          _PowerSavingBox(
+            options: rgbSleepOptions ?? const [],
+            selected: rgbSleepTime,
+            onChanged: onSleepChanged,
+          ),
         ],
       ),
     );
@@ -427,15 +452,20 @@ class _LevelBox extends StatelessWidget {
     required this.title,
     required this.levels,
     required this.selected,
+    this.onChanged,
   });
 
   final String title;
   final int levels;
   final int? selected;
 
+  /// Emits the tapped level index `0 .. levels-1`.
+  final ValueChanged<int>? onChanged;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final pctDenom = levels > 1 ? (levels - 1) : 1;
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -452,18 +482,22 @@ class _LevelBox extends StatelessWidget {
               for (var i = 0; i < levels; i++) ...[
                 if (i > 0) const SizedBox(width: 6),
                 Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: i == selected
-                          ? theme.colorScheme.secondaryContainer
-                          : theme.colorScheme.surface,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      '${(100 * i / (levels - 1)).round()}',
-                      style: const TextStyle(fontSize: 12),
+                  child: InkWell(
+                    onTap: onChanged == null ? null : () => onChanged!(i),
+                    borderRadius: BorderRadius.circular(4),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: i == selected
+                            ? theme.colorScheme.secondaryContainer
+                            : theme.colorScheme.surface,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        '${(100 * i / pctDenom).round()}',
+                        style: const TextStyle(fontSize: 12),
+                      ),
                     ),
                   ),
                 ),
@@ -476,20 +510,42 @@ class _LevelBox extends StatelessWidget {
   }
 }
 
-/// Backlight power-saving timeout box (skeleton: inert).
+/// Backlight power-saving timeout box.
 ///
-/// NOTE: this is the RGB power-saving idle timeout, NOT the device sleep time
-/// (0xD4 byte 12, handled in Parameter Setting).
+/// NOTE: this is the RGB power-saving idle timeout (0xE2 byte 7), NOT the
+/// device sleep time (0xD4 byte 12, handled in Parameter Setting).
+/// Options come from the device capability schema, not hardcoded.
 class _PowerSavingBox extends StatelessWidget {
-  const _PowerSavingBox({required this.rgbSleepTime});
+  const _PowerSavingBox({
+    required this.options,
+    required this.selected,
+    this.onChanged,
+  });
 
-  final int? rgbSleepTime;
+  /// Capability `sleepTimeOptions` (seconds per index).
+  final List<int> options;
+
+  /// Selected index into [options].
+  final int? selected;
+
+  /// Emits the selected option index.
+  final ValueChanged<int>? onChanged;
+
+  String _labelFor(int seconds) {
+    if (seconds >= 60 && seconds % 60 == 0) {
+      final m = seconds ~/ 60;
+      return '$m min';
+    }
+    return '$seconds sec';
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final valid =
+        selected != null && selected! >= 0 && selected! < options.length;
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: theme.colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(8),
@@ -497,8 +553,22 @@ class _PowerSavingBox extends StatelessWidget {
       child: Row(
         children: [
           const Text('Power saving'),
-          const SizedBox(width: 16),
-          Text('${rgbSleepTime ?? 0} sec'),
+          const Spacer(),
+          DropdownButton<int>(
+            value: valid ? selected : null,
+            hint: const Text('Select'),
+            underline: const SizedBox.shrink(),
+            items: [
+              for (var i = 0; i < options.length; i++)
+                DropdownMenuItem<int>(
+                  value: i,
+                  child: Text(_labelFor(options[i])),
+                ),
+            ],
+            onChanged: (value) {
+              if (value != null) onChanged?.call(value);
+            },
+          ),
         ],
       ),
     );

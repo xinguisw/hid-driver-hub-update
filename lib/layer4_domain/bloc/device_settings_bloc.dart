@@ -19,9 +19,10 @@ typedef DpiLevelCommit = Future<void> Function(int dpiLevel);
 
 typedef DpiValuesCommit = Future<void> Function(Map<int, int> levelValues);
 
-typedef DpiStageAddCommit = Future<void> Function();
-
-typedef DpiStageRemoveCommit = Future<void> Function(int level);
+typedef DpiStagesCommit = Future<void> Function(
+  List<DpiStageData> stagedLevels,
+  int activeCount,
+);
 
 typedef SensorTuningCommit = Future<void> Function(
   bool rippleControl,
@@ -59,8 +60,7 @@ class DeviceSettingsBloc
     required this.commitReportRate,
     required this.commitDpiLevel,
     required this.commitDpiValues,
-    required this.commitDpiStageAdd,
-    required this.commitDpiStageRemove,
+    required this.commitDpiStages,
     required this.commitSensorTuning,
     required this.commitAngleTune,
     required this.commitLod,
@@ -119,8 +119,7 @@ class DeviceSettingsBloc
   final ReportRateCommit commitReportRate;
   final DpiLevelCommit commitDpiLevel;
   final DpiValuesCommit commitDpiValues;
-  final DpiStageAddCommit commitDpiStageAdd;
-  final DpiStageRemoveCommit commitDpiStageRemove;
+  final DpiStagesCommit commitDpiStages;
   final SensorTuningCommit commitSensorTuning;
   final AngleTuneCommit commitAngleTune;
   final LodCommit commitLod;
@@ -929,14 +928,16 @@ class DeviceSettingsBloc
 
     emit(state.copyWith(committing: true, clearError: true));
 
+    // why: commit the WHOLE rearranged staged list, not incremental removes.
+    // The staged levels are the authoritative post-add/remove result.
+    final stagedLevels = state.dpiStageLevelsStaging;
+    if (stagedLevels == null || stagedLevels.isEmpty) {
+      debugPrint('[bloc] save DPI stages: no staged levels');
+      return;
+    }
+
     try {
-      if (state.dpiStageAddStaging) {
-        await commitDpiStageAdd();
-      }
-      final removeLevel = state.dpiStageRemoveLevelStaging;
-      if (removeLevel != null) {
-        await commitDpiStageRemove(removeLevel);
-      }
+      await commitDpiStages(stagedLevels, stagedLevels.length);
     } catch (e) {
       debugPrint('[bloc] save DPI stages failed: $e');
       final failures = state.consecutiveFailures + 1;
@@ -955,13 +956,12 @@ class DeviceSettingsBloc
       return;
     }
 
-    final stagedLevels = state.dpiStageLevelsStaging;
     // why: the staged list IS the post-add/remove result; its length is the
     // authoritative new count (handles multiple adds, single/multi removes).
-    final count = stagedLevels?.length ?? synced.dpiActiveLevelCount ?? 0;
+    final count = stagedLevels.length;
     final nextSynced = synced.copyWith(
       dpiActiveLevelCount: count,
-      dpiLevels: stagedLevels ?? synced.dpiLevels,
+      dpiLevels: stagedLevels,
       clearError: true,
     );
     emit(

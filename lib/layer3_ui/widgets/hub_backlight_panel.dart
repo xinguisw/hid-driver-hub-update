@@ -11,6 +11,7 @@ class HubBacklightPanel extends StatelessWidget {
   const HubBacklightPanel({
     super.key,
     this.rgbModes,
+    this.rgbModeLabels,
     this.rgbEnable,
     this.rgbModeId,
     this.rgbBrightnessLevels,
@@ -31,6 +32,10 @@ class HubBacklightPanel extends StatelessWidget {
   });
 
   final List<RgbMode>? rgbModes;
+
+  /// Display labels parallel to [rgbModes] (human-readable, L5-owned). When
+  /// null or mismatched, the mode dropdown falls back to `RgbMode.nameKey`.
+  final List<String>? rgbModeLabels;
   final bool? rgbEnable;
   final int? rgbModeId;
   final int? rgbBrightnessLevels;
@@ -74,6 +79,7 @@ class HubBacklightPanel extends StatelessWidget {
           const SizedBox(height: 8),
           _ModeBox(
             rgbModes: rgbModes ?? const [],
+            rgbModeLabels: rgbModeLabels,
             rgbModeId: rgbModeId,
             onModeChanged: onModeChanged,
           ),
@@ -151,12 +157,21 @@ class _ModeBox extends StatelessWidget {
   const _ModeBox({
     required this.rgbModes,
     required this.rgbModeId,
+    this.rgbModeLabels,
     this.onModeChanged,
   });
 
   final List<RgbMode> rgbModes;
   final int? rgbModeId;
+
+  /// Display labels parallel to [rgbModes]; falls back to `RgbMode.nameKey`.
+  final List<String>? rgbModeLabels;
   final ValueChanged<int>? onModeChanged;
+
+  String _labelAt(int i) =>
+      (rgbModeLabels != null && i < rgbModeLabels!.length)
+          ? rgbModeLabels![i]
+          : rgbModes[i].nameKey;
 
   @override
   Widget build(BuildContext context) {
@@ -179,10 +194,10 @@ class _ModeBox extends StatelessWidget {
             hint: const Text('Select'),
             underline: const SizedBox.shrink(),
             items: [
-              for (final mode in rgbModes)
+              for (var i = 0; i < rgbModes.length; i++)
                 DropdownMenuItem<int>(
-                  value: mode.id,
-                  child: Text(mode.nameKey),
+                  value: rgbModes[i].id,
+                  child: Text(_labelAt(i)),
                 ),
             ],
             onChanged: (value) {

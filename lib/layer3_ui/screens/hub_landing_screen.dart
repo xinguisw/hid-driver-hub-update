@@ -583,6 +583,13 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                                     supportsColor: m.supportsColor,
                                   ),
                               ],
+                              // why: dropdown shows the human label (L5-owned),
+                              // not the raw localization key.
+                              rgbModeLabels: [
+                                for (final m in synced?.rgbModes ??
+                                    const <RgbModeData>[])
+                                  m.label ?? m.nameKey,
+                              ],
                               rgbEnable: view.displayRgbEnable,
                               rgbModeId: view.displayRgbModeId,
                               rgbBrightnessLevels: synced?.rgbBrightnessLevels,

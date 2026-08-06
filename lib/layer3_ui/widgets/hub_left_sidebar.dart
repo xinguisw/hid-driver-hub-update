@@ -1,4 +1,3 @@
-import 'package:driver_hub/layer2_capabilities/capabilities.dart';
 import 'package:driver_hub/layer4_domain/models/discovered_card_state.dart';
 import 'package:flutter/material.dart';
 
@@ -42,22 +41,6 @@ class _HubLeftSidebarState extends State<HubLeftSidebar> {
     'Device Setting',
   ];
 
-  static const int _backlightIndex = 4;
-
-  /// FR-ARC-001: a destination is shown but greyed/disabled when the device
-  /// lacks the capability. Index-aligned with [_labels] so selection indices
-  /// never shift. Only Backlight is capability-gated today.
-  bool _destinationEnabled(int index) {
-    if (index == _backlightIndex) {
-      final present = DeviceCapabilityStore.forDevice(widget.card.devId)
-              ?.rgbBacklight
-              ?.present ??
-          false;
-      return present;
-    }
-    return true;
-  }
-
   @override
   Widget build(BuildContext context) {
     final width = _extended ? _extendedWidth : _collapsedWidth;
@@ -78,27 +61,21 @@ class _HubLeftSidebarState extends State<HubLeftSidebar> {
               itemCount: _labels.length,
               itemBuilder: (context, index) {
                 final selected = index == widget.selectedIndex;
-                final enabled = _destinationEnabled(index);
                 final label = _labels[index];
-                return Opacity(
-                  opacity: enabled ? 1.0 : 0.4,
-                  child: InkWell(
-                    onTap: enabled
-                        ? () => widget.onDestinationSelected(index)
-                        : null,
-                    child: ColoredBox(
-                      color: selected
-                          ? theme.colorScheme.secondaryContainer.withValues(
-                              alpha: 0.5,
-                            )
-                          : Colors.transparent,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 12,
-                        ),
-                        child: _destinationRow(label),
+                return InkWell(
+                  onTap: () => widget.onDestinationSelected(index),
+                  child: ColoredBox(
+                    color: selected
+                        ? theme.colorScheme.secondaryContainer.withValues(
+                            alpha: 0.5,
+                          )
+                        : Colors.transparent,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 12,
                       ),
+                      child: _destinationRow(label),
                     ),
                   ),
                 );

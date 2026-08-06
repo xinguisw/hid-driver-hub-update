@@ -235,6 +235,12 @@ abstract class DeviceProtocol {
   Future<void> setDpiTable(HidSession session, Uint8List dataBlock);
 
   Future<DpiRgbResult> queryDpiRgb(HidSession session);
+
+  /// SET addrs 0xC6 — write the DPI RGB block (24 bytes, 8 stages × R,G,B + CRC).
+  ///
+  /// [dataBlock] must be exactly 24 bytes of R,G,B per stage.
+  Future<void> setDpiRgb(HidSession session, Uint8List dataBlock);
+
   Future<SensorOtherResult> querySensorOther(HidSession session);
 
   /// SET addrs 0xD4 — write sensor/other block (18 bytes + CRC).
@@ -699,6 +705,46 @@ class MouseProtocol implements DeviceProtocol {
       stages.add(DpiRgbEntry(r: data[i], g: data[i + 1], b: data[i + 2]));
     }
     return DpiRgbResult(stages: stages, raw: raw);
+  }
+
+  @override
+  Future<void> setDpiRgb(HidSession session, Uint8List dataBlock) async {
+    const label = 'dpiRgb';
+    if (dataBlock.length != 24) {
+      throw ArgumentError.value(
+        dataBlock.length,
+        'dataBlock.length',
+        'DPI RGB SET requires exactly 24 bytes (8 stages x R,G,B)',
+      );
+    }
+    final frame = Uint8List(_frameLength);
+    frame[_opOff] = _setOpcode;
+    frame[_addrsOff] = addrsDpiRgb;
+    frame[_lenOff] = 24;
+    for (var i = 0; i < 24; i++) {
+      frame[_dataOff + i] = dataBlock[i];
+    }
+    final payload = frame.sublist(_dataOff, _dataOff + 24);
+    final crc = const Crc16().bytes(payload);
+    frame[_dataOff + 24] = crc[0];
+    frame[_dataOff + 25] = crc[1];
+
+    debugPrint(
+      '[proto] $label: SET addrs=0x${addrsDpiRgb.toRadixString(16)} '
+      'data=${_hex(payload)} crc=${_hex(crc)}',
+    );
+
+    final ack = await session.sendAndWait(
+      data: frame,
+      reportId: _reportId,
+      reportLength: _frameLength,
+      match: (raw) => matchesConfigAck(raw, addrs: addrsDpiRgb),
+      timeout: _sendTimeout,
+    );
+
+    validateConfigAckFrame(ack, addrs: addrsDpiRgb, label: label);
+    verifyConfigAckCrc(ack, label: label);
+    debugPrint('[proto] $label: SET ack ${_hex(ack)} (${ack.length}B)');
   }
 
   @override

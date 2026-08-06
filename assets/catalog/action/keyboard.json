@@ -214,54 +214,6 @@
           "label": "Tab"
         },
         {
-          "id": "key.f1",
-          "label": "F1"
-        },
-        {
-          "id": "key.f2",
-          "label": "F2"
-        },
-        {
-          "id": "key.f3",
-          "label": "F3"
-        },
-        {
-          "id": "key.f4",
-          "label": "F4"
-        },
-        {
-          "id": "key.f5",
-          "label": "F5"
-        },
-        {
-          "id": "key.f6",
-          "label": "F6"
-        },
-        {
-          "id": "key.f7",
-          "label": "F7"
-        },
-        {
-          "id": "key.f8",
-          "label": "F8"
-        },
-        {
-          "id": "key.f9",
-          "label": "F9"
-        },
-        {
-          "id": "key.f10",
-          "label": "F10"
-        },
-        {
-          "id": "key.f11",
-          "label": "F11"
-        },
-        {
-          "id": "key.f12",
-          "label": "F12"
-        },
-        {
           "id": "key.nav.insert",
           "label": "Insert"
         },

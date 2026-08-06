@@ -84,10 +84,15 @@ class HubBacklightPanel extends StatelessWidget {
             onModeChanged: onModeChanged,
           ),
           const SizedBox(height: 8),
+          // why: FR-RGB-003 — the color palette only applies to color modes
+          // (constant / single breathing). For modes whose supportsColor is
+          // false (off / multi / running / cycle) the device ignores R/G/B, so
+          // the picker is disabled to signal that.
           _ColorBox(
             r: rgbR,
             g: rgbG,
             b: rgbB,
+            enabled: _selectedModeSupportsColor(),
             onColorChanged: onColorChanged,
           ),
           const SizedBox(height: 8),
@@ -122,6 +127,21 @@ class HubBacklightPanel extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  /// Whether the currently-selected mode uses the custom R/G/B color.
+  ///
+  /// Looks up [rgbModeId] in [rgbModes] and returns its `supportsColor`. When
+  /// the mode is unknown or no modes are loaded, defaults to true so the
+  /// picker isn't wrongly locked before capabilities/GET land.
+  bool _selectedModeSupportsColor() {
+    final modes = rgbModes;
+    final id = rgbModeId;
+    if (modes == null || modes.isEmpty || id == null) return true;
+    for (final m in modes) {
+      if (m.id == id) return m.supportsColor;
+    }
+    return true;
   }
 }
 
@@ -217,12 +237,16 @@ class _ColorBox extends StatefulWidget {
     this.r,
     this.g,
     this.b,
+    this.enabled = true,
     this.onColorChanged,
   });
 
   final int? r;
   final int? g;
   final int? b;
+
+  /// Whether the picker accepts input (false when the mode ignores R/G/B).
+  final bool enabled;
   final ValueChanged<Color>? onColorChanged;
 
   @override
@@ -276,17 +300,20 @@ class _ColorBoxState extends State<_ColorBox> {
   }
 
   void _onSv(Offset local, double w, double h) {
+    if (!widget.enabled) return;
     final s = (local.dx / w).clamp(0.0, 1.0);
     final v = 1.0 - (local.dy / h).clamp(0.0, 1.0);
     _apply(_hsv.withSaturation(s).withValue(v));
   }
 
   void _onHue(Offset local, double w) {
+    if (!widget.enabled) return;
     final hue = (local.dx / w * 360).clamp(0.0, 359.999);
     _apply(_hsv.withHue(hue));
   }
 
   void _onHexSubmitted(String value) {
+    if (!widget.enabled) return;
     final hex = value.replaceAll('#', '').trim();
     if (hex.length != 6) return;
     final parsed = int.tryParse(hex, radix: 16);
@@ -298,7 +325,7 @@ class _ColorBoxState extends State<_ColorBox> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final color = _hsv.toColor();
-    return Container(
+    final body = Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: theme.colorScheme.surfaceContainerHighest,
@@ -327,6 +354,7 @@ class _ColorBoxState extends State<_ColorBox> {
                 width: 90,
                 child: TextField(
                   controller: _hexController,
+                  enabled: widget.enabled,
                   inputFormatters: [
                     LengthLimitingTextInputFormatter(6),
                     FilteringTextInputFormatter.allow(RegExp(r'[0-9a-fA-F]')),
@@ -465,6 +493,13 @@ class _ColorBoxState extends State<_ColorBox> {
           ),
         ],
       ),
+    );
+
+    if (widget.enabled) return body;
+    // why: signal "color not used by this mode" — dim and swallow all touches.
+    return Opacity(
+      opacity: 0.45,
+      child: IgnorePointer(child: body),
     );
   }
 }

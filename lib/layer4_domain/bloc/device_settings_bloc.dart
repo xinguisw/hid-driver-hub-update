@@ -924,7 +924,10 @@ class DeviceSettingsBloc
     DeviceSettingsSaveDpiStagesRequested event,
     Emitter<DeviceSettingsViewState> emit,
   ) async {
-    if (state.committing) return;
+    // why: a paired level-save sets committing:true, but the send queue
+    // serializes the actual device writes, so this save must still run when
+    // it has real staging. Only bail if this same concern is already mid-save.
+    if (state.dpiStageSaveInFlight) return;
     if (!state.dpiStageAddStaging && state.dpiStageRemoveLevelStaging == null) {
       debugPrint('[bloc] save DPI stages: nothing dirty');
       return;
@@ -935,7 +938,13 @@ class DeviceSettingsBloc
       return;
     }
 
-    emit(state.copyWith(committing: true, clearError: true));
+    emit(
+      state.copyWith(
+        committing: true,
+        dpiStageSaveInFlight: true,
+        clearError: true,
+      ),
+    );
 
     // why: commit the WHOLE rearranged staged list, not incremental removes.
     // The staged levels are the authoritative post-add/remove result.
@@ -953,6 +962,7 @@ class DeviceSettingsBloc
       emit(
         state.copyWith(
           committing: false,
+          dpiStageSaveInFlight: false,
           lastError: 'DPI stages save failed: $e',
           consecutiveFailures: failures,
         ),
@@ -979,6 +989,7 @@ class DeviceSettingsBloc
         dpiStageAddStaging: false,
         dpiStageRemoveLevelStaging: null,
         dpiStageLevelsStaging: null,
+        dpiStageSaveInFlight: false,
         isDirty: false,
         committing: false,
         consecutiveFailures: 0,

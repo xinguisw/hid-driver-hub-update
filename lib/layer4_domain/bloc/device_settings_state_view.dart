@@ -21,6 +21,7 @@ class DeviceSettingsViewState {
     this.dpiStageAddStaging = false,
     this.dpiStageRemoveLevelStaging,
     this.dpiStageLevelsStaging,
+    this.dpiStageSaveInFlight = false,
     this.rippleControlStaging,
     this.angleSnapStaging,
     this.angleTuneStaging,
@@ -55,6 +56,10 @@ class DeviceSettingsViewState {
 
   /// The modified DPI level list (add/remove rearrange) staged for preview.
   final List<DpiStageData>? dpiStageLevelsStaging;
+
+  /// True while a DPI stage add/remove save is in flight (per-concern guard,
+  /// independent of the shared [committing] flag).
+  final bool dpiStageSaveInFlight;
 
   final bool? rippleControlStaging;
   final bool? angleSnapStaging;
@@ -98,6 +103,7 @@ class DeviceSettingsViewState {
     bool? dpiStageAddStaging,
     int? dpiStageRemoveLevelStaging,
     List<DpiStageData>? dpiStageLevelsStaging,
+    bool? dpiStageSaveInFlight,
     bool? rippleControlStaging,
     bool? angleSnapStaging,
     int? angleTuneStaging,
@@ -140,6 +146,9 @@ class DeviceSettingsViewState {
       dpiStageLevelsStaging: clearStaging
           ? null
           : (dpiStageLevelsStaging ?? this.dpiStageLevelsStaging),
+      dpiStageSaveInFlight: clearStaging
+          ? false
+          : (dpiStageSaveInFlight ?? this.dpiStageSaveInFlight),
       rippleControlStaging: clearStaging
           ? null
           : (rippleControlStaging ?? this.rippleControlStaging),

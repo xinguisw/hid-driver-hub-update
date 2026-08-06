@@ -228,6 +228,12 @@ abstract class DeviceProtocol {
 
   Future<ReportRateDpiInfoResult> queryReportRateDpiInfo(HidSession session);
   Future<DpiTableResult> queryDpiTable(HidSession session);
+
+  /// SET addrs 0xC4 — write the DPI table (16 bytes, 8 stages × 2 bytes + CRC).
+  ///
+  /// [dataBlock] must be exactly 16 bytes of wire-encoded DPI stage values.
+  Future<void> setDpiTable(HidSession session, Uint8List dataBlock);
+
   Future<DpiRgbResult> queryDpiRgb(HidSession session);
   Future<SensorOtherResult> querySensorOther(HidSession session);
 
@@ -642,6 +648,46 @@ class MouseProtocol implements DeviceProtocol {
       stages.add(DpiTableEntry(x: data[i], y: data[i + 1]));
     }
     return DpiTableResult(stages: stages, data: data, raw: raw);
+  }
+
+  @override
+  Future<void> setDpiTable(HidSession session, Uint8List dataBlock) async {
+    const label = 'dpiTable';
+    if (dataBlock.length != 16) {
+      throw ArgumentError.value(
+        dataBlock.length,
+        'dataBlock.length',
+        'DPI table SET requires exactly 16 bytes',
+      );
+    }
+    final frame = Uint8List(_frameLength);
+    frame[_opOff] = _setOpcode;
+    frame[_addrsOff] = addrsDpiTable;
+    frame[_lenOff] = 16;
+    for (var i = 0; i < 16; i++) {
+      frame[_dataOff + i] = dataBlock[i];
+    }
+    final payload = frame.sublist(_dataOff, _dataOff + 16);
+    final crc = const Crc16().bytes(payload);
+    frame[_dataOff + 16] = crc[0];
+    frame[_dataOff + 17] = crc[1];
+
+    debugPrint(
+      '[proto] $label: SET addrs=0x${addrsDpiTable.toRadixString(16)} '
+      'data=${_hex(payload)} crc=${_hex(crc)}',
+    );
+
+    final ack = await session.sendAndWait(
+      data: frame,
+      reportId: _reportId,
+      reportLength: _frameLength,
+      match: (raw) => matchesConfigAck(raw, addrs: addrsDpiTable),
+      timeout: _sendTimeout,
+    );
+
+    validateConfigAckFrame(ack, label: label);
+    verifyConfigAckCrc(ack, label: label);
+    debugPrint('[proto] $label: SET ack ${_hex(ack)} (${ack.length}B)');
   }
 
   @override

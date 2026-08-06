@@ -850,9 +850,15 @@ class DeviceSettingsBloc
       emit(state.copyWith(lastError: 'cannot add: max DPI stages reached'));
       return;
     }
+    // Append a new stage to the level list (default value from catalog).
+    final levels = [...?synced.dpiLevels];
+    final newLevel = activeCount + 1;
+    final defaultDpi = _defaultDpiValue(synced) ?? 1600;
+    levels.add(DpiStageData(level: newLevel, value: defaultDpi));
     emit(
       state.copyWith(
         dpiStageAddStaging: true,
+        dpiStageLevelsStaging: levels,
         isDirty: true,
         clearError: true,
       ),
@@ -875,9 +881,21 @@ class DeviceSettingsBloc
       emit(state.copyWith(lastError: 'cannot remove: at least one stage'));
       return;
     }
+    // Remove the selected level; shift later stages toward slot 1.
+    final levels = [...?synced.dpiLevels];
+    final removed = levels.where((l) => l.level != event.level).toList();
+    final reindexed = <DpiStageData>[];
+    for (var i = 0; i < removed.length; i++) {
+      reindexed.add(DpiStageData(
+        level: i + 1,
+        value: removed[i].value,
+        color: removed[i].color,
+      ));
+    }
     emit(
       state.copyWith(
         dpiStageRemoveLevelStaging: event.level,
+        dpiStageLevelsStaging: reindexed,
         isDirty: true,
         clearError: true,
       ),
@@ -932,8 +950,10 @@ class DeviceSettingsBloc
     final count = state.dpiStageAddStaging
         ? (synced.dpiActiveLevelCount ?? 0) + 1
         : (synced.dpiActiveLevelCount ?? 0) - 1;
+    final stagedLevels = state.dpiStageLevelsStaging;
     final nextSynced = synced.copyWith(
       dpiActiveLevelCount: count,
+      dpiLevels: stagedLevels ?? synced.dpiLevels,
       clearError: true,
     );
     emit(
@@ -941,6 +961,7 @@ class DeviceSettingsBloc
         synced: nextSynced,
         dpiStageAddStaging: false,
         dpiStageRemoveLevelStaging: null,
+        dpiStageLevelsStaging: null,
         isDirty: false,
         committing: false,
         consecutiveFailures: 0,
@@ -951,6 +972,16 @@ class DeviceSettingsBloc
     );
     debugPrint('[bloc] save DPI stages: synced (count=$count)');
     onSaveCompleted?.call();
+  }
+
+  /// Default DPI value for a newly added stage (catalog default if known).
+  int? _defaultDpiValue(DeviceSettingsState synced) {
+    final caps = activeCapabilities?.dpi;
+    final levels = caps?.levels;
+    if (levels != null && levels.isNotEmpty) {
+      return levels.last.value;
+    }
+    return null;
   }
 
   /// User toggled ripple control.

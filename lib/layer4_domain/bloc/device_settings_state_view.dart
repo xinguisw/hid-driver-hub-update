@@ -20,6 +20,7 @@ class DeviceSettingsViewState {
     this.dpiValueStaging,
     this.dpiStageAddStaging = false,
     this.dpiStageRemoveLevelStaging,
+    this.dpiStageLevelsStaging,
     this.rippleControlStaging,
     this.angleSnapStaging,
     this.angleTuneStaging,
@@ -51,6 +52,9 @@ class DeviceSettingsViewState {
 
   /// 1-based level staged for removal (null = none).
   final int? dpiStageRemoveLevelStaging;
+
+  /// The modified DPI level list (add/remove rearrange) staged for preview.
+  final List<DpiStageData>? dpiStageLevelsStaging;
 
   final bool? rippleControlStaging;
   final bool? angleSnapStaging;
@@ -93,6 +97,7 @@ class DeviceSettingsViewState {
     Map<int, int>? dpiValueStaging,
     bool? dpiStageAddStaging,
     int? dpiStageRemoveLevelStaging,
+    List<DpiStageData>? dpiStageLevelsStaging,
     bool? rippleControlStaging,
     bool? angleSnapStaging,
     int? angleTuneStaging,
@@ -132,6 +137,9 @@ class DeviceSettingsViewState {
       dpiStageRemoveLevelStaging: clearStaging
           ? null
           : (dpiStageRemoveLevelStaging ?? this.dpiStageRemoveLevelStaging),
+      dpiStageLevelsStaging: clearStaging
+          ? null
+          : (dpiStageLevelsStaging ?? this.dpiStageLevelsStaging),
       rippleControlStaging: clearStaging
           ? null
           : (rippleControlStaging ?? this.rippleControlStaging),

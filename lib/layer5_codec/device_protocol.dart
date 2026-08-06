@@ -254,6 +254,15 @@ abstract class DeviceProtocol {
   Future<void> setSensorOther(HidSession session, Uint8List dataBlock);
 
   Future<RgbBacklightResult> queryRgbBacklight(HidSession session);
+
+  /// SET addrs 0xE2 — write RGB backlight block (8 bytes + CRC).
+  ///
+  /// [dataBlock] must be exactly 8 bytes:
+  /// `[enable(0), mode(1), brightness(2), speed(3), r(4), g(5), b(6),
+  /// sleepTime(7)]`.
+  /// `enable` is tri-state (0xFF on / 0x0F off); `brightness`/`speed` are level
+  /// indices; `sleepTime` is an index into the catalog's `sleepTimeOptions`.
+  Future<void> setRgbBacklight(HidSession session, Uint8List dataBlock);
 }
 
 /// Standard mouse protocol. 32-byte frame over report id 7.
@@ -852,6 +861,77 @@ class MouseProtocol implements DeviceProtocol {
       sleepTime: data[7],
       raw: raw,
     );
+  }
+
+  /// Pure 0xE2 SET frame builder (no session) — extracted for unit tests.
+  ///
+  /// 32-byte body: `[0x08][0][0][0xE2][8][8 data bytes][zeros…][CRC lo][CRC hi]`.
+  /// CRC16-Modbus over the 8 data bytes (offsets 5..12), stored at 13..14.
+  static Uint8List buildRgbBacklightSetFrame(Uint8List dataBlock) {
+    if (dataBlock.length != 8) {
+      throw ArgumentError.value(
+        dataBlock.length,
+        'dataBlock.length',
+        'RGB backlight SET requires exactly 8 bytes',
+      );
+    }
+    final frame = Uint8List(_frameLength);
+    frame[_opOff] = _setOpcode;
+    frame[_addrsOff] = addrsRgbBacklight;
+    frame[_lenOff] = 8;
+    for (var i = 0; i < 8; i++) {
+      frame[_dataOff + i] = dataBlock[i];
+    }
+    final payload = frame.sublist(_dataOff, _dataOff + 8);
+    final crc = const Crc16().bytes(payload);
+    frame[_dataOff + 8] = crc[0];
+    frame[_dataOff + 9] = crc[1];
+    return frame;
+  }
+
+  @override
+  Future<void> setRgbBacklight(HidSession session, Uint8List dataBlock) async {
+    const label = 'rgbBacklight';
+    final frame = buildRgbBacklightSetFrame(dataBlock);
+    final payload = frame.sublist(_dataOff, _dataOff + 8);
+
+    debugPrint(
+      '[proto] $label: SET addrs=0x${addrsRgbBacklight.toRadixString(16)} '
+      'data=${_hex(payload)} crc=${_hex(frame.sublist(_dataOff + 8, _dataOff + 10))}',
+    );
+
+    final ack = await session.sendAndWait(
+      data: frame,
+      reportId: _reportId,
+      reportLength: _frameLength,
+      match: (raw) => matchesConfigAck(raw, addrs: addrsRgbBacklight),
+      timeout: _sendTimeout,
+    );
+    debugPrint('[proto] $label: SET ack ${_hex(ack)} (${ack.length}B)');
+    validateConfigAckFrame(ack, addrs: addrsRgbBacklight, label: label);
+    final body = stripReportId(ack);
+    final op = body.isEmpty ? -1 : body[_opOff];
+    if (op == _getOpcode || op == _setOpcode) {
+      final ackData = body.sublist(_dataOff, _dataOff + 8);
+      final ackCrc = body.sublist(body.length - 2, body.length);
+      debugPrint(
+        '[proto] $label: ACK data=${_hex(ackData)} crc=${_hex(ackCrc)}',
+      );
+      verifyConfigAckCrc(ack, label: label);
+    } else {
+      debugPrint(
+        '[proto] $label: SET ack opcode 0x${op.toRadixString(16)} '
+        'not 07/08, skip CRC',
+      );
+    }
+    if (op == _nakOpcode) {
+      final reason = body.length > _dataOff ? body[_dataOff] : -1;
+      final meaning = const TranslationCodec().nakReasonToLabel(reason);
+      throw FormatException(
+        '$label SET NAK: $meaning '
+        '(reason=0x${(reason & 0xFF).toRadixString(16).padLeft(2, '0')})',
+      );
+    }
   }
 
   /// GET ask: opcode 0x07, addrs set, len 0 (sheet: request only needs addrs).

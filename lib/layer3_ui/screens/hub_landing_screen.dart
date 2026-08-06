@@ -549,28 +549,53 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
               else if (_selectedIndex == _backlightIndex)
                 Expanded(
                   child: BlocBuilder<DeviceSettingsBloc, DeviceSettingsViewState>(
-                    buildWhen: (p, n) => p.synced != n.synced,
+                    buildWhen: (p, n) =>
+                        p.synced != n.synced ||
+                        p.isDirty != n.isDirty ||
+                        p.committing != n.committing,
                     builder: (context, view) {
                       final synced = view.synced;
-                      return HubBacklightPanel(
-                        rgbModes: [
-                          for (final m in synced?.rgbModes ?? const <RgbModeData>[])
-                            RgbMode(
-                              id: m.id,
-                              nameKey: m.nameKey,
-                              supportsColor: m.supportsColor,
+                      final bloc = context.read<DeviceSettingsBloc>();
+                      return Column(
+                        children: [
+                          Expanded(
+                            child: HubBacklightPanel(
+                              rgbModes: [
+                                for (final m in synced?.rgbModes ??
+                                    const <RgbModeData>[])
+                                  RgbMode(
+                                    id: m.id,
+                                    nameKey: m.nameKey,
+                                    supportsColor: m.supportsColor,
+                                  ),
+                              ],
+                              rgbEnable: synced?.rgbEnable,
+                              rgbModeId: synced?.rgbModeId,
+                              rgbBrightnessLevels: synced?.rgbBrightnessLevels,
+                              rgbBrightness: synced?.rgbBrightness,
+                              rgbSpeedLevels: synced?.rgbSpeedLevels,
+                              rgbSpeed: synced?.rgbSpeed,
+                              rgbR: synced?.rgbR,
+                              rgbG: synced?.rgbG,
+                              rgbB: synced?.rgbB,
+                              rgbSleepTime: synced?.rgbSleepTime,
                             ),
+                          ),
+                          _BacklightActionBar(
+                            isDirty: view.isDirty,
+                            committing: view.committing,
+                            onSave: () {
+                              bloc.add(
+                                const DeviceSettingsSaveRequested(),
+                              );
+                            },
+                            onCancel: () {
+                              bloc.add(
+                                const DeviceSettingsCancelRequested(),
+                              );
+                            },
+                          ),
                         ],
-                        rgbEnable: synced?.rgbEnable,
-                        rgbModeId: synced?.rgbModeId,
-                        rgbBrightnessLevels: synced?.rgbBrightnessLevels,
-                        rgbBrightness: synced?.rgbBrightness,
-                        rgbSpeedLevels: synced?.rgbSpeedLevels,
-                        rgbSpeed: synced?.rgbSpeed,
-                        rgbR: synced?.rgbR,
-                        rgbG: synced?.rgbG,
-                        rgbB: synced?.rgbB,
-                        rgbSleepTime: synced?.rgbSleepTime,
                       );
                     },
                   ),
@@ -590,6 +615,58 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
 /// Reset/Save/Cancel buttons docked right.
 class _ParameterActionBar extends StatelessWidget {
   const _ParameterActionBar({
+    this.isDirty = false,
+    this.committing = false,
+    this.onSave,
+    this.onCancel,
+  });
+
+  final bool isDirty;
+  final bool committing;
+  final VoidCallback? onSave;
+  final VoidCallback? onCancel;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final style = OutlinedButton.styleFrom(
+      foregroundColor: theme.colorScheme.onSurface,
+      side: BorderSide(color: theme.colorScheme.outline),
+      shape: const StadiumBorder(),
+    );
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          OutlinedButton(
+            onPressed: null, // reset not wired yet
+            style: style,
+            child: const Text('Reset to Default'),
+          ),
+          const SizedBox(width: 12),
+          OutlinedButton(
+            onPressed: (!isDirty || committing) ? null : onSave,
+            style: style,
+            child: const Text('Save'),
+          ),
+          const SizedBox(width: 12),
+          OutlinedButton(
+            onPressed: committing ? null : onCancel,
+            style: style,
+            child: const Text('Cancel'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Bottom-right action bar for Backlight Setting.
+///
+/// Reset/Save/Cancel buttons docked right.
+class _BacklightActionBar extends StatelessWidget {
+  const _BacklightActionBar({
     this.isDirty = false,
     this.committing = false,
     this.onSave,

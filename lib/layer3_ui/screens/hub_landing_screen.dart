@@ -225,6 +225,7 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                         p.displaySettings != n.displaySettings ||
                         p.reportRateStaging != n.reportRateStaging ||
                         p.dpiCurrentLevelStaging != n.dpiCurrentLevelStaging ||
+                        p.dpiValueStaging != n.dpiValueStaging ||
                         p.isDirty != n.isDirty ||
                         p.committing != n.committing ||
                         p.lastError != n.lastError,
@@ -241,6 +242,18 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                               onDpiLevelSelected: (level) {
                                 bloc.add(
                                   DeviceSettingsDpiLevelRequested(level: level),
+                                );
+                              },
+                              dpiMin: display?.dpiMin,
+                              dpiMax: display?.dpiMax,
+                              dpiStep: display?.dpiStep,
+                              dpiValueStaging: view.dpiValueStaging,
+                              onDpiValueChanged: (pair) {
+                                bloc.add(
+                                  DeviceSettingsDpiValueRequested(
+                                    level: pair.level,
+                                    value: pair.value,
+                                  ),
                                 );
                               },
                               reportRateOptions: display?.reportRateOptions,
@@ -266,6 +279,12 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                               if (view.dpiCurrentLevelStaging != null) {
                                 bloc.add(
                                   const DeviceSettingsSaveDpiLevelRequested(),
+                                );
+                              }
+                              if (view.dpiValueStaging != null &&
+                                  view.dpiValueStaging!.isNotEmpty) {
+                                bloc.add(
+                                  const DeviceSettingsSaveDpiValuesRequested(),
                                 );
                               }
                             },

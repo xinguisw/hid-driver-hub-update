@@ -13,6 +13,11 @@ class HubPerformancePanel extends StatelessWidget {
     this.dpiCurrentLevel,
     this.dpiCurrentLevelStaging,
     this.onDpiLevelSelected,
+    this.dpiMin,
+    this.dpiMax,
+    this.dpiStep,
+    this.dpiValueStaging,
+    this.onDpiValueChanged,
     this.reportRateOptions,
     this.reportRateHz,
     this.reportRateStaging,
@@ -23,6 +28,11 @@ class HubPerformancePanel extends StatelessWidget {
   final int? dpiCurrentLevel;
   final int? dpiCurrentLevelStaging;
   final ValueChanged<int>? onDpiLevelSelected;
+  final int? dpiMin;
+  final int? dpiMax;
+  final int? dpiStep;
+  final Map<int, int>? dpiValueStaging;
+  final ValueChanged<({int level, int value})>? onDpiValueChanged;
   final List<int>? reportRateOptions;
   final int? reportRateHz;
   final int? reportRateStaging;
@@ -42,6 +52,11 @@ class HubPerformancePanel extends StatelessWidget {
             stages: dpiStages ?? const [],
             selectedLevel: dpiCurrentLevelStaging ?? dpiCurrentLevel,
             onLevelSelected: (level) => onDpiLevelSelected?.call(level),
+            dpiMin: dpiMin ?? 50,
+            dpiMax: dpiMax ?? 5000,
+            dpiStep: dpiStep,
+            valueStaging: dpiValueStaging ?? const {},
+            onValueChanged: (pair) => onDpiValueChanged?.call(pair),
           ),
           const SizedBox(height: 24),
           // Report Rate
@@ -67,11 +82,24 @@ class _DpiSettingsGroup extends StatelessWidget {
     required this.stages,
     required this.selectedLevel,
     required this.onLevelSelected,
+    required this.dpiMin,
+    required this.dpiMax,
+    this.dpiStep,
+    required this.valueStaging,
+    required this.onValueChanged,
   });
 
   final List<DpiStageData> stages;
   final int? selectedLevel;
   final ValueChanged<int> onLevelSelected;
+  final int dpiMin;
+  final int dpiMax;
+  final int? dpiStep;
+
+  /// Staged per-level DPI values (level → value).
+  final Map<int, int> valueStaging;
+
+  final ValueChanged<({int level, int value})> onValueChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -118,7 +146,16 @@ class _DpiSettingsGroup extends StatelessWidget {
                 ),
                 children: [
                   for (final stage in stages)
-                    _DpiSliderRow(stage: stage),
+                    _DpiSliderRow(
+                      stage: stage,
+                      stagedValue: valueStaging[stage.level] ?? stage.value,
+                      min: dpiMin,
+                      max: dpiMax,
+                      step: dpiStep,
+                      onValueChanged: (value) => onValueChanged(
+                        (level: stage.level, value: value),
+                      ),
+                    ),
                 ],
               );
             },
@@ -180,13 +217,33 @@ class _LevelChip extends StatelessWidget {
 /// Later this row will be conditionally rendered based on
 /// L2 capabilities (e.g. device may only have 4 DPI levels).
 class _DpiSliderRow extends StatelessWidget {
-  const _DpiSliderRow({required this.stage});
+  const _DpiSliderRow({
+    required this.stage,
+    required this.stagedValue,
+    required this.min,
+    required this.max,
+    this.step,
+    required this.onValueChanged,
+  });
 
   final DpiStageData stage;
+
+  /// Staged value (staging ?? synced); drives the slider position + label.
+  final int stagedValue;
+
+  final int min;
+  final int max;
+
+  /// Slider step; null = continuous (stepMode 'any').
+  final int? step;
+
+  final ValueChanged<int> onValueChanged;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final divisions =
+        step == null || step! < 1 ? null : ((max - min) ~/ step!).clamp(1, 1000);
     return Container(
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
@@ -200,25 +257,23 @@ class _DpiSliderRow extends StatelessWidget {
             children: [
               Text('DPI ${stage.level}'),
               const Spacer(),
-              Text('${stage.value}'),
+              Text('$stagedValue'),
             ],
           ),
           const SizedBox(height: 4),
           Slider(
-            value: stage.value.toDouble(),
-            min: 500,
-            max: 15000,
-            onChanged: null,
+            value: stagedValue.toDouble().clamp(min.toDouble(), max.toDouble()),
+            min: min.toDouble(),
+            max: max.toDouble(),
+            divisions: divisions,
+            onChanged: (v) => onValueChanged(v.round()),
           ),
-          const Row(
+          // Min / max range labels under the slider (live from the catalog).
+          Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('500', style: TextStyle(fontSize: 9)),
-              Text('1500', style: TextStyle(fontSize: 9)),
-              Text('2500', style: TextStyle(fontSize: 9)),
-              Text('3500', style: TextStyle(fontSize: 9)),
-              Text('4500', style: TextStyle(fontSize: 9)),
-              Text('15000', style: TextStyle(fontSize: 9)),
+              Text('$min', style: const TextStyle(fontSize: 9)),
+              Text('$max', style: const TextStyle(fontSize: 9)),
             ],
           ),
         ],

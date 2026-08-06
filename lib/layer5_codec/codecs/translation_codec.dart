@@ -503,19 +503,28 @@ class TranslationCodec {
   }
 
   /// RGB mode id → label.
-  // todo: still not confirm the value , so use the stale value for now
+  ///
+  /// Authoritative per TelinkB80 Mouse Data Reference (Backlight Feature):
+  /// 0x00 off, 0x01 constant, 0x02 multi color, 0x03 single breathing,
+  /// 0x04 multi breathing, 0x05 running color, 0x06 cycle wave, 0x07 cycle color.
   String rgbModeToLabel(int mode) {
     switch (mode & 0xFF) {
       case 0x00:
-        return 'Close';
+        return 'Off';
       case 0x01:
         return 'Constant';
       case 0x02:
-        return 'Single breathing';
+        return 'Multi color';
       case 0x03:
-        return 'Sunning color';
+        return 'Single breathing';
       case 0x04:
-        return '7 Cycle color';
+        return 'Multi breathing';
+      case 0x05:
+        return 'Running color';
+      case 0x06:
+        return 'Cycle wave';
+      case 0x07:
+        return 'Cycle color';
       default:
         return 'Unknown RGB mode 0x${(mode & 0xFF).toRadixString(16)}';
     }

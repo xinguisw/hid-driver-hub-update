@@ -441,12 +441,15 @@ void main() {
   });
 
   group('TranslationCodec.rgbModeToLabel', () {
-    test('named modes and unknown', () {
-      expect(t.rgbModeToLabel(0x00), 'Close');
+    test('reference mode names and unknown', () {
+      expect(t.rgbModeToLabel(0x00), 'Off');
       expect(t.rgbModeToLabel(0x01), 'Constant');
-      expect(t.rgbModeToLabel(0x02), 'Single breathing');
-      expect(t.rgbModeToLabel(0x03), 'Sunning color');
-      expect(t.rgbModeToLabel(0x04), '7 Cycle color');
+      expect(t.rgbModeToLabel(0x02), 'Multi color');
+      expect(t.rgbModeToLabel(0x03), 'Single breathing');
+      expect(t.rgbModeToLabel(0x04), 'Multi breathing');
+      expect(t.rgbModeToLabel(0x05), 'Running color');
+      expect(t.rgbModeToLabel(0x06), 'Cycle wave');
+      expect(t.rgbModeToLabel(0x07), 'Cycle color');
       expect(t.rgbModeToLabel(0x09), 'Unknown RGB mode 0x9');
     });
   });

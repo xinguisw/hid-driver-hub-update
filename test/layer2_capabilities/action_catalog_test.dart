@@ -10,14 +10,22 @@ void main() {
     test('loads sections from assets/catalog/action/mouse.json', () async {
       final tab = await ActionCatalogStore.load('mouse');
       expect(tab.tab, 'mouse');
-      expect(tab.sections.length, 4);
+      expect(tab.sections.length, 5);
       expect(tab.sections[0].title, 'Mouse');
       expect(tab.sections[0].items.first.label, 'Disable');
       expect(tab.sections[0].items[1].id, 'mouse.left');
       expect(tab.sections[1].title, 'Mouse Action');
       expect(tab.sections[2].title, 'Mouse Wheel Action');
       expect(tab.sections[3].title, 'Multimedia');
-      expect(tab.sections[3].items.last.label, 'Volume Mute');
+      // Multimedia: volume + transport (7 items).
+      expect(tab.sections[3].items.length, 7);
+      expect(tab.sections[3].items.last.label, 'Play / Pause');
+      expect(tab.sections[4].title, 'Consumer');
+      // Consumer: web + app shortcuts (11 items).
+      expect(tab.sections[4].items.length, 11);
+      expect(tab.sections[4].items.first.id, 'mouse.web_search');
+      expect(tab.sections[4].items.any((i) => i.id == 'mouse.email'), isTrue);
+      expect(tab.sections[4].items.any((i) => i.id == 'mouse.my_computer'), isTrue);
     });
 
     test('second load hits cache', () async {

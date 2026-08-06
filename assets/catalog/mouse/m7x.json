@@ -119,29 +119,49 @@
     "present": false,
     "modes": [
       {
+        "id": 0,
+        "nameKey": "light.off",
+        "supportsColor": false
+      },
+      {
         "id": 1,
-        "nameKey": "light.wave",
+        "nameKey": "light.constant",
         "supportsColor": true
       },
       {
         "id": 2,
-        "nameKey": "light.breathing",
-        "supportsColor": true
+        "nameKey": "light.multi_color",
+        "supportsColor": false
       },
       {
         "id": 3,
-        "nameKey": "light.solid",
+        "nameKey": "light.single_breathing",
         "supportsColor": true
       },
       {
+        "id": 4,
+        "nameKey": "light.multi_breathing",
+        "supportsColor": false
+      },
+      {
+        "id": 5,
+        "nameKey": "light.running_color",
+        "supportsColor": false
+      },
+      {
         "id": 6,
-        "nameKey": "light.off",
+        "nameKey": "light.cycle_wave",
+        "supportsColor": false
+      },
+      {
+        "id": 7,
+        "nameKey": "light.cycle_color",
         "supportsColor": false
       }
     ],
     "brightnessLevels": 5,
     "speedLevels": 5,
-    "sleepTimeOptions": [30, 60, 300]
+    "sleepTimeOptions": [30, 60, 120, 300, 600, 900, 1800]
   },
   "osd": {
     "enabled": true

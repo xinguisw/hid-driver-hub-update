@@ -54,7 +54,8 @@ void main() {
     expect(caps.otherFeatures!.sleepTime!.options[5].label, '15 min');
     expect(caps.otherFeatures!.wheelDirectionInvert, isFalse);
     expect(caps.rgbBacklight!.present, isFalse);
-    expect(caps.rgbBacklight!.modes.length, 4);
+    expect(caps.rgbBacklight!.modes.length, 8);
+    expect(caps.rgbBacklight!.sleepTimeOptions.length, 7);
     expect(caps.macro, isNull);
     expect(caps.osd!.enabled, isTrue);
     expect(DeviceCapabilityStore.forDevice('unknown'), isNull);
@@ -99,7 +100,8 @@ void main() {
     expect(caps.sensor!.liftOffDistance!.present, isTrue);
     expect(caps.sensor!.liftOffDistance!.options.length, 2);
     expect(caps.rgbBacklight!.present, isTrue);
-    expect(caps.rgbBacklight!.modes.length, 4);
+    expect(caps.rgbBacklight!.modes.length, 8);
+    expect(caps.rgbBacklight!.sleepTimeOptions.length, 7);
   });
 
   test('SensorProfiles maps all three mice to their sensors', () async {

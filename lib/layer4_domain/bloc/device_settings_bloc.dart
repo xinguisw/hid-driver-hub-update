@@ -857,7 +857,15 @@ class DeviceSettingsBloc
     final levels = [...?baseLevels];
     final newLevel = currentCount + 1;
     final defaultDpi = _defaultDpiValue(synced) ?? 1600;
-    levels.add(DpiStageData(level: newLevel, value: defaultDpi));
+    // why: the new stage's color comes from the catalog's level-default
+    // color (mock: slot 1 Red ... slot 8 White), so a newly added slot shows
+    // its correct default instead of null/previous color.
+    final defaultColor = _defaultDpiColorForLevel(synced, newLevel);
+    levels.add(DpiStageData(
+      level: newLevel,
+      value: defaultDpi,
+      color: defaultColor,
+    ));
     emit(
       state.copyWith(
         dpiStageAddStaging: true,
@@ -988,6 +996,18 @@ class DeviceSettingsBloc
     final levels = caps?.levels;
     if (levels != null && levels.isNotEmpty) {
       return levels.last.value;
+    }
+    return null;
+  }
+
+  /// Catalog default color for a 1-based DPI level (mock slot 1 Red ...
+  /// slot 8 White). Returns null if the catalog has no color for that slot.
+  String? _defaultDpiColorForLevel(DeviceSettingsState synced, int level) {
+    final caps = activeCapabilities?.dpi;
+    final levels = caps?.levels;
+    if (levels == null) return null;
+    for (final l in levels) {
+      if (l.level == level && l.color.isNotEmpty) return l.color;
     }
     return null;
   }

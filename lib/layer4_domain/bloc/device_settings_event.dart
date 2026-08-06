@@ -265,3 +265,67 @@ class DeviceSettingsWheelInvertRequested extends DeviceSettingsEvent {
 class DeviceSettingsSaveWheelInvertRequested extends DeviceSettingsEvent {
   const DeviceSettingsSaveWheelInvertRequested();
 }
+
+// --- RGB backlight (0xE2) ---
+//
+// Each stage event carries one field's new value; L4 stages it and marks dirty.
+// A single save commits all staged backlight fields as one 8-byte 0xE2 block,
+// overlaying staged values on the last-synced block (FR-OPS-001/002).
+
+/// User toggled the RGB backlight enable switch.
+class DeviceSettingsBacklightEnableRequested extends DeviceSettingsEvent {
+  const DeviceSettingsBacklightEnableRequested({required this.enable});
+
+  /// Whether the backlight is on.
+  final bool enable;
+}
+
+/// User selected an RGB lighting mode (FR-RGB-001/002).
+class DeviceSettingsBacklightModeRequested extends DeviceSettingsEvent {
+  const DeviceSettingsBacklightModeRequested({required this.modeId});
+
+  /// Mode id from the active device's capability modes.
+  final int modeId;
+}
+
+/// User picked a custom color (FR-RGB-003, Static & Single Breathing).
+class DeviceSettingsBacklightColorRequested extends DeviceSettingsEvent {
+  const DeviceSettingsBacklightColorRequested({
+    required this.r,
+    required this.g,
+    required this.b,
+  });
+
+  final int r;
+  final int g;
+  final int b;
+}
+
+/// User selected a brightness level (FR-RGB-002).
+class DeviceSettingsBacklightBrightnessRequested extends DeviceSettingsEvent {
+  const DeviceSettingsBacklightBrightnessRequested({required this.level});
+
+  /// Level index `0 .. brightnessLevels-1` (from capabilities).
+  final int level;
+}
+
+/// User selected a speed level (FR-RGB-002).
+class DeviceSettingsBacklightSpeedRequested extends DeviceSettingsEvent {
+  const DeviceSettingsBacklightSpeedRequested({required this.level});
+
+  /// Level index `0 .. speedLevels-1` (from capabilities).
+  final int level;
+}
+
+/// User selected the lighting power-saving timeout (FR-RGB-004).
+class DeviceSettingsBacklightSleepRequested extends DeviceSettingsEvent {
+  const DeviceSettingsBacklightSleepRequested({required this.wire});
+
+  /// Wire index into the catalog's `sleepTimeOptions`.
+  final int wire;
+}
+
+/// Save all staged RGB backlight fields to the device (one 0xE2 SET).
+class DeviceSettingsSaveBacklightRequested extends DeviceSettingsEvent {
+  const DeviceSettingsSaveBacklightRequested();
+}

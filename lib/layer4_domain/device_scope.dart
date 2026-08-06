@@ -229,6 +229,7 @@ class DeviceScope {
       commitDebounce: (wire) => commitDebounce(card, wire),
       commitSleep: (wire) => commitSleep(card, wire),
       commitWheelInvert: (invert) => commitWheelInvert(card, invert),
+      commitRgbBacklight: (values) => commitRgbBacklight(card, values),
       actionLabelOf: (action, p1, p2, p3) => translate.buttonActionToLabel(
         action: action,
         param1: p1,
@@ -672,6 +673,35 @@ class DeviceScope {
     dataBlock[17] = translate.triStateBoolToWire(invert);
 
     await session.setSensorOther(dataBlock);
+  }
+
+  /// Commits the RGB backlight block as one 8-byte 0xE2 SET.
+  ///
+  /// why: the bloc overlays staged fields on the last-synced block before
+  /// calling this, so [values] is fully resolved — build a fresh 8-byte block
+  /// rather than a read-modify-write. `enable` is tri-state (0xFF/0x0F);
+  /// brightness/speed are level indices; sleepTime is a catalog option index.
+  Future<void> commitRgbBacklight(
+    DiscoveredCardState card,
+    StagedRgbBacklight values,
+  ) async {
+    final session = _sessionForCard(card);
+    if (session == null || !session.isAlive) {
+      throw StateError('commitRgbBacklight: no session');
+    }
+
+    const translate = TranslationCodec();
+    final dataBlock = Uint8List(8);
+    dataBlock[0] = translate.triStateBoolToWire(values.enable);
+    dataBlock[1] = values.modeId & 0xFF;
+    dataBlock[2] = values.brightness & 0xFF;
+    dataBlock[3] = values.speed & 0xFF;
+    dataBlock[4] = values.r & 0xFF;
+    dataBlock[5] = values.g & 0xFF;
+    dataBlock[6] = values.b & 0xFF;
+    dataBlock[7] = values.sleepTime & 0xFF;
+
+    await session.setRgbBacklight(dataBlock);
   }
 
   /// Persist BLoC-synced settings after successful Save (cache for re-entry).

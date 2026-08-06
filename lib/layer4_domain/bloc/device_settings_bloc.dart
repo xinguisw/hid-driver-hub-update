@@ -39,6 +39,24 @@ typedef OtherFeatureCommit = Future<void> Function(int wire);
 
 typedef WheelInvertCommit = Future<void> Function(bool invert);
 
+/// Staged RGB backlight fields for one 0xE2 SET (FR-RGB-001..004).
+///
+/// Carried by [RgbBacklightCommit]; L4 builds this from staged values overlaid
+/// on the last-synced block, and DeviceScope (L1) encodes the 8-byte wire block.
+/// brightness/speed are level indices; sleepTime is a catalog option index.
+typedef StagedRgbBacklight = ({
+  bool enable,
+  int modeId,
+  int brightness,
+  int speed,
+  int r,
+  int g,
+  int b,
+  int sleepTime,
+});
+
+typedef RgbBacklightCommit = Future<void> Function(StagedRgbBacklight values);
+
 /// FR-ARC-014c: escalation callback invoked when consecutive failures reach threshold.
 ///
 /// L1 [DeviceScope] provides this to force session teardown/reconnect.
@@ -68,6 +86,7 @@ class DeviceSettingsBloc
     required this.commitDebounce,
     required this.commitSleep,
     required this.commitWheelInvert,
+    required this.commitRgbBacklight,
     ButtonActionLabelFn? actionLabelOf,
     ButtonIdLabelFn? buttonIdLabelOf,
     DeviceSettingsViewState? initial,
@@ -113,6 +132,15 @@ class DeviceSettingsBloc
     on<DeviceSettingsSaveSleepTimeRequested>(_onSaveSleep);
     on<DeviceSettingsWheelInvertRequested>(_onWheelInvertRequested);
     on<DeviceSettingsSaveWheelInvertRequested>(_onSaveWheelInvert);
+    on<DeviceSettingsBacklightEnableRequested>(_onBacklightEnableRequested);
+    on<DeviceSettingsBacklightModeRequested>(_onBacklightModeRequested);
+    on<DeviceSettingsBacklightColorRequested>(_onBacklightColorRequested);
+    on<DeviceSettingsBacklightBrightnessRequested>(
+      _onBacklightBrightnessRequested,
+    );
+    on<DeviceSettingsBacklightSpeedRequested>(_onBacklightSpeedRequested);
+    on<DeviceSettingsBacklightSleepRequested>(_onBacklightSleepRequested);
+    on<DeviceSettingsSaveBacklightRequested>(_onSaveBacklight);
   }
 
   final ButtonMappingCommit commitButtonMapping;
@@ -127,6 +155,7 @@ class DeviceSettingsBloc
   final OtherFeatureCommit commitDebounce;
   final OtherFeatureCommit commitSleep;
   final WheelInvertCommit commitWheelInvert;
+  final RgbBacklightCommit commitRgbBacklight;
   final DeviceCapabilities? capabilities;
   final CapabilitiesLookup? capabilitiesLookup;
   final EscalationCallback? onEscalationRequested;
@@ -1746,6 +1775,294 @@ class DeviceSettingsBloc
       ),
     );
     debugPrint('[bloc] save wheel direction: synced');
+    onSaveCompleted?.call();
+  }
+
+  // --- RGB backlight (0xE2) staging handlers ---
+
+  /// Guard: backlight editable only when synced, present, and not decode-locked.
+  bool _backlightEditable(DeviceSettingsState synced) {
+    if (!synced.hasRgbBacklight) return false;
+    if (synced.decodeErrors.contains('rgbBacklight')) return false;
+    return true;
+  }
+
+  void _onBacklightEnableRequested(
+    DeviceSettingsBacklightEnableRequested event,
+    Emitter<DeviceSettingsViewState> emit,
+  ) {
+    final synced = state.synced;
+    if (synced == null) {
+      emit(state.copyWith(lastError: 'no settings loaded'));
+      return;
+    }
+    if (!_backlightEditable(synced)) {
+      emit(state.copyWith(lastError: 'backlight unavailable'));
+      return;
+    }
+    emit(
+      state.copyWith(
+        rgbEnableStaging: event.enable,
+        isDirty: true,
+        clearError: true,
+      ),
+    );
+    debugPrint('[bloc] backlight enable staged: ${event.enable}');
+  }
+
+  void _onBacklightModeRequested(
+    DeviceSettingsBacklightModeRequested event,
+    Emitter<DeviceSettingsViewState> emit,
+  ) {
+    final synced = state.synced;
+    if (synced == null) {
+      emit(state.copyWith(lastError: 'no settings loaded'));
+      return;
+    }
+    if (!_backlightEditable(synced)) {
+      emit(state.copyWith(lastError: 'backlight unavailable'));
+      return;
+    }
+    emit(
+      state.copyWith(
+        rgbModeIdStaging: event.modeId,
+        isDirty: true,
+        clearError: true,
+      ),
+    );
+    debugPrint('[bloc] backlight mode staged: ${event.modeId}');
+  }
+
+  void _onBacklightColorRequested(
+    DeviceSettingsBacklightColorRequested event,
+    Emitter<DeviceSettingsViewState> emit,
+  ) {
+    final synced = state.synced;
+    if (synced == null) {
+      emit(state.copyWith(lastError: 'no settings loaded'));
+      return;
+    }
+    if (!_backlightEditable(synced)) {
+      emit(state.copyWith(lastError: 'backlight unavailable'));
+      return;
+    }
+    emit(
+      state.copyWith(
+        rgbRStaging: event.r,
+        rgbGStaging: event.g,
+        rgbBStaging: event.b,
+        isDirty: true,
+        clearError: true,
+      ),
+    );
+    debugPrint(
+      '[bloc] backlight color staged: '
+      'r=${event.r} g=${event.g} b=${event.b}',
+    );
+  }
+
+  void _onBacklightBrightnessRequested(
+    DeviceSettingsBacklightBrightnessRequested event,
+    Emitter<DeviceSettingsViewState> emit,
+  ) {
+    final synced = state.synced;
+    if (synced == null) {
+      emit(state.copyWith(lastError: 'no settings loaded'));
+      return;
+    }
+    if (!_backlightEditable(synced)) {
+      emit(state.copyWith(lastError: 'backlight unavailable'));
+      return;
+    }
+    emit(
+      state.copyWith(
+        rgbBrightnessStaging: event.level,
+        isDirty: true,
+        clearError: true,
+      ),
+    );
+    debugPrint('[bloc] backlight brightness staged: ${event.level}');
+  }
+
+  void _onBacklightSpeedRequested(
+    DeviceSettingsBacklightSpeedRequested event,
+    Emitter<DeviceSettingsViewState> emit,
+  ) {
+    final synced = state.synced;
+    if (synced == null) {
+      emit(state.copyWith(lastError: 'no settings loaded'));
+      return;
+    }
+    if (!_backlightEditable(synced)) {
+      emit(state.copyWith(lastError: 'backlight unavailable'));
+      return;
+    }
+    emit(
+      state.copyWith(
+        rgbSpeedStaging: event.level,
+        isDirty: true,
+        clearError: true,
+      ),
+    );
+    debugPrint('[bloc] backlight speed staged: ${event.level}');
+  }
+
+  void _onBacklightSleepRequested(
+    DeviceSettingsBacklightSleepRequested event,
+    Emitter<DeviceSettingsViewState> emit,
+  ) {
+    final synced = state.synced;
+    if (synced == null) {
+      emit(state.copyWith(lastError: 'no settings loaded'));
+      return;
+    }
+    if (!_backlightEditable(synced)) {
+      emit(state.copyWith(lastError: 'backlight unavailable'));
+      return;
+    }
+    emit(
+      state.copyWith(
+        rgbSleepTimeStaging: event.wire,
+        isDirty: true,
+        clearError: true,
+      ),
+    );
+    debugPrint('[bloc] backlight sleep staged: wire=${event.wire}');
+  }
+
+  /// Save all staged RGB backlight fields to the device (one 0xE2 SET).
+  Future<void> _onSaveBacklight(
+    DeviceSettingsSaveBacklightRequested event,
+    Emitter<DeviceSettingsViewState> emit,
+  ) async {
+    final hasStaging = state.rgbEnableStaging != null ||
+        state.rgbModeIdStaging != null ||
+        state.rgbBrightnessStaging != null ||
+        state.rgbSpeedStaging != null ||
+        state.rgbRStaging != null ||
+        state.rgbGStaging != null ||
+        state.rgbBStaging != null ||
+        state.rgbSleepTimeStaging != null;
+    if (!hasStaging) {
+      debugPrint('[bloc] save backlight: nothing dirty');
+      return;
+    }
+    if (state.committing) return;
+
+    final synced = state.synced;
+    if (synced == null) {
+      emit(state.copyWith(lastError: 'save backlight: no synced settings'));
+      return;
+    }
+    if (!_backlightEditable(synced)) {
+      emit(state.copyWith(lastError: 'save backlight: backlight unavailable'));
+      return;
+    }
+
+    // Overlay staged values on the last-synced block (single 0xE2 SET).
+    final enable = state.rgbEnableStaging ?? synced.rgbEnable ?? false;
+    final modeId = state.rgbModeIdStaging ?? synced.rgbModeId ?? 0;
+    final brightness = state.rgbBrightnessStaging ?? synced.rgbBrightness ?? 0;
+    final speed = state.rgbSpeedStaging ?? synced.rgbSpeed ?? 0;
+    final r = state.rgbRStaging ?? synced.rgbR ?? 0;
+    final g = state.rgbGStaging ?? synced.rgbG ?? 0;
+    final b = state.rgbBStaging ?? synced.rgbB ?? 0;
+    final sleepTime = state.rgbSleepTimeStaging ?? synced.rgbSleepTime ?? 0;
+
+    // Validate against the active device's capability schema (FR-OPS-003,
+    // FR-RGB-001/002/004): never send an out-of-range or unsupported value.
+    final caps = activeCapabilities?.rgbBacklight;
+    if (caps != null && caps.present) {
+      if (caps.modes.isNotEmpty &&
+          !caps.modes.any((m) => m.id == modeId)) {
+        emit(state.copyWith(lastError: 'save backlight: unsupported mode $modeId'));
+        return;
+      }
+      if (brightness < 0 || brightness >= caps.brightnessLevels) {
+        emit(
+          state.copyWith(
+            lastError: 'save backlight: brightness $brightness out of range',
+          ),
+        );
+        return;
+      }
+      if (speed < 0 || speed >= caps.speedLevels) {
+        emit(
+          state.copyWith(lastError: 'save backlight: speed $speed out of range'),
+        );
+        return;
+      }
+      if (sleepTime < 0 || sleepTime >= caps.sleepTimeOptions.length) {
+        emit(
+          state.copyWith(
+            lastError: 'save backlight: sleep index $sleepTime out of range',
+          ),
+        );
+        return;
+      }
+    }
+
+    final staged = (
+      enable: enable,
+      modeId: modeId,
+      brightness: brightness,
+      speed: speed,
+      r: r,
+      g: g,
+      b: b,
+      sleepTime: sleepTime,
+    );
+
+    emit(state.copyWith(committing: true, clearError: true));
+
+    try {
+      await commitRgbBacklight(staged);
+    } catch (e) {
+      debugPrint('[bloc] save backlight failed: $e');
+      final failures = state.consecutiveFailures + 1;
+      emit(
+        state.copyWith(
+          committing: false,
+          lastError: 'backlight save failed: $e',
+          consecutiveFailures: failures,
+        ),
+      );
+      if (failures >= failureEscalateThreshold) {
+        onEscalationRequested?.call(
+          'backlight save failed $failures consecutive times',
+        );
+      }
+      return;
+    }
+
+    // why: build next view via copyWith + clearStaging so unrelated sibling
+    // staging is not silently dropped (see DPI remove/save race fix).
+    final nextSynced = synced.copyWith(
+      rgbEnable: enable,
+      rgbModeId: modeId,
+      rgbModeLabel: const TranslationCodec().rgbModeToLabel(modeId),
+      rgbBrightness: brightness,
+      rgbBrightnessLabel:
+          const TranslationCodec().brightnessLevelToLabel(brightness),
+      rgbSpeed: speed,
+      rgbSpeedLabel: const TranslationCodec().speedLevelToLabel(speed),
+      rgbR: r,
+      rgbG: g,
+      rgbB: b,
+      rgbSleepTime: sleepTime,
+      rgbSleepLabel: const TranslationCodec().sleepIndexToLabel(sleepTime),
+      clearError: true,
+    );
+    emit(
+      state.copyWith(
+        synced: nextSynced,
+        committing: false,
+        consecutiveFailures: 0,
+        clearStaging: true,
+        clearError: true,
+      ),
+    );
+    debugPrint('[bloc] save backlight: synced');
     onSaveCompleted?.call();
   }
 }

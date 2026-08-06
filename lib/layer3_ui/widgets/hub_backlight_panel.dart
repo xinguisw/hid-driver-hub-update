@@ -90,6 +90,9 @@ class HubBacklightPanel extends StatelessWidget {
             levels: rgbBrightnessLevels ?? 0,
             selected: rgbBrightness,
             onChanged: onBrightnessChanged,
+            // why: reference brightness table is 0/25/50/75/100% (L5 codec owns
+            // the same table) — not the generic 0..100% percent-of-index.
+            labels: const ['0%', '25%', '50%', '75%', '100%'],
           ),
           const SizedBox(height: 8),
           _LevelBox(
@@ -99,10 +102,16 @@ class HubBacklightPanel extends StatelessWidget {
             onChanged: onSpeedChanged,
           ),
           const SizedBox(height: 8),
-          _PowerSavingBox(
-            options: rgbSleepOptions ?? const [],
+          // why: RGB power-saving is a chip row like brightness/speed (not a
+          // dropdown) per request; options come from the capability schema.
+          _LevelBox(
+            title: 'Power saving',
+            levels: rgbSleepOptions?.length ?? 0,
             selected: rgbSleepTime,
             onChanged: onSleepChanged,
+            labels: [
+              for (final s in rgbSleepOptions ?? const <int>[]) _sleepLabel(s),
+            ],
           ),
         ],
       ),
@@ -453,6 +462,7 @@ class _LevelBox extends StatelessWidget {
     required this.levels,
     required this.selected,
     this.onChanged,
+    this.labels,
   });
 
   final String title;
@@ -462,10 +472,15 @@ class _LevelBox extends StatelessWidget {
   /// Emits the tapped level index `0 .. levels-1`.
   final ValueChanged<int>? onChanged;
 
+  /// Optional per-index labels (must match [levels] length). When null, the
+  /// chip shows the percent of the index across the range (brightness/speed).
+  final List<String>? labels;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final pctDenom = levels > 1 ? (levels - 1) : 1;
+    final useLabels = labels != null && labels!.length == levels;
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -495,7 +510,9 @@ class _LevelBox extends StatelessWidget {
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
-                        '${(100 * i / pctDenom).round()}',
+                        useLabels
+                            ? labels![i]
+                            : '${(100 * i / pctDenom).round()}',
                         style: const TextStyle(fontSize: 12),
                       ),
                     ),
@@ -510,67 +527,13 @@ class _LevelBox extends StatelessWidget {
   }
 }
 
-/// Backlight power-saving timeout box.
-///
-/// NOTE: this is the RGB power-saving idle timeout (0xE2 byte 7), NOT the
-/// device sleep time (0xD4 byte 12, handled in Parameter Setting).
-/// Options come from the device capability schema, not hardcoded.
-class _PowerSavingBox extends StatelessWidget {
-  const _PowerSavingBox({
-    required this.options,
-    required this.selected,
-    this.onChanged,
-  });
-
-  /// Capability `sleepTimeOptions` (seconds per index).
-  final List<int> options;
-
-  /// Selected index into [options].
-  final int? selected;
-
-  /// Emits the selected option index.
-  final ValueChanged<int>? onChanged;
-
-  String _labelFor(int seconds) {
-    if (seconds >= 60 && seconds % 60 == 0) {
-      final m = seconds ~/ 60;
-      return '$m min';
-    }
-    return '$seconds sec';
+/// Backlight power-saving timeout is now rendered as a chip row via
+/// [_LevelBox] (see build), options sourced from the capability schema.
+/// Formats a sleep timeout (seconds) for a chip label.
+String _sleepLabel(int seconds) {
+  if (seconds >= 60 && seconds % 60 == 0) {
+    final m = seconds ~/ 60;
+    return '${m}m';
   }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final valid =
-        selected != null && selected! >= 0 && selected! < options.length;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: [
-          const Text('Power saving'),
-          const Spacer(),
-          DropdownButton<int>(
-            value: valid ? selected : null,
-            hint: const Text('Select'),
-            underline: const SizedBox.shrink(),
-            items: [
-              for (var i = 0; i < options.length; i++)
-                DropdownMenuItem<int>(
-                  value: i,
-                  child: Text(_labelFor(options[i])),
-                ),
-            ],
-            onChanged: (value) {
-              if (value != null) onChanged?.call(value);
-            },
-          ),
-        ],
-      ),
-    );
-  }
+  return '${seconds}s';
 }

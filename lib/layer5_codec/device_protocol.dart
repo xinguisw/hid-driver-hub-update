@@ -299,10 +299,11 @@ class MouseProtocol implements DeviceProtocol {
   static const int _batteryPercentOffset = 5; // 0..100
   static const int _batteryChargingOffset = 6; // 0x01 charging, 0x00 not
 
-  // A8 firmware ack offsets (report id stripped). len=8: 4 mouse + 4 dongle.
+  // A8 firmware ack offsets (report id stripped). len=8: 2 mouse + 2 dongle.
+  // Layout: [0]A8 [1..3]0 [4]8 [5]MS Lo [6]MS Hi [7]Dongle Lo [8]Dongle Hi.
   static const int _firmwareMouseOffset = 5;
-  static const int _firmwareDongleOffset = 9;
-  static const int _firmwareVersionLength = 4;
+  static const int _firmwareDongleOffset = 7;
+  static const int _firmwareVersionLength = 2;
 
   static const Duration _sendTimeout = Duration(milliseconds: 1000);
 
@@ -440,7 +441,7 @@ class MouseProtocol implements DeviceProtocol {
         'Unexpected firmware ack opcode: 0x${opcode.toRadixString(16)}',
       );
     }
-    final end = _firmwareDongleOffset + _firmwareVersionLength; // 9+4=13
+    final end = _firmwareDongleOffset + _firmwareVersionLength; // 7+2=9
     if (ack.length < end) {
       throw FormatException('Firmware ack too short: ${ack.length} bytes');
     }

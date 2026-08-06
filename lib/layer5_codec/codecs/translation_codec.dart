@@ -109,12 +109,15 @@ class TranslationCodec {
   /// - `identity` — wire value is DPI (`0x0320` → 800)
   /// - `divide` — display = wire × factor
   /// - `multiply` — display = wire ÷ factor
-  /// - `paw3311` — [cpiMap] when present; else `(wire + 1) × factor`
+  /// - `paw3311` — [cpiTables] by register mode; the mode is inferred from
+  ///   the value's range (≤10000 → mode 0x50, >10000 → mode 0xD0), falling
+  ///   back to the legacy flat [cpiMap], then `(wire + 1) × factor`.
   int dpiWireUnitToDisplay(
     int wire, {
     required String transform,
     required int factor,
     Map<int, int> cpiMap = const {},
+    Map<int, Map<int, int>> cpiTables = const {},
   }) {
     switch (transform) {
       case 'identity':
@@ -127,9 +130,60 @@ class TranslationCodec {
         }
         return wire ~/ factor;
       case 'paw3311':
-        final mapped = cpiMap[wire & 0xFF];
-        if (mapped != null) return mapped;
+        // Infer PAW3311 register mode from the CPI range the value maps into:
+        // mode 0x50 covers ≤10000, mode 0xD0 covers >10000. Try both.
+        for (final mode in [0x50, 0xD0]) {
+          final table = cpiTables[mode];
+          if (table == null) continue;
+          final mapped = table[wire & 0xFF];
+          if (mapped != null) return mapped;
+        }
+        final legacy = cpiMap[wire & 0xFF];
+        if (legacy != null) return legacy;
         return (wire + 1) * factor;
+      default:
+        throw ArgumentError.value(transform, 'transform', 'unknown DPI transform');
+    }
+  }
+
+  /// Display DPI → wire unit for the active sensor transform (encode).
+  ///
+  /// Inverse of [dpiWireUnitToDisplay]:
+  /// - `identity` — DPI is the wire value (`800` → 0x0320)
+  /// - `divide` — wire = DPI ÷ factor
+  /// - `multiply` — wire = DPI × factor
+  /// - `paw3311` — look up DPI in [cpiTables]; the mode is chosen by the DPI
+  ///   value's range (≤10000 → 0x50, >10000 → 0xD0). Falls back to the
+  ///   legacy [cpiMap] reverse lookup, then `(DPI ÷ factor) - 1`.
+  ///
+  /// Returns null if the DPI is not representable in this encoding.
+  int? dpiDisplayToWireUnit(
+    int dpi, {
+    required String transform,
+    required int factor,
+    Map<int, int> cpiMap = const {},
+    Map<int, Map<int, int>> cpiTables = const {},
+  }) {
+    switch (transform) {
+      case 'identity':
+        return dpi;
+      case 'divide':
+        return dpi ~/ factor;
+      case 'multiply':
+        return dpi * factor;
+      case 'paw3311':
+        final mode = dpi > 10000 ? 0xD0 : 0x50;
+        final table = cpiTables[mode];
+        if (table != null) {
+          for (final e in table.entries) {
+            if (e.value == dpi) return e.key;
+          }
+        }
+        for (final e in cpiMap.entries) {
+          if (e.value == dpi) return e.key;
+        }
+        final fallback = (dpi ~/ factor) - 1;
+        return fallback >= 0 ? fallback : null;
       default:
         throw ArgumentError.value(transform, 'transform', 'unknown DPI transform');
     }
@@ -137,8 +191,8 @@ class TranslationCodec {
 
   /// Decode one C4 stage using the sensor encoding for this device.
   ///
-  /// [bytesPerAxis], [independentXY], [transform], [factor], and [cpiMap]
-  /// come from the device’s sensor table — not hard-coded chip names.
+  /// [bytesPerAxis], [independentXY], [transform], [factor], [cpiMap], and
+  /// [cpiTables] come from the device’s sensor table — not hard-coded chips.
   ({int value, int? y}) decodeDpiStageWire({
     required int b0,
     required int b1,
@@ -148,6 +202,7 @@ class TranslationCodec {
     required String transform,
     required int factor,
     Map<int, int> cpiMap = const {},
+    Map<int, Map<int, int>> cpiTables = const {},
   }) {
     if (!independentXY) {
       final wire = bytesPerAxis == 1
@@ -158,6 +213,7 @@ class TranslationCodec {
         transform: transform,
         factor: factor,
         cpiMap: cpiMap,
+        cpiTables: cpiTables,
       );
       return (value: dpi, y: null);
     }
@@ -166,12 +222,14 @@ class TranslationCodec {
       transform: transform,
       factor: factor,
       cpiMap: cpiMap,
+      cpiTables: cpiTables,
     );
     final y = dpiWireUnitToDisplay(
       b1 & 0xFF,
       transform: transform,
       factor: factor,
       cpiMap: cpiMap,
+      cpiTables: cpiTables,
     );
     return (value: x, y: y);
   }

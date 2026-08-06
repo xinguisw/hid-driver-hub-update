@@ -112,6 +112,9 @@ DeviceSettingsState applyCapabilitiesToSettings(
                   id: m.id,
                   nameKey: m.nameKey,
                   supportsColor: m.supportsColor,
+                  // why: dropdown renders a human label, not the raw key;
+                  // L5 owns the mode naming table.
+                  label: const TranslationCodec().rgbModeToLabel(m.id),
                 ),
             ]
           : null,

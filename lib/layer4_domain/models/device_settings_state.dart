@@ -694,10 +694,15 @@ class RgbModeData {
   final String nameKey;
   final bool supportsColor;
 
+  /// Human-readable label (L5 [rgbModeToLabel]); falls back to [nameKey] when
+  /// null (e.g. hydrated from cache before capabilities pack ran).
+  final String? label;
+
   const RgbModeData({
     required this.id,
     required this.nameKey,
     required this.supportsColor,
+    this.label,
   });
 
   @override
@@ -706,10 +711,11 @@ class RgbModeData {
       other is RgbModeData &&
           id == other.id &&
           nameKey == other.nameKey &&
-          supportsColor == other.supportsColor;
+          supportsColor == other.supportsColor &&
+          label == other.label;
 
   @override
-  int get hashCode => Object.hash(id, nameKey, supportsColor);
+  int get hashCode => Object.hash(id, nameKey, supportsColor, label);
 }
 
 bool _listEq<T>(List<T>? a, List<T>? b) {

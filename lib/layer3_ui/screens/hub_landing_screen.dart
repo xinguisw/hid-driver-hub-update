@@ -567,9 +567,19 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                       // why: sleep options live in L2 capability schema, not in
                       // synced state — sourced from RgbBacklightCapabilities
                       // (never hardcoded) per FR-RGB-004 / FR-ARC-001.
-                      final sleepOpts = DeviceCapabilityStore.forDevice(
+                      final rgbCaps = DeviceCapabilityStore.forDevice(
                         widget.card.devId,
-                      )?.rgbBacklight?.sleepTimeOptions;
+                      )?.rgbBacklight;
+                      // FR-ARC-001: do not render the backlight block for a
+                      // device whose capability says it has no RGB backlight.
+                      if (rgbCaps?.present != true) {
+                        return const Center(
+                          child: Text(
+                            'This device does not have an RGB backlight.',
+                          ),
+                        );
+                      }
+                      final sleepOpts = rgbCaps?.sleepTimeOptions;
                       return Column(
                         children: [
                           Expanded(

@@ -26,7 +26,7 @@ class HubDeviceSettingPanel extends StatelessWidget {
         children: [
           // Left: device image.
           if (card.imageLarge.isNotEmpty)
-            Image.asset(card.imageLarge, width: 220, fit: BoxFit.contain),
+            Image.asset(card.imageLarge, width: 300, fit: BoxFit.contain),
           const SizedBox(width: 64),
           // Right: firmware info container + reset (fixed width, centered col).
           Column(

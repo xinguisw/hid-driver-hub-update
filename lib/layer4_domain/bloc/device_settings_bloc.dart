@@ -3,7 +3,7 @@ import 'package:driver_hub/layer4_domain/bloc/device_settings_event.dart';
 import 'package:driver_hub/layer4_domain/bloc/device_settings_state_view.dart';
 import 'package:driver_hub/layer4_domain/button_mapping_reset.dart';
 import 'package:driver_hub/layer4_domain/button_mapping_validate.dart';
-import 'package:driver_hub/layer4_domain/models/button_mapping_slot.dart';
+import 'package:driver_hub/layer5_codec/button_mapping_slot.dart';
 import 'package:driver_hub/layer4_domain/models/device_settings_state.dart';
 import 'package:driver_hub/layer5_codec/button_action_catalog_map.dart';
 import 'package:driver_hub/layer5_codec/codecs/translation_codec.dart';

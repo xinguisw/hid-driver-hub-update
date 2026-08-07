@@ -1,8 +1,8 @@
 /// Kind of peripheral a device reports as, on the wire and in the catalog.
 ///
-/// Lives in L1 (Discovery) — both the catalog ([DeviceCatalogEntry.deviceType])
-/// and the handshake result ([DeviceHandshake.deviceType]) speak this type,
-/// so the session's verify step compares like for like instead of bare ints.
+/// Lives in L5 (Codec) — it encodes the firmware's device-type wire byte.
+/// Upper layers that speak the type (L1 catalog/handshake) import it downward,
+/// keeping every cross-layer dependency pointing toward the transport.
 ///
 /// Codes match the firmware's device-type byte. Only [mouse] is verified
 /// against hardware; add a value (with its code) when a device of that kind

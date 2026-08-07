@@ -1,4 +1,4 @@
-import 'package:driver_hub/layer1_discovery/device_type.dart';
+import 'device_type.dart';
 import 'package:driver_hub/layer5_codec/codec_exception.dart';
 import 'package:driver_hub/layer5_codec/codecs/translation_codec.dart';
 import 'package:driver_hub/layer5_codec/utils/crc16.dart';

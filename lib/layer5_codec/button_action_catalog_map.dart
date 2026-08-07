@@ -1,4 +1,4 @@
-import 'package:driver_hub/layer4_domain/models/button_mapping_slot.dart';
+import 'button_mapping_slot.dart';
 
 /// L5: catalog action ID → wire [ButtonMappingSlot].
 ///

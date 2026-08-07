@@ -8,7 +8,7 @@ import 'package:driver_hub/layer1_discovery/discovered_device.dart';
 import 'package:driver_hub/layer2_capabilities/capabilities.dart';
 import 'package:driver_hub/layer2_capabilities/sensor_profiles.dart';
 import 'package:driver_hub/layer4_domain/bloc/device_settings_bloc.dart';
-import 'package:driver_hub/layer4_domain/models/button_mapping_slot.dart';
+import 'package:driver_hub/layer5_codec/button_mapping_slot.dart';
 import 'package:driver_hub/layer4_domain/models/device_settings_state.dart';
 import 'package:driver_hub/layer4_domain/models/discovered_card_state.dart';
 import 'package:driver_hub/layer4_domain/settings_onboard_query.dart';

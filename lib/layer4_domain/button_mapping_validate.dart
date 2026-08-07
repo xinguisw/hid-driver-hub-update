@@ -1,5 +1,5 @@
 import 'package:driver_hub/layer2_capabilities/capabilities.dart';
-import 'package:driver_hub/layer4_domain/models/button_mapping_slot.dart';
+import 'package:driver_hub/layer5_codec/button_mapping_slot.dart';
 import 'package:driver_hub/layer4_domain/models/device_settings_state.dart';
 
 /// B2 protocol slot count (6 × 4 data bytes).

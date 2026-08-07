@@ -1,4 +1,4 @@
-import 'package:driver_hub/layer4_domain/models/button_mapping_slot.dart';
+import 'package:driver_hub/layer5_codec/button_mapping_slot.dart';
 import 'package:driver_hub/layer4_domain/models/device_settings_state.dart';
 
 /// Labels for staged/synced button rows (injected; no L5 import here).

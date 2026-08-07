@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:hid_tool/hid_tool.dart';
 
-import 'device_type.dart';
+import 'package:driver_hub/layer5_codec/device_type.dart';
 
 /// Catalog entry for one supported device, parsed from the approved
 /// `assets/catalog/supported_model.json`.

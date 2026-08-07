@@ -1,6 +1,8 @@
-/// L4 domain staging slot for one button map entry (not a wire frame).
+/// Wire-shaped value for one button map entry: action + three keyvalue params.
 ///
-/// L5 [ButtonMappingEntry] is built only at commit boundary in [DeviceScope].
+/// Lives in L5 (Codec) — these four fields are the protocol frame's button
+/// mapping payload. Upper layers (L4 staging, L2 wire-map) import it downward;
+/// L4 keeps no separate staging copy, so staging and wire stay one type.
 class ButtonMappingSlot {
   final int action;
   final int param1;

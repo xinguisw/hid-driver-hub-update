@@ -8,8 +8,8 @@
       "interfaceId": 2,
       "usagePage": "0xFF02",
       "image":{
-        "small" : "assets/images/m7xse/small.png",
-        "large" : "assets/images/m7xse/large.png"
+        "small" : "assets/images/m7xse_small.png",
+        "large" : "assets/images/m7xse_large.png"
       },
       "modes": [
         { "mode": 0, "desc": "USB", "vid": "0x17ef", "pid": "0x629f" },
@@ -24,8 +24,8 @@
       "interfaceId": 2,
       "usagePage": "0xFF02",
       "image":{
-        "small" : "assets/images/m7x/small.png",
-        "large" : "assets/images/m7x/large.png"
+        "small" : "assets/images/m7x_small.png",
+        "large" : "assets/images/m7x_large.png"
       },
       "modes": [
         { "mode": 0, "desc": "USB", "vid": "0x17ef", "pid": "0x6289" },
@@ -40,8 +40,8 @@
       "interfaceId": 2,
       "usagePage": "0xFF02",
       "image":{
-        "small" : "assets/images/m7xpro/small.png",
-        "large" : "assets/images/m7xpro/large.png"
+        "small" : "assets/images/m7xpro_small.png",
+        "large" : "assets/images/m7xpro_large.png"
       },
       "modes": [
         { "mode": 0, "desc": "USB", "vid": "0x17ef", "pid": "0x629c" },

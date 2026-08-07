@@ -17,6 +17,11 @@ class DeviceSettingsViewState {
     this.buttonMappingStaging,
     this.reportRateStaging,
     this.dpiCurrentLevelStaging,
+    this.dpiValueStaging,
+    this.dpiStageAddStaging = false,
+    this.dpiStageRemoveLevelStaging,
+    this.dpiStageLevelsStaging,
+    this.dpiStageSaveInFlight = false,
     this.rippleControlStaging,
     this.angleSnapStaging,
     this.angleTuneStaging,
@@ -27,6 +32,14 @@ class DeviceSettingsViewState {
     this.debounceStaging,
     this.sleepStaging,
     this.wheelInvertStaging,
+    this.rgbEnableStaging,
+    this.rgbModeIdStaging,
+    this.rgbBrightnessStaging,
+    this.rgbSpeedStaging,
+    this.rgbRStaging,
+    this.rgbGStaging,
+    this.rgbBStaging,
+    this.rgbSleepTimeStaging,
     this.isDirty = false,
     this.committing = false,
     this.consecutiveFailures = 0,
@@ -39,6 +52,23 @@ class DeviceSettingsViewState {
   final List<ButtonMappingSlot>? buttonMappingStaging;
   final int? reportRateStaging;
   final int? dpiCurrentLevelStaging;
+
+  /// Staged DPI value per level (1-based level → value); null = no change.
+  final Map<int, int>? dpiValueStaging;
+
+  /// True when a `+` add-stage is staged, pending Save.
+  final bool dpiStageAddStaging;
+
+  /// 1-based level staged for removal (null = none).
+  final int? dpiStageRemoveLevelStaging;
+
+  /// The modified DPI level list (add/remove rearrange) staged for preview.
+  final List<DpiStageData>? dpiStageLevelsStaging;
+
+  /// True while a DPI stage add/remove save is in flight (per-concern guard,
+  /// independent of the shared [committing] flag).
+  final bool dpiStageSaveInFlight;
+
   final bool? rippleControlStaging;
   final bool? angleSnapStaging;
   final int? angleTuneStaging;
@@ -49,6 +79,18 @@ class DeviceSettingsViewState {
   final int? debounceStaging;
   final int? sleepStaging;
   final bool? wheelInvertStaging;
+
+  /// Staged RGB backlight fields (0xE2). Each null = unchanged from synced.
+  /// brightness/speed are level indices; rgbSleepTime is an index into the
+  /// catalog's `sleepTimeOptions`.
+  final bool? rgbEnableStaging;
+  final int? rgbModeIdStaging;
+  final int? rgbBrightnessStaging;
+  final int? rgbSpeedStaging;
+  final int? rgbRStaging;
+  final int? rgbGStaging;
+  final int? rgbBStaging;
+  final int? rgbSleepTimeStaging;
   final bool isDirty;
   final bool committing;
   final int consecutiveFailures;
@@ -56,6 +98,16 @@ class DeviceSettingsViewState {
 
   final ButtonActionLabelFn? actionLabelOf;
   final ButtonIdLabelFn? buttonIdLabelOf;
+
+  // --- Merged RGB backlight values (staged over synced) for live preview ---
+  bool? get displayRgbEnable => rgbEnableStaging ?? synced?.rgbEnable;
+  int? get displayRgbModeId => rgbModeIdStaging ?? synced?.rgbModeId;
+  int? get displayRgbBrightness => rgbBrightnessStaging ?? synced?.rgbBrightness;
+  int? get displayRgbSpeed => rgbSpeedStaging ?? synced?.rgbSpeed;
+  int? get displayRgbR => rgbRStaging ?? synced?.rgbR;
+  int? get displayRgbG => rgbGStaging ?? synced?.rgbG;
+  int? get displayRgbB => rgbBStaging ?? synced?.rgbB;
+  int? get displayRgbSleepTime => rgbSleepTimeStaging ?? synced?.rgbSleepTime;
 
   DeviceSettingsState? get displaySettings {
     final base = synced;
@@ -77,6 +129,11 @@ class DeviceSettingsViewState {
     List<ButtonMappingSlot>? buttonMappingStaging,
     int? reportRateStaging,
     int? dpiCurrentLevelStaging,
+    Map<int, int>? dpiValueStaging,
+    bool? dpiStageAddStaging,
+    int? dpiStageRemoveLevelStaging,
+    List<DpiStageData>? dpiStageLevelsStaging,
+    bool? dpiStageSaveInFlight,
     bool? rippleControlStaging,
     bool? angleSnapStaging,
     int? angleTuneStaging,
@@ -87,6 +144,14 @@ class DeviceSettingsViewState {
     int? debounceStaging,
     int? sleepStaging,
     bool? wheelInvertStaging,
+    bool? rgbEnableStaging,
+    int? rgbModeIdStaging,
+    int? rgbBrightnessStaging,
+    int? rgbSpeedStaging,
+    int? rgbRStaging,
+    int? rgbGStaging,
+    int? rgbBStaging,
+    int? rgbSleepTimeStaging,
     bool? isDirty,
     bool? committing,
     int? consecutiveFailures,
@@ -107,6 +172,21 @@ class DeviceSettingsViewState {
       dpiCurrentLevelStaging: clearStaging
           ? null
           : (dpiCurrentLevelStaging ?? this.dpiCurrentLevelStaging),
+      dpiValueStaging: clearStaging
+          ? null
+          : (dpiValueStaging ?? this.dpiValueStaging),
+      dpiStageAddStaging: clearStaging
+          ? false
+          : (dpiStageAddStaging ?? this.dpiStageAddStaging),
+      dpiStageRemoveLevelStaging: clearStaging
+          ? null
+          : (dpiStageRemoveLevelStaging ?? this.dpiStageRemoveLevelStaging),
+      dpiStageLevelsStaging: clearStaging
+          ? null
+          : (dpiStageLevelsStaging ?? this.dpiStageLevelsStaging),
+      dpiStageSaveInFlight: clearStaging
+          ? false
+          : (dpiStageSaveInFlight ?? this.dpiStageSaveInFlight),
       rippleControlStaging: clearStaging
           ? null
           : (rippleControlStaging ?? this.rippleControlStaging),
@@ -137,6 +217,24 @@ class DeviceSettingsViewState {
       wheelInvertStaging: clearStaging
           ? null
           : (wheelInvertStaging ?? this.wheelInvertStaging),
+      rgbEnableStaging: clearStaging
+          ? null
+          : (rgbEnableStaging ?? this.rgbEnableStaging),
+      rgbModeIdStaging: clearStaging
+          ? null
+          : (rgbModeIdStaging ?? this.rgbModeIdStaging),
+      rgbBrightnessStaging: clearStaging
+          ? null
+          : (rgbBrightnessStaging ?? this.rgbBrightnessStaging),
+      rgbSpeedStaging: clearStaging
+          ? null
+          : (rgbSpeedStaging ?? this.rgbSpeedStaging),
+      rgbRStaging: clearStaging ? null : (rgbRStaging ?? this.rgbRStaging),
+      rgbGStaging: clearStaging ? null : (rgbGStaging ?? this.rgbGStaging),
+      rgbBStaging: clearStaging ? null : (rgbBStaging ?? this.rgbBStaging),
+      rgbSleepTimeStaging: clearStaging
+          ? null
+          : (rgbSleepTimeStaging ?? this.rgbSleepTimeStaging),
       isDirty: clearStaging ? false : (isDirty ?? this.isDirty),
       committing: committing ?? this.committing,
       consecutiveFailures: consecutiveFailures ?? this.consecutiveFailures,

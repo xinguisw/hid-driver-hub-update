@@ -16,8 +16,15 @@ class DpiEncoding {
   final String endian;
   final bool independentXY;
 
-  /// Optional wire-code → display DPI (e.g. PAW3311 SDK table `0x13` → 840).
+  /// Optional wire-code → display DPI (legacy flat map, e.g. `0x13` → 840).
   final Map<int, int> cpiMap;
+
+  /// PAW3311 full lookup tables, keyed by register mode (`0x50`/`0xD0`).
+  ///
+  /// Each table maps a wire code → CPI. PAW3311 uses Resolution Setting 2:
+  /// mode `0x50` covers 50–10000 (50-step), mode `0xD0` covers 10100–12000
+  /// (100-step). The register mode must be written to 0x4D before 0x4E.
+  final Map<int, Map<int, int>> cpiTables;
 
   const DpiEncoding({
     required this.transform,
@@ -26,6 +33,7 @@ class DpiEncoding {
     required this.endian,
     required this.independentXY,
     this.cpiMap = const {},
+    this.cpiTables = const {},
   });
 
   factory DpiEncoding.fromJson(Map<String, dynamic> json) {
@@ -42,6 +50,23 @@ class DpiEncoding {
         }
       }
     }
+    final rawTables = json['cpiTables'];
+    final cpiTables = <int, Map<int, int>>{};
+    if (rawTables is Map) {
+      for (final e in rawTables.entries) {
+        final mode = _parseWireKey(e.key);
+        final rows = <int, int>{};
+        if (e.value is List) {
+          for (final row in e.value as List) {
+            final m = row as Map<String, dynamic>;
+            final wire = _parseWireKey(m['wire']);
+            final cpi = (m['cpi'] as num).toInt();
+            rows[wire] = cpi;
+          }
+        }
+        cpiTables[mode] = rows;
+      }
+    }
     return DpiEncoding(
       transform: json['transform'] as String,
       factor: json['factor'] as int,
@@ -49,6 +74,7 @@ class DpiEncoding {
       endian: json['endian'] as String,
       independentXY: json['independentXY'] as bool,
       cpiMap: cpiMap,
+      cpiTables: cpiTables,
     );
   }
 
@@ -61,37 +87,15 @@ class DpiEncoding {
   }
 }
 
-/// The DPI range a sensor supports.
-class DpiRange {
-  final int minDpi;
-  final int maxDpi;
-  final int step;
-  const DpiRange({
-    required this.minDpi,
-    required this.maxDpi,
-    required this.step,
-  });
-
-  factory DpiRange.fromJson(Map<String, dynamic> json) {
-    return DpiRange(
-      minDpi: json['minDpi'] as int,
-      maxDpi: json['maxDpi'] as int,
-      step: json['step'] as int,
-    );
-  }
-}
-
 /// One encoding table, keyed by `<chip>/<mode>`.
 class EncodingTable {
   final String chip;
   final String mode;
   final DpiEncoding dpiEncoding;
-  final DpiRange dpiRange;
   const EncodingTable({
     required this.chip,
     required this.mode,
     required this.dpiEncoding,
-    required this.dpiRange,
   });
 
   factory EncodingTable.fromJson(Map<String, dynamic> json) {
@@ -100,7 +104,6 @@ class EncodingTable {
       mode: json['mode'] as String,
       dpiEncoding: DpiEncoding.fromJson(
           json['dpiEncoding'] as Map<String, dynamic>),
-      dpiRange: DpiRange.fromJson(json['dpiRange'] as Map<String, dynamic>),
     );
   }
 }

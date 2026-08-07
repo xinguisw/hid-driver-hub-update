@@ -104,4 +104,6 @@ flutter:
     - assets/catalog/mouse/
     # Action catalog tabs (mouse.json, …) — remap panel lists; L2 loads.
     - assets/catalog/action/
-    - assets/images/m7xse/
+    # Flat images (m7xse_small.png, …) — one wildcard covers all mice; no per-mouse entry.
+    # Note: a directory entry bundles only its direct files (no recursion), so keep flat.
+    - assets/images/

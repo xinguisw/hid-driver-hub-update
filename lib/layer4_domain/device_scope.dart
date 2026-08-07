@@ -6,6 +6,7 @@ import 'package:driver_hub/layer1_discovery/device_session.dart';
 import 'package:driver_hub/layer1_discovery/device_watcher.dart';
 import 'package:driver_hub/layer1_discovery/discovered_device.dart';
 import 'package:driver_hub/layer2_capabilities/capabilities.dart';
+import 'package:driver_hub/layer2_capabilities/sensor_profiles.dart';
 import 'package:driver_hub/layer4_domain/bloc/device_settings_bloc.dart';
 import 'package:driver_hub/layer4_domain/models/button_mapping_slot.dart';
 import 'package:driver_hub/layer4_domain/models/device_settings_state.dart';
@@ -218,6 +219,8 @@ class DeviceScope {
       commitButtonMapping: (slots) => commitButtonMapping(card, slots),
       commitReportRate: (hz) => commitReportRate(card, hz),
       commitDpiLevel: (level) => commitDpiLevel(card, level),
+      commitDpiValues: (values) => commitDpiValues(card, values),
+      commitDpiStages: (staged, count) => commitDpiStages(card, staged, count),
       commitSensorTuning: (ripple, snap) =>
           commitSensorTuning(card, ripple, snap),
       commitAngleTune: (wireValue) => commitAngleTune(card, wireValue),
@@ -226,6 +229,7 @@ class DeviceScope {
       commitDebounce: (wire) => commitDebounce(card, wire),
       commitSleep: (wire) => commitSleep(card, wire),
       commitWheelInvert: (invert) => commitWheelInvert(card, invert),
+      commitRgbBacklight: (values) => commitRgbBacklight(card, values),
       actionLabelOf: (action, p1, p2, p3) => translate.buttonActionToLabel(
         action: action,
         param1: p1,
@@ -319,6 +323,178 @@ class DeviceScope {
     dataBlock[2] = currentBlock.dpiActiveLevel;
 
     await session.setReportRate(dataBlock);
+  }
+
+  /// Commits staged DPI value changes into the 0xC4 table.
+  ///
+  /// Reads the current table, encodes each staged level's DPI number to wire
+  /// bytes using the device's sensor encoding, and writes the full 16-byte
+  /// block back (read-before-write; the C4 table is a shared block).
+  Future<void> commitDpiValues(
+    DiscoveredCardState card,
+    Map<int, int> levelValues,
+  ) async {
+    final session = _sessionForCard(card);
+    if (session == null || !session.isAlive) {
+      throw StateError('commitDpiValues: no session');
+    }
+
+    final profile = SensorProfiles.forDevice(card.devId);
+    final table = profile == null ? null : SensorProfiles.table(profile.table);
+    final enc = table?.dpiEncoding;
+    if (enc == null) {
+      throw StateError('commitDpiValues: no sensor encoding for ${card.devId}');
+    }
+
+    final current = await session.queryDpiTable();
+    if (current == null) {
+      throw StateError('Failed to read current DPI table');
+    }
+
+    const translate = TranslationCodec();
+    final dataBlock = Uint8List.fromList(current.data);
+    for (final e in levelValues.entries) {
+      final idx = e.key - 1; // 1-based level -> 0-based slot
+      if (idx < 0 || idx >= 8) continue;
+      final wire = translate.dpiDisplayToWireUnit(
+        e.value,
+        transform: enc.transform,
+        factor: enc.factor,
+        cpiMap: enc.cpiMap,
+        cpiTables: enc.cpiTables,
+      );
+      if (wire == null) {
+        throw StateError('DPI value ${e.value} not encodable on this sensor');
+      }
+      if (enc.bytesPerAxis == 1) {
+        dataBlock[idx] = wire & 0xFF;
+      } else {
+        final hi = (wire >> 8) & 0xFF;
+        final lo = wire & 0xFF;
+        dataBlock[idx * 2] = hi;
+        dataBlock[idx * 2 + 1] = lo;
+      }
+    }
+
+    await session.setDpiTable(dataBlock);
+  }
+
+  /// Commits the whole rearranged DPI stage list per FR-DPI-003.
+  ///
+  /// [stagedLevels] is the post-add/remove active list (1..N, already
+  /// rearranged toward slot 1 by the BLoC). The full 8-slot 0xC4 table is
+  /// built with the active stages' values + the tail filled with the catalog
+  /// default, and the 0xC2 active mask is set to the first [activeCount] bits.
+  ///
+  /// why: committing the whole list (not incremental removes) avoids the
+  /// re-index-vs-raw-slot mismatch when multiple stages change before Save.
+  Future<void> commitDpiStages(
+    DiscoveredCardState card,
+    List<DpiStageData> stagedLevels,
+    int activeCount,
+  ) async {
+    final session = _sessionForCard(card);
+    if (session == null || !session.isAlive) {
+      throw StateError('commitDpiStages: no session');
+    }
+
+    final profile = SensorProfiles.forDevice(card.devId);
+    final table = profile == null ? null : SensorProfiles.table(profile.table);
+    final enc = table?.dpiEncoding;
+    if (enc == null) {
+      throw StateError('commitDpiStages: no sensor encoding for ${card.devId}');
+    }
+    final caps = DeviceCapabilityStore.forDevice(card.devId);
+    final capLevels = caps?.dpi?.levels;
+    final defaultDpi =
+        (capLevels != null && capLevels.isNotEmpty) ? capLevels.last.value : 1600;
+    const translate = TranslationCodec();
+    final defaultWire = translate.dpiDisplayToWireUnit(
+      defaultDpi,
+      transform: enc.transform,
+      factor: enc.factor,
+      cpiMap: enc.cpiMap,
+      cpiTables: enc.cpiTables,
+    );
+    if (defaultWire == null) {
+      throw StateError('commitDpiStages: default DPI not encodable');
+    }
+
+    // Build the full 8-slot wire table: active stages first, then default-fill.
+    final dataBlock = Uint8List(16);
+    for (var i = 0; i < 8; i++) {
+      final stage = i < stagedLevels.length ? stagedLevels[i] : null;
+      final wire = stage == null
+          ? defaultWire
+          : translate.dpiDisplayToWireUnit(
+              stage.value,
+              transform: enc.transform,
+              factor: enc.factor,
+              cpiMap: enc.cpiMap,
+              cpiTables: enc.cpiTables,
+            );
+      if (wire == null) {
+        throw StateError('commitDpiStages: value not encodable at slot ${i + 1}');
+      }
+      if (enc.bytesPerAxis == 1) {
+        dataBlock[i] = wire & 0xFF;
+      } else {
+        dataBlock[i * 2] = (wire >> 8) & 0xFF;
+        dataBlock[i * 2 + 1] = wire & 0xFF;
+      }
+    }
+    await session.setDpiTable(dataBlock);
+
+    // 0xC6 DPI RGB only for per-stage devices (M7X/PRO); M7XSE NAKs the SET.
+    if (caps?.dpi?.rgbPerStage ?? false) {
+      final defaultColor = _defaultDpiColorHex(card);
+      final defaultRgb = _hexToRgb(defaultColor);
+      final rgbBlock = Uint8List(24);
+      for (var i = 0; i < 8; i++) {
+        final stage = i < stagedLevels.length ? stagedLevels[i] : null;
+        final colorHex = stage?.color;
+        final isDefault = colorHex == null || colorHex.isEmpty;
+        final c = isDefault ? defaultRgb : _hexToRgb(colorHex);
+        rgbBlock[i * 3] = c[0];
+        rgbBlock[i * 3 + 1] = c[1];
+        rgbBlock[i * 3 + 2] = c[2];
+      }
+      await session.setDpiRgb(rgbBlock);
+    }
+
+    // 0xC2 active mask: first activeCount bits set.
+    final current = await session.queryReportRateDpiInfo();
+    if (current == null) {
+      throw StateError('Failed to read current report rate/DPI block');
+    }
+    final newMask = (1 << activeCount) - 1;
+    final infoBlock = Uint8List(3);
+    infoBlock[0] = current.reportRate;
+    infoBlock[1] = current.dpiCurrentLevel;
+    infoBlock[2] = newMask;
+    await session.setReportRate(infoBlock);
+  }
+
+  /// Default RGB color (hex) for the refilled slot, from the catalog.
+  String _defaultDpiColorHex(DiscoveredCardState card) {
+    final caps = DeviceCapabilityStore.forDevice(card.devId);
+    final levels = caps?.dpi?.levels;
+    if (levels != null && levels.isNotEmpty) {
+      final last = levels.last.color;
+      if (last.isNotEmpty) return last;
+    }
+    return '#FFFFFF'; // mock default slot 8 = White
+  }
+
+  /// Parse `#RRGGBB` → [r, g, b].
+  static List<int> _hexToRgb(String hex) {
+    final s = hex.replaceAll('#', '');
+    if (s.length != 6) return [255, 255, 255];
+    return [
+      int.parse(s.substring(0, 2), radix: 16),
+      int.parse(s.substring(2, 4), radix: 16),
+      int.parse(s.substring(4, 6), radix: 16),
+    ];
   }
 
   /// Commits ripple control + angle snap into the 14-byte 0xD4 block.
@@ -497,6 +673,35 @@ class DeviceScope {
     dataBlock[17] = translate.triStateBoolToWire(invert);
 
     await session.setSensorOther(dataBlock);
+  }
+
+  /// Commits the RGB backlight block as one 8-byte 0xE2 SET.
+  ///
+  /// why: the bloc overlays staged fields on the last-synced block before
+  /// calling this, so [values] is fully resolved — build a fresh 8-byte block
+  /// rather than a read-modify-write. `enable` is tri-state (0xFF/0x0F);
+  /// brightness/speed are level indices; sleepTime is a catalog option index.
+  Future<void> commitRgbBacklight(
+    DiscoveredCardState card,
+    StagedRgbBacklight values,
+  ) async {
+    final session = _sessionForCard(card);
+    if (session == null || !session.isAlive) {
+      throw StateError('commitRgbBacklight: no session');
+    }
+
+    const translate = TranslationCodec();
+    final dataBlock = Uint8List(8);
+    dataBlock[0] = translate.triStateBoolToWire(values.enable);
+    dataBlock[1] = values.modeId & 0xFF;
+    dataBlock[2] = values.brightness & 0xFF;
+    dataBlock[3] = values.speed & 0xFF;
+    dataBlock[4] = values.r & 0xFF;
+    dataBlock[5] = values.g & 0xFF;
+    dataBlock[6] = values.b & 0xFF;
+    dataBlock[7] = values.sleepTime & 0xFF;
+
+    await session.setRgbBacklight(dataBlock);
   }
 
   /// Persist BLoC-synced settings after successful Save (cache for re-entry).

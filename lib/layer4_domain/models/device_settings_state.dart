@@ -43,6 +43,9 @@ class DeviceSettingsState {
   final int? dpiMin;
   final int? dpiStep;
 
+  /// DPI step model: 'fixed' | 'tiered' | 'any' (from mouse catalog range).
+  final String? dpiStepMode;
+
   /// Hardware max stages (e.g. 8).
   final int? dpiMaxLevels;
 
@@ -203,6 +206,7 @@ class DeviceSettingsState {
     this.dpiMax,
     this.dpiMin,
     this.dpiStep,
+    this.dpiStepMode,
     this.dpiMaxLevels,
     this.dpiActiveLevelCount,
     this.dpiDefaultLevel,
@@ -270,6 +274,7 @@ class DeviceSettingsState {
     int? dpiMax,
     int? dpiMin,
     int? dpiStep,
+    String? dpiStepMode,
     int? dpiMaxLevels,
     int? dpiActiveLevelCount,
     int? dpiDefaultLevel,
@@ -343,6 +348,7 @@ class DeviceSettingsState {
       dpiMax: dpiMax ?? this.dpiMax,
       dpiMin: dpiMin ?? this.dpiMin,
       dpiStep: dpiStep ?? this.dpiStep,
+      dpiStepMode: dpiStepMode ?? this.dpiStepMode,
       dpiMaxLevels: dpiMaxLevels ?? this.dpiMaxLevels,
       dpiActiveLevelCount: dpiActiveLevelCount ?? this.dpiActiveLevelCount,
       dpiDefaultLevel: dpiDefaultLevel ?? this.dpiDefaultLevel,
@@ -416,6 +422,7 @@ class DeviceSettingsState {
           dpiMax == other.dpiMax &&
           dpiMin == other.dpiMin &&
           dpiStep == other.dpiStep &&
+          dpiStepMode == other.dpiStepMode &&
           dpiMaxLevels == other.dpiMaxLevels &&
           dpiActiveLevelCount == other.dpiActiveLevelCount &&
           dpiDefaultLevel == other.dpiDefaultLevel &&
@@ -483,6 +490,7 @@ class DeviceSettingsState {
         dpiMax,
         dpiMin,
         dpiStep,
+        dpiStepMode,
         dpiMaxLevels,
         dpiActiveLevelCount,
         dpiDefaultLevel,
@@ -686,10 +694,15 @@ class RgbModeData {
   final String nameKey;
   final bool supportsColor;
 
+  /// Human-readable label (L5 [rgbModeToLabel]); falls back to [nameKey] when
+  /// null (e.g. hydrated from cache before capabilities pack ran).
+  final String? label;
+
   const RgbModeData({
     required this.id,
     required this.nameKey,
     required this.supportsColor,
+    this.label,
   });
 
   @override
@@ -698,10 +711,11 @@ class RgbModeData {
       other is RgbModeData &&
           id == other.id &&
           nameKey == other.nameKey &&
-          supportsColor == other.supportsColor;
+          supportsColor == other.supportsColor &&
+          label == other.label;
 
   @override
-  int get hashCode => Object.hash(id, nameKey, supportsColor);
+  int get hashCode => Object.hash(id, nameKey, supportsColor, label);
 }
 
 bool _listEq<T>(List<T>? a, List<T>? b) {

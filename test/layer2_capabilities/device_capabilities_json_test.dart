@@ -18,7 +18,10 @@ void main() {
     expect(caps.reportRate!.defaultValue, 500);
     expect(caps.dpi!.maxLevels, 8);
     expect(caps.dpi!.defaultLevel, 2);
-    expect(caps.dpi!.maxDpi, 5000);
+    expect(caps.dpi!.range.minDpi, 50);
+    expect(caps.dpi!.range.maxDpi, 5000);
+    expect(caps.dpi!.range.stepMode, 'fixed');
+    expect(caps.dpi!.range.step, 50);
     expect(caps.dpi!.rgbPerStage, isFalse);
     expect(caps.dpi!.levels.length, 8);
     expect(caps.dpi!.levels.map((e) => e.value).toList(),
@@ -51,7 +54,8 @@ void main() {
     expect(caps.otherFeatures!.sleepTime!.options[5].label, '15 min');
     expect(caps.otherFeatures!.wheelDirectionInvert, isFalse);
     expect(caps.rgbBacklight!.present, isFalse);
-    expect(caps.rgbBacklight!.modes.length, 4);
+    expect(caps.rgbBacklight!.modes.length, 8);
+    expect(caps.rgbBacklight!.sleepTimeOptions.length, 7);
     expect(caps.macro, isNull);
     expect(caps.osd!.enabled, isTrue);
     expect(DeviceCapabilityStore.forDevice('unknown'), isNull);
@@ -64,7 +68,13 @@ void main() {
     expect(caps!.devId, '01AA');
     expect(caps.displayNameKey, 'device.m7x.name');
     expect(caps.reportRate!.options, [1000, 500, 250, 125]);
-    expect(caps.dpi!.maxDpi, 12000);
+    expect(caps.dpi!.range.maxDpi, 12000);
+    expect(caps.dpi!.range.stepMode, 'tiered');
+    expect(caps.dpi!.range.tiers!.length, 2);
+    expect(caps.dpi!.range.tiers![0].max, 10000);
+    expect(caps.dpi!.range.tiers![0].step, 50);
+    expect(caps.dpi!.range.tiers![1].max, 12000);
+    expect(caps.dpi!.range.tiers![1].step, 100);
     expect(caps.dpi!.rgbPerStage, isTrue);
     expect(caps.sensor!.sensorTuning, isTrue);
     expect(caps.sensor!.angleTune, isFalse);
@@ -80,7 +90,9 @@ void main() {
     expect(caps!.devId, '03AA');
     expect(caps.displayNameKey, 'device.m7x_pro.name');
     expect(caps.reportRate!.options, [1000, 500, 250, 125]);
-    expect(caps.dpi!.maxDpi, 24000);
+    expect(caps.dpi!.range.maxDpi, 24000);
+    expect(caps.dpi!.range.stepMode, 'fixed');
+    expect(caps.dpi!.range.step, 50);
     expect(caps.dpi!.rgbPerStage, isTrue);
     expect(caps.sensor!.sensorTuning, isTrue);
     expect(caps.sensor!.angleTune, isTrue);
@@ -88,7 +100,8 @@ void main() {
     expect(caps.sensor!.liftOffDistance!.present, isTrue);
     expect(caps.sensor!.liftOffDistance!.options.length, 2);
     expect(caps.rgbBacklight!.present, isTrue);
-    expect(caps.rgbBacklight!.modes.length, 4);
+    expect(caps.rgbBacklight!.modes.length, 8);
+    expect(caps.rgbBacklight!.sleepTimeOptions.length, 7);
   });
 
   test('SensorProfiles maps all three mice to their sensors', () async {
@@ -102,11 +115,18 @@ void main() {
     expect(sigma, isNotNull);
     expect(sigma!.dpiEncoding.transform, 'identity');
     expect(sigma.dpiEncoding.bytesPerAxis, 2);
-    expect(sigma.dpiRange.maxDpi, 5000);
     final paw3311 = SensorProfiles.table('PAW3311/std');
     expect(paw3311, isNotNull);
     expect(paw3311!.dpiEncoding.transform, 'paw3311');
-    expect(paw3311.dpiEncoding.cpiMap[0x13], 840);
+    // PAW3311 Setting 2 tables: mode 0x50 covers 50-10000, mode 0xD0 covers
+    // 10100-12000. Spot-check known wire->cpi entries.
+    final mode50 = paw3311.dpiEncoding.cpiTables[0x50]!;
+    expect(mode50[0x01], 50);
+    expect(mode50[0x13], 800);
+    expect(mode50[0xED], 10000);
+    final modeD0 = paw3311.dpiEncoding.cpiTables[0xD0]!;
+    expect(modeD0[0x76], 10100);
+    expect(modeD0[0x8D], 12000);
     final paw = SensorProfiles.table('PAW3395/high_res');
     expect(paw, isNotNull);
     expect(paw!.dpiEncoding.factor, 50);

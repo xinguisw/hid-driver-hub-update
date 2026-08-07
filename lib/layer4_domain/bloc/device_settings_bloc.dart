@@ -4,6 +4,7 @@ import 'package:driver_hub/layer4_domain/bloc/device_settings_state_view.dart';
 import 'package:driver_hub/layer4_domain/button_mapping_reset.dart';
 import 'package:driver_hub/layer4_domain/button_mapping_validate.dart';
 import 'package:driver_hub/layer4_domain/models/button_mapping_slot.dart';
+import 'package:driver_hub/layer4_domain/models/device_settings_state.dart';
 import 'package:driver_hub/layer5_codec/button_action_catalog_map.dart';
 import 'package:driver_hub/layer5_codec/codecs/translation_codec.dart';
 import 'package:flutter/foundation.dart';
@@ -15,6 +16,13 @@ typedef ButtonMappingCommit =
 typedef ReportRateCommit = Future<void> Function(int reportRateHz);
 
 typedef DpiLevelCommit = Future<void> Function(int dpiLevel);
+
+typedef DpiValuesCommit = Future<void> Function(Map<int, int> levelValues);
+
+typedef DpiStagesCommit = Future<void> Function(
+  List<DpiStageData> stagedLevels,
+  int activeCount,
+);
 
 typedef SensorTuningCommit = Future<void> Function(
   bool rippleControl,
@@ -30,6 +38,24 @@ typedef PerformanceCommit = Future<void> Function(int wire);
 typedef OtherFeatureCommit = Future<void> Function(int wire);
 
 typedef WheelInvertCommit = Future<void> Function(bool invert);
+
+/// Staged RGB backlight fields for one 0xE2 SET (FR-RGB-001..004).
+///
+/// Carried by [RgbBacklightCommit]; L4 builds this from staged values overlaid
+/// on the last-synced block, and DeviceScope (L1) encodes the 8-byte wire block.
+/// brightness/speed are level indices; sleepTime is a catalog option index.
+typedef StagedRgbBacklight = ({
+  bool enable,
+  int modeId,
+  int brightness,
+  int speed,
+  int r,
+  int g,
+  int b,
+  int sleepTime,
+});
+
+typedef RgbBacklightCommit = Future<void> Function(StagedRgbBacklight values);
 
 /// FR-ARC-014c: escalation callback invoked when consecutive failures reach threshold.
 ///
@@ -51,6 +77,8 @@ class DeviceSettingsBloc
     required this.commitButtonMapping,
     required this.commitReportRate,
     required this.commitDpiLevel,
+    required this.commitDpiValues,
+    required this.commitDpiStages,
     required this.commitSensorTuning,
     required this.commitAngleTune,
     required this.commitLod,
@@ -58,6 +86,7 @@ class DeviceSettingsBloc
     required this.commitDebounce,
     required this.commitSleep,
     required this.commitWheelInvert,
+    required this.commitRgbBacklight,
     ButtonActionLabelFn? actionLabelOf,
     ButtonIdLabelFn? buttonIdLabelOf,
     DeviceSettingsViewState? initial,
@@ -82,6 +111,11 @@ class DeviceSettingsBloc
     on<DeviceSettingsSaveReportRateRequested>(_onSaveReportRate);
     on<DeviceSettingsDpiLevelRequested>(_onDpiLevelRequested);
     on<DeviceSettingsSaveDpiLevelRequested>(_onSaveDpiLevel);
+    on<DeviceSettingsDpiValueRequested>(_onDpiValueRequested);
+    on<DeviceSettingsSaveDpiValuesRequested>(_onSaveDpiValues);
+    on<DeviceSettingsDpiStageAddRequested>(_onDpiStageAddRequested);
+    on<DeviceSettingsDpiStageRemoveRequested>(_onDpiStageRemoveRequested);
+    on<DeviceSettingsSaveDpiStagesRequested>(_onSaveDpiStages);
     on<DeviceSettingsRippleControlRequested>(_onRippleControlRequested);
     on<DeviceSettingsAngleSnapRequested>(_onAngleSnapRequested);
     on<DeviceSettingsSaveSensorTuningRequested>(_onSaveSensorTuning);
@@ -98,11 +132,22 @@ class DeviceSettingsBloc
     on<DeviceSettingsSaveSleepTimeRequested>(_onSaveSleep);
     on<DeviceSettingsWheelInvertRequested>(_onWheelInvertRequested);
     on<DeviceSettingsSaveWheelInvertRequested>(_onSaveWheelInvert);
+    on<DeviceSettingsBacklightEnableRequested>(_onBacklightEnableRequested);
+    on<DeviceSettingsBacklightModeRequested>(_onBacklightModeRequested);
+    on<DeviceSettingsBacklightColorRequested>(_onBacklightColorRequested);
+    on<DeviceSettingsBacklightBrightnessRequested>(
+      _onBacklightBrightnessRequested,
+    );
+    on<DeviceSettingsBacklightSpeedRequested>(_onBacklightSpeedRequested);
+    on<DeviceSettingsBacklightSleepRequested>(_onBacklightSleepRequested);
+    on<DeviceSettingsSaveBacklightRequested>(_onSaveBacklight);
   }
 
   final ButtonMappingCommit commitButtonMapping;
   final ReportRateCommit commitReportRate;
   final DpiLevelCommit commitDpiLevel;
+  final DpiValuesCommit commitDpiValues;
+  final DpiStagesCommit commitDpiStages;
   final SensorTuningCommit commitSensorTuning;
   final AngleTuneCommit commitAngleTune;
   final LodCommit commitLod;
@@ -110,6 +155,7 @@ class DeviceSettingsBloc
   final OtherFeatureCommit commitDebounce;
   final OtherFeatureCommit commitSleep;
   final WheelInvertCommit commitWheelInvert;
+  final RgbBacklightCommit commitRgbBacklight;
   final DeviceCapabilities? capabilities;
   final CapabilitiesLookup? capabilitiesLookup;
   final EscalationCallback? onEscalationRequested;
@@ -677,10 +723,132 @@ class DeviceSettingsBloc
       dpiActiveIndex: staging,
       clearError: true,
     );
+    // why: preserve unrelated staging (e.g. dpiStageLevelsStaging for a
+    // pending add/remove) — a fresh DeviceSettingsViewState would drop them,
+    // so a paired SaveDpiStagesRequested would see nothing dirty.
+    emit(
+      state.copyWith(
+        synced: nextSynced,
+        dpiCurrentLevelStaging: null,
+        isDirty: false,
+        committing: false,
+        consecutiveFailures: 0,
+        lastError: null,
+      ),
+    );
+    debugPrint('[bloc] save DPI level: synced');
+    onSaveCompleted?.call();
+  }
+
+  /// User dragged a DPI value slider for a level.
+  ///
+  /// Snaps/validates the value against the mouse catalog's DPI range
+  /// (stepMode fixed/tiered/any) and stages it per level.
+  void _onDpiValueRequested(
+    DeviceSettingsDpiValueRequested event,
+    Emitter<DeviceSettingsViewState> emit,
+  ) {
+    final synced = state.synced;
+    if (synced == null) {
+      emit(state.copyWith(lastError: 'no settings loaded'));
+      return;
+    }
+
+    if (synced.decodeErrors.contains('reportRateDpi')) {
+      emit(state.copyWith(lastError: 'DPI value unavailable: decode error'));
+      return;
+    }
+
+    final range = activeCapabilities?.dpi?.range;
+    if (range == null) {
+      emit(state.copyWith(lastError: 'DPI value: no range in capabilities'));
+      return;
+    }
+
+    final snapped = range.snap(event.value);
+    if (snapped == null) {
+      emit(
+        state.copyWith(
+          lastError:
+              'DPI value ${event.value} out of range '
+              '[${range.minDpi}, ${range.maxDpi}]',
+        ),
+      );
+      return;
+    }
+
+    final next = {...?state.dpiValueStaging};
+    next[event.level] = snapped;
+    emit(
+      state.copyWith(
+        dpiValueStaging: next,
+        isDirty: true,
+        clearError: true,
+      ),
+    );
+
+    debugPrint('[bloc] DPI value staged: level=${event.level} value=$snapped');
+  }
+
+  /// Save all staged DPI value changes to device.
+  Future<void> _onSaveDpiValues(
+    DeviceSettingsSaveDpiValuesRequested event,
+    Emitter<DeviceSettingsViewState> emit,
+  ) async {
+    final staging = state.dpiValueStaging;
+    if (staging == null || staging.isEmpty) {
+      debugPrint('[bloc] save DPI values: nothing dirty');
+      return;
+    }
+    if (state.committing) return;
+
+    final synced = state.synced;
+    if (synced == null) {
+      emit(state.copyWith(lastError: 'save DPI values: no synced settings'));
+      return;
+    }
+
+    emit(state.copyWith(committing: true, clearError: true));
+
+    try {
+      await commitDpiValues(staging);
+    } catch (e) {
+      debugPrint('[bloc] save DPI values failed: $e');
+      final failures = state.consecutiveFailures + 1;
+      emit(
+        state.copyWith(
+          committing: false,
+          lastError: 'DPI values save failed: $e',
+          consecutiveFailures: failures,
+        ),
+      );
+      if (failures >= failureEscalateThreshold) {
+        onEscalationRequested?.call(
+          'DPI values save failed $failures consecutive times',
+        );
+      }
+      return;
+    }
+
+    final levels = [...?synced.dpiLevels];
+    for (final e in staging.entries) {
+      final idx = levels.indexWhere((l) => l.level == e.key);
+      if (idx >= 0) {
+        levels[idx] = DpiStageData(
+          level: e.key,
+          value: e.value,
+          color: levels[idx].color,
+        );
+      }
+    }
+    final nextSynced = synced.copyWith(
+      dpiLevels: levels,
+      clearError: true,
+    );
     emit(
       DeviceSettingsViewState(
         synced: nextSynced,
-        dpiCurrentLevelStaging: null,
+        dpiValueStaging: null,
         isDirty: false,
         committing: false,
         consecutiveFailures: 0,
@@ -689,8 +857,200 @@ class DeviceSettingsBloc
         buttonIdLabelOf: state.buttonIdLabelOf,
       ),
     );
-    debugPrint('[bloc] save DPI level: synced');
+    debugPrint('[bloc] save DPI values: synced');
     onSaveCompleted?.call();
+  }
+
+  /// User pressed `+` — add a DPI stage (append next-lowest inactive).
+  ///
+  /// Stages the add and marks dirty; commit happens on Save.
+  void _onDpiStageAddRequested(
+    DeviceSettingsDpiStageAddRequested event,
+    Emitter<DeviceSettingsViewState> emit,
+  ) {
+    final synced = state.synced;
+    if (synced == null) {
+      emit(state.copyWith(lastError: 'no settings loaded'));
+      return;
+    }
+    // why: accumulate onto the staged list so multiple `+` clicks add
+    // multiple stages before Save. The base is the staged list if present,
+    // else the synced levels; the count comes from that same base.
+    final staged = state.dpiStageLevelsStaging;
+    final baseLevels = staged ?? synced.dpiLevels;
+    final currentCount = baseLevels?.length ?? 0;
+    final maxLevels = synced.dpiMaxLevels ?? 8;
+    if (currentCount >= maxLevels) {
+      emit(state.copyWith(lastError: 'cannot add: max DPI stages reached'));
+      return;
+    }
+    final levels = [...?baseLevels];
+    final newLevel = currentCount + 1;
+    final defaultDpi = _defaultDpiValue(synced) ?? 1600;
+    // why: the new stage's color comes from the catalog's level-default
+    // color (mock: slot 1 Red ... slot 8 White), so a newly added slot shows
+    // its correct default instead of null/previous color.
+    final defaultColor = _defaultDpiColorForLevel(synced, newLevel);
+    levels.add(DpiStageData(
+      level: newLevel,
+      value: defaultDpi,
+      color: defaultColor,
+    ));
+    emit(
+      state.copyWith(
+        dpiStageAddStaging: true,
+        dpiStageLevelsStaging: levels,
+        isDirty: true,
+        clearError: true,
+      ),
+    );
+    debugPrint('[bloc] DPI stage add staged');
+  }
+
+  /// User pressed `x` — remove a DPI stage (per FR-DPI-003 rearrange).
+  void _onDpiStageRemoveRequested(
+    DeviceSettingsDpiStageRemoveRequested event,
+    Emitter<DeviceSettingsViewState> emit,
+  ) {
+    final synced = state.synced;
+    if (synced == null) {
+      emit(state.copyWith(lastError: 'no settings loaded'));
+      return;
+    }
+    // why: accumulate onto the staged list so multiple `x` clicks remove
+    // multiple stages before Save.
+    final staged = state.dpiStageLevelsStaging;
+    final baseLevels = staged ?? synced.dpiLevels;
+    final activeCount = baseLevels?.length ?? 0;
+    if (activeCount <= 1) {
+      emit(state.copyWith(lastError: 'cannot remove: at least one stage'));
+      return;
+    }
+    // Remove the selected level; shift later stages toward slot 1.
+    final levels = [...?baseLevels];
+    final removed = levels.where((l) => l.level != event.level).toList();
+    final reindexed = <DpiStageData>[];
+    for (var i = 0; i < removed.length; i++) {
+      reindexed.add(DpiStageData(
+        level: i + 1,
+        value: removed[i].value,
+        color: removed[i].color,
+      ));
+    }
+    emit(
+      state.copyWith(
+        dpiStageRemoveLevelStaging: event.level,
+        dpiStageLevelsStaging: reindexed,
+        isDirty: true,
+        clearError: true,
+      ),
+    );
+    debugPrint('[bloc] DPI stage remove staged: level=${event.level}');
+  }
+
+  /// Save the staged DPI add/remove to device.
+  Future<void> _onSaveDpiStages(
+    DeviceSettingsSaveDpiStagesRequested event,
+    Emitter<DeviceSettingsViewState> emit,
+  ) async {
+    // why: a paired level-save sets committing:true, but the send queue
+    // serializes the actual device writes, so this save must still run when
+    // it has real staging. Only bail if this same concern is already mid-save.
+    if (state.dpiStageSaveInFlight) return;
+    if (!state.dpiStageAddStaging && state.dpiStageRemoveLevelStaging == null) {
+      debugPrint('[bloc] save DPI stages: nothing dirty');
+      return;
+    }
+    final synced = state.synced;
+    if (synced == null) {
+      emit(state.copyWith(lastError: 'save DPI stages: no synced settings'));
+      return;
+    }
+
+    emit(
+      state.copyWith(
+        committing: true,
+        dpiStageSaveInFlight: true,
+        clearError: true,
+      ),
+    );
+
+    // why: commit the WHOLE rearranged staged list, not incremental removes.
+    // The staged levels are the authoritative post-add/remove result.
+    final stagedLevels = state.dpiStageLevelsStaging;
+    if (stagedLevels == null || stagedLevels.isEmpty) {
+      debugPrint('[bloc] save DPI stages: no staged levels');
+      return;
+    }
+
+    try {
+      await commitDpiStages(stagedLevels, stagedLevels.length);
+    } catch (e) {
+      debugPrint('[bloc] save DPI stages failed: $e');
+      final failures = state.consecutiveFailures + 1;
+      emit(
+        state.copyWith(
+          committing: false,
+          dpiStageSaveInFlight: false,
+          lastError: 'DPI stages save failed: $e',
+          consecutiveFailures: failures,
+        ),
+      );
+      if (failures >= failureEscalateThreshold) {
+        onEscalationRequested?.call(
+          'DPI stages save failed $failures consecutive times',
+        );
+      }
+      return;
+    }
+
+    // why: the staged list IS the post-add/remove result; its length is the
+    // authoritative new count (handles multiple adds, single/multi removes).
+    final count = stagedLevels.length;
+    final nextSynced = synced.copyWith(
+      dpiActiveLevelCount: count,
+      dpiLevels: stagedLevels,
+      clearError: true,
+    );
+    emit(
+      DeviceSettingsViewState(
+        synced: nextSynced,
+        dpiStageAddStaging: false,
+        dpiStageRemoveLevelStaging: null,
+        dpiStageLevelsStaging: null,
+        dpiStageSaveInFlight: false,
+        isDirty: false,
+        committing: false,
+        consecutiveFailures: 0,
+        lastError: null,
+        actionLabelOf: state.actionLabelOf,
+        buttonIdLabelOf: state.buttonIdLabelOf,
+      ),
+    );
+    debugPrint('[bloc] save DPI stages: synced (count=$count)');
+    onSaveCompleted?.call();
+  }
+
+  /// Default DPI value for a newly added stage (catalog default if known).
+  int? _defaultDpiValue(DeviceSettingsState synced) {
+    final caps = activeCapabilities?.dpi;
+    final levels = caps?.levels;
+    if (levels != null && levels.isNotEmpty) {
+      return levels.last.value;
+    }
+    return null;
+  }
+
+  /// Catalog default color for a 1-based DPI level (mock slot 1 Red ...
+  /// slot 8 White). Returns null if the catalog has no color for that slot.
+  String? _defaultDpiColorForLevel(DeviceSettingsState synced, int level) {
+    final caps = activeCapabilities?.dpi;
+    final levels = caps?.levels;
+    if (levels == null) return null;
+    for (final l in levels) {
+      if (l.level == level && l.color.isNotEmpty) return l.color;
+    }
+    return null;
   }
 
   /// User toggled ripple control.
@@ -1415,6 +1775,294 @@ class DeviceSettingsBloc
       ),
     );
     debugPrint('[bloc] save wheel direction: synced');
+    onSaveCompleted?.call();
+  }
+
+  // --- RGB backlight (0xE2) staging handlers ---
+
+  /// Guard: backlight editable only when synced, present, and not decode-locked.
+  bool _backlightEditable(DeviceSettingsState synced) {
+    if (!synced.hasRgbBacklight) return false;
+    if (synced.decodeErrors.contains('rgbBacklight')) return false;
+    return true;
+  }
+
+  void _onBacklightEnableRequested(
+    DeviceSettingsBacklightEnableRequested event,
+    Emitter<DeviceSettingsViewState> emit,
+  ) {
+    final synced = state.synced;
+    if (synced == null) {
+      emit(state.copyWith(lastError: 'no settings loaded'));
+      return;
+    }
+    if (!_backlightEditable(synced)) {
+      emit(state.copyWith(lastError: 'backlight unavailable'));
+      return;
+    }
+    emit(
+      state.copyWith(
+        rgbEnableStaging: event.enable,
+        isDirty: true,
+        clearError: true,
+      ),
+    );
+    debugPrint('[bloc] backlight enable staged: ${event.enable}');
+  }
+
+  void _onBacklightModeRequested(
+    DeviceSettingsBacklightModeRequested event,
+    Emitter<DeviceSettingsViewState> emit,
+  ) {
+    final synced = state.synced;
+    if (synced == null) {
+      emit(state.copyWith(lastError: 'no settings loaded'));
+      return;
+    }
+    if (!_backlightEditable(synced)) {
+      emit(state.copyWith(lastError: 'backlight unavailable'));
+      return;
+    }
+    emit(
+      state.copyWith(
+        rgbModeIdStaging: event.modeId,
+        isDirty: true,
+        clearError: true,
+      ),
+    );
+    debugPrint('[bloc] backlight mode staged: ${event.modeId}');
+  }
+
+  void _onBacklightColorRequested(
+    DeviceSettingsBacklightColorRequested event,
+    Emitter<DeviceSettingsViewState> emit,
+  ) {
+    final synced = state.synced;
+    if (synced == null) {
+      emit(state.copyWith(lastError: 'no settings loaded'));
+      return;
+    }
+    if (!_backlightEditable(synced)) {
+      emit(state.copyWith(lastError: 'backlight unavailable'));
+      return;
+    }
+    emit(
+      state.copyWith(
+        rgbRStaging: event.r,
+        rgbGStaging: event.g,
+        rgbBStaging: event.b,
+        isDirty: true,
+        clearError: true,
+      ),
+    );
+    debugPrint(
+      '[bloc] backlight color staged: '
+      'r=${event.r} g=${event.g} b=${event.b}',
+    );
+  }
+
+  void _onBacklightBrightnessRequested(
+    DeviceSettingsBacklightBrightnessRequested event,
+    Emitter<DeviceSettingsViewState> emit,
+  ) {
+    final synced = state.synced;
+    if (synced == null) {
+      emit(state.copyWith(lastError: 'no settings loaded'));
+      return;
+    }
+    if (!_backlightEditable(synced)) {
+      emit(state.copyWith(lastError: 'backlight unavailable'));
+      return;
+    }
+    emit(
+      state.copyWith(
+        rgbBrightnessStaging: event.level,
+        isDirty: true,
+        clearError: true,
+      ),
+    );
+    debugPrint('[bloc] backlight brightness staged: ${event.level}');
+  }
+
+  void _onBacklightSpeedRequested(
+    DeviceSettingsBacklightSpeedRequested event,
+    Emitter<DeviceSettingsViewState> emit,
+  ) {
+    final synced = state.synced;
+    if (synced == null) {
+      emit(state.copyWith(lastError: 'no settings loaded'));
+      return;
+    }
+    if (!_backlightEditable(synced)) {
+      emit(state.copyWith(lastError: 'backlight unavailable'));
+      return;
+    }
+    emit(
+      state.copyWith(
+        rgbSpeedStaging: event.level,
+        isDirty: true,
+        clearError: true,
+      ),
+    );
+    debugPrint('[bloc] backlight speed staged: ${event.level}');
+  }
+
+  void _onBacklightSleepRequested(
+    DeviceSettingsBacklightSleepRequested event,
+    Emitter<DeviceSettingsViewState> emit,
+  ) {
+    final synced = state.synced;
+    if (synced == null) {
+      emit(state.copyWith(lastError: 'no settings loaded'));
+      return;
+    }
+    if (!_backlightEditable(synced)) {
+      emit(state.copyWith(lastError: 'backlight unavailable'));
+      return;
+    }
+    emit(
+      state.copyWith(
+        rgbSleepTimeStaging: event.wire,
+        isDirty: true,
+        clearError: true,
+      ),
+    );
+    debugPrint('[bloc] backlight sleep staged: wire=${event.wire}');
+  }
+
+  /// Save all staged RGB backlight fields to the device (one 0xE2 SET).
+  Future<void> _onSaveBacklight(
+    DeviceSettingsSaveBacklightRequested event,
+    Emitter<DeviceSettingsViewState> emit,
+  ) async {
+    final hasStaging = state.rgbEnableStaging != null ||
+        state.rgbModeIdStaging != null ||
+        state.rgbBrightnessStaging != null ||
+        state.rgbSpeedStaging != null ||
+        state.rgbRStaging != null ||
+        state.rgbGStaging != null ||
+        state.rgbBStaging != null ||
+        state.rgbSleepTimeStaging != null;
+    if (!hasStaging) {
+      debugPrint('[bloc] save backlight: nothing dirty');
+      return;
+    }
+    if (state.committing) return;
+
+    final synced = state.synced;
+    if (synced == null) {
+      emit(state.copyWith(lastError: 'save backlight: no synced settings'));
+      return;
+    }
+    if (!_backlightEditable(synced)) {
+      emit(state.copyWith(lastError: 'save backlight: backlight unavailable'));
+      return;
+    }
+
+    // Overlay staged values on the last-synced block (single 0xE2 SET).
+    final enable = state.rgbEnableStaging ?? synced.rgbEnable ?? false;
+    final modeId = state.rgbModeIdStaging ?? synced.rgbModeId ?? 0;
+    final brightness = state.rgbBrightnessStaging ?? synced.rgbBrightness ?? 0;
+    final speed = state.rgbSpeedStaging ?? synced.rgbSpeed ?? 0;
+    final r = state.rgbRStaging ?? synced.rgbR ?? 0;
+    final g = state.rgbGStaging ?? synced.rgbG ?? 0;
+    final b = state.rgbBStaging ?? synced.rgbB ?? 0;
+    final sleepTime = state.rgbSleepTimeStaging ?? synced.rgbSleepTime ?? 0;
+
+    // Validate against the active device's capability schema (FR-OPS-003,
+    // FR-RGB-001/002/004): never send an out-of-range or unsupported value.
+    final caps = activeCapabilities?.rgbBacklight;
+    if (caps != null && caps.present) {
+      if (caps.modes.isNotEmpty &&
+          !caps.modes.any((m) => m.id == modeId)) {
+        emit(state.copyWith(lastError: 'save backlight: unsupported mode $modeId'));
+        return;
+      }
+      if (brightness < 0 || brightness >= caps.brightnessLevels) {
+        emit(
+          state.copyWith(
+            lastError: 'save backlight: brightness $brightness out of range',
+          ),
+        );
+        return;
+      }
+      if (speed < 0 || speed >= caps.speedLevels) {
+        emit(
+          state.copyWith(lastError: 'save backlight: speed $speed out of range'),
+        );
+        return;
+      }
+      if (sleepTime < 0 || sleepTime >= caps.sleepTimeOptions.length) {
+        emit(
+          state.copyWith(
+            lastError: 'save backlight: sleep index $sleepTime out of range',
+          ),
+        );
+        return;
+      }
+    }
+
+    final staged = (
+      enable: enable,
+      modeId: modeId,
+      brightness: brightness,
+      speed: speed,
+      r: r,
+      g: g,
+      b: b,
+      sleepTime: sleepTime,
+    );
+
+    emit(state.copyWith(committing: true, clearError: true));
+
+    try {
+      await commitRgbBacklight(staged);
+    } catch (e) {
+      debugPrint('[bloc] save backlight failed: $e');
+      final failures = state.consecutiveFailures + 1;
+      emit(
+        state.copyWith(
+          committing: false,
+          lastError: 'backlight save failed: $e',
+          consecutiveFailures: failures,
+        ),
+      );
+      if (failures >= failureEscalateThreshold) {
+        onEscalationRequested?.call(
+          'backlight save failed $failures consecutive times',
+        );
+      }
+      return;
+    }
+
+    // why: build next view via copyWith + clearStaging so unrelated sibling
+    // staging is not silently dropped (see DPI remove/save race fix).
+    final nextSynced = synced.copyWith(
+      rgbEnable: enable,
+      rgbModeId: modeId,
+      rgbModeLabel: const TranslationCodec().rgbModeToLabel(modeId),
+      rgbBrightness: brightness,
+      rgbBrightnessLabel:
+          const TranslationCodec().brightnessLevelToLabel(brightness),
+      rgbSpeed: speed,
+      rgbSpeedLabel: const TranslationCodec().speedLevelToLabel(speed),
+      rgbR: r,
+      rgbG: g,
+      rgbB: b,
+      rgbSleepTime: sleepTime,
+      rgbSleepLabel: const TranslationCodec().sleepIndexToLabel(sleepTime),
+      clearError: true,
+    );
+    emit(
+      state.copyWith(
+        synced: nextSynced,
+        committing: false,
+        consecutiveFailures: 0,
+        clearStaging: true,
+        clearError: true,
+      ),
+    );
+    debugPrint('[bloc] save backlight: synced');
     onSaveCompleted?.call();
   }
 }

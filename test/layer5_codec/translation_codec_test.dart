@@ -166,6 +166,64 @@ void main() {
       expect(stage.value, 800);
       expect(stage.y, 1600);
     });
+
+    test('PAW3311 full Setting-2 tables decode by range (mode inference)', () {
+      const tables = {
+        0x50: {0x01: 50, 0x13: 800, 0x76: 5000, 0xED: 10000},
+        0xD0: {0x76: 10100, 0x8D: 12000},
+      };
+      // Mode 0x50 values
+      expect(
+        t.dpiWireUnitToDisplay(0x01, transform: 'paw3311', factor: 50, cpiTables: tables),
+        50,
+      );
+      expect(
+        t.dpiWireUnitToDisplay(0x13, transform: 'paw3311', factor: 50, cpiTables: tables),
+        800,
+      );
+      // 0x76 resolves to 0x50 (5000) on decode — range inference.
+      expect(
+        t.dpiWireUnitToDisplay(0x76, transform: 'paw3311', factor: 50, cpiTables: tables),
+        5000,
+      );
+      expect(
+        t.dpiWireUnitToDisplay(0xED, transform: 'paw3311', factor: 50, cpiTables: tables),
+        10000,
+      );
+    });
+
+    test('PAW3311 encode picks mode 0xD0 for >10000', () {
+      const tables = {
+        0x50: {0x01: 50, 0x13: 800, 0x76: 5000, 0xED: 10000},
+        0xD0: {0x76: 10100, 0x8D: 12000},
+      };
+      expect(
+        t.dpiDisplayToWireUnit(800, transform: 'paw3311', factor: 50, cpiTables: tables),
+        0x13,
+      );
+      // 10100 is only in mode 0xD0
+      expect(
+        t.dpiDisplayToWireUnit(10100, transform: 'paw3311', factor: 50, cpiTables: tables),
+        0x76,
+      );
+      expect(
+        t.dpiDisplayToWireUnit(12000, transform: 'paw3311', factor: 50, cpiTables: tables),
+        0x8D,
+      );
+    });
+
+    test('encode identity/divide inverse', () {
+      // identity: 800 -> wire 0x0320 (via dpiAxisBytesToWire)
+      expect(
+        t.dpiDisplayToWireUnit(800, transform: 'identity', factor: 1),
+        800,
+      );
+      // divide: 800 / 50 = 16
+      expect(
+        t.dpiDisplayToWireUnit(800, transform: 'divide', factor: 50),
+        16,
+      );
+    });
   });
 
   group('TranslationCodec.buttonIdToLabel', () {
@@ -383,12 +441,15 @@ void main() {
   });
 
   group('TranslationCodec.rgbModeToLabel', () {
-    test('named modes and unknown', () {
-      expect(t.rgbModeToLabel(0x00), 'Close');
+    test('reference mode names and unknown', () {
+      expect(t.rgbModeToLabel(0x00), 'Off');
       expect(t.rgbModeToLabel(0x01), 'Constant');
-      expect(t.rgbModeToLabel(0x02), 'Single breathing');
-      expect(t.rgbModeToLabel(0x03), 'Sunning color');
-      expect(t.rgbModeToLabel(0x04), '7 Cycle color');
+      expect(t.rgbModeToLabel(0x02), 'Multi color');
+      expect(t.rgbModeToLabel(0x03), 'Single breathing');
+      expect(t.rgbModeToLabel(0x04), 'Multi breathing');
+      expect(t.rgbModeToLabel(0x05), 'Running color');
+      expect(t.rgbModeToLabel(0x06), 'Cycle wave');
+      expect(t.rgbModeToLabel(0x07), 'Cycle color');
       expect(t.rgbModeToLabel(0x09), 'Unknown RGB mode 0x9');
     });
   });

@@ -49,18 +49,23 @@
   "dpi": {
     "maxLevels": 8,
     "defaultLevel": 2,
-    "maxDpi": 5000,
+    "range": {
+      "minDpi": 50,
+      "maxDpi": 5000,
+      "stepMode": "fixed",
+      "step": 50
+    },
     "independentXY": false,
     "rgbPerStage": false,
     "levels": [
-      { "level": 1, "value": 800, "color": "" },
-      { "level": 2, "value": 1600, "color": "" },
-      { "level": 3, "value": 2400, "color": "" },
-      { "level": 4, "value": 3200, "color": "" },
-      { "level": 5, "value": 5000, "color": "" },
-      { "level": 6, "value": 1600, "color": "" },
-      { "level": 7, "value": 1600, "color": "" },
-      { "level": 8, "value": 1600, "color": "" }
+      { "level": 1, "value": 800, "color": "#FF0000" },
+      { "level": 2, "value": 1600, "color": "#0000FF" },
+      { "level": 3, "value": 2400, "color": "#00FF00" },
+      { "level": 4, "value": 3200, "color": "#FFFF00" },
+      { "level": 5, "value": 5000, "color": "#800080" },
+      { "level": 6, "value": 1600, "color": "#00FFFF" },
+      { "level": 7, "value": 1600, "color": "#FFA500" },
+      { "level": 8, "value": 1600, "color": "#FFFFFF" }
     ]
   },
   "sensor": {
@@ -111,29 +116,49 @@
     "present": false,
     "modes": [
       {
+        "id": 0,
+        "nameKey": "light.off",
+        "supportsColor": false
+      },
+      {
         "id": 1,
-        "nameKey": "light.wave",
+        "nameKey": "light.constant",
         "supportsColor": true
       },
       {
         "id": 2,
-        "nameKey": "light.breathing",
-        "supportsColor": true
+        "nameKey": "light.multi_color",
+        "supportsColor": false
       },
       {
         "id": 3,
-        "nameKey": "light.solid",
+        "nameKey": "light.single_breathing",
         "supportsColor": true
       },
       {
+        "id": 4,
+        "nameKey": "light.multi_breathing",
+        "supportsColor": false
+      },
+      {
+        "id": 5,
+        "nameKey": "light.running_color",
+        "supportsColor": false
+      },
+      {
         "id": 6,
-        "nameKey": "light.off",
+        "nameKey": "light.cycle_wave",
+        "supportsColor": false
+      },
+      {
+        "id": 7,
+        "nameKey": "light.cycle_color",
         "supportsColor": false
       }
     ],
     "brightnessLevels": 5,
     "speedLevels": 5,
-    "sleepTimeOptions": [30, 60, 300]
+    "sleepTimeOptions": [30, 60, 120, 300, 600, 900, 1800]
   },
   "osd": {
     "enabled": true

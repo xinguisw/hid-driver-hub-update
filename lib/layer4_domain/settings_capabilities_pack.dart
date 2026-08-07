@@ -21,7 +21,10 @@ DeviceSettingsState applyCapabilitiesToSettings(
   final dpi = caps.dpi;
   if (dpi != null) {
     next = next.copyWith(
-      dpiMax: dpi.maxDpi,
+      dpiMax: dpi.range.maxDpi,
+      dpiMin: dpi.range.minDpi,
+      dpiStep: dpi.range.step,
+      dpiStepMode: dpi.range.stepMode,
       dpiMaxLevels: dpi.maxLevels,
       dpiDefaultLevel: dpi.defaultLevel,
       dpiRgbPerStage: dpi.rgbPerStage,
@@ -109,6 +112,9 @@ DeviceSettingsState applyCapabilitiesToSettings(
                   id: m.id,
                   nameKey: m.nameKey,
                   supportsColor: m.supportsColor,
+                  // why: dropdown renders a human label, not the raw key;
+                  // L5 owns the mode naming table.
+                  label: const TranslationCodec().rgbModeToLabel(m.id),
                 ),
             ]
           : null,

@@ -154,10 +154,25 @@ class ButtonActionCatalogMap {
     'mouse.tilt_left': [0x09],
     'mouse.tilt_right': [0x0A],
 
-    // Multimedia (consumer keys: action 0x13, key byte in param1)
+    // Multimedia / consumer keys: action 0x13, key byte in param1
     'mouse.volume_up': [0x13, 0xB3],
     'mouse.volume_down': [0x13, 0xB4],
     'mouse.volume_mute': [0x13, 0xB2],
+    'mouse.web_search': [0x13, 0xA3],
+    'mouse.web_home': [0x13, 0xA4],
+    'mouse.web_back': [0x13, 0xA5],
+    'mouse.web_forward': [0x13, 0xA6],
+    'mouse.web_stop': [0x13, 0xA7],
+    'mouse.web_refresh': [0x13, 0xA8],
+    'mouse.web_favourite': [0x13, 0xA9],
+    'mouse.media_player': [0x13, 0xAA],
+    'mouse.email': [0x13, 0xAB],
+    'mouse.calculator': [0x13, 0xAC],
+    'mouse.my_computer': [0x13, 0xAD],
+    'mouse.next_track': [0x13, 0xAE],
+    'mouse.prev_track': [0x13, 0xAF],
+    'mouse.stop': [0x13, 0xB0],
+    'mouse.play_pause': [0x13, 0xB1],
 
     // --- Keyboard tab (action 0x12 = shortcut, key byte in param1) ---
     'key.letter.a': [0x12, 0x04],

@@ -36,7 +36,27 @@
       "items": [
         { "id": "mouse.volume_up", "label": "Volume +" },
         { "id": "mouse.volume_down", "label": "Volume -" },
-        { "id": "mouse.volume_mute", "label": "Volume Mute" }
+        { "id": "mouse.volume_mute", "label": "Volume Mute" },
+        { "id": "mouse.next_track", "label": "Next Track" },
+        { "id": "mouse.prev_track", "label": "Previous Track" },
+        { "id": "mouse.stop", "label": "Stop" },
+        { "id": "mouse.play_pause", "label": "Play / Pause" }
+      ]
+    },
+    {
+      "title": "Consumer",
+      "items": [
+        { "id": "mouse.web_search", "label": "Web Search" },
+        { "id": "mouse.web_home", "label": "Web Home" },
+        { "id": "mouse.web_back", "label": "Web Back" },
+        { "id": "mouse.web_forward", "label": "Web Forward" },
+        { "id": "mouse.web_stop", "label": "Web Stop" },
+        { "id": "mouse.web_refresh", "label": "Web Refresh" },
+        { "id": "mouse.web_favourite", "label": "Web Favourite" },
+        { "id": "mouse.media_player", "label": "Media Player" },
+        { "id": "mouse.email", "label": "Email" },
+        { "id": "mouse.calculator", "label": "Calculator" },
+        { "id": "mouse.my_computer", "label": "My Computer" }
       ]
     }
   ]

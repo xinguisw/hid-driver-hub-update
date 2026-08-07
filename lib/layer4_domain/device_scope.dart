@@ -366,13 +366,16 @@ class DeviceScope {
       if (wire == null) {
         throw StateError('DPI value ${e.value} not encodable on this sensor');
       }
+      // why: 0xC4 table is always 2 bytes/stage (TelinkB80 structure doc), and
+      // the GET decode reads the value from the FIRST byte of each pair (b0).
+      // So write value-byte first, pad second. Multi-byte wire values keep
+      // big-endian order (hi first); single-byte codes (PAW3311) pad with 0x00.
       if (enc.bytesPerAxis == 1) {
-        dataBlock[idx] = wire & 0xFF;
+        dataBlock[idx * 2] = wire & 0xFF; // value in first byte (matches GET b0)
+        dataBlock[idx * 2 + 1] = 0x00;
       } else {
-        final hi = (wire >> 8) & 0xFF;
-        final lo = wire & 0xFF;
-        dataBlock[idx * 2] = hi;
-        dataBlock[idx * 2 + 1] = lo;
+        dataBlock[idx * 2] = (wire >> 8) & 0xFF; // hi
+        dataBlock[idx * 2 + 1] = wire & 0xFF; // lo
       }
     }
 
@@ -436,11 +439,16 @@ class DeviceScope {
       if (wire == null) {
         throw StateError('commitDpiStages: value not encodable at slot ${i + 1}');
       }
+      // why: 0xC4 table is always 2 bytes/stage (TelinkB80 structure doc), and
+      // the GET decode reads the value from the FIRST byte of each pair (b0).
+      // So write value-byte first, pad second. Multi-byte wire values keep
+      // big-endian order (hi first); single-byte codes (PAW3311) pad with 0x00.
       if (enc.bytesPerAxis == 1) {
-        dataBlock[i] = wire & 0xFF;
+        dataBlock[i * 2] = wire & 0xFF; // value in first byte (matches GET b0)
+        dataBlock[i * 2 + 1] = 0x00;
       } else {
-        dataBlock[i * 2] = (wire >> 8) & 0xFF;
-        dataBlock[i * 2 + 1] = wire & 0xFF;
+        dataBlock[i * 2] = (wire >> 8) & 0xFF; // hi
+        dataBlock[i * 2 + 1] = wire & 0xFF; // lo
       }
     }
     await session.setDpiTable(dataBlock);

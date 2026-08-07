@@ -211,8 +211,9 @@ class DpiRange {
 
   /// Validates that [value] is within range and on-step for this model.
   ///
-  /// Returns the snapped value, or null if out of range. `fixed` snaps to the
-  /// nearest step; `tiered` uses the matching tier's step; `any` clamps only.
+  /// Returns the snapped value, or null if out of range. `fixed` snaps down to
+  /// the nearest step; `tiered` snaps down within the matching tier's own grid;
+  /// `any` clamps only.
   int? snap(int value) {
     if (value < minDpi || value > maxDpi) return null;
     switch (stepMode) {
@@ -220,12 +221,32 @@ class DpiRange {
         final s = step ?? 1;
         return minDpi + ((value - minDpi) ~/ s) * s;
       case 'tiered':
-        final s = stepFor(value) ?? 1;
-        return minDpi + ((value - minDpi) ~/ s) * s;
+        return _snapTiered(value);
       case 'any':
       default:
         return value;
     }
+  }
+
+  /// Tiered snap: each tier's valid values are anchored at that tier's lower
+  /// bound, not at [minDpi]. Per FR-DPI-004 + the sensor datasheet, M7X valid
+  /// values are 50-step from 50..10000 then 100-step from 10000..12000 — so the
+  /// max (12000) is reachable and mid values never land on a non-existent step
+  /// (e.g. 11950). Snaps down to the nearest valid step; a value below the
+  /// first tier's grid falls back to [minDpi].
+  int? _snapTiered(int value) {
+    final ts = tiers;
+    if (ts == null || ts.isEmpty) return value;
+    var lower = minDpi;
+    for (final tier in ts) {
+      if (value <= tier.max) {
+        // Max of the tier must stay reachable even if it is off-grid.
+        if (value == tier.max && tier.max == maxDpi) return maxDpi;
+        return lower + ((value - lower) ~/ tier.step) * tier.step;
+      }
+      lower = tier.max;
+    }
+    return maxDpi;
   }
 
   /// Step that applies to [value] under a tiered model; null if no tier.

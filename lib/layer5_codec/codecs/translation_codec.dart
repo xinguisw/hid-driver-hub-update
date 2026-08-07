@@ -112,6 +112,14 @@ class TranslationCodec {
   /// - `paw3311` — [cpiTables] by register mode; the mode is inferred from
   ///   the value's range (≤10000 → mode 0x50, >10000 → mode 0xD0), falling
   ///   back to the legacy flat [cpiMap], then `(wire + 1) × factor`.
+  ///
+  /// KNOWN ISSUE (PAW3311 two-mode collision): the 0x50 and 0xD0 tables share
+  /// wire codes — e.g. `0x8d` = 5950 under mode 0x50 but 12000 under mode 0xD0.
+  /// The wire byte carries no mode flag, so a cold read cannot disambiguate; we
+  /// try 0x50 first, so a stage the device holds as >10000 (0xD0) may read back
+  /// as the colliding low-mode value. The active mode is in SPI register 0x4D;
+  /// reading it over HID config is unconfirmed (needs firmware dev). Until then
+  /// this is a read-side display limitation only — writes are unaffected.
   int dpiWireUnitToDisplay(
     int wire, {
     required String transform,

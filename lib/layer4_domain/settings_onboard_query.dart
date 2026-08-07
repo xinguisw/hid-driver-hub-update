@@ -194,6 +194,16 @@ Future<DeviceSettingsState> queryOnboardConfig(
       }
       final enc = sensorTable.dpiEncoding;
       const translate = TranslationCodec();
+      // KNOWN ISSUE (PAW3311 two-mode collision): the 0x50 and 0xD0 lookup
+      // tables share wire codes. E.g. 0x8d = 5950 (mode 0x50) AND 12000 (mode
+      // 0xD0). The C4 read returns only the code byte — no mode flag — so a
+      // cold read / reconnect CANNOT tell which the device meant. The active
+      // mode lives in SPI register 0x4D; whether the firmware exposes it over
+      // the HID config interface is UNCONFIRMED (needs firmware dev). Until
+      // then, decode tries 0x50 first, so a stage set >10000 may display the
+      // colliding low-mode value after reconnect even though the device stored
+      // the intended high value. Write path is correct; only the read-back
+      // display is affected. See translation_codec.dart paw3311 branch.
       final decodedLevels = <DpiStageData>[];
       for (var i = 0; i < table.stages.length; i++) {
         if (dpiActiveMask != null &&
@@ -210,6 +220,7 @@ Future<DeviceSettingsState> queryOnboardConfig(
           transform: enc.transform,
           factor: enc.factor,
           cpiMap: enc.cpiMap,
+          cpiTables: enc.cpiTables,
         );
         final wireWord = enc.bytesPerAxis == 1
             ? (stage.x & 0xFF)

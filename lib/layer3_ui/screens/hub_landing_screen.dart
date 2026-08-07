@@ -666,7 +666,8 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
 
 /// Bottom-right action bar for Parameter Setting.
 ///
-/// Reset/Save/Cancel buttons docked right.
+/// Save/Cancel buttons docked right. No Reset — only Performance and Button
+/// Mapping offer reset-to-default for now.
 class _ParameterActionBar extends StatelessWidget {
   const _ParameterActionBar({
     this.isDirty = false,
@@ -694,12 +695,6 @@ class _ParameterActionBar extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
           OutlinedButton(
-            onPressed: null, // reset not wired yet
-            style: style,
-            child: const Text('Reset to Default'),
-          ),
-          const SizedBox(width: 12),
-          OutlinedButton(
             onPressed: (!isDirty || committing) ? null : onSave,
             style: style,
             child: const Text('Save'),
@@ -718,7 +713,8 @@ class _ParameterActionBar extends StatelessWidget {
 
 /// Bottom-right action bar for Backlight Setting.
 ///
-/// Reset/Save/Cancel buttons docked right.
+/// Save/Cancel buttons docked right. No Reset — only Performance and Button
+/// Mapping offer reset-to-default for now.
 class _BacklightActionBar extends StatelessWidget {
   const _BacklightActionBar({
     this.isDirty = false,
@@ -745,12 +741,6 @@ class _BacklightActionBar extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
-          OutlinedButton(
-            onPressed: null, // reset not wired yet
-            style: style,
-            child: const Text('Reset to Default'),
-          ),
-          const SizedBox(width: 12),
           OutlinedButton(
             onPressed: (!isDirty || committing) ? null : onSave,
             style: style,

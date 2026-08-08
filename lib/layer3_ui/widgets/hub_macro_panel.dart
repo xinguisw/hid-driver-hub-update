@@ -26,6 +26,7 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
   final FocusNode _recordFocus = FocusNode();
   final List<_RecordedEvent> _events = [];
   bool _recording = false;
+  bool _showCreation = false;
   DateTime? _lastEventAt;
 
   @override
@@ -47,6 +48,10 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
   void _stopRecording() {
     setState(() => _recording = false);
     _recordFocus.unfocus();
+  }
+
+  void _openCreation() {
+    setState(() => _showCreation = true);
   }
 
   KeyEventResult _onRecordKeyEvent(FocusNode node, KeyEvent event) {
@@ -111,6 +116,14 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
 
   @override
   Widget build(BuildContext context) {
+    if (!_showCreation) {
+      return _EmptyMacroState(onCreate: _openCreation);
+    }
+
+    return _buildMacroEditor(context);
+  }
+
+  Widget _buildMacroEditor(BuildContext context) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -264,6 +277,29 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
             ),
           ),
       ],
+    );
+  }
+}
+
+class _EmptyMacroState extends StatelessWidget {
+  const _EmptyMacroState({required this.onCreate});
+
+  final VoidCallback onCreate;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text('No macros configured'),
+          const SizedBox(height: 16),
+          OutlinedButton(
+            onPressed: onCreate,
+            child: const Text('Create Macro'),
+          ),
+        ],
+      ),
     );
   }
 }

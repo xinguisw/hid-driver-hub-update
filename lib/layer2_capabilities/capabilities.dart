@@ -144,6 +144,8 @@ class ReportRateCapabilities {
 
 class DpiCapabilities {
   final int maxLevels;
+  /// Number of DPI stages enabled by the product's default configuration.
+  final int activeLevelCount;
   final int defaultLevel;
   final String wireProfileKey;
   final DpiRange range;
@@ -152,6 +154,7 @@ class DpiCapabilities {
   final List<DpiLevel> levels;
   const DpiCapabilities({
     required this.maxLevels,
+    required this.activeLevelCount,
     required this.defaultLevel,
     required this.wireProfileKey,
     required this.range,
@@ -163,6 +166,7 @@ class DpiCapabilities {
   factory DpiCapabilities.fromJson(Map<String, dynamic> json) {
     return DpiCapabilities(
       maxLevels: json['maxLevels'] as int,
+      activeLevelCount: json['activeLevelCount'] as int,
       defaultLevel: json['defaultLevel'] as int,
       wireProfileKey: json['wireProfile'] as String,
       range: DpiRange.fromJson(json['range'] as Map<String, dynamic>),
@@ -524,12 +528,19 @@ class ButtonDebounce {
 
 class SleepTime {
   final bool present;
+  /// Default option wire index from the product capability description.
+  final int defaultWire;
   final List<OptionPair> options;
-  const SleepTime({required this.present, required this.options});
+  const SleepTime({
+    required this.present,
+    required this.defaultWire,
+    required this.options,
+  });
 
   factory SleepTime.fromJson(Map<String, dynamic> json) {
     return SleepTime(
       present: json['present'] as bool,
+      defaultWire: json['defaultWire'] as int,
       options: (json['options'] as List)
           .map((e) => OptionPair.fromJson(e as Map<String, dynamic>))
           .toList(),

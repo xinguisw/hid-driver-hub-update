@@ -16,6 +16,7 @@ void main() {
     expect(caps.reportRate!.options, [500, 250, 125]);
     expect(caps.reportRate!.defaultValue, 500);
     expect(caps.dpi!.maxLevels, 8);
+    expect(caps.dpi!.activeLevelCount, 5);
     expect(caps.dpi!.defaultLevel, 2);
     expect(caps.dpi!.range.minDpi, 50);
     expect(caps.dpi!.range.maxDpi, 5000);
@@ -23,6 +24,8 @@ void main() {
     expect(caps.dpi!.range.step, 50);
     expect(caps.dpi!.wireProfileKey, 'telink_b80_dpi16');
     expect(caps.sensor!.model, 'SG8925');
+    expect(caps.otherFeatures!.sleepTime!.defaultWire, 4);
+    expect(caps.otherFeatures!.sleepTime!.options[4].label, '10 min');
     expect(caps.dpi!.rgbPerStage, isFalse);
     expect(caps.dpi!.levels.length, 8);
     expect(caps.dpi!.levels.map((e) => e.value).toList(), [
@@ -128,7 +131,9 @@ void main() {
       for (final devId in ['02AA', '01AA', '03AA']) {
         final caps = DeviceCapabilityStore.forDevice(devId);
         expect(caps, isNotNull);
-        expect(caps!.dpi!.wireProfileKey, 'telink_b80_dpi16');
+        expect(caps!.dpi!.activeLevelCount, 5);
+        expect(caps.otherFeatures!.sleepTime!.defaultWire, 4);
+        expect(caps.dpi!.wireProfileKey, 'telink_b80_dpi16');
         expect(caps.dpi!.wireProfile, isNotNull);
         expect(caps.dpi!.wireProfile!.bytesPerAxis, 2);
         expect(caps.dpi!.wireProfile!.endian, 'big');

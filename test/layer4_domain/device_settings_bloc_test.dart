@@ -333,6 +333,7 @@ void main() {
       displayNameKey: 'device.m7xse',
       dpi: DpiCapabilities(
         maxLevels: 4,
+        activeLevelCount: 4,
         defaultLevel: 1,
         wireProfileKey: 'telink_b80_dpi16',
         range: DpiRange(minDpi: 50, maxDpi: 3200, stepMode: 'fixed', step: 50),

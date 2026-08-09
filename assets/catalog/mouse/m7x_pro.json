@@ -48,6 +48,7 @@
   },
   "dpi": {
     "maxLevels": 8,
+    "activeLevelCount": 5,
     "defaultLevel": 2,
     "wireProfile": "telink_b80_dpi16",
     "range": {
@@ -112,6 +113,7 @@
     },
     "sleepTime": {
       "present": true,
+      "defaultWire": 4,
       "options": [
         {"wire": 0, "label": "30 sec"},
         {"wire": 1, "label": "1 min"},

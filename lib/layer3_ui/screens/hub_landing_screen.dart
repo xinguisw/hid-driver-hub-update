@@ -7,6 +7,7 @@ import 'package:driver_hub/layer3_ui/widgets/hub_macro_panel.dart';
 import 'package:driver_hub/layer3_ui/widgets/hub_mouse_canvas.dart';
 import 'package:driver_hub/layer3_ui/widgets/hub_parameter_panel.dart';
 import 'package:driver_hub/layer3_ui/widgets/hub_performance_panel.dart';
+import 'package:driver_hub/layer3_ui/widgets/app_settings_panel.dart';
 import 'package:driver_hub/layer4_domain/bloc/device_settings_bloc.dart';
 import 'package:driver_hub/layer4_domain/bloc/device_settings_event.dart';
 import 'package:driver_hub/layer4_domain/bloc/device_settings_state_view.dart';
@@ -42,6 +43,7 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
   static const int _parameterIndex = 3;
   static const int _backlightIndex = 4;
   static const int _deviceSettingIndex = 6;
+  static const int _appSettingsIndex = 7;
 
   @override
   void initState() {
@@ -665,6 +667,8 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                 )
               else if (_selectedIndex == _deviceSettingIndex)
                 Expanded(child: HubDeviceSettingPanel(card: selected))
+              else if (_selectedIndex == _appSettingsIndex)
+                const Expanded(child: AppSettingsPanel())
               else
                 const Expanded(child: Center(child: Text(''))),
             ],

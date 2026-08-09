@@ -39,6 +39,7 @@ class _HubLeftSidebarState extends State<HubLeftSidebar> {
     'Backlight Setting',
     'Profile Management',
     'Device Setting',
+    'App Setting',
   ];
 
   @override

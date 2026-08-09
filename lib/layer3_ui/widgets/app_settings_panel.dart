@@ -1,15 +1,15 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-class AppSettingsPanel extends StatefulWidget {
-  const AppSettingsPanel({super.key});
+class AppSettingsPanel extends StatelessWidget {
+  const AppSettingsPanel({
+    required this.lowBatteryThreshold,
+    required this.onLowBatteryThresholdChanged,
+    super.key,
+  });
 
-  @override
-  State<AppSettingsPanel> createState() => _AppSettingsPanelState();
-}
-
-class _AppSettingsPanelState extends State<AppSettingsPanel> {
-  static const _thresholds = <int>[10, 20, 30, 40];
-  int _lowBatteryThreshold = 20;
+  final ValueListenable<int> lowBatteryThreshold;
+  final ValueChanged<int> onLowBatteryThresholdChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -20,7 +20,7 @@ class _AppSettingsPanelState extends State<AppSettingsPanel> {
         children: [
           _SettingsSection(title: 'System', child: _systemSettings()),
           const SizedBox(height: 8),
-          _SettingsSection(title: 'Help', child: _helpSettings()),
+          _SettingsSection(title: 'Help', child: _helpSettings(context)),
           const SizedBox(height: 8),
           _SettingsSection(
             title: 'Performance Settings',
@@ -63,29 +63,32 @@ class _AppSettingsPanelState extends State<AppSettingsPanel> {
     );
   }
 
-  Widget _helpSettings() {
+  Widget _helpSettings(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Row(
           children: [
-            Expanded(child: _helpButton('FAQ')),
+            Expanded(child: _helpButton(context, 'FAQ')),
             const SizedBox(width: 8),
-            Expanded(child: _helpButton('Customer Service')),
+            Expanded(child: _helpButton(context, 'Customer Service')),
             const SizedBox(width: 8),
-            Expanded(child: _helpButton('Key Test')),
+            Expanded(child: _helpButton(context, 'Key Test')),
           ],
         ),
         const SizedBox(height: 8),
         Row(
           children: [
-            Expanded(child: _helpButton('Product Manual')),
+            Expanded(child: _helpButton(context, 'Product Manual')),
             const SizedBox(width: 8),
-            Expanded(flex: 2, child: _helpButton('Driver Bug Feedback')),
+            Expanded(
+              flex: 2,
+              child: _helpButton(context, 'Driver Bug Feedback'),
+            ),
           ],
         ),
         const SizedBox(height: 8),
-        _helpButton('NEWMEN HUB Communities'),
+        _helpButton(context, 'NEWMEN HUB Communities'),
       ],
     );
   }
@@ -99,18 +102,22 @@ class _AppSettingsPanelState extends State<AppSettingsPanel> {
         const SizedBox(width: 180, child: Text('Low Battery Alert Threshold')),
         SizedBox(
           width: 220,
-          child: DropdownButtonFormField<int>(
-            key: const Key('app-setting-threshold'),
-            initialValue: _lowBatteryThreshold,
-            decoration: const InputDecoration(isDense: true),
-            items: [
-              for (final threshold in _thresholds)
-                DropdownMenuItem(value: threshold, child: Text('$threshold%')),
-            ],
-            onChanged: (value) {
-              if (value == null) return;
-              setState(() => _lowBatteryThreshold = value);
-            },
+          child: ValueListenableBuilder<int>(
+            valueListenable: lowBatteryThreshold,
+            builder: (context, threshold, _) => DropdownButtonFormField<int>(
+              key: const Key('app-setting-threshold'),
+              initialValue: threshold,
+              decoration: const InputDecoration(isDense: true),
+              items: const [
+                DropdownMenuItem(value: 10, child: Text('10%')),
+                DropdownMenuItem(value: 20, child: Text('20%')),
+                DropdownMenuItem(value: 30, child: Text('30%')),
+                DropdownMenuItem(value: 40, child: Text('40%')),
+              ],
+              onChanged: (value) {
+                if (value != null) onLowBatteryThresholdChanged(value);
+              },
+            ),
           ),
         ),
       ],
@@ -128,7 +135,7 @@ class _AppSettingsPanelState extends State<AppSettingsPanel> {
     );
   }
 
-  Widget _helpButton(String label) {
+  Widget _helpButton(BuildContext context, String label) {
     return OutlinedButton(
       onPressed: null,
       style: _appSettingsButtonStyle(context),

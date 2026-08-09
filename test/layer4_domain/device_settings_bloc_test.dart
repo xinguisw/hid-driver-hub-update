@@ -222,6 +222,94 @@ void main() {
     });
   });
 
+  group('DeviceSettingsBloc confirmed performance saves', () {
+    test(
+      'notifies only after the combined DPI/report-rate writes succeed',
+      () async {
+        DeviceSettingsState? notified;
+        final bloc = DeviceSettingsBloc(
+          commitButtonMapping: (_) async {},
+          commitReportRate: (_) async {},
+          commitDpiLevel: (_) async {},
+          commitDpiValues: (_) async {},
+          commitDpiStages: (_, _) async {},
+          commitSensorTuning: (_, _) async {},
+          commitAngleTune: (_) async {},
+          commitLod: (_) async {},
+          commitPerformance: (_) async {},
+          commitDebounce: (_) async {},
+          commitSleep: (_) async {},
+          commitWheelInvert: (_) async {},
+          commitRgbBacklight: (_) async {},
+          onPerformanceSettingsSaved: (settings) => notified = settings,
+        );
+        bloc.add(
+          DeviceSettingsHydrated(
+            baseSettings().copyWith(
+              reportRateOptions: const [1000, 500, 250, 125],
+              reportRateHz: 1000,
+              dpiActiveIndex: 1,
+              dpiLevels: const [
+                DpiStageData(level: 1, value: 800),
+                DpiStageData(level: 2, value: 1600),
+              ],
+            ),
+          ),
+        );
+        await pumpEventQueue();
+
+        bloc.add(const DeviceSettingsReportRateRequested(hz: 500));
+        bloc.add(const DeviceSettingsDpiLevelRequested(level: 2));
+        await pumpEventQueue();
+        expect(notified, isNull);
+
+        bloc.add(const DeviceSettingsSaveDpiConfigurationRequested());
+        await pumpEventQueue();
+
+        expect(notified?.reportRateHz, 500);
+        expect(notified?.dpiActiveIndex, 2);
+        await bloc.close();
+      },
+    );
+
+    test('does not notify when the device write fails', () async {
+      var notified = false;
+      final bloc = DeviceSettingsBloc(
+        commitButtonMapping: (_) async {},
+        commitReportRate: (_) async {},
+        commitDpiLevel: (_) async => throw StateError('nak'),
+        commitDpiValues: (_) async {},
+        commitDpiStages: (_, _) async {},
+        commitSensorTuning: (_, _) async {},
+        commitAngleTune: (_) async {},
+        commitLod: (_) async {},
+        commitPerformance: (_) async {},
+        commitDebounce: (_) async {},
+        commitSleep: (_) async {},
+        commitWheelInvert: (_) async {},
+        commitRgbBacklight: (_) async {},
+        onPerformanceSettingsSaved: (_) => notified = true,
+      );
+      bloc.add(
+        DeviceSettingsHydrated(
+          baseSettings().copyWith(
+            dpiActiveIndex: 1,
+            dpiLevels: const [DpiStageData(level: 1, value: 800)],
+          ),
+        ),
+      );
+      await pumpEventQueue();
+      bloc.add(const DeviceSettingsDpiLevelRequested(level: 2));
+      await pumpEventQueue();
+      bloc.add(const DeviceSettingsSaveDpiConfigurationRequested());
+      await pumpEventQueue();
+
+      expect(notified, isFalse);
+      expect(bloc.state.lastError, contains('nak'));
+      await bloc.close();
+    });
+  });
+
   group('DeviceSettingsBloc button mapping', () {
     test('hydrate seeds synced, not dirty', () async {
       final bloc = DeviceSettingsBloc(

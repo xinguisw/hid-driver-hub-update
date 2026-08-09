@@ -5,10 +5,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('renders the requested app settings skeleton', (tester) async {
-    await tester.pumpWidget(
-      const MaterialApp(home: Scaffold(body: AppSettingsPanel())),
+  Widget appSettings() {
+    return MaterialApp(
+      home: Scaffold(
+        body: AppSettingsPanel(
+          lowBatteryThreshold: ValueNotifier<int>(20),
+          onLowBatteryThresholdChanged: (_) {},
+        ),
+      ),
     );
+  }
+
+  testWidgets('renders the requested app settings skeleton', (tester) async {
+    await tester.pumpWidget(appSettings());
 
     expect(find.text('System'), findsOneWidget);
     expect(find.text('English'), findsOneWidget);
@@ -29,8 +38,16 @@ void main() {
   testWidgets('offers the requested low battery threshold choices', (
     tester,
   ) async {
+    final threshold = ValueNotifier<int>(20);
     await tester.pumpWidget(
-      const MaterialApp(home: Scaffold(body: AppSettingsPanel())),
+      MaterialApp(
+        home: Scaffold(
+          body: AppSettingsPanel(
+            lowBatteryThreshold: threshold,
+            onLowBatteryThresholdChanged: (value) => threshold.value = value,
+          ),
+        ),
+      ),
     );
 
     await tester.tap(find.byKey(const Key('app-setting-threshold')));
@@ -40,6 +57,10 @@ void main() {
     expect(find.text('20%'), findsAtLeastNWidgets(1));
     expect(find.text('30%'), findsOneWidget);
     expect(find.text('40%'), findsOneWidget);
+
+    await tester.tap(find.text('30%').last);
+    await tester.pump();
+    expect(threshold.value, 30);
   });
 
   testWidgets('adds App Setting to the existing device sidebar', (

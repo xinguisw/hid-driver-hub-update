@@ -69,6 +69,14 @@ typedef EscalationCallback = void Function(String reason);
 /// Save completed callback — UI uses this to dismiss sidebar.
 typedef SaveCompletedCallback = void Function();
 
+/// L4 notification that an on-device performance value was confirmed by its
+/// write ACK and is now represented by synchronized settings.
+///
+/// This deliberately carries the synchronized model rather than a protocol
+/// value so presentation consumers cannot bypass L4's wire translation.
+typedef PerformanceSettingsSavedCallback =
+    void Function(DeviceSettingsState settings);
+
 /// Late L2 capability lookup, resolved at validation time.
 ///
 /// why: the bloc is constructed before L2 caps finish loading, so a value
@@ -99,6 +107,7 @@ class DeviceSettingsBloc
     this.capabilitiesLookup,
     this.onEscalationRequested,
     this.onSaveCompleted,
+    this.onPerformanceSettingsSaved,
   }) : super(
          (initial ?? DeviceSettingsViewState.empty).copyWith(
            actionLabelOf: actionLabelOf,
@@ -173,6 +182,7 @@ class DeviceSettingsBloc
   DeviceCapabilities? get activeCapabilities =>
       capabilities ?? capabilitiesLookup?.call();
   final SaveCompletedCallback? onSaveCompleted;
+  final PerformanceSettingsSavedCallback? onPerformanceSettingsSaved;
 
   static const int failureEscalateThreshold = 3;
 
@@ -811,6 +821,7 @@ class DeviceSettingsBloc
       ),
     );
     debugPrint('[bloc] save reportRate: synced');
+    onPerformanceSettingsSaved?.call(nextSynced);
     onSaveCompleted?.call();
   }
 
@@ -966,6 +977,11 @@ class DeviceSettingsBloc
     );
     emit(nextState.copyWith(isDirty: nextState.hasAnyStaging));
     debugPrint('[bloc] save DPI configuration: synced');
+    // Only emit for actual runtime-performance selections. Editing an
+    // inactive stage table/value does not change the mouse's active DPI.
+    if (reportRate != null || dpiLevel != null) {
+      onPerformanceSettingsSaved?.call(nextSynced);
+    }
     onSaveCompleted?.call();
   }
 
@@ -1091,6 +1107,7 @@ class DeviceSettingsBloc
       ),
     );
     debugPrint('[bloc] save DPI level: synced');
+    onPerformanceSettingsSaved?.call(nextSynced);
     onSaveCompleted?.call();
   }
 

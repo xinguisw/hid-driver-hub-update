@@ -41,6 +41,8 @@ dependencies:
   hive: ^2.2.3
   hive_flutter: ^1.1.0
   nativeapi: ^0.1.4
+  desktop_multi_window: ^0.3.0
+  shared_preferences: ^2.5.5
 
 dev_dependencies:
   flutter_test:

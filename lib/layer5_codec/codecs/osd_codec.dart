@@ -2,6 +2,25 @@ import 'dart:typed_data';
 
 import '../device_protocol.dart';
 
+/// OSD performance-change payload from report 9, opcode 1.
+///
+/// M7X PRO captures encode the zero-based DPI stage before the report-rate
+/// wire value after the opcode and reserved byte. The wire values stay here;
+/// L4 translates them into product meaning before they reach presentation.
+class OsdPerformanceResult {
+  final int reportRateWire;
+  final int dpiLevel;
+
+  const OsdPerformanceResult({
+    required this.reportRateWire,
+    required this.dpiLevel,
+  });
+
+  @override
+  String toString() =>
+      'OsdPerformanceResult(rate=$reportRateWire, dpiLevel=$dpiLevel)';
+}
+
 /// Telink OSD (usage 0xFF02, report id 9, 8 bytes).
 ///
 /// Sheet layout: reportId | opcode | data[0]…data[5]
@@ -14,6 +33,17 @@ class OsdCodec {
   static const int reportId = 0x09;
   static const int opcodeDpiRate = 0x01;
   static const int opcodeBattery = 0x02;
+
+  /// Parse a report-rate/DPI change push (opcode 1).
+  ///
+  /// Structure: `report id | opcode | reserved | DPI stage wire | report-rate wire | ...`.
+  /// The parser deliberately preserves the two wire bytes for L4 translation.
+  OsdPerformanceResult? parsePerformance(Uint8List raw) {
+    if (!_looksLikeOsd(raw)) return null;
+    final body = _body(raw);
+    if (body.length < 4 || body[0] != opcodeDpiRate) return null;
+    return OsdPerformanceResult(reportRateWire: body[3], dpiLevel: body[2]);
+  }
 
   /// Parse battery push (opcode 2). Null if not a battery OSD frame.
   ///

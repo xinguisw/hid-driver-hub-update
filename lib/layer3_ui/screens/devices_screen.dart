@@ -1,8 +1,12 @@
+import 'dart:async';
+
+import 'package:driver_hub/desktop_shell/osd_overlay_service.dart';
 import 'package:driver_hub/layer3_ui/screens/hub_landing_screen.dart';
 import 'package:driver_hub/layer3_ui/widgets/device_card_grid.dart';
 import 'package:driver_hub/layer3_ui/widgets/empty_device_state.dart';
 import 'package:driver_hub/layer4_domain/device_scope.dart';
 import 'package:driver_hub/layer4_domain/models/discovered_card_state.dart';
+import 'package:driver_hub/layer4_domain/models/osd_event.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
@@ -18,18 +22,54 @@ class DevicesScreen extends StatefulWidget {
 
 class _DevicesScreenState extends State<DevicesScreen> {
   late final DeviceScope _scope;
+  late final OsdOverlayService _osd;
+  StreamSubscription<OsdPerformanceEvent>? _osdSubscription;
+  StreamSubscription<OsdBatteryLowEvent>? _batteryLowOsdSubscription;
 
   @override
   void initState() {
     super.initState();
     _scope = DeviceScope();
-    _scope.start();
+    _osd = OsdOverlayService();
+    _osdSubscription = _scope.osdEvents.listen(_showPerformanceOsd);
+    _batteryLowOsdSubscription = _scope.batteryLowOsdEvents.listen(
+      _showBatteryLowOsd,
+    );
+    unawaited(_scope.start());
   }
 
   @override
   void dispose() {
+    final osdSubscription = _osdSubscription;
+    if (osdSubscription != null) {
+      unawaited(osdSubscription.cancel());
+    }
+    final batteryLowOsdSubscription = _batteryLowOsdSubscription;
+    if (batteryLowOsdSubscription != null) {
+      unawaited(batteryLowOsdSubscription.cancel());
+    }
+    _osd.dispose();
     _scope.dispose();
     super.dispose();
+  }
+
+  Future<void> _showPerformanceOsd(OsdPerformanceEvent event) {
+    final lines = <String>['DPI: Level ${event.dpiLevel} · ${event.dpiLabel}'];
+    final reportRate = event.reportRateLabel;
+    if (reportRate != null) {
+      lines.add('Report Rate: $reportRate');
+    }
+    return _osd.show(title: 'Device status', lines: lines);
+  }
+
+  Future<void> _showBatteryLowOsd(OsdBatteryLowEvent event) {
+    return _osd.show(
+      title: 'Device status',
+      lines: <String>[
+        '${event.deviceName}: battery low',
+        'Battery: ${event.batteryPercent}%',
+      ],
+    );
   }
 
   @override
@@ -46,14 +86,10 @@ class _DevicesScreenState extends State<DevicesScreen> {
                 if (cards.isEmpty) {
                   return ValueListenableBuilder<bool>(
                     valueListenable: _scope.busy,
-                    builder: (context, busy, _) =>
-                        EmptyDeviceState(busy: busy),
+                    builder: (context, busy, _) => EmptyDeviceState(busy: busy),
                   );
                 }
-                return DeviceCardGrid(
-                  cards: cards,
-                  onCardTap: _openHubLanding,
-                );
+                return DeviceCardGrid(cards: cards, onCardTap: _openHubLanding);
               },
             ),
           ),

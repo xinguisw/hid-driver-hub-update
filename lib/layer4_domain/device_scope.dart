@@ -6,16 +6,21 @@ import 'package:driver_hub/layer1_discovery/device_session.dart';
 import 'package:driver_hub/layer1_discovery/device_watcher.dart';
 import 'package:driver_hub/layer1_discovery/discovered_device.dart';
 import 'package:driver_hub/layer2_capabilities/capabilities.dart';
+import 'package:driver_hub/layer4_domain/app_settings_repository.dart';
 import 'package:driver_hub/layer4_domain/bloc/device_settings_bloc.dart';
 import 'package:driver_hub/layer5_codec/button_mapping_slot.dart';
 import 'package:driver_hub/layer4_domain/models/device_settings_state.dart';
 import 'package:driver_hub/layer4_domain/models/discovered_card_state.dart';
 import 'package:driver_hub/layer4_domain/models/macro.dart';
+import 'package:driver_hub/layer4_domain/models/osd_event.dart';
 import 'package:driver_hub/layer4_domain/macro_repository.dart';
+import 'package:driver_hub/layer4_domain/low_battery_alert_policy.dart';
 import 'package:driver_hub/layer4_domain/settings_onboard_query.dart';
+import 'package:driver_hub/layer5_codec/codecs/osd_codec.dart';
 import 'package:driver_hub/layer5_codec/codecs/translation_codec.dart';
 import 'package:driver_hub/layer5_codec/device_protocol.dart';
 import 'package:driver_hub/layer6_transport/hid_session.dart';
+import 'package:driver_hub/layer6_transport/app_settings_storage.dart';
 import 'package:driver_hub/layer6_transport/local_storage.dart';
 import 'package:driver_hub/layer6_transport/macro_storage.dart';
 import 'package:flutter/foundation.dart';
@@ -29,9 +34,14 @@ import 'package:hid_tool/hid_tool.dart';
 ///
 /// One entry per verified device, keyed by device path → multi-device.
 class DeviceScope {
-  DeviceScope({DeviceScanner? scanner, MacroRepository? macroRepository})
-    : _scanner = scanner ?? DeviceScanner(),
-      _macroRepository = macroRepository ?? PersistentMacroRepository() {
+  DeviceScope({
+    DeviceScanner? scanner,
+    MacroRepository? macroRepository,
+    AppSettingsRepository? appSettingsRepository,
+  }) : _scanner = scanner ?? DeviceScanner(),
+       _macroRepository = macroRepository ?? PersistentMacroRepository(),
+       _appSettingsRepository =
+           appSettingsRepository ?? SharedPreferencesAppSettingsRepository() {
     _watcher = DeviceWatcher(
       scanner: _scanner,
       protocolFactory: () => const MouseProtocol(),
@@ -42,6 +52,7 @@ class DeviceScope {
 
   final DeviceScanner _scanner;
   final MacroRepository _macroRepository;
+  final AppSettingsRepository _appSettingsRepository;
   late final DeviceWatcher _watcher;
 
   /// Verified devices as card states, keyed by device path.
@@ -52,6 +63,25 @@ class DeviceScope {
 
   /// OSD battery subscriptions per device path.
   final _batterySubs = <String, StreamSubscription<BatteryResult>>{};
+
+  /// OSD performance subscriptions per device path.
+  final _performanceSubs = <String, StreamSubscription<OsdPerformanceResult>>{};
+
+  /// Semantic OSD events for the presentation layer.
+  final _osdEvents = StreamController<OsdPerformanceEvent>.broadcast();
+
+  /// Semantic low-battery OSD events for the presentation layer.
+  final _batteryLowOsdEvents = StreamController<OsdBatteryLowEvent>.broadcast();
+
+  final _lowBatteryAlerts = LowBatteryAlertPolicy();
+
+  static const defaultLowBatteryThreshold = 20;
+  static const lowBatteryThresholdOptions = <int>{10, 20, 30, 40};
+
+  /// Global threshold loaded from L6 before device discovery starts.
+  final batteryLowThreshold = ValueNotifier<int>(defaultLowBatteryThreshold);
+
+  bool _started = false;
 
   /// Last hydrated settings per device path, for the life of the connection.
   final _settings = <String, DeviceSettingsState>{};
@@ -80,7 +110,16 @@ class DeviceScope {
   /// why: L3 repaints from [settingsFor] without waiting on the final Future.
   final settingsVersion = ValueNotifier<int>(0);
 
-  void start() {
+  /// Background performance events with raw HID details removed.
+  Stream<OsdPerformanceEvent> get osdEvents => _osdEvents.stream;
+
+  Stream<OsdBatteryLowEvent> get batteryLowOsdEvents =>
+      _batteryLowOsdEvents.stream;
+
+  Future<void> start() async {
+    if (_started) return;
+    _started = true;
+    await _loadLowBatteryThreshold();
     _watcher.start(
       onConnect: (session) {
         _saveLastDevice(session.device);
@@ -88,7 +127,37 @@ class DeviceScope {
       },
       onDisconnect: (path, vid, pid) => _remove(path),
     );
-    probeExisting();
+    await probeExisting();
+  }
+
+  Future<void> setLowBatteryThreshold(int threshold) async {
+    if (!lowBatteryThresholdOptions.contains(threshold)) {
+      throw ArgumentError.value(
+        threshold,
+        'threshold',
+        'must be one of $lowBatteryThresholdOptions',
+      );
+    }
+    if (batteryLowThreshold.value == threshold) return;
+
+    batteryLowThreshold.value = threshold;
+    _reevaluateKnownBatteryLevels();
+    try {
+      await _appSettingsRepository.saveLowBatteryThreshold(threshold);
+    } catch (error) {
+      debugPrint('[scope] low battery threshold persistence failed: $error');
+    }
+  }
+
+  Future<void> _loadLowBatteryThreshold() async {
+    try {
+      final stored = await _appSettingsRepository.loadLowBatteryThreshold();
+      if (stored != null && lowBatteryThresholdOptions.contains(stored)) {
+        batteryLowThreshold.value = stored;
+      }
+    } catch (error) {
+      debugPrint('[scope] low battery threshold load failed: $error');
+    }
   }
 
   /// Devices present at launch; the watcher only fires on a NEW plug.
@@ -153,6 +222,9 @@ class DeviceScope {
     // Live updates after connect: OSD push only (no A4 poll).
     // Onboard config GETs (B2/C2/…) only when user opens settings (card tap).
     _upsert(session, battery, firmware);
+    if (battery != null) {
+      _evaluateLowBattery(session.device.hidDevice.path, battery);
+    }
     _startLiveBattery(session);
   }
 
@@ -260,6 +332,7 @@ class DeviceScope {
       // why: caps load during loadOnboardSettings, after this bloc is built.
       capabilitiesLookup: () => DeviceCapabilityStore.forDevice(card.devId),
       onSaveCompleted: onSaveCompleted,
+      onPerformanceSettingsSaved: _emitSavedPerformanceOsd,
     );
   }
 
@@ -864,6 +937,7 @@ class DeviceScope {
     final path = session.device.hidDevice.path;
     _sessions[path] = session;
     _bindBatteryPush(session);
+    _bindPerformancePush(session);
     // Polling for battery and charging — disabled (OSD is real-time source).
     // _ensureBatteryPollTimer();
   }
@@ -875,6 +949,59 @@ class DeviceScope {
     _batterySubs[path] = session.batteryPushes.listen((b) {
       _patchBattery(path, b, source: 'osd');
     });
+  }
+
+  /// Live OSD performance (report 9 opcode 1) → semantic event for L3.
+  void _bindPerformancePush(DeviceSession session) {
+    final path = session.device.hidDevice.path;
+    _performanceSubs.remove(path)?.cancel();
+    _performanceSubs[path] = session.performancePushes.listen((event) {
+      final settings = _settings[path];
+      final translate = const TranslationCodec();
+      final dpiLevel = translate.dpiCurrentLevelWireToDisplay(event.dpiLevel);
+      final dpiLabel = _dpiOsdLabel(dpiLevel, settings);
+      final osdEvent = OsdPerformanceEvent(
+        reportRateLabel: translate.reportRateWireToLabel(event.reportRateWire),
+        dpiLevel: dpiLevel,
+        dpiLabel: dpiLabel,
+      );
+      _publishOsdEvent(osdEvent);
+    });
+  }
+
+  /// Emits the same semantic OSD event after a UI-initiated C2 write has
+  /// succeeded. The device does not emit report-9 for those writes, unlike a
+  /// physical DPI/report-rate button change.
+  void _emitSavedPerformanceOsd(DeviceSettingsState settings) {
+    final dpiLevel = settings.dpiActiveIndex;
+    if (dpiLevel == null) return;
+
+    final reportRateHz = settings.reportRateHz;
+    _publishOsdEvent(
+      OsdPerformanceEvent(
+        reportRateLabel: reportRateHz == null
+            ? settings.reportRateLabel
+            : '$reportRateHz Hz',
+        dpiLevel: dpiLevel,
+        dpiLabel: _dpiOsdLabel(dpiLevel, settings),
+      ),
+    );
+  }
+
+  void _publishOsdEvent(OsdPerformanceEvent event) {
+    if (!_osdEvents.isClosed) {
+      _osdEvents.add(event);
+    }
+  }
+
+  String _dpiOsdLabel(int level, DeviceSettingsState? settings) {
+    final levels = settings?.dpiLevels;
+    if (levels != null) {
+      for (final stage in levels) {
+        if (stage.level == level) return '${stage.value} DPI';
+      }
+    }
+    return 'Level $level';
   }
 
   // --- Polling for battery and charging (DISABLED) ---
@@ -926,6 +1053,42 @@ class DeviceScope {
       isCharging: battery.isCharging,
     );
     cards.value = List.unmodifiable(_cards.values);
+    _evaluateLowBattery(path, battery);
+  }
+
+  void _reevaluateKnownBatteryLevels() {
+    for (final entry in _cards.entries) {
+      final card = entry.value;
+      _evaluateLowBattery(
+        entry.key,
+        BatteryResult(
+          percent: card.batteryPercentage,
+          isCharging: card.isCharging,
+        ),
+      );
+    }
+  }
+
+  void _evaluateLowBattery(String path, BatteryResult battery) {
+    if (battery.percent < 0) return;
+    if (!_lowBatteryAlerts.shouldNotify(
+      devicePath: path,
+      batteryPercent: battery.percent,
+      isCharging: battery.isCharging,
+      thresholdPercent: batteryLowThreshold.value,
+    )) {
+      return;
+    }
+
+    final card = _cards[path];
+    if (card == null || _batteryLowOsdEvents.isClosed) return;
+    _batteryLowOsdEvents.add(
+      OsdBatteryLowEvent(
+        deviceName: card.displayName,
+        batteryPercent: battery.percent,
+        thresholdPercent: batteryLowThreshold.value,
+      ),
+    );
   }
 
   /// Queries battery+charging via A4. Returns null on failure (device gone,
@@ -1001,8 +1164,10 @@ class DeviceScope {
 
   void _remove(String path) {
     _batterySubs.remove(path)?.cancel();
+    _performanceSubs.remove(path)?.cancel();
     _sessions.remove(path);
     _settings.remove(path);
+    _lowBatteryAlerts.removeDevice(path);
     // Polling for battery and charging — disabled.
     // _stopBatteryPollTimerIfIdle();
     _cards.remove(path);
@@ -1044,8 +1209,16 @@ class DeviceScope {
       await sub.cancel();
     }
     _batterySubs.clear();
+    for (final sub in _performanceSubs.values) {
+      await sub.cancel();
+    }
+    _performanceSubs.clear();
     _sessions.clear();
     await _watcher.stop();
+    await _osdEvents.close();
+    await _batteryLowOsdEvents.close();
+    _lowBatteryAlerts.clear();
+    batteryLowThreshold.dispose();
     cards.dispose();
     busy.dispose();
     settingsVersion.dispose();

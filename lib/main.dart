@@ -2,12 +2,27 @@ import 'package:driver_hub/desktop_shell/window_bootstrap_stub.dart'
     if (dart.library.io) 'package:driver_hub/desktop_shell/window_bootstrap.dart'
     as window_bootstrap;
 import 'package:driver_hub/layer3_ui/screens/devices_screen.dart';
+import 'package:driver_hub/layer3_ui/widgets/osd_overlay_window.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-void main() {
+Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
   if (_isDesktop) {
+    if (_isWindows && window_bootstrap.isOsdWindow(args)) {
+      final osdController = OsdOverlayWindowController(
+        showWindow: window_bootstrap.showOsdWindow,
+        hideWindow: window_bootstrap.hideOsdWindow,
+      );
+      runApp(OsdOverlayApp(controller: osdController));
+      await WidgetsBinding.instance.endOfFrame;
+      await window_bootstrap.prepareOsdWindow(
+        args: args,
+        handler: osdController.handle,
+      );
+      return;
+    }
+
     // why: native handle may be null until the first frame attaches the window.
     window_bootstrap.configureDesktopWindow();
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -29,6 +44,9 @@ bool get _isDesktop {
   }
 }
 
+bool get _isWindows =>
+    !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
+
 class DriverHubApp extends StatelessWidget {
   const DriverHubApp({super.key});
 
@@ -36,7 +54,9 @@ class DriverHubApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'driver_hub',
-      theme: ThemeData(colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue)),
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+      ),
       home: const DevicesScreen(),
     );
   }

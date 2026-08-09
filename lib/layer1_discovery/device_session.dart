@@ -60,6 +60,8 @@ class DeviceSession implements DeviceRepository {
 
   final _controller = StreamController<DeviceSessionState>.broadcast();
   final _batteryPushes = StreamController<BatteryResult>.broadcast();
+  final _performancePushes =
+      StreamController<OsdPerformanceResult>.broadcast();
   StreamSubscription<Uint8List>? _unsolicitedSub;
 
   DeviceSession({
@@ -72,6 +74,10 @@ class DeviceSession implements DeviceRepository {
 
   /// OSD report 9 opcode 2 (and web short frames) parsed to battery.
   Stream<BatteryResult> get batteryPushes => _batteryPushes.stream;
+
+  /// OSD report 9 opcode 1 performance changes, still in L5 wire units.
+  Stream<OsdPerformanceResult> get performancePushes =>
+      _performancePushes.stream;
 
   /// Whether the underlying transport is still open.
   @override
@@ -325,6 +331,14 @@ class DeviceSession implements DeviceRepository {
     _unsolicitedSub?.cancel();
     _unsolicitedSub = _session.unsolicitedReports.listen((raw) {
       debugPrint('[session] unsolicited ${_hex(raw)} (${raw.length}B)');
+      final performance = _osd.parsePerformance(raw);
+      if (performance != null && !_performancePushes.isClosed) {
+        debugPrint(
+          '[session] OSD performance: rateWire=${performance.reportRateWire} '
+          'dpiLevel=${performance.dpiLevel} raw=${_hex(raw)}',
+        );
+        _performancePushes.add(performance);
+      }
       final battery = _osd.parseBattery(raw);
       if (battery == null) return;
       debugPrint('[session] OSD battery: ${battery.percent}% '
@@ -348,6 +362,7 @@ class DeviceSession implements DeviceRepository {
     _unsolicitedSub = null;
     await _safeClose();
     await _batteryPushes.close();
+    await _performancePushes.close();
     await _controller.close();
   }
 

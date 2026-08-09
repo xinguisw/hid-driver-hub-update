@@ -109,6 +109,7 @@ class DeviceSettingsBloc
     on<DeviceSettingsSpecialComboRequested>(_onSpecialComboRequested);
     on<DeviceSettingsReportRateRequested>(_onReportRateRequested);
     on<DeviceSettingsSaveReportRateRequested>(_onSaveReportRate);
+    on<DeviceSettingsSaveDpiConfigurationRequested>(_onSaveDpiConfiguration);
     on<DeviceSettingsDpiLevelRequested>(_onDpiLevelRequested);
     on<DeviceSettingsSaveDpiLevelRequested>(_onSaveDpiLevel);
     on<DeviceSettingsDpiValueRequested>(_onDpiValueRequested);
@@ -617,6 +618,160 @@ class DeviceSettingsBloc
     onSaveCompleted?.call();
   }
 
+  /// Saves the complete DPI configuration block in protocol-safe order.
+  ///
+  /// C4 owns the DPI stage table, while C2 owns report rate/current level/
+  /// active-level metadata. Stage changes must reach C4 before value patches,
+  /// and the C2 selection write runs after the C4 transaction. Keeping this in
+  /// one handler prevents the default concurrent BLoC event processing from
+  /// dropping the value save behind the level save's committing guard.
+  Future<void> _onSaveDpiConfiguration(
+    DeviceSettingsSaveDpiConfigurationRequested event,
+    Emitter<DeviceSettingsViewState> emit,
+  ) async {
+    if (state.committing) return;
+
+    final synced = state.synced;
+    if (synced == null) {
+      emit(
+        state.copyWith(lastError: 'save DPI configuration: no synced settings'),
+      );
+      return;
+    }
+
+    final reportRate = state.reportRateStaging;
+    final dpiLevel = state.dpiCurrentLevelStaging;
+    final dpiValues = state.dpiValueStaging == null
+        ? null
+        : Map<int, int>.from(state.dpiValueStaging!);
+    final hasStageStaging =
+        state.dpiStageAddStaging || state.dpiStageRemoveLevelStaging != null;
+    final stagedLevels = state.dpiStageLevelsStaging == null
+        ? null
+        : List<DpiStageData>.from(state.dpiStageLevelsStaging!);
+
+    if (reportRate == null &&
+        dpiLevel == null &&
+        (dpiValues == null || dpiValues.isEmpty) &&
+        !hasStageStaging) {
+      debugPrint('[bloc] save DPI configuration: nothing dirty');
+      return;
+    }
+
+    if (reportRate != null) {
+      final options = synced.reportRateOptions;
+      if (options != null && !options.contains(reportRate)) {
+        emit(
+          state.copyWith(
+            lastError: 'report rate ${reportRate}Hz not in options $options',
+          ),
+        );
+        return;
+      }
+    }
+
+    final dpiSaveRequested = dpiLevel != null ||
+        (dpiValues != null && dpiValues.isNotEmpty) ||
+        hasStageStaging;
+    if (dpiSaveRequested && synced.decodeErrors.contains('reportRateDpi')) {
+      emit(state.copyWith(lastError: 'DPI unavailable: decode error'));
+      return;
+    }
+
+    final dpiCaps = activeCapabilities?.dpi;
+    if (dpiLevel != null && dpiCaps != null) {
+      final validLevels = dpiCaps.levels.map((l) => l.level).toList();
+      if (!validLevels.contains(dpiLevel)) {
+        emit(
+          state.copyWith(
+            lastError: 'DPI level $dpiLevel not in capabilities $validLevels',
+          ),
+        );
+        return;
+      }
+    }
+
+    if (hasStageStaging && (stagedLevels == null || stagedLevels.isEmpty)) {
+      emit(state.copyWith(lastError: 'DPI stages: no staged levels'));
+      return;
+    }
+
+    emit(state.copyWith(committing: true, clearError: true));
+
+    try {
+      if (reportRate != null) {
+        await commitReportRate(reportRate);
+      }
+      if (hasStageStaging) {
+        await commitDpiStages(stagedLevels!, stagedLevels.length);
+      }
+      if (dpiValues != null && dpiValues.isNotEmpty) {
+        await commitDpiValues(dpiValues);
+      }
+      if (dpiLevel != null) {
+        await commitDpiLevel(dpiLevel);
+      }
+    } catch (e) {
+      debugPrint('[bloc] save DPI configuration failed: $e');
+      final failures = state.consecutiveFailures + 1;
+      emit(
+        state.copyWith(
+          committing: false,
+          lastError: 'DPI configuration save failed: $e',
+          consecutiveFailures: failures,
+        ),
+      );
+      if (failures >= failureEscalateThreshold) {
+        onEscalationRequested?.call(
+          'DPI configuration save failed $failures consecutive times',
+        );
+      }
+      return;
+    }
+
+    var nextSynced = synced;
+    if (reportRate != null) {
+      nextSynced = nextSynced.copyWith(reportRateHz: reportRate);
+    }
+    if (hasStageStaging) {
+      nextSynced = nextSynced.copyWith(
+        dpiActiveLevelCount: stagedLevels!.length,
+        dpiLevels: stagedLevels,
+      );
+    }
+    if (dpiValues != null && dpiValues.isNotEmpty) {
+      final levels = [...?nextSynced.dpiLevels];
+      for (final entry in dpiValues.entries) {
+        final index = levels.indexWhere((level) => level.level == entry.key);
+        if (index >= 0) {
+          levels[index] = DpiStageData(
+            level: entry.key,
+            value: entry.value,
+            color: levels[index].color,
+          );
+        }
+      }
+      nextSynced = nextSynced.copyWith(dpiLevels: levels);
+    }
+    if (dpiLevel != null) {
+      nextSynced = nextSynced.copyWith(dpiActiveIndex: dpiLevel);
+    }
+
+    final nextState = state.copyWith(
+      synced: nextSynced,
+      committing: false,
+      consecutiveFailures: 0,
+      lastError: null,
+      clearReportRateStaging: reportRate != null,
+      clearDpiCurrentLevelStaging: dpiLevel != null,
+      clearDpiValueStaging: dpiValues != null && dpiValues.isNotEmpty,
+      clearDpiStageStaging: hasStageStaging,
+    );
+    emit(nextState.copyWith(isDirty: nextState.hasAnyStaging));
+    debugPrint('[bloc] save DPI configuration: synced');
+    onSaveCompleted?.call();
+  }
+
   /// User selected a DPI level.
   ///
   /// Validates against L2 capabilities, stages the level, and marks dirty.
@@ -730,6 +885,7 @@ class DeviceSettingsBloc
       state.copyWith(
         synced: nextSynced,
         dpiCurrentLevelStaging: null,
+        clearDpiCurrentLevelStaging: true,
         isDirty: false,
         committing: false,
         consecutiveFailures: 0,

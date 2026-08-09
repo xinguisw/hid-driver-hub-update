@@ -83,6 +83,14 @@ class DeviceSettingsSaveReportRateRequested extends DeviceSettingsEvent {
   const DeviceSettingsSaveReportRateRequested();
 }
 
+/// Save the complete DPI configuration block as one serialized transaction.
+///
+/// This covers report rate, DPI stages, DPI values, and the current DPI level
+/// so one Save action cannot race separate BLoC handlers.
+class DeviceSettingsSaveDpiConfigurationRequested extends DeviceSettingsEvent {
+  const DeviceSettingsSaveDpiConfigurationRequested();
+}
+
 /// User selected a DPI level.
 ///
 /// L3 passes the 1-based level (e.g. 1, 2, 3, ..., 8). L4 stages it and marks dirty.

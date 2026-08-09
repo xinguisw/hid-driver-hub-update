@@ -519,6 +519,56 @@ void main() {
       await bloc.close();
     });
 
+    test(
+      'performance save sends staged DPI values before current level',
+      () async {
+        DeviceCapabilities? caps = dpiCaps;
+        final calls = <String>[];
+        Map<int, int>? writtenValues;
+        final bloc = DeviceSettingsBloc(
+          commitButtonMapping: (_) async {},
+          commitReportRate: (_) async {
+            calls.add('reportRate');
+          },
+          commitDpiLevel: (_) async {
+            calls.add('level');
+          },
+          commitDpiValues: (values) async {
+            calls.add('values');
+            writtenValues = Map<int, int>.from(values);
+          },
+          commitDpiStages: (_, _) async {
+            calls.add('stages');
+          },
+          commitSensorTuning: (_, _) async {},
+          commitAngleTune: (_) async {},
+          commitLod: (_) async {},
+          commitPerformance: (_) async {},
+          commitDebounce: (_) async {},
+          commitSleep: (_) async {},
+          commitWheelInvert: (_) async {},
+          commitRgbBacklight: (_) async {},
+          capabilitiesLookup: () => caps,
+        );
+        bloc.add(DeviceSettingsHydrated(baseSettings()));
+        await pumpEventQueue();
+
+        bloc.add(const DeviceSettingsDpiLevelRequested(level: 2));
+        await pumpEventQueue();
+        bloc.add(const DeviceSettingsDpiValueRequested(level: 1, value: 2400));
+        await pumpEventQueue();
+        bloc.add(const DeviceSettingsSaveDpiConfigurationRequested());
+        await pumpEventQueue();
+
+        expect(calls, ['values', 'level']);
+        expect(writtenValues, {1: 2400});
+        expect(bloc.state.dpiCurrentLevelStaging, isNull);
+        expect(bloc.state.dpiValueStaging, isNull);
+        expect(bloc.state.isDirty, false);
+        await bloc.close();
+      },
+    );
+
     test('DPI stage add stages and prevents over-max', () async {
       DeviceCapabilities? caps = dpiCaps;
       final bloc = DeviceSettingsBloc(

@@ -124,6 +124,34 @@ class DeviceSettingsViewState {
 
   static const empty = DeviceSettingsViewState();
 
+  /// Whether any local setting remains staged after a partial commit.
+  bool get hasAnyStaging =>
+      buttonMappingStaging != null ||
+      reportRateStaging != null ||
+      dpiCurrentLevelStaging != null ||
+      (dpiValueStaging != null && dpiValueStaging!.isNotEmpty) ||
+      dpiStageAddStaging ||
+      dpiStageRemoveLevelStaging != null ||
+      dpiStageLevelsStaging != null ||
+      rippleControlStaging != null ||
+      angleSnapStaging != null ||
+      angleTuneStaging != null ||
+      angleTuneLabelStaging != null ||
+      angleTuneEnabledStaging != null ||
+      lodStaging != null ||
+      performanceStaging != null ||
+      debounceStaging != null ||
+      sleepStaging != null ||
+      wheelInvertStaging != null ||
+      rgbEnableStaging != null ||
+      rgbModeIdStaging != null ||
+      rgbBrightnessStaging != null ||
+      rgbSpeedStaging != null ||
+      rgbRStaging != null ||
+      rgbGStaging != null ||
+      rgbBStaging != null ||
+      rgbSleepTimeStaging != null;
+
   DeviceSettingsViewState copyWith({
     DeviceSettingsState? synced,
     List<ButtonMappingSlot>? buttonMappingStaging,
@@ -159,6 +187,10 @@ class DeviceSettingsViewState {
     ButtonActionLabelFn? actionLabelOf,
     ButtonIdLabelFn? buttonIdLabelOf,
     bool clearStaging = false,
+    bool clearReportRateStaging = false,
+    bool clearDpiCurrentLevelStaging = false,
+    bool clearDpiValueStaging = false,
+    bool clearDpiStageStaging = false,
     bool clearError = false,
   }) {
     return DeviceSettingsViewState(
@@ -166,25 +198,25 @@ class DeviceSettingsViewState {
       buttonMappingStaging: clearStaging
           ? null
           : (buttonMappingStaging ?? this.buttonMappingStaging),
-      reportRateStaging: clearStaging
+      reportRateStaging: clearStaging || clearReportRateStaging
           ? null
           : (reportRateStaging ?? this.reportRateStaging),
-      dpiCurrentLevelStaging: clearStaging
+      dpiCurrentLevelStaging: clearStaging || clearDpiCurrentLevelStaging
           ? null
           : (dpiCurrentLevelStaging ?? this.dpiCurrentLevelStaging),
-      dpiValueStaging: clearStaging
+      dpiValueStaging: clearStaging || clearDpiValueStaging
           ? null
           : (dpiValueStaging ?? this.dpiValueStaging),
-      dpiStageAddStaging: clearStaging
+      dpiStageAddStaging: clearStaging || clearDpiStageStaging
           ? false
           : (dpiStageAddStaging ?? this.dpiStageAddStaging),
-      dpiStageRemoveLevelStaging: clearStaging
+      dpiStageRemoveLevelStaging: clearStaging || clearDpiStageStaging
           ? null
           : (dpiStageRemoveLevelStaging ?? this.dpiStageRemoveLevelStaging),
-      dpiStageLevelsStaging: clearStaging
+      dpiStageLevelsStaging: clearStaging || clearDpiStageStaging
           ? null
           : (dpiStageLevelsStaging ?? this.dpiStageLevelsStaging),
-      dpiStageSaveInFlight: clearStaging
+      dpiStageSaveInFlight: clearStaging || clearDpiStageStaging
           ? false
           : (dpiStageSaveInFlight ?? this.dpiStageSaveInFlight),
       rippleControlStaging: clearStaging

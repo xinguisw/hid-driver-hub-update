@@ -309,27 +309,18 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                             isDirty: view.isDirty,
                             committing: view.committing,
                             onSave: () {
-                              // Save both report rate and DPI if either is staged
-                              if (view.reportRateStaging != null) {
+                              final hasDpiValueStaging =
+                                  view.dpiValueStaging != null &&
+                                  view.dpiValueStaging!.isNotEmpty;
+                              final hasDpiStageStaging =
+                                  view.dpiStageAddStaging ||
+                                  view.dpiStageRemoveLevelStaging != null;
+                              if (view.reportRateStaging != null ||
+                                  view.dpiCurrentLevelStaging != null ||
+                                  hasDpiValueStaging ||
+                                  hasDpiStageStaging) {
                                 bloc.add(
-                                  const DeviceSettingsSaveReportRateRequested(),
-                                );
-                              }
-                              if (view.dpiCurrentLevelStaging != null) {
-                                bloc.add(
-                                  const DeviceSettingsSaveDpiLevelRequested(),
-                                );
-                              }
-                              if (view.dpiValueStaging != null &&
-                                  view.dpiValueStaging!.isNotEmpty) {
-                                bloc.add(
-                                  const DeviceSettingsSaveDpiValuesRequested(),
-                                );
-                              }
-                              if (view.dpiStageAddStaging ||
-                                  view.dpiStageRemoveLevelStaging != null) {
-                                bloc.add(
-                                  const DeviceSettingsSaveDpiStagesRequested(),
+                                  const DeviceSettingsSaveDpiConfigurationRequested(),
                                 );
                               }
                             },

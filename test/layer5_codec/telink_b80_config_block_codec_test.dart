@@ -72,4 +72,21 @@ void main() {
     expect(block.first, 0x0F);
     expect(block.sublist(1), [2, 3, 4, 5, 6, 7, 8]);
   });
+
+  test('patches only staged E2 fields and preserves unknown live bytes', () {
+    final current = <int>[0x02, 0x02, 0x02, 0xFF, 0xFF, 0x00, 0x04, 0x00];
+
+    final brightnessOnly = TelinkB80ConfigBlockCodec.patchRgbBacklight(
+      current,
+      brightness: 4,
+    );
+    final enableOnly = TelinkB80ConfigBlockCodec.patchRgbBacklight(
+      current,
+      enabled: true,
+    );
+
+    expect(brightnessOnly, [0x02, 0x02, 0x04, 0xFF, 0xFF, 0x00, 0x04, 0x00]);
+    expect(enableOnly, [0xFF, 0x02, 0x02, 0xFF, 0xFF, 0x00, 0x04, 0x00]);
+    expect(current, [0x02, 0x02, 0x02, 0xFF, 0xFF, 0x00, 0x04, 0x00]);
+  });
 }

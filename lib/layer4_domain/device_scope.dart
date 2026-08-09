@@ -926,30 +926,34 @@ class DeviceScope {
     await session.setSensorOther(dataBlock);
   }
 
-  /// Commits the RGB backlight block as one 8-byte 0xE2 SET.
+  /// Commits one semantic patch to the live 8-byte 0xE2 backlight block.
   ///
-  /// why: the bloc overlays staged fields on the last-synced block before
-  /// calling this, so [values] is fully resolved — build a fresh 8-byte block
-  /// rather than a read-modify-write. `enable` is tri-state (0xFF/0x0F);
-  /// brightness/speed are level indices; sleepTime is a catalog option index.
+  /// why: preserve firmware-owned values the app cannot currently classify.
+  /// The M7X PRO can report an unknown E2 enable byte; a brightness-only edit
+  /// must not replace that byte. L5 owns the documented E2 positions.
   Future<void> commitRgbBacklight(
     DiscoveredCardState card,
-    StagedRgbBacklight values,
+    RgbBacklightPatch patch,
   ) async {
     final session = _sessionForCard(card);
     if (session == null || !session.isAlive) {
       throw StateError('commitRgbBacklight: no session');
     }
 
-    final dataBlock = TelinkB80ConfigBlockCodec.encodeRgbBacklight(
-      enabled: values.enable,
-      modeId: values.modeId,
-      brightness: values.brightness,
-      speed: values.speed,
-      red: values.r,
-      green: values.g,
-      blue: values.b,
-      sleepWire: values.sleepTime,
+    final current = await session.queryRgbBacklight();
+    if (current == null) {
+      throw StateError('Failed to read current RGB backlight block');
+    }
+    final dataBlock = TelinkB80ConfigBlockCodec.patchRgbBacklight(
+      current.raw,
+      enabled: patch.enabled,
+      modeId: patch.modeId,
+      brightness: patch.brightness,
+      speed: patch.speed,
+      red: patch.red,
+      green: patch.green,
+      blue: patch.blue,
+      sleepWire: patch.sleepWire,
     );
 
     await session.setRgbBacklight(dataBlock);

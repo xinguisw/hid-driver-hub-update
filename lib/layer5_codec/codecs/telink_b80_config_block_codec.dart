@@ -64,6 +64,42 @@ class TelinkB80ConfigBlockCodec {
     return block;
   }
 
+  /// Applies a semantic patch to the live E2 RGB-backlight block.
+  ///
+  /// Layout is from the Telink B80 reference: enable[0], mode[1], brightness[2],
+  /// speed[3], RGB[4..6], and sleep time[7]. Unspecified fields remain exactly
+  /// as read from the mouse.
+  static Uint8List patchRgbBacklight(
+    List<int> current, {
+    bool? enabled,
+    int? modeId,
+    int? brightness,
+    int? speed,
+    int? red,
+    int? green,
+    int? blue,
+    int? sleepWire,
+  }) {
+    if (current.length != rgbBacklightLength) {
+      throw ArgumentError.value(
+        current.length,
+        'current.length',
+        'Telink B80 E2 block must be $rgbBacklightLength bytes',
+      );
+    }
+    final block = Uint8List.fromList(current);
+    const translate = TranslationCodec();
+    if (enabled != null) block[0] = translate.triStateBoolToWire(enabled);
+    if (modeId != null) block[1] = _byte(modeId, 'modeId');
+    if (brightness != null) block[2] = _byte(brightness, 'brightness');
+    if (speed != null) block[3] = _byte(speed, 'speed');
+    if (red != null) block[4] = _byte(red, 'red');
+    if (green != null) block[5] = _byte(green, 'green');
+    if (blue != null) block[6] = _byte(blue, 'blue');
+    if (sleepWire != null) block[7] = _byte(sleepWire, 'sleepWire');
+    return block;
+  }
+
   /// Builds the complete E2 RGB-backlight data block from semantic values.
   static Uint8List encodeRgbBacklight({
     required bool enabled,

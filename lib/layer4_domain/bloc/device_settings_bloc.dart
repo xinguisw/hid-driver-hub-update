@@ -87,23 +87,33 @@ class ParameterSettingsPatch {
 typedef ParameterSettingsCommit =
     Future<void> Function(ParameterSettingsPatch patch);
 
-/// Staged RGB backlight fields for one 0xE2 SET (FR-RGB-001..004).
+/// Semantic patch for the Telink E2 RGB-backlight block (FR-RGB-001..004).
 ///
-/// Carried by [RgbBacklightCommit]; L4 builds this from staged values overlaid
-/// on the last-synced block, and DeviceScope (L1) encodes the 8-byte wire block.
-/// brightness/speed are level indices; sleepTime is a catalog option index.
-typedef StagedRgbBacklight = ({
-  bool enable,
-  int modeId,
-  int brightness,
-  int speed,
-  int r,
-  int g,
-  int b,
-  int sleepTime,
-});
+/// Null means preserve the live E2 byte. L4 owns what the user changed, while
+/// L5 owns the E2 byte positions and tri-state translation.
+class RgbBacklightPatch {
+  const RgbBacklightPatch({
+    this.enabled,
+    this.modeId,
+    this.brightness,
+    this.speed,
+    this.red,
+    this.green,
+    this.blue,
+    this.sleepWire,
+  });
 
-typedef RgbBacklightCommit = Future<void> Function(StagedRgbBacklight values);
+  final bool? enabled;
+  final int? modeId;
+  final int? brightness;
+  final int? speed;
+  final int? red;
+  final int? green;
+  final int? blue;
+  final int? sleepWire;
+}
+
+typedef RgbBacklightCommit = Future<void> Function(RgbBacklightPatch patch);
 
 /// FR-ARC-014c: escalation callback invoked when consecutive failures reach threshold.
 ///
@@ -2472,8 +2482,9 @@ class DeviceSettingsBloc
       return;
     }
 
-    // Overlay staged values on the last-synced block (single 0xE2 SET).
-    final enable = state.rgbEnableStaging ?? synced.rgbEnable ?? false;
+    // Overlay staged values only for validation and the refreshed UI. The
+    // actual E2 SET is a semantic patch: DeviceScope re-reads the live block
+    // and L5 preserves every unedited byte, including unknown firmware data.
     final modeId = state.rgbModeIdStaging ?? synced.rgbModeId ?? 0;
     final brightness = state.rgbBrightnessStaging ?? synced.rgbBrightness ?? 0;
     final speed = state.rgbSpeedStaging ?? synced.rgbSpeed ?? 0;
@@ -2526,21 +2537,21 @@ class DeviceSettingsBloc
       }
     }
 
-    final staged = (
-      enable: enable,
-      modeId: modeId,
-      brightness: brightness,
-      speed: speed,
-      r: r,
-      g: g,
-      b: b,
-      sleepTime: sleepTime,
+    final patch = RgbBacklightPatch(
+      enabled: state.rgbEnableStaging,
+      modeId: state.rgbModeIdStaging,
+      brightness: state.rgbBrightnessStaging,
+      speed: state.rgbSpeedStaging,
+      red: state.rgbRStaging,
+      green: state.rgbGStaging,
+      blue: state.rgbBStaging,
+      sleepWire: state.rgbSleepTimeStaging,
     );
 
     emit(state.copyWith(committing: true, clearError: true));
 
     try {
-      await commitRgbBacklight(staged);
+      await commitRgbBacklight(patch);
     } catch (e) {
       debugPrint('[bloc] save backlight failed: $e');
       final failures = state.consecutiveFailures + 1;
@@ -2562,7 +2573,7 @@ class DeviceSettingsBloc
     // why: build next view via copyWith + clearStaging so unrelated sibling
     // staging is not silently dropped (see DPI remove/save race fix).
     final nextSynced = synced.copyWith(
-      rgbEnable: enable,
+      rgbEnable: state.rgbEnableStaging,
       rgbModeId: modeId,
       rgbModeLabel: const TranslationCodec().rgbModeToLabel(modeId),
       rgbBrightness: brightness,

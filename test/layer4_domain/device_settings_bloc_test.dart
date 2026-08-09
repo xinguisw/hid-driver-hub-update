@@ -2132,7 +2132,7 @@ void main() {
     );
 
     test('toggle off is retained in the single E2 save block', () async {
-      StagedRgbBacklight? written;
+      RgbBacklightPatch? written;
       final bloc = buildBloc(onCommit: (value) async => written = value);
       bloc.add(DeviceSettingsHydrated(backlightSettings()));
       await pumpEventQueue();
@@ -2142,10 +2142,10 @@ void main() {
       await pumpEventQueue();
 
       expect(written, isNotNull);
-      expect(written!.enable, false);
-      expect(written!.modeId, 3);
-      expect(written!.brightness, 2);
-      expect(written!.speed, 1);
+      expect(written!.enabled, false);
+      expect(written!.modeId, isNull);
+      expect(written!.brightness, isNull);
+      expect(written!.speed, isNull);
       expect(bloc.state.synced?.rgbEnable, false);
       expect(bloc.state.rgbEnableStaging, isNull);
       expect(bloc.state.isDirty, false);
@@ -2164,7 +2164,7 @@ void main() {
           sleepTimeOptions: [30, 60, 300],
         ),
       );
-      StagedRgbBacklight? written;
+      RgbBacklightPatch? written;
       final bloc = buildBloc(
         capabilities: caps,
         onCommit: (value) async => written = value,
@@ -2179,48 +2179,46 @@ void main() {
       await pumpEventQueue();
 
       expect(written, isNotNull);
-      expect(written!.enable, false);
-      expect(written!.speed, 0xFF);
+      expect(written!.enabled, false);
+      expect(written!.speed, isNull);
       expect(bloc.state.lastError, isNull);
       expect(bloc.state.isDirty, false);
       await bloc.close();
     });
 
-    test(
-      'save commits one staged block overlaid on synced and syncs state',
-      () async {
-        StagedRgbBacklight? written;
-        final bloc = buildBloc(onCommit: (v) async => written = v);
-        bloc.add(DeviceSettingsHydrated(backlightSettings()));
-        await pumpEventQueue();
-        bloc.add(const DeviceSettingsBacklightBrightnessRequested(level: 4));
-        await pumpEventQueue();
-        bloc.add(
-          const DeviceSettingsBacklightColorRequested(r: 200, g: 100, b: 50),
-        );
-        await pumpEventQueue();
-        bloc.add(const DeviceSettingsSaveBacklightRequested());
-        await pumpEventQueue();
+    test('save sends only staged backlight fields and syncs state', () async {
+      RgbBacklightPatch? written;
+      final bloc = buildBloc(onCommit: (v) async => written = v);
+      bloc.add(DeviceSettingsHydrated(backlightSettings()));
+      await pumpEventQueue();
+      bloc.add(const DeviceSettingsBacklightBrightnessRequested(level: 4));
+      await pumpEventQueue();
+      bloc.add(
+        const DeviceSettingsBacklightColorRequested(r: 200, g: 100, b: 50),
+      );
+      await pumpEventQueue();
+      bloc.add(const DeviceSettingsSaveBacklightRequested());
+      await pumpEventQueue();
 
-        // Staged fields win; untouched fields fall back to synced.
-        expect(written, isNotNull);
-        expect(written!.enable, true);
-        expect(written!.modeId, 3);
-        expect(written!.brightness, 4);
-        expect(written!.speed, 1);
-        expect(written!.r, 200);
-        expect(written!.g, 100);
-        expect(written!.b, 50);
-        expect(written!.sleepTime, 0);
+      // Only the user's staged fields are handed to the E2 read/patch/write
+      // boundary; it preserves all untouched device bytes.
+      expect(written, isNotNull);
+      expect(written!.enabled, isNull);
+      expect(written!.modeId, isNull);
+      expect(written!.brightness, 4);
+      expect(written!.speed, isNull);
+      expect(written!.red, 200);
+      expect(written!.green, 100);
+      expect(written!.blue, 50);
+      expect(written!.sleepWire, isNull);
 
-        expect(bloc.state.synced?.rgbBrightness, 4);
-        expect(bloc.state.synced?.rgbR, 200);
-        expect(bloc.state.rgbBrightnessStaging, isNull);
-        expect(bloc.state.rgbRStaging, isNull);
-        expect(bloc.state.isDirty, false);
-        await bloc.close();
-      },
-    );
+      expect(bloc.state.synced?.rgbBrightness, 4);
+      expect(bloc.state.synced?.rgbR, 200);
+      expect(bloc.state.rgbBrightnessStaging, isNull);
+      expect(bloc.state.rgbRStaging, isNull);
+      expect(bloc.state.isDirty, false);
+      await bloc.close();
+    });
 
     test('save rejects brightness outside capability levels', () async {
       final caps = DeviceCapabilities(

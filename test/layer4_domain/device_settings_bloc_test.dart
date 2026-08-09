@@ -2152,6 +2152,40 @@ void main() {
       await bloc.close();
     });
 
+    test('enable-only save preserves an out-of-catalog device speed', () async {
+      final caps = DeviceCapabilities(
+        devId: '03AA',
+        displayNameKey: 'device.m7x_pro',
+        rgbBacklight: const RgbBacklightCapabilities(
+          present: true,
+          modes: [RgbMode(id: 3, nameKey: 'light.solid', supportsColor: true)],
+          brightnessLevels: 5,
+          speedLevels: 5,
+          sleepTimeOptions: [30, 60, 300],
+        ),
+      );
+      StagedRgbBacklight? written;
+      final bloc = buildBloc(
+        capabilities: caps,
+        onCommit: (value) async => written = value,
+      );
+      bloc.add(
+        DeviceSettingsHydrated(backlightSettings().copyWith(rgbSpeed: 0xFF)),
+      );
+      await pumpEventQueue();
+      bloc.add(const DeviceSettingsBacklightEnableRequested(enable: false));
+      await pumpEventQueue();
+      bloc.add(const DeviceSettingsSaveBacklightRequested());
+      await pumpEventQueue();
+
+      expect(written, isNotNull);
+      expect(written!.enable, false);
+      expect(written!.speed, 0xFF);
+      expect(bloc.state.lastError, isNull);
+      expect(bloc.state.isDirty, false);
+      await bloc.close();
+    });
+
     test(
       'save commits one staged block overlaid on synced and syncs state',
       () async {

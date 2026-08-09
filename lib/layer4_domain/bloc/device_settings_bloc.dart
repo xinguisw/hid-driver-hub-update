@@ -2482,17 +2482,23 @@ class DeviceSettingsBloc
     final b = state.rgbBStaging ?? synced.rgbB ?? 0;
     final sleepTime = state.rgbSleepTimeStaging ?? synced.rgbSleepTime ?? 0;
 
-    // Validate against the active device's capability schema (FR-OPS-003,
-    // FR-RGB-001/002/004): never send an out-of-range or unsupported value.
+    // Validate only values the user staged against the active capability
+    // schema (FR-OPS-003, FR-RGB-001/002/004). Values that arrived from the
+    // device are preserved verbatim when the user changes another field: the
+    // device may use a firmware-specific representation such as 0xFF for a
+    // current speed value, which must not prevent an enable-only E2 update.
     final caps = activeCapabilities?.rgbBacklight;
     if (caps != null && caps.present) {
-      if (caps.modes.isNotEmpty && !caps.modes.any((m) => m.id == modeId)) {
+      if (state.rgbModeIdStaging != null &&
+          caps.modes.isNotEmpty &&
+          !caps.modes.any((m) => m.id == modeId)) {
         emit(
           state.copyWith(lastError: 'save backlight: unsupported mode $modeId'),
         );
         return;
       }
-      if (brightness < 0 || brightness >= caps.brightnessLevels) {
+      if (state.rgbBrightnessStaging != null &&
+          (brightness < 0 || brightness >= caps.brightnessLevels)) {
         emit(
           state.copyWith(
             lastError: 'save backlight: brightness $brightness out of range',
@@ -2500,7 +2506,8 @@ class DeviceSettingsBloc
         );
         return;
       }
-      if (speed < 0 || speed >= caps.speedLevels) {
+      if (state.rgbSpeedStaging != null &&
+          (speed < 0 || speed >= caps.speedLevels)) {
         emit(
           state.copyWith(
             lastError: 'save backlight: speed $speed out of range',
@@ -2508,7 +2515,8 @@ class DeviceSettingsBloc
         );
         return;
       }
-      if (sleepTime < 0 || sleepTime >= caps.sleepTimeOptions.length) {
+      if (state.rgbSleepTimeStaging != null &&
+          (sleepTime < 0 || sleepTime >= caps.sleepTimeOptions.length)) {
         emit(
           state.copyWith(
             lastError: 'save backlight: sleep index $sleepTime out of range',

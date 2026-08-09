@@ -546,7 +546,8 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                         p.rgbRStaging != n.rgbRStaging ||
                         p.rgbGStaging != n.rgbGStaging ||
                         p.rgbBStaging != n.rgbBStaging ||
-                        p.rgbSleepTimeStaging != n.rgbSleepTimeStaging,
+                        p.rgbSleepTimeStaging != n.rgbSleepTimeStaging ||
+                        p.lastError != n.lastError,
                     builder: (context, view) {
                       final synced = view.synced;
                       final bloc = context.read<DeviceSettingsBloc>();
@@ -620,6 +621,19 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                               bloc.add(const DeviceSettingsCancelRequested());
                             },
                           ),
+                          if (view.lastError != null)
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                              child: Align(
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  view.lastError!,
+                                  style: TextStyle(
+                                    color: Theme.of(context).colorScheme.error,
+                                  ),
+                                ),
+                              ),
+                            ),
                         ],
                       );
                     },

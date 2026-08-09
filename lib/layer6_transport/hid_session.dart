@@ -4,13 +4,16 @@ import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:hid_tool/hid_tool.dart';
 
+import 'package:driver_hub/layer5_codec/protocol_transport.dart';
+
 import 'send_queue.dart';
 
 /// [receiveReport] aborted because [close] ran while waiting.
 class HidSessionClosedException implements Exception {
   final String message;
-  const HidSessionClosedException(
-      [this.message = 'HidSession closed while a report receive was in flight.']);
+  const HidSessionClosedException([
+    this.message = 'HidSession closed while a report receive was in flight.',
+  ]);
   @override
   String toString() => 'HidSessionClosedException: $message';
 }
@@ -37,7 +40,7 @@ class _PendingWait {
 /// Desktop: byte stream + size by first bytes.
 /// Web: each WebHID inputreport is one burst — flush whole buffer on short idle
 /// (avoids GET opcode 0x07 vs report-id 0x07 size mistakes).
-class HidSession {
+class HidSession implements ProtocolTransport {
   final HidDevice _device;
   final SendQueue _queue = SendQueue();
   bool _open = false;
@@ -48,8 +51,7 @@ class HidSession {
   _PendingWait? _pending;
   Timer? _webIdleFlush;
 
-  final _unsolicited =
-      StreamController<Uint8List>.broadcast(sync: true);
+  final _unsolicited = StreamController<Uint8List>.broadcast(sync: true);
 
   HidSession(this._device);
 
@@ -60,6 +62,7 @@ class HidSession {
   Future<T> enqueue<T>(Future<T> Function() task) => _queue.enqueue(task);
 
   /// Send [data], then wait for the first pump report where [match] is true.
+  @override
   Future<Uint8List> sendAndWait({
     required Uint8List data,
     required int reportId,
@@ -67,12 +70,14 @@ class HidSession {
     required bool Function(Uint8List raw) match,
     Duration timeout = const Duration(milliseconds: 1000),
   }) {
-    return enqueue(() => _sendAndWaitBody(
-          data: data,
-          reportId: reportId,
-          match: match,
-          timeout: timeout,
-        ));
+    return enqueue(
+      () => _sendAndWaitBody(
+        data: data,
+        reportId: reportId,
+        match: match,
+        timeout: timeout,
+      ),
+    );
   }
 
   Future<Uint8List> _sendAndWaitBody({
@@ -85,10 +90,12 @@ class HidSession {
     final timer = Timer(timeout, () {
       if (!done.isCompleted) {
         if (_pending?.completer == done) _pending = null;
-        done.completeError(TimeoutException(
-          'HidSession.sendAndWait timed out waiting for a matching report',
-          timeout,
-        ));
+        done.completeError(
+          TimeoutException(
+            'HidSession.sendAndWait timed out waiting for a matching report',
+            timeout,
+          ),
+        );
       }
     });
     _pending = _PendingWait(match: match, completer: done, timer: timer);

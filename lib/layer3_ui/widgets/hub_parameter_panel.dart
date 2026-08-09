@@ -13,13 +13,13 @@ class HubParameterPanel extends StatelessWidget {
     this.performanceOptions,
     this.buttonDebounceOptions,
     this.sleepTimeOptions,
-    this.hasSensorTuning = true,
-    this.hasLod = true,
-    this.hasAngleTune = true,
-    this.hasPerformance = true,
-    this.hasButtonDebounce = true,
-    this.hasWheelInvert = true,
-    this.hasSleepTime = true,
+    this.hasSensorTuning = false,
+    this.hasLod = false,
+    this.hasAngleTune = false,
+    this.hasPerformance = false,
+    this.hasButtonDebounce = false,
+    this.hasWheelInvert = false,
+    this.hasSleepTime = false,
     this.rippleOn,
     this.rippleStaging,
     this.angleSnapOn,
@@ -81,7 +81,8 @@ class HubParameterPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasSensorContent = hasSensorTuning || hasLod || hasAngleTune || hasPerformance;
+    final hasSensorContent =
+        hasSensorTuning || hasLod || hasAngleTune || hasPerformance;
     final hasOtherContent = hasButtonDebounce || hasWheelInvert || hasSleepTime;
 
     return SingleChildScrollView(
@@ -94,7 +95,7 @@ class HubParameterPanel extends StatelessWidget {
             const SizedBox(height: 8),
             _SensorFeatureGroup(
               lodOptions: lodOptions ?? const [],
-              performanceOptions: performanceOptions ?? const [0, 1, 2],
+              performanceOptions: performanceOptions ?? const [],
               // why: staging paints ahead of synced so the switch follows the tap.
               rippleOn: rippleStaging ?? rippleOn ?? false,
               angleSnapOn: angleSnapStaging ?? angleSnapOn ?? false,
@@ -340,7 +341,6 @@ class _LodBox extends StatelessWidget {
       ),
     );
   }
-
 }
 
 class _AngleTuneBox extends StatelessWidget {
@@ -606,10 +606,7 @@ class _OptionsBox extends StatelessWidget {
 /// Backed by the tri-state wheel-direction byte (0xFF/0x0F/0x00); the bool is
 /// the decoded "invert" flag. L4 owns encode/decode, L3 only paints.
 class _WheelBox extends StatelessWidget {
-  const _WheelBox({
-    required this.invert,
-    required this.onInvertChanged,
-  });
+  const _WheelBox({required this.invert, required this.onInvertChanged});
 
   final bool invert;
   final ValueChanged<bool>? onInvertChanged;

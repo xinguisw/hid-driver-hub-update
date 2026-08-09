@@ -1,19 +1,17 @@
 import 'dart:typed_data';
 
-import 'package:driver_hub/layer4_domain/models/macro.dart';
 import 'package:driver_hub/layer5_codec/macro_codec.dart';
 import 'package:driver_hub/layer5_codec/utils/crc16.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  const macro = MacroDefinition(
+  const macro = MacroTransferDefinition(
     slot: 3,
-    name: 'M3',
-    mode: MacroMode.playOnHold,
+    modeWire: 2,
     loopTimes: 2,
     actions: [
-      MacroAction(keyCode: 0x04, isBreak: false, delay: 5),
-      MacroAction(keyCode: 0xF1, isBreak: true, delay: 7),
+      MacroTransferAction(keyCode: 0x04, isBreak: false, delay: 5),
+      MacroTransferAction(keyCode: 0xF1, isBreak: true, delay: 7),
     ],
   );
 

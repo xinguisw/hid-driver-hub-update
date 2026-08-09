@@ -34,6 +34,8 @@ typedef SensorTuningCommit =
     Future<void> Function(bool rippleControl, bool angleSnap);
 
 typedef AngleTuneCommit = Future<void> Function(int wireValue);
+typedef AngleTuneSettingsCommit =
+    Future<void> Function(bool enabled, int wireValue);
 
 typedef LodCommit = Future<void> Function(int wire);
 
@@ -42,6 +44,48 @@ typedef PerformanceCommit = Future<void> Function(int wire);
 typedef OtherFeatureCommit = Future<void> Function(int wire);
 
 typedef WheelInvertCommit = Future<void> Function(bool invert);
+
+/// Semantic patch for the Telink D4 Parameter Setting block.
+///
+/// Nullable fields mean "preserve the synchronized device value". L4 owns
+/// staging; L5 owns the actual D4 byte positions and tri-state encoding.
+class ParameterSettingsPatch {
+  const ParameterSettingsPatch({
+    this.rippleEnabled,
+    this.angleSnapEnabled,
+    this.angleTuneEnabled,
+    this.angleTuneWire,
+    this.lodWire,
+    this.performanceWire,
+    this.debounceWire,
+    this.sleepWire,
+    this.wheelInvert,
+  });
+
+  final bool? rippleEnabled;
+  final bool? angleSnapEnabled;
+  final bool? angleTuneEnabled;
+  final int? angleTuneWire;
+  final int? lodWire;
+  final int? performanceWire;
+  final int? debounceWire;
+  final int? sleepWire;
+  final bool? wheelInvert;
+
+  bool get isEmpty =>
+      rippleEnabled == null &&
+      angleSnapEnabled == null &&
+      angleTuneEnabled == null &&
+      angleTuneWire == null &&
+      lodWire == null &&
+      performanceWire == null &&
+      debounceWire == null &&
+      sleepWire == null &&
+      wheelInvert == null;
+}
+
+typedef ParameterSettingsCommit =
+    Future<void> Function(ParameterSettingsPatch patch);
 
 /// Staged RGB backlight fields for one 0xE2 SET (FR-RGB-001..004).
 ///
@@ -94,11 +138,13 @@ class DeviceSettingsBloc
     this.commitDpiConfigurationDefaults,
     required this.commitSensorTuning,
     required this.commitAngleTune,
+    this.commitAngleTuneSettings,
     required this.commitLod,
     required this.commitPerformance,
     required this.commitDebounce,
     required this.commitSleep,
     required this.commitWheelInvert,
+    this.commitParameterSettings,
     required this.commitRgbBacklight,
     ButtonActionLabelFn? actionLabelOf,
     ButtonIdLabelFn? buttonIdLabelOf,
@@ -149,6 +195,7 @@ class DeviceSettingsBloc
     on<DeviceSettingsSaveSleepTimeRequested>(_onSaveSleep);
     on<DeviceSettingsWheelInvertRequested>(_onWheelInvertRequested);
     on<DeviceSettingsSaveWheelInvertRequested>(_onSaveWheelInvert);
+    on<DeviceSettingsSaveParameterSettingsRequested>(_onSaveParameterSettings);
     on<DeviceSettingsBacklightEnableRequested>(_onBacklightEnableRequested);
     on<DeviceSettingsBacklightModeRequested>(_onBacklightModeRequested);
     on<DeviceSettingsBacklightColorRequested>(_onBacklightColorRequested);
@@ -168,11 +215,13 @@ class DeviceSettingsBloc
   final DpiConfigurationDefaultsCommit? commitDpiConfigurationDefaults;
   final SensorTuningCommit commitSensorTuning;
   final AngleTuneCommit commitAngleTune;
+  final AngleTuneSettingsCommit? commitAngleTuneSettings;
   final LodCommit commitLod;
   final PerformanceCommit commitPerformance;
   final OtherFeatureCommit commitDebounce;
   final OtherFeatureCommit commitSleep;
   final WheelInvertCommit commitWheelInvert;
+  final ParameterSettingsCommit? commitParameterSettings;
   final RgbBacklightCommit commitRgbBacklight;
   final DeviceCapabilities? capabilities;
   final CapabilitiesLookup? capabilitiesLookup;
@@ -1627,7 +1676,8 @@ class DeviceSettingsBloc
     Emitter<DeviceSettingsViewState> emit,
   ) async {
     final angleTuneStaging = state.angleTuneStaging;
-    if (angleTuneStaging == null) {
+    final enabledStaging = state.angleTuneEnabledStaging;
+    if (angleTuneStaging == null && enabledStaging == null) {
       debugPrint('[bloc] save angle tune: nothing dirty');
       return;
     }
@@ -1639,10 +1689,28 @@ class DeviceSettingsBloc
       return;
     }
 
+    final enabled = enabledStaging ?? synced.angleTuneOn;
+    final wireValue = angleTuneStaging ?? synced.angleTune;
+    if (enabled == null || wireValue == null) {
+      emit(
+        state.copyWith(
+          lastError: 'angle tune save unavailable: live value missing',
+        ),
+      );
+      return;
+    }
+
     emit(state.copyWith(committing: true, clearError: true));
 
     try {
-      await commitAngleTune(angleTuneStaging);
+      final transactionalCommit = commitAngleTuneSettings;
+      if (transactionalCommit != null) {
+        await transactionalCommit(enabled, wireValue);
+      } else {
+        // Compatibility for isolated BLoC tests/adapters that only support a
+        // value write. Production DeviceScope always supplies the paired path.
+        await commitAngleTune(wireValue);
+      }
     } catch (e) {
       debugPrint('[bloc] save angle tune failed: $e');
       final failures = state.consecutiveFailures + 1;
@@ -1666,7 +1734,8 @@ class DeviceSettingsBloc
     }
 
     final nextSynced = synced.copyWith(
-      angleTune: angleTuneStaging,
+      angleTuneOn: enabled,
+      angleTune: wireValue,
       angleTuneLabel: null, // will be recomputed from wire value on next GET
       clearError: true,
     );
@@ -1674,6 +1743,7 @@ class DeviceSettingsBloc
       DeviceSettingsViewState(
         synced: nextSynced,
         angleTuneStaging: null,
+        angleTuneEnabledStaging: null,
         isDirty: false,
         committing: false,
         consecutiveFailures: 0,
@@ -2130,6 +2200,93 @@ class DeviceSettingsBloc
       ),
     );
     debugPrint('[bloc] save wheel direction: synced');
+    onSaveCompleted?.call();
+  }
+
+  /// Commits every dirty Parameter Setting field in one D4 transaction.
+  Future<void> _onSaveParameterSettings(
+    DeviceSettingsSaveParameterSettingsRequested event,
+    Emitter<DeviceSettingsViewState> emit,
+  ) async {
+    final synced = state.synced;
+    final commit = commitParameterSettings;
+    if (synced == null) {
+      emit(state.copyWith(lastError: 'parameter save: no synced settings'));
+      return;
+    }
+    if (state.committing || !state.hasAnyStaging) return;
+    if (synced.decodeErrors.contains('sensorOther')) {
+      emit(
+        state.copyWith(lastError: 'parameter save: sensor block unavailable'),
+      );
+      return;
+    }
+    if (commit == null) {
+      emit(state.copyWith(lastError: 'parameter save: commit is not wired'));
+      return;
+    }
+
+    final patch = ParameterSettingsPatch(
+      rippleEnabled: state.rippleControlStaging,
+      angleSnapEnabled: state.angleSnapStaging,
+      angleTuneEnabled: state.angleTuneEnabledStaging,
+      angleTuneWire: state.angleTuneStaging,
+      lodWire: state.lodStaging,
+      performanceWire: state.performanceStaging,
+      debounceWire: state.debounceStaging,
+      sleepWire: state.sleepStaging,
+      wheelInvert: state.wheelInvertStaging,
+    );
+    if (patch.isEmpty) return;
+
+    emit(state.copyWith(committing: true, clearError: true));
+    try {
+      await commit(patch);
+    } catch (e) {
+      final failures = state.consecutiveFailures + 1;
+      emit(
+        state.copyWith(
+          committing: false,
+          lastError: 'parameter save failed: $e',
+          consecutiveFailures: failures,
+        ),
+      );
+      if (failures >= failureEscalateThreshold) {
+        onEscalationRequested?.call(
+          'parameter save failed $failures consecutive times',
+        );
+      }
+      return;
+    }
+
+    final nextSynced = synced.copyWith(
+      rippleOn: patch.rippleEnabled ?? synced.rippleOn,
+      angleSnapOn: patch.angleSnapEnabled ?? synced.angleSnapOn,
+      angleTuneOn: patch.angleTuneEnabled ?? synced.angleTuneOn,
+      angleTune: patch.angleTuneWire ?? synced.angleTune,
+      angleTuneLabel: patch.angleTuneWire == null
+          ? synced.angleTuneLabel
+          : const TranslationCodec().angleTuneWireToLabel(
+              patch.angleTuneWire!,
+              synced.angleTuneOptions ?? const <AngleTuneOption>[],
+            ),
+      lodMm: patch.lodWire ?? synced.lodMm,
+      performance: patch.performanceWire ?? synced.performance,
+      debounceMs: patch.debounceWire ?? synced.debounceMs,
+      sleepSeconds: patch.sleepWire ?? synced.sleepSeconds,
+      wheelInvert: patch.wheelInvert ?? synced.wheelInvert,
+      clearError: true,
+    );
+    emit(
+      state.copyWith(
+        synced: nextSynced,
+        clearStaging: true,
+        committing: false,
+        consecutiveFailures: 0,
+        clearError: true,
+      ),
+    );
+    debugPrint('[bloc] save parameter settings: synced');
     onSaveCompleted?.call();
   }
 

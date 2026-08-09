@@ -4,8 +4,8 @@ import 'package:flutter/material.dart';
 /// Device Setting page — device image (left) + firmware info (right).
 ///
 /// Skeleton: read-only display. Update / Check / Reset are inert (null).
-/// Firmware block title follows the flow: connectionMode USB → Mouse,
-/// 2.4G → Dongle. Version comes from the L4 card snapshot.
+/// Both A8 firmware values are rendered independently. The device card keeps
+/// the mouse value, while this page also shows the receiver/dongle value.
 class HubDeviceSettingPanel extends StatelessWidget {
   const HubDeviceSettingPanel({super.key, required this.card});
 
@@ -13,10 +13,12 @@ class HubDeviceSettingPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final onUsb = card.connectionMode == 0;
-    final title = onUsb ? 'Mouse Firmware Version' : 'Dongle Firmware Version';
-    final version =
-        card.firmwareVersion.isEmpty ? '—' : card.firmwareVersion;
+    final mouseVersion = card.mouseFirmwareVersion.isEmpty
+        ? (card.firmwareVersion.isEmpty ? '—' : card.firmwareVersion)
+        : card.mouseFirmwareVersion;
+    final dongleVersion = card.dongleFirmwareVersion.isEmpty
+        ? '—'
+        : card.dongleFirmwareVersion;
 
     // Both halves hug the center instead of spreading to the edges.
     return Center(
@@ -32,43 +34,14 @@ class HubDeviceSettingPanel extends StatelessWidget {
           Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                width: 320,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  border: Border.all(color: Theme.of(context).colorScheme.outline),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        const Text('Latest version'),
-                        const SizedBox(width: 12),
-                        Text(version),
-                        const Spacer(),
-                        OutlinedButton(
-                          onPressed: null, // skeleton — not wired yet
-                          child: const Text('Check updates'),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton(
-                        onPressed: null, // skeleton — not wired yet
-                        child: const Text('New version & update'),
-                      ),
-                    ),
-                  ],
-                ),
+              _FirmwareBox(
+                title: 'Mouse Firmware Version',
+                version: mouseVersion,
+              ),
+              const SizedBox(height: 12),
+              _FirmwareBox(
+                title: 'Dongle Firmware Version',
+                version: dongleVersion,
               ),
               const SizedBox(height: 24),
               Center(
@@ -78,6 +51,52 @@ class HubDeviceSettingPanel extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FirmwareBox extends StatelessWidget {
+  const _FirmwareBox({required this.title, required this.version});
+
+  final String title;
+  final String version;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 320,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        border: Border.all(color: Theme.of(context).colorScheme.outline),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              const Text('Latest version'),
+              const SizedBox(width: 12),
+              Text(version),
+              const Spacer(),
+              const OutlinedButton(
+                onPressed: null,
+                child: Text('Check updates'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          const SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              onPressed: null,
+              child: Text('New version & update'),
+            ),
           ),
         ],
       ),

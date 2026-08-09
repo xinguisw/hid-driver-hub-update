@@ -1350,6 +1350,7 @@ void main() {
   group('DeviceSettingsBloc angle tune', () {
     DeviceSettingsState angleTuneSettings() => baseSettings().copyWith(
       hasAngleTune: true,
+      angleTuneOn: true,
       angleTune: 2,
       angleTuneLabel: '0°',
     );
@@ -2129,6 +2130,27 @@ void main() {
         await bloc.close();
       },
     );
+
+    test('toggle off is retained in the single E2 save block', () async {
+      StagedRgbBacklight? written;
+      final bloc = buildBloc(onCommit: (value) async => written = value);
+      bloc.add(DeviceSettingsHydrated(backlightSettings()));
+      await pumpEventQueue();
+      bloc.add(const DeviceSettingsBacklightEnableRequested(enable: false));
+      await pumpEventQueue();
+      bloc.add(const DeviceSettingsSaveBacklightRequested());
+      await pumpEventQueue();
+
+      expect(written, isNotNull);
+      expect(written!.enable, false);
+      expect(written!.modeId, 3);
+      expect(written!.brightness, 2);
+      expect(written!.speed, 1);
+      expect(bloc.state.synced?.rgbEnable, false);
+      expect(bloc.state.rgbEnableStaging, isNull);
+      expect(bloc.state.isDirty, false);
+      await bloc.close();
+    });
 
     test(
       'save commits one staged block overlaid on synced and syncs state',

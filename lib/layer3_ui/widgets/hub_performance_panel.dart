@@ -50,38 +50,50 @@ class HubPerformancePanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hasDpi =
+        dpiMin != null &&
+        dpiMax != null &&
+        dpiMaxLevels != null &&
+        dpiStages != null;
+    final selectedReportRate = reportRateStaging ?? reportRateHz;
+    final hasReportRate =
+        reportRateOptions != null &&
+        reportRateOptions!.isNotEmpty &&
+        selectedReportRate != null;
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // DPI Settings
-          const Text('DPI settings'),
-          const SizedBox(height: 8),
-          _DpiSettingsGroup(
-            stages: dpiStages ?? const [],
-            selectedLevel: dpiCurrentLevelStaging ?? dpiCurrentLevel,
-            onLevelSelected: (level) => onDpiLevelSelected?.call(level),
-            dpiMin: dpiMin ?? 50,
-            dpiMax: dpiMax ?? 5000,
-            dpiStep: dpiStep,
-            valueStaging: dpiValueStaging ?? const {},
-            onValueChanged: (pair) => onDpiValueChanged?.call(pair),
-            activeCount: dpiActiveLevelCount ?? 0,
-            maxLevels: dpiMaxLevels ?? 8,
-            onAddStage: () => onDpiStageAdd?.call(),
-            onRemoveStage: () => onDpiStageRemove?.call(),
-            removeEnabled: dpiRemoveEnabled,
-          ),
-          const SizedBox(height: 24),
-          // Report Rate
-          const Text('Report rate'),
-          const SizedBox(height: 8),
-          _ReportRateGroup(
-            options: reportRateOptions ?? const [125, 250, 500, 1000],
-            selectedHz: reportRateStaging ?? reportRateHz ?? 250,
-            onChanged: onReportRateChanged,
-          ),
+          if (hasDpi) ...[
+            const Text('DPI settings'),
+            const SizedBox(height: 8),
+            _DpiSettingsGroup(
+              stages: dpiStages!,
+              selectedLevel: dpiCurrentLevelStaging ?? dpiCurrentLevel,
+              onLevelSelected: (level) => onDpiLevelSelected?.call(level),
+              dpiMin: dpiMin!,
+              dpiMax: dpiMax!,
+              dpiStep: dpiStep,
+              valueStaging: dpiValueStaging ?? const {},
+              onValueChanged: (pair) => onDpiValueChanged?.call(pair),
+              activeCount: dpiActiveLevelCount ?? 0,
+              maxLevels: dpiMaxLevels!,
+              onAddStage: () => onDpiStageAdd?.call(),
+              onRemoveStage: () => onDpiStageRemove?.call(),
+              removeEnabled: dpiRemoveEnabled,
+            ),
+          ],
+          if (hasDpi && hasReportRate) const SizedBox(height: 24),
+          if (hasReportRate) ...[
+            const Text('Report rate'),
+            const SizedBox(height: 8),
+            _ReportRateGroup(
+              options: reportRateOptions!,
+              selectedHz: selectedReportRate,
+              onChanged: onReportRateChanged,
+            ),
+          ],
         ],
       ),
     );
@@ -167,7 +179,9 @@ class _DpiSettingsGroup extends StatelessWidget {
               const SizedBox(width: 8),
               // Remove stage: disabled when only one remains or no selection.
               InkWell(
-                onTap: activeCount <= 1 || !removeEnabled ? null : onRemoveStage,
+                onTap: activeCount <= 1 || !removeEnabled
+                    ? null
+                    : onRemoveStage,
                 child: const Padding(
                   padding: EdgeInsets.symmetric(horizontal: 6),
                   child: Text(
@@ -200,9 +214,8 @@ class _DpiSettingsGroup extends StatelessWidget {
                       min: dpiMin,
                       max: dpiMax,
                       step: dpiStep,
-                      onValueChanged: (value) => onValueChanged(
-                        (level: stage.level, value: value),
-                      ),
+                      onValueChanged: (value) =>
+                          onValueChanged((level: stage.level, value: value)),
                     ),
                 ],
               );
@@ -290,8 +303,9 @@ class _DpiSliderRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final divisions =
-        step == null || step! < 1 ? null : ((max - min) ~/ step!).clamp(1, 1000);
+    final divisions = step == null || step! < 1
+        ? null
+        : ((max - min) ~/ step!).clamp(1, 1000);
     return Container(
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(

@@ -1,4 +1,4 @@
-import 'package:driver_hub/layer2_capabilities/capabilities.dart';
+import 'package:driver_hub/layer4_domain/models/device_settings_state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -31,10 +31,10 @@ class HubBacklightPanel extends StatelessWidget {
     this.onSleepChanged,
   });
 
-  final List<RgbMode>? rgbModes;
+  final List<RgbModeData>? rgbModes;
 
   /// Display labels parallel to [rgbModes] (human-readable, L5-owned). When
-  /// null or mismatched, the mode dropdown falls back to `RgbMode.nameKey`.
+  /// null or mismatched, the mode dropdown falls back to `RgbModeData.nameKey`.
   final List<String>? rgbModeLabels;
   final bool? rgbEnable;
   final int? rgbModeId;
@@ -159,6 +159,7 @@ class _BacklightToggleBox extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: theme.colorScheme.surfaceContainerHighest,
+        border: Border.all(color: theme.colorScheme.outline),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
@@ -181,17 +182,16 @@ class _ModeBox extends StatelessWidget {
     this.onModeChanged,
   });
 
-  final List<RgbMode> rgbModes;
+  final List<RgbModeData> rgbModes;
   final int? rgbModeId;
 
   /// Display labels parallel to [rgbModes]; falls back to `RgbMode.nameKey`.
   final List<String>? rgbModeLabels;
   final ValueChanged<int>? onModeChanged;
 
-  String _labelAt(int i) =>
-      (rgbModeLabels != null && i < rgbModeLabels!.length)
-          ? rgbModeLabels![i]
-          : rgbModes[i].nameKey;
+  String _labelAt(int i) => (rgbModeLabels != null && i < rgbModeLabels!.length)
+      ? rgbModeLabels![i]
+      : rgbModes[i].nameKey;
 
   @override
   Widget build(BuildContext context) {
@@ -200,6 +200,7 @@ class _ModeBox extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: theme.colorScheme.surfaceContainerHighest,
+        border: Border.all(color: theme.colorScheme.outline),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
@@ -207,10 +208,9 @@ class _ModeBox extends StatelessWidget {
           const Text('Mode'),
           const Spacer(),
           DropdownButton<int>(
-            value:
-                rgbModeId != null && rgbModes.any((m) => m.id == rgbModeId)
-                    ? rgbModeId
-                    : null,
+            value: rgbModeId != null && rgbModes.any((m) => m.id == rgbModeId)
+                ? rgbModeId
+                : null,
             hint: const Text('Select'),
             underline: const SizedBox.shrink(),
             items: [
@@ -258,11 +258,11 @@ class _ColorBoxState extends State<_ColorBox> {
   late TextEditingController _hexController;
 
   static Color _rgbToColor(int? r, int? g, int? b) => Color.fromARGB(
-        255,
-        (r ?? 0).clamp(0, 255),
-        (g ?? 0).clamp(0, 255),
-        (b ?? 0).clamp(0, 255),
-      );
+    255,
+    (r ?? 0).clamp(0, 255),
+    (g ?? 0).clamp(0, 255),
+    (b ?? 0).clamp(0, 255),
+  );
 
   static String _hexOf(Color c) =>
       '${(c.r * 255.0).round().clamp(0, 255).toRadixString(16).padLeft(2, '0')}'
@@ -329,6 +329,7 @@ class _ColorBoxState extends State<_ColorBox> {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: theme.colorScheme.surfaceContainerHighest,
+        border: Border.all(color: theme.colorScheme.outline),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
@@ -368,8 +369,7 @@ class _ColorBoxState extends State<_ColorBox> {
                       vertical: 8,
                     ),
                   ),
-                  style:
-                      const TextStyle(fontSize: 13, fontFamily: 'monospace'),
+                  style: const TextStyle(fontSize: 13, fontFamily: 'monospace'),
                   onSubmitted: _onHexSubmitted,
                 ),
               ),
@@ -393,8 +393,12 @@ class _ColorBoxState extends State<_ColorBox> {
                       children: [
                         Positioned.fill(
                           child: ColoredBox(
-                            color: HSVColor.fromAHSV(1, _hsv.hue, 1, 1)
-                                .toColor(),
+                            color: HSVColor.fromAHSV(
+                              1,
+                              _hsv.hue,
+                              1,
+                              1,
+                            ).toColor(),
                           ),
                         ),
                         const Positioned.fill(
@@ -425,10 +429,7 @@ class _ColorBoxState extends State<_ColorBox> {
                             height: 18,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              border: Border.all(
-                                color: Colors.white,
-                                width: 2,
-                              ),
+                              border: Border.all(color: Colors.white, width: 2),
                             ),
                           ),
                         ),
@@ -461,26 +462,26 @@ class _ColorBoxState extends State<_ColorBox> {
                               gradient: LinearGradient(
                                 colors: [
                                   for (var i = 0; i <= 6; i++)
-                                    HSVColor.fromAHSV(1, i * 60.0, 1, 1)
-                                        .toColor(),
+                                    HSVColor.fromAHSV(
+                                      1,
+                                      i * 60.0,
+                                      1,
+                                      1,
+                                    ).toColor(),
                                 ],
                               ),
                             ),
                           ),
                         ),
                         Positioned(
-                          left:
-                              (_hsv.hue / 360 * w - 9).clamp(0.0, w - 18),
+                          left: (_hsv.hue / 360 * w - 9).clamp(0.0, w - 18),
                           top: -1,
                           child: Container(
                             width: 18,
                             height: 18,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              border: Border.all(
-                                color: Colors.white,
-                                width: 2,
-                              ),
+                              border: Border.all(color: Colors.white, width: 2),
                             ),
                           ),
                         ),
@@ -497,10 +498,7 @@ class _ColorBoxState extends State<_ColorBox> {
 
     if (widget.enabled) return body;
     // why: signal "color not used by this mode" — dim and swallow all touches.
-    return Opacity(
-      opacity: 0.45,
-      child: IgnorePointer(child: body),
-    );
+    return Opacity(opacity: 0.45, child: IgnorePointer(child: body));
   }
 }
 
@@ -535,6 +533,7 @@ class _LevelBox extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: theme.colorScheme.surfaceContainerHighest,
+        border: Border.all(color: theme.colorScheme.outline),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
@@ -557,6 +556,11 @@ class _LevelBox extends StatelessWidget {
                         color: i == selected
                             ? theme.colorScheme.secondaryContainer
                             : theme.colorScheme.surface,
+                        border: Border.all(
+                          color: i == selected
+                              ? theme.colorScheme.secondary
+                              : theme.colorScheme.outline,
+                        ),
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(

@@ -1,6 +1,9 @@
 import 'package:driver_hub/layer4_domain/app_settings_repository.dart';
 import 'package:driver_hub/layer4_domain/device_scope.dart';
+import 'package:driver_hub/layer4_domain/macro_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import '../test_support/fake_device_runtime.dart';
 
 class _MemoryAppSettingsRepository implements AppSettingsRepository {
   int? savedThreshold;
@@ -19,7 +22,11 @@ void main() {
     'DeviceScope validates and persists the global low-battery threshold',
     () async {
       final repository = _MemoryAppSettingsRepository();
-      final scope = DeviceScope(appSettingsRepository: repository);
+      final scope = DeviceScope(
+        runtime: const FakeDeviceRuntime(),
+        macroRepository: InMemoryMacroRepository(),
+        appSettingsRepository: repository,
+      );
 
       expect(
         scope.batteryLowThreshold.value,

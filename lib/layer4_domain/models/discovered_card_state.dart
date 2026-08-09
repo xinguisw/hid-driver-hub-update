@@ -5,12 +5,20 @@
 /// (tier 1) consumes them. This keeps session and UI decoupled.
 ///
 /// [batteryPercentage] below 0 → card shows "Battery —" (soft battery / unknown).
-/// Empty [firmwareVersion] → "Firmware —".
+/// Empty firmware labels → "—".
 class DiscoveredCardState {
   final String devId;
   final String displayName;
   final int connectionMode; // 0=USB, 1=2.4G
+  /// Mouse firmware for the device card. Kept for existing card consumers.
   final String firmwareVersion;
+
+  /// Mouse firmware shown in Device Setting alongside the receiver firmware.
+  final String mouseFirmwareVersion;
+
+  /// Dongle firmware shown in Device Setting. Empty on query failure.
+  final String dongleFirmwareVersion;
+
   /// 0..100, or -1 when unknown (A4 failed; may update via OSD/poll).
   final int batteryPercentage;
   final bool isCharging;
@@ -27,6 +35,8 @@ class DiscoveredCardState {
     required this.displayName,
     required this.connectionMode,
     required this.firmwareVersion,
+    this.mouseFirmwareVersion = '',
+    this.dongleFirmwareVersion = '',
     required this.batteryPercentage,
     required this.isCharging,
     required this.physicalHandle,
@@ -39,6 +49,8 @@ class DiscoveredCardState {
     String? displayName,
     int? connectionMode,
     String? firmwareVersion,
+    String? mouseFirmwareVersion,
+    String? dongleFirmwareVersion,
     int? batteryPercentage,
     bool? isCharging,
     dynamic physicalHandle,
@@ -50,6 +62,9 @@ class DiscoveredCardState {
       displayName: displayName ?? this.displayName,
       connectionMode: connectionMode ?? this.connectionMode,
       firmwareVersion: firmwareVersion ?? this.firmwareVersion,
+      mouseFirmwareVersion: mouseFirmwareVersion ?? this.mouseFirmwareVersion,
+      dongleFirmwareVersion:
+          dongleFirmwareVersion ?? this.dongleFirmwareVersion,
       batteryPercentage: batteryPercentage ?? this.batteryPercentage,
       isCharging: isCharging ?? this.isCharging,
       physicalHandle: physicalHandle ?? this.physicalHandle,
@@ -67,6 +82,8 @@ class DiscoveredCardState {
           displayName == other.displayName &&
           connectionMode == other.connectionMode &&
           firmwareVersion == other.firmwareVersion &&
+          mouseFirmwareVersion == other.mouseFirmwareVersion &&
+          dongleFirmwareVersion == other.dongleFirmwareVersion &&
           batteryPercentage == other.batteryPercentage &&
           isCharging == other.isCharging &&
           physicalHandle == other.physicalHandle &&
@@ -79,6 +96,8 @@ class DiscoveredCardState {
       displayName.hashCode ^
       connectionMode.hashCode ^
       firmwareVersion.hashCode ^
+      mouseFirmwareVersion.hashCode ^
+      dongleFirmwareVersion.hashCode ^
       batteryPercentage.hashCode ^
       isCharging.hashCode ^
       physicalHandle.hashCode ^

@@ -1,10 +1,19 @@
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:driver_hub/main.dart';
+import 'package:driver_hub/layer4_domain/device_scope.dart';
+import 'package:driver_hub/layer4_domain/macro_repository.dart';
+
+import 'test_support/fake_device_runtime.dart';
 
 void main() {
   testWidgets('app builds', (WidgetTester tester) async {
-    await tester.pumpWidget(const DriverHubApp());
+    final scope = DeviceScope(
+      runtime: const FakeDeviceRuntime(),
+      macroRepository: InMemoryMacroRepository(),
+      appSettingsRepository: MemoryAppSettingsRepository(),
+    );
+    await tester.pumpWidget(DriverHubApp(scope: scope));
     expect(find.text('driver_hub'), findsOneWidget);
   });
 }

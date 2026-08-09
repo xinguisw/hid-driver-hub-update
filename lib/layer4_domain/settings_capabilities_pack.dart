@@ -111,6 +111,7 @@ DeviceSettingsState applyCapabilitiesToSettings(
           : null,
       rgbBrightnessLevels: rgb.present ? rgb.brightnessLevels : null,
       rgbSpeedLevels: rgb.present ? rgb.speedLevels : null,
+      rgbSleepOptions: rgb.present ? rgb.sleepTimeOptions : null,
     );
   }
 

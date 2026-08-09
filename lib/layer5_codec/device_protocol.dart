@@ -3,8 +3,7 @@ import 'package:driver_hub/layer5_codec/codec_exception.dart';
 import 'package:driver_hub/layer5_codec/codecs/translation_codec.dart';
 import 'package:driver_hub/layer5_codec/utils/crc16.dart';
 import 'package:driver_hub/layer5_codec/macro_codec.dart';
-import 'package:driver_hub/layer4_domain/models/macro.dart';
-import 'package:driver_hub/layer6_transport/hid_session.dart';
+import 'package:driver_hub/layer5_codec/protocol_transport.dart';
 import 'package:flutter/foundation.dart';
 
 /// Handshake result: the device type and id reported by the device.
@@ -30,10 +29,13 @@ class BatteryResult {
 class FirmwareResult {
   /// 4 mouse-firmware bytes (ack[5..8]), wire order.
   final List<int> mouseVersion;
+
   /// 4 dongle-firmware bytes (ack[9..12]), wire order.
   final List<int> dongleVersion;
-  const FirmwareResult(
-      {required this.mouseVersion, required this.dongleVersion});
+  const FirmwareResult({
+    required this.mouseVersion,
+    required this.dongleVersion,
+  });
 
   /// Wire e.g. 04 03 02 01 → display "1.2.3.4" (little-endian version).
   String get mouseVersionLabel => formatFirmwareVersion(mouseVersion);
@@ -109,6 +111,7 @@ class DpiTableEntry {
 /// addrs 0xC4 — DPI table (len 16 = 8 interleaved byte pairs).
 class DpiTableResult {
   final List<DpiTableEntry> stages;
+
   /// Config data payload only (typically 16 bytes), for sensor decode.
   final Uint8List data;
   final Uint8List raw;
@@ -205,18 +208,18 @@ class RgbBacklightResult {
 /// Mouse protocol. One implementation for all mice (same firmware family).
 abstract class DeviceProtocol {
   Future<DeviceHandshake> handshake(
-    HidSession session, {
+    ProtocolTransport session, {
     required int deviceType,
     required String deviceId,
   });
-  Future<BatteryResult> queryBattery(HidSession session);
-  Future<FirmwareResult> queryFirmware(HidSession session);
+  Future<BatteryResult> queryBattery(ProtocolTransport session);
+  Future<FirmwareResult> queryFirmware(ProtocolTransport session);
 
-  Future<ButtonMappingResult> queryButtonMapping(HidSession session);
+  Future<ButtonMappingResult> queryButtonMapping(ProtocolTransport session);
 
   /// SET addrs 0xB2 — write full button map (6 × 4 + CRC). Chart encoding loop.
   Future<void> setButtonMapping(
-    HidSession session,
+    ProtocolTransport session,
     List<ButtonMappingEntry> buttons,
   );
 
@@ -226,24 +229,26 @@ abstract class DeviceProtocol {
   /// `[reportRateWire, dpiCurrentLevel, dpiActiveLevel]`.
   /// The device stores all three fields at this address; a partial write
   /// is rejected with NAK 0x04 (payload length mismatch).
-  Future<void> setReportRate(HidSession session, Uint8List dataBlock);
+  Future<void> setReportRate(ProtocolTransport session, Uint8List dataBlock);
 
-  Future<ReportRateDpiInfoResult> queryReportRateDpiInfo(HidSession session);
-  Future<DpiTableResult> queryDpiTable(HidSession session);
+  Future<ReportRateDpiInfoResult> queryReportRateDpiInfo(
+    ProtocolTransport session,
+  );
+  Future<DpiTableResult> queryDpiTable(ProtocolTransport session);
 
   /// SET addrs 0xC4 — write the DPI table (16 bytes, 8 stages × 2 bytes + CRC).
   ///
   /// [dataBlock] must be exactly 16 bytes of wire-encoded DPI stage values.
-  Future<void> setDpiTable(HidSession session, Uint8List dataBlock);
+  Future<void> setDpiTable(ProtocolTransport session, Uint8List dataBlock);
 
-  Future<DpiRgbResult> queryDpiRgb(HidSession session);
+  Future<DpiRgbResult> queryDpiRgb(ProtocolTransport session);
 
   /// SET addrs 0xC6 — write the DPI RGB block (24 bytes, 8 stages × R,G,B + CRC).
   ///
   /// [dataBlock] must be exactly 24 bytes of R,G,B per stage.
-  Future<void> setDpiRgb(HidSession session, Uint8List dataBlock);
+  Future<void> setDpiRgb(ProtocolTransport session, Uint8List dataBlock);
 
-  Future<SensorOtherResult> querySensorOther(HidSession session);
+  Future<SensorOtherResult> querySensorOther(ProtocolTransport session);
 
   /// SET addrs 0xD4 — write sensor/other block (18 bytes + CRC).
   ///
@@ -253,9 +258,9 @@ abstract class DeviceProtocol {
   /// sleep(15), res(16), wheel(17)]`.
   /// The device stores all fields at this address; a partial write
   /// is rejected with NAK 0x04 (payload length mismatch).
-  Future<void> setSensorOther(HidSession session, Uint8List dataBlock);
+  Future<void> setSensorOther(ProtocolTransport session, Uint8List dataBlock);
 
-  Future<RgbBacklightResult> queryRgbBacklight(HidSession session);
+  Future<RgbBacklightResult> queryRgbBacklight(ProtocolTransport session);
 
   /// SET addrs 0xE2 — write RGB backlight block (8 bytes + CRC).
   ///
@@ -264,10 +269,13 @@ abstract class DeviceProtocol {
   /// sleepTime(7)]`.
   /// `enable` is tri-state (0xFF on / 0x0F off); `brightness`/`speed` are level
   /// indices; `sleepTime` is an index into the catalog's `sleepTimeOptions`.
-  Future<void> setRgbBacklight(HidSession session, Uint8List dataBlock);
+  Future<void> setRgbBacklight(ProtocolTransport session, Uint8List dataBlock);
 
   /// Write one macro through the dedicated three-chunk report-8 transfer.
-  Future<void> setMacro(HidSession session, MacroDefinition macro);
+  Future<void> setMacro(
+    ProtocolTransport session,
+    MacroTransferDefinition macro,
+  );
 }
 
 /// Standard mouse protocol. 32-byte frame over report id 7.
@@ -304,10 +312,11 @@ class MouseProtocol implements DeviceProtocol {
   static const int _dataOff = 5;
 
   /// Config CRC covers this many bytes from data offset (includes zero pad).
-  static const int configCrcPayloadLength = 24; //no opcode/addrs/len//no crc - pure data
+  static const int configCrcPayloadLength =
+      24; //no opcode/addrs/len//no crc - pure data
   /// Stripped body: header(5) + payload slot(24) + CRC(2).
-  static const int configBodyLength =
-      _dataOff + configCrcPayloadLength + 2;
+  static const int configBodyLength = _dataOff + configCrcPayloadLength + 2;
+
   /// Desktop raw may be report-id + body.
   static const int configRawMaxLength = 1 + configBodyLength;
 
@@ -335,7 +344,7 @@ class MouseProtocol implements DeviceProtocol {
 
   @override
   Future<DeviceHandshake> handshake(
-    HidSession session, {
+    ProtocolTransport session, {
     required int deviceType,
     required String deviceId,
   }) async {
@@ -350,8 +359,10 @@ class MouseProtocol implements DeviceProtocol {
     );
     debugPrint('[proto] handshake: received ack ${_hex(ack)} (${ack.length}B)');
     final result = _parseAck(ack);
-    debugPrint('[proto] handshake: deviceType=${result.deviceType} '
-        'deviceId="${result.deviceId}"');
+    debugPrint(
+      '[proto] handshake: deviceType=${result.deviceType} '
+      'deviceId="${result.deviceId}"',
+    );
     return result;
   }
 
@@ -387,8 +398,10 @@ class MouseProtocol implements DeviceProtocol {
         'Unexpected handshake ack opcode: 0x${opcode.toRadixString(16)}',
       );
     }
-    final idBytes =
-        ack.sublist(_ackDeviceIdOffset, _ackDeviceIdOffset + _deviceIdLength);
+    final idBytes = ack.sublist(
+      _ackDeviceIdOffset,
+      _ackDeviceIdOffset + _deviceIdLength,
+    );
     return DeviceHandshake(
       deviceType: DeviceType.fromCode(ack[_ackDeviceTypeOffset]),
       deviceId: idBytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join(),
@@ -396,7 +409,7 @@ class MouseProtocol implements DeviceProtocol {
   }
 
   @override
-  Future<BatteryResult> queryBattery(HidSession session) async {
+  Future<BatteryResult> queryBattery(ProtocolTransport session) async {
     final ask = _buildBatteryFrame();
     debugPrint('[proto] battery: sending ask ${_hex(ask)}');
     final ack = await session.sendAndWait(
@@ -436,7 +449,7 @@ class MouseProtocol implements DeviceProtocol {
   }
 
   @override
-  Future<FirmwareResult> queryFirmware(HidSession session) async {
+  Future<FirmwareResult> queryFirmware(ProtocolTransport session) async {
     final ask = _buildFirmwareFrame();
     debugPrint('[proto] firmware: sending ask ${_hex(ask)}');
     final ack = await session.sendAndWait(
@@ -472,33 +485,41 @@ class MouseProtocol implements DeviceProtocol {
       throw FormatException('Firmware ack too short: ${ack.length} bytes');
     }
     final mouse = ack.sublist(
-        _firmwareMouseOffset, _firmwareMouseOffset + _firmwareVersionLength);
+      _firmwareMouseOffset,
+      _firmwareMouseOffset + _firmwareVersionLength,
+    );
     final dongle = ack.sublist(
-        _firmwareDongleOffset, _firmwareDongleOffset + _firmwareVersionLength);
+      _firmwareDongleOffset,
+      _firmwareDongleOffset + _firmwareVersionLength,
+    );
     return FirmwareResult(mouseVersion: mouse, dongleVersion: dongle);
   }
 
   // --- Onboard config GET (0x07) / ack (0x08) + addrs -------------------
 
   @override
-  Future<ButtonMappingResult> queryButtonMapping(HidSession session) async {
+  Future<ButtonMappingResult> queryButtonMapping(
+    ProtocolTransport session,
+  ) async {
     final raw = await _getConfig(session, addrsButtonMapping, 'buttonMapping');
     final data = _configData(raw, addrsButtonMapping);
     final buttons = <ButtonMappingEntry>[];
     for (var i = 0; i + 3 < data.length && buttons.length < 6; i += 4) {
-      buttons.add(ButtonMappingEntry(
-        action: data[i],
-        param1: data[i + 1],
-        param2: data[i + 2],
-        param3: data[i + 3],
-      ));
+      buttons.add(
+        ButtonMappingEntry(
+          action: data[i],
+          param1: data[i + 1],
+          param2: data[i + 2],
+          param3: data[i + 3],
+        ),
+      );
     }
     return ButtonMappingResult(buttons: buttons, raw: raw);
   }
 
   @override
   Future<void> setButtonMapping(
-    HidSession session,
+    ProtocolTransport session,
     List<ButtonMappingEntry> buttons,
   ) async {
     const label = 'buttonMapping';
@@ -569,7 +590,8 @@ class MouseProtocol implements DeviceProtocol {
 
   @override
   Future<ReportRateDpiInfoResult> queryReportRateDpiInfo(
-      HidSession session) async {
+    ProtocolTransport session,
+  ) async {
     final raw = await _getConfig(session, addrsReportRateDpi, 'reportRateDpi');
     final data = _configData(raw, addrsReportRateDpi);
     if (data.length < 3) {
@@ -584,7 +606,10 @@ class MouseProtocol implements DeviceProtocol {
   }
 
   @override
-  Future<void> setReportRate(HidSession session, Uint8List dataBlock) async {
+  Future<void> setReportRate(
+    ProtocolTransport session,
+    Uint8List dataBlock,
+  ) async {
     const label = 'reportRate';
     final ask = buildReportRateSetFrame(dataBlock);
 
@@ -659,7 +684,7 @@ class MouseProtocol implements DeviceProtocol {
   }
 
   @override
-  Future<DpiTableResult> queryDpiTable(HidSession session) async {
+  Future<DpiTableResult> queryDpiTable(ProtocolTransport session) async {
     final raw = await _getConfig(session, addrsDpiTable, 'dpiTable');
     final data = _configData(raw, addrsDpiTable);
     // Interleaved stage pairs; display DPI is applied via the device sensor profile.
@@ -671,7 +696,10 @@ class MouseProtocol implements DeviceProtocol {
   }
 
   @override
-  Future<void> setDpiTable(HidSession session, Uint8List dataBlock) async {
+  Future<void> setDpiTable(
+    ProtocolTransport session,
+    Uint8List dataBlock,
+  ) async {
     const label = 'dpiTable';
     if (dataBlock.length != 16) {
       throw ArgumentError.value(
@@ -711,7 +739,7 @@ class MouseProtocol implements DeviceProtocol {
   }
 
   @override
-  Future<DpiRgbResult> queryDpiRgb(HidSession session) async {
+  Future<DpiRgbResult> queryDpiRgb(ProtocolTransport session) async {
     final raw = await _getConfig(session, addrsDpiRgb, 'dpiRgb');
     final data = _configData(raw, addrsDpiRgb);
     final stages = <DpiRgbEntry>[];
@@ -722,7 +750,7 @@ class MouseProtocol implements DeviceProtocol {
   }
 
   @override
-  Future<void> setDpiRgb(HidSession session, Uint8List dataBlock) async {
+  Future<void> setDpiRgb(ProtocolTransport session, Uint8List dataBlock) async {
     const label = 'dpiRgb';
     if (dataBlock.length != 24) {
       throw ArgumentError.value(
@@ -762,7 +790,7 @@ class MouseProtocol implements DeviceProtocol {
   }
 
   @override
-  Future<SensorOtherResult> querySensorOther(HidSession session) async {
+  Future<SensorOtherResult> querySensorOther(ProtocolTransport session) async {
     final raw = await _getConfig(session, addrsSensorOther, 'sensorOther');
     final data = _configData(raw, addrsSensorOther);
     if (data.length < 18) {
@@ -788,7 +816,10 @@ class MouseProtocol implements DeviceProtocol {
   }
 
   @override
-  Future<void> setSensorOther(HidSession session, Uint8List dataBlock) async {
+  Future<void> setSensorOther(
+    ProtocolTransport session,
+    Uint8List dataBlock,
+  ) async {
     const label = 'sensorOther';
     if (dataBlock.length != 18) {
       throw ArgumentError.value(
@@ -849,7 +880,9 @@ class MouseProtocol implements DeviceProtocol {
   }
 
   @override
-  Future<RgbBacklightResult> queryRgbBacklight(HidSession session) async {
+  Future<RgbBacklightResult> queryRgbBacklight(
+    ProtocolTransport session,
+  ) async {
     final raw = await _getConfig(session, addrsRgbBacklight, 'rgbBacklight');
     final data = _configData(raw, addrsRgbBacklight);
     if (data.length < 8) {
@@ -895,7 +928,10 @@ class MouseProtocol implements DeviceProtocol {
   }
 
   @override
-  Future<void> setRgbBacklight(HidSession session, Uint8List dataBlock) async {
+  Future<void> setRgbBacklight(
+    ProtocolTransport session,
+    Uint8List dataBlock,
+  ) async {
     const label = 'rgbBacklight';
     final frame = buildRgbBacklightSetFrame(dataBlock);
     final payload = frame.sublist(_dataOff, _dataOff + 8);
@@ -940,7 +976,10 @@ class MouseProtocol implements DeviceProtocol {
   }
 
   @override
-  Future<void> setMacro(HidSession session, MacroDefinition macro) async {
+  Future<void> setMacro(
+    ProtocolTransport session,
+    MacroTransferDefinition macro,
+  ) async {
     final chunks = MacroTransferCodec.chunkTransfer(macro);
     for (var chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
       final frame = MacroTransferCodec.buildChunkFrame(
@@ -948,8 +987,10 @@ class MouseProtocol implements DeviceProtocol {
         chunkIndex: chunkIndex,
         payload: chunks[chunkIndex],
       );
-      debugPrint('[proto] macro: SET slot=${macro.slot} chunk=$chunkIndex '
-          'data=${_hex(chunks[chunkIndex])}');
+      debugPrint(
+        '[proto] macro: SET slot=${macro.slot} chunk=$chunkIndex '
+        'data=${_hex(chunks[chunkIndex])}',
+      );
       final reply = await session.sendAndWait(
         data: frame,
         reportId: MacroTransferCodec.reportId,
@@ -959,8 +1000,10 @@ class MouseProtocol implements DeviceProtocol {
       );
       final body = _stripMacroReportId(reply);
       final status = MacroTransferCodec.parseReplyStatus(body);
-      debugPrint('[proto] macro: reply slot=${macro.slot} chunk=$chunkIndex '
-          'status=0x${status.toRadixString(16)}');
+      debugPrint(
+        '[proto] macro: reply slot=${macro.slot} chunk=$chunkIndex '
+        'status=0x${status.toRadixString(16)}',
+      );
       if ((chunkIndex < 2 && status != MacroTransferCodec.statusReceived) ||
           (chunkIndex == 2 && status != MacroTransferCodec.statusOk)) {
         throw FormatException(
@@ -972,7 +1015,10 @@ class MouseProtocol implements DeviceProtocol {
   }
 
   static bool _matchesMacroReply(
-      Uint8List raw, int macroIndex, int chunkIndex) {
+    Uint8List raw,
+    int macroIndex,
+    int chunkIndex,
+  ) {
     final body = _stripMacroReportId(raw);
     if (body.length <= 5 || body[0] != MacroTransferCodec.opcode) return false;
     return body[1] == chunkIndex &&
@@ -999,13 +1045,15 @@ class MouseProtocol implements DeviceProtocol {
   }
 
   Future<Uint8List> _getConfig(
-    HidSession session,
+    ProtocolTransport session,
     int addrs,
     String label,
   ) async {
     final ask = _buildGetFrame(addrs);
-    debugPrint('[proto] $label: GET addrs=0x${addrs.toRadixString(16)} '
-        'ask ${_hex(ask)}');
+    debugPrint(
+      '[proto] $label: GET addrs=0x${addrs.toRadixString(16)} '
+      'ask ${_hex(ask)}',
+    );
     final ack = await session.sendAndWait(
       data: ask,
       reportId: _reportId,
@@ -1047,7 +1095,9 @@ class MouseProtocol implements DeviceProtocol {
     String label = 'config',
   }) {
     if (raw.isEmpty || raw.length > configRawMaxLength) {
-      debugPrint('[proto] $label: REJECT raw length ${raw.length} (max $configRawMaxLength) raw=${_hex(raw)}');
+      debugPrint(
+        '[proto] $label: REJECT raw length ${raw.length} (max $configRawMaxLength) raw=${_hex(raw)}',
+      );
       throw CodecException(
         label: label,
         reason: 'raw length ${raw.length} (max $configRawMaxLength)',
@@ -1056,7 +1106,9 @@ class MouseProtocol implements DeviceProtocol {
     }
     final body = stripReportId(raw);
     if (body.length < configBodyLength) {
-      debugPrint('[proto] $label: REJECT body length ${body.length} (need $configBodyLength) raw=${_hex(raw)}');
+      debugPrint(
+        '[proto] $label: REJECT body length ${body.length} (need $configBodyLength) raw=${_hex(raw)}',
+      );
       throw CodecException(
         label: label,
         reason: 'body length ${body.length} (need $configBodyLength)',
@@ -1064,7 +1116,9 @@ class MouseProtocol implements DeviceProtocol {
       );
     }
     if (body.length > configBodyLength) {
-      debugPrint('[proto] $label: REJECT body length ${body.length} (max $configBodyLength) raw=${_hex(raw)}');
+      debugPrint(
+        '[proto] $label: REJECT body length ${body.length} (max $configBodyLength) raw=${_hex(raw)}',
+      );
       throw CodecException(
         label: label,
         reason: 'body length ${body.length} (max $configBodyLength)',
@@ -1075,17 +1129,22 @@ class MouseProtocol implements DeviceProtocol {
     // Header: block address (B2, C2, C4, C6, D4, E2, …).
     final gotAddrs = body[_addrsOff];
     if (gotAddrs != addrs) {
-      debugPrint('[proto] $label: REJECT addrs=0x${gotAddrs.toRadixString(16)} want=0x${addrs.toRadixString(16)} raw=${_hex(raw)}');
+      debugPrint(
+        '[proto] $label: REJECT addrs=0x${gotAddrs.toRadixString(16)} want=0x${addrs.toRadixString(16)} raw=${_hex(raw)}',
+      );
       throw CodecException(
         label: label,
-        reason: 'addrs 0x${gotAddrs.toRadixString(16)} (want 0x${addrs.toRadixString(16)})',
+        reason:
+            'addrs 0x${gotAddrs.toRadixString(16)} (want 0x${addrs.toRadixString(16)})',
         raw: raw,
       );
     }
 
     final len = body[_lenOff];
     if (len > configCrcPayloadLength) {
-      debugPrint('[proto] $label: REJECT len=$len (max $configCrcPayloadLength) raw=${_hex(raw)}');
+      debugPrint(
+        '[proto] $label: REJECT len=$len (max $configCrcPayloadLength) raw=${_hex(raw)}',
+      );
       throw CodecException(
         label: label,
         reason: 'len $len (max $configCrcPayloadLength)',
@@ -1117,7 +1176,9 @@ class MouseProtocol implements DeviceProtocol {
       'match=$match',
     );
     if (!match) {
-      debugPrint('[proto] $label: REJECT CRC mismatch calc=$calcHex wire=$wireHex raw=${_hex(raw)}');
+      debugPrint(
+        '[proto] $label: REJECT CRC mismatch calc=$calcHex wire=$wireHex raw=${_hex(raw)}',
+      );
       throw CodecException(
         label: label,
         reason: 'CRC mismatch: calc=$calcHex wire=$wireHex',
@@ -1199,7 +1260,11 @@ class MouseProtocol implements DeviceProtocol {
       b == _nakOpcode;
 
   /// True when payload opcode (after optional report-id byte) equals [opcode].
-  static bool matchesOpcode(Uint8List raw, int opcode, {int reportId = _reportId}) {
+  static bool matchesOpcode(
+    Uint8List raw,
+    int opcode, {
+    int reportId = _reportId,
+  }) {
     final body = stripReportId(raw, reportId: reportId);
     return body.isNotEmpty && body[0] == opcode;
   }

@@ -3,6 +3,10 @@ import 'package:driver_hub/desktop_shell/window_bootstrap_stub.dart'
     as window_bootstrap;
 import 'package:driver_hub/layer3_ui/screens/devices_screen.dart';
 import 'package:driver_hub/layer3_ui/widgets/osd_overlay_window.dart';
+import 'package:driver_hub/layer1_discovery/device_runtime.dart';
+import 'package:driver_hub/layer4_domain/device_scope.dart';
+import 'package:driver_hub/layer6_transport/app_settings_storage.dart';
+import 'package:driver_hub/layer6_transport/macro_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
@@ -29,8 +33,14 @@ Future<void> main(List<String> args) async {
       window_bootstrap.configureDesktopWindow();
     });
   }
-  runApp(const DriverHubApp());
+  runApp(DriverHubApp(scope: _createDeviceScope()));
 }
+
+DeviceScope _createDeviceScope() => DeviceScope(
+  runtime: LiveDeviceRuntime(),
+  macroRepository: PersistentMacroRepository(),
+  appSettingsRepository: SharedPreferencesAppSettingsRepository(),
+);
 
 bool get _isDesktop {
   if (kIsWeb) return false;
@@ -48,7 +58,9 @@ bool get _isWindows =>
     !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
 
 class DriverHubApp extends StatelessWidget {
-  const DriverHubApp({super.key});
+  const DriverHubApp({super.key, required this.scope});
+
+  final DeviceScope scope;
 
   @override
   Widget build(BuildContext context) {
@@ -57,7 +69,7 @@ class DriverHubApp extends StatelessWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
       ),
-      home: const DevicesScreen(),
+      home: DevicesScreen(scope: scope),
     );
   }
 }

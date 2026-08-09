@@ -14,7 +14,9 @@ import 'package:flutter/material.dart';
 ///
 /// L3 only: reads L4 [DeviceScope] cards. Card tap → [HubLandingScreen].
 class DevicesScreen extends StatefulWidget {
-  const DevicesScreen({super.key});
+  const DevicesScreen({super.key, required this.scope});
+
+  final DeviceScope scope;
 
   @override
   State<DevicesScreen> createState() => _DevicesScreenState();
@@ -29,7 +31,7 @@ class _DevicesScreenState extends State<DevicesScreen> {
   @override
   void initState() {
     super.initState();
-    _scope = DeviceScope();
+    _scope = widget.scope;
     _osd = OsdOverlayService();
     _osdSubscription = _scope.osdEvents.listen(_showPerformanceOsd);
     _batteryLowOsdSubscription = _scope.batteryLowOsdEvents.listen(

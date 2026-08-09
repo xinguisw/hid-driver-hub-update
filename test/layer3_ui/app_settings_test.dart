@@ -83,6 +83,7 @@ void main() {
               imageSmall: '',
               imageLarge: '',
             ),
+            hasRgbBacklight: true,
             selectedIndex: selectedIndex,
             onDestinationSelected: (index) {
               selectedIndex = index;

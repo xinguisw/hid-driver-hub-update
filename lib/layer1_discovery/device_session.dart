@@ -1,14 +1,13 @@
 import 'dart:async';
 
 import 'package:driver_hub/layer1_discovery/discovered_device.dart';
-import 'package:driver_hub/layer4_domain/device_repository.dart';
-import 'package:driver_hub/layer4_domain/models/discovered_card_state.dart';
+import 'package:driver_hub/layer1_discovery/device_settings_gateway.dart';
 import 'package:driver_hub/layer6_transport/hid_session.dart';
 import 'package:flutter/foundation.dart';
 
 import 'package:driver_hub/layer5_codec/device_protocol.dart';
 import 'package:driver_hub/layer5_codec/codecs/osd_codec.dart';
-import 'package:driver_hub/layer4_domain/models/macro.dart';
+import 'package:driver_hub/layer5_codec/macro_codec.dart';
 
 /// State of a device session, emitted to the card.
 class DeviceSessionState {
@@ -32,15 +31,18 @@ class DeviceSessionState {
       DeviceSessionState._(name: name, mode: mode, status: Status.rejected);
   factory DeviceSessionState.error(String name, String mode, String msg) =>
       DeviceSessionState._(
-          name: name, mode: mode, status: Status.error, error: msg);
+        name: name,
+        mode: mode,
+        status: Status.error,
+        error: msg,
+      );
 }
 
 enum Status { connecting, verified, rejected, error }
 
 /// Per-device orchestrator: open -> handshake -> verify against the catalog.
 ///
-/// Implements [DeviceRepository] to bridge L1 discovery with L4 domain layer.
-class DeviceSession implements DeviceRepository {
+class DeviceSession implements DeviceSettingsGateway {
   /// Max transport open attempts per [start] (total tries).
   static const int maxOpenAttempts = 2;
 
@@ -60,8 +62,7 @@ class DeviceSession implements DeviceRepository {
 
   final _controller = StreamController<DeviceSessionState>.broadcast();
   final _batteryPushes = StreamController<BatteryResult>.broadcast();
-  final _performancePushes =
-      StreamController<OsdPerformanceResult>.broadcast();
+  final _performancePushes = StreamController<OsdPerformanceResult>.broadcast();
   StreamSubscription<Uint8List>? _unsolicitedSub;
 
   DeviceSession({
@@ -83,22 +84,6 @@ class DeviceSession implements DeviceRepository {
   @override
   bool get isAlive => _session.isOpen;
 
-  /// The device card state for this session.
-  @override
-  DiscoveredCardState get card {
-    return DiscoveredCardState(
-      devId: device.entry.devId,
-      displayName: device.entry.model,
-      connectionMode: device.mode.mode == 0 ? 0 : 1,
-      firmwareVersion: '',
-      batteryPercentage: -1,
-      isCharging: false,
-      physicalHandle: device.hidDevice,
-      imageSmall: device.entry.image.small,
-      imageLarge: device.entry.image.large,
-    );
-  }
-
   /// Re-run A1 handshake on an open session.
   ///
   /// Firmware NAKs onboard config (reason 0x01) if handshake is not fresh
@@ -117,8 +102,10 @@ class DeviceSession implements DeviceRepository {
       );
       final typeMatch = hs.deviceType == device.entry.deviceType;
       final idMatch = _deviceIdMatches(hs.deviceId, device.entry.devId);
-      debugPrint('[session] rehandshake: type=${hs.deviceType?.name} '
-          'id="${hs.deviceId}" match=${typeMatch && idMatch}');
+      debugPrint(
+        '[session] rehandshake: type=${hs.deviceType?.name} '
+        'id="${hs.deviceId}" match=${typeMatch && idMatch}',
+      );
       if (typeMatch && idMatch) {
         return true;
       }
@@ -222,7 +209,7 @@ class DeviceSession implements DeviceRepository {
   }
 
   /// Thin L1 forwarder for the dedicated macro transfer (L5 owns framing).
-  Future<void> setMacro(MacroDefinition macro) async {
+  Future<void> setMacro(MacroTransferDefinition macro) async {
     if (!isAlive) {
       throw StateError('setMacro: session not alive');
     }
@@ -241,8 +228,10 @@ class DeviceSession implements DeviceRepository {
     final mode = device.mode.desc;
 
     _controller.add(DeviceSessionState.connecting(name, mode));
-    debugPrint('[session] start: devId=${device.entry.devId} '
-        'expected deviceType=${device.entry.deviceType.name} expected devId="${device.entry.devId}"');
+    debugPrint(
+      '[session] start: devId=${device.entry.devId} '
+      'expected deviceType=${device.entry.deviceType.name} expected devId="${device.entry.devId}"',
+    );
 
     try {
       await _openTransportWithRetry();
@@ -251,8 +240,10 @@ class DeviceSession implements DeviceRepository {
 
       final typeMatch = hs.deviceType == device.entry.deviceType;
       final idMatch = _deviceIdMatches(hs.deviceId, device.entry.devId);
-      debugPrint('[session] verify: reported type=${hs.deviceType?.name ?? 'unknown'} '
-          '(match=$typeMatch), reported id="${hs.deviceId}" (match=$idMatch)');
+      debugPrint(
+        '[session] verify: reported type=${hs.deviceType?.name ?? 'unknown'} '
+        '(match=$typeMatch), reported id="${hs.deviceId}" (match=$idMatch)',
+      );
 
       if (typeMatch && idMatch) {
         debugPrint('[session] VERIFIED');
@@ -341,8 +332,10 @@ class DeviceSession implements DeviceRepository {
       }
       final battery = _osd.parseBattery(raw);
       if (battery == null) return;
-      debugPrint('[session] OSD battery: ${battery.percent}% '
-          'charging=${battery.isCharging} raw=${_hex(raw)}');
+      debugPrint(
+        '[session] OSD battery: ${battery.percent}% '
+        'charging=${battery.isCharging} raw=${_hex(raw)}',
+      );
       if (!_batteryPushes.isClosed) {
         _batteryPushes.add(battery);
       }

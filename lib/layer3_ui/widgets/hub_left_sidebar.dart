@@ -13,12 +13,16 @@ class HubLeftSidebar extends StatefulWidget {
     required this.card,
     required this.selectedIndex,
     required this.onDestinationSelected,
+    this.hasRgbBacklight = false,
     this.onDeviceTap,
   });
 
   final DiscoveredCardState card;
   final int selectedIndex;
   final ValueChanged<int> onDestinationSelected;
+
+  /// Capability already packed by L4. Unsupported blocks are not navigable.
+  final bool hasRgbBacklight;
   final VoidCallback? onDeviceTap;
 
   @override
@@ -31,15 +35,15 @@ class _HubLeftSidebarState extends State<HubLeftSidebar> {
   static const double _collapsedWidth = 72;
   static const double _extendedWidth = 256;
 
-  static const _labels = <String>[
-    'Button Mapping',
-    'Macro Setting',
-    'Performance Setting',
-    'Parameter Setting',
-    'Backlight Setting',
-    'Profile Management',
-    'Device Setting',
-    'App Setting',
+  List<({int index, String label})> get _destinations => [
+    (index: 0, label: 'Button Mapping'),
+    (index: 1, label: 'Macro Setting'),
+    (index: 2, label: 'Performance Setting'),
+    (index: 3, label: 'Parameter Setting'),
+    if (widget.hasRgbBacklight) (index: 4, label: 'Backlight Setting'),
+    (index: 5, label: 'Profile Management'),
+    (index: 6, label: 'Device Setting'),
+    (index: 7, label: 'App Setting'),
   ];
 
   @override
@@ -59,12 +63,13 @@ class _HubLeftSidebarState extends State<HubLeftSidebar> {
           Expanded(
             child: ListView.builder(
               padding: const EdgeInsets.symmetric(vertical: 4),
-              itemCount: _labels.length,
+              itemCount: _destinations.length,
               itemBuilder: (context, index) {
-                final selected = index == widget.selectedIndex;
-                final label = _labels[index];
+                final destination = _destinations[index];
+                final selected = destination.index == widget.selectedIndex;
+                final label = destination.label;
                 return InkWell(
-                  onTap: () => widget.onDestinationSelected(index),
+                  onTap: () => widget.onDestinationSelected(destination.index),
                   child: ColoredBox(
                     color: selected
                         ? theme.colorScheme.secondaryContainer.withValues(
@@ -92,9 +97,7 @@ class _HubLeftSidebarState extends State<HubLeftSidebar> {
                 child: SizedBox(
                   width: 24,
                   height: 24,
-                  child: Center(
-                    child: Text(_extended ? '<' : '>'),
-                  ),
+                  child: Center(child: Text(_extended ? '<' : '>')),
                 ),
               ),
             ),
@@ -176,11 +179,7 @@ class _HubLeftSidebarState extends State<HubLeftSidebar> {
         xIcon,
         const SizedBox(width: 8),
         Expanded(
-          child: Text(
-            label,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
+          child: Text(label, maxLines: 2, overflow: TextOverflow.ellipsis),
         ),
       ],
     );

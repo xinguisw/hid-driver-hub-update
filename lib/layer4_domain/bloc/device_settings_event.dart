@@ -293,6 +293,14 @@ class DeviceSettingsSaveWheelInvertRequested extends DeviceSettingsEvent {
   const DeviceSettingsSaveWheelInvertRequested();
 }
 
+/// Saves every staged Parameter Setting field as one D4 read-modify-write.
+///
+/// The Parameter page has one Save button. This event prevents one dirty
+/// control from silently discarding another dirty control in the same page.
+class DeviceSettingsSaveParameterSettingsRequested extends DeviceSettingsEvent {
+  const DeviceSettingsSaveParameterSettingsRequested();
+}
+
 // --- RGB backlight (0xE2) ---
 //
 // Each stage event carries one field's new value; L4 stages it and marks dirty.

@@ -8,6 +8,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../test_support/fake_device_runtime.dart';
+
 void main() {
   test('M5 timing probe stays within the documented macro limits', () {
     final probe = buildMacroTimingProbe();
@@ -135,7 +137,11 @@ void main() {
         ],
       ),
     ]);
-    final scope = DeviceScope(macroRepository: repository);
+    final scope = DeviceScope(
+      runtime: const FakeDeviceRuntime(),
+      macroRepository: repository,
+      appSettingsRepository: MemoryAppSettingsRepository(),
+    );
     const card = DiscoveredCardState(
       devId: '03AA',
       displayName: 'M7X PRO',

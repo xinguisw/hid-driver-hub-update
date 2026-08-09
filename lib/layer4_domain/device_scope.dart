@@ -1,9 +1,7 @@
 import 'dart:async';
-import 'dart:convert';
 
-import 'package:driver_hub/layer1_discovery/device_scanner.dart';
+import 'package:driver_hub/layer1_discovery/device_runtime.dart';
 import 'package:driver_hub/layer1_discovery/device_session.dart';
-import 'package:driver_hub/layer1_discovery/device_watcher.dart';
 import 'package:driver_hub/layer1_discovery/discovered_device.dart';
 import 'package:driver_hub/layer2_capabilities/capabilities.dart';
 import 'package:driver_hub/layer4_domain/app_settings_repository.dart';
@@ -17,43 +15,36 @@ import 'package:driver_hub/layer4_domain/macro_repository.dart';
 import 'package:driver_hub/layer4_domain/low_battery_alert_policy.dart';
 import 'package:driver_hub/layer4_domain/settings_onboard_query.dart';
 import 'package:driver_hub/layer5_codec/codecs/osd_codec.dart';
+import 'package:driver_hub/layer5_codec/codecs/telink_b80_config_block_codec.dart';
 import 'package:driver_hub/layer5_codec/codecs/translation_codec.dart';
 import 'package:driver_hub/layer5_codec/device_protocol.dart';
-import 'package:driver_hub/layer6_transport/hid_session.dart';
-import 'package:driver_hub/layer6_transport/app_settings_storage.dart';
-import 'package:driver_hub/layer6_transport/local_storage.dart';
-import 'package:driver_hub/layer6_transport/macro_storage.dart';
+import 'package:driver_hub/layer5_codec/macro_codec.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hid_tool/hid_tool.dart';
 
 /// L4 domain scope: owns [DiscoveredCardState] cards and settings load entry.
 ///
-/// Uses L1 ([DeviceScanner], [DeviceWatcher], [DeviceSession]) for lifecycle
-/// and L4 [queryOnboardConfig] for settings hydrate. L3 reads [cards] / [busy]
+/// Uses the L1 [DeviceRuntime] lifecycle port and L4 [queryOnboardConfig] for
+/// settings hydrate. L3 reads [cards] / [busy]
 /// and calls [addDevice] / [loadOnboardSettings] only — never sessions or L5.
 ///
 /// One entry per verified device, keyed by device path → multi-device.
 class DeviceScope {
-  DeviceScope({
-    DeviceScanner? scanner,
-    MacroRepository? macroRepository,
-    AppSettingsRepository? appSettingsRepository,
-  }) : _scanner = scanner ?? DeviceScanner(),
-       _macroRepository = macroRepository ?? PersistentMacroRepository(),
-       _appSettingsRepository =
-           appSettingsRepository ?? SharedPreferencesAppSettingsRepository() {
-    _watcher = DeviceWatcher(
-      scanner: _scanner,
-      protocolFactory: () => const MouseProtocol(),
-      sessionFactory: (d) => HidSession(d.hidDevice),
-      sessionCtor: DeviceSession.new,
-    );
-  }
+  factory DeviceScope({
+    required DeviceRuntime runtime,
+    required MacroRepository macroRepository,
+    required AppSettingsRepository appSettingsRepository,
+  }) => DeviceScope._(runtime, macroRepository, appSettingsRepository);
 
-  final DeviceScanner _scanner;
+  DeviceScope._(
+    this._runtime,
+    this._macroRepository,
+    this._appSettingsRepository,
+  );
+
+  final DeviceRuntime _runtime;
   final MacroRepository _macroRepository;
   final AppSettingsRepository _appSettingsRepository;
-  late final DeviceWatcher _watcher;
 
   /// Verified devices as card states, keyed by device path.
   final _cards = <String, DiscoveredCardState>{};
@@ -120,9 +111,9 @@ class DeviceScope {
     if (_started) return;
     _started = true;
     await _loadLowBatteryThreshold();
-    _watcher.start(
+    _runtime.startWatching(
       onConnect: (session) {
-        _saveLastDevice(session.device);
+        _runtime.saveLastDeviceHint(session.device);
         _publishCard(session); // verified by watcher → query A4/A8 → show
       },
       onDisconnect: (path, vid, pid) => _remove(path),
@@ -164,7 +155,7 @@ class DeviceScope {
   Future<void> probeExisting() async {
     busy.value = true;
     try {
-      final devices = await _scanner.discoverAuthorized();
+      final devices = await _runtime.discoverAuthorized();
       for (final d in devices) {
         await _startAndRegister(d);
       }
@@ -180,7 +171,7 @@ class DeviceScope {
     if (busy.value) return;
     busy.value = true;
     try {
-      final devices = await _scanner.discover();
+      final devices = await _runtime.discover();
       for (final d in devices) {
         await _startAndRegister(d);
       }
@@ -191,14 +182,8 @@ class DeviceScope {
   }
 
   Future<void> _startAndRegister(DiscoveredDevice d) async {
-    final session = DeviceSession(
-      device: d,
-      session: HidSession(d.hidDevice),
-      protocol: const MouseProtocol(),
-    );
-    final verified = await session.start();
-    if (!verified) return;
-    _watcher.register(session);
+    final session = await _runtime.openAndRegister(d);
+    if (session == null) return;
     await _publishCard(session);
   }
 
@@ -315,12 +300,15 @@ class DeviceScope {
           ),
       commitSensorTuning: (ripple, snap) =>
           commitSensorTuning(card, ripple, snap),
-      commitAngleTune: (wireValue) => commitAngleTune(card, wireValue),
+      commitAngleTune: (wireValue) => commitAngleTune(card, true, wireValue),
+      commitAngleTuneSettings: (enabled, wireValue) =>
+          commitAngleTune(card, enabled, wireValue),
       commitLod: (wire) => commitLod(card, wire),
       commitPerformance: (wire) => commitPerformance(card, wire),
       commitDebounce: (wire) => commitDebounce(card, wire),
       commitSleep: (wire) => commitSleep(card, wire),
       commitWheelInvert: (invert) => commitWheelInvert(card, invert),
+      commitParameterSettings: (patch) => commitParameterSettings(card, patch),
       commitRgbBacklight: (values) => commitRgbBacklight(card, values),
       actionLabelOf: (action, p1, p2, p3) => translate.buttonActionToLabel(
         action: action,
@@ -368,7 +356,21 @@ class DeviceScope {
     if (session == null || !session.isAlive) {
       throw StateError('saveMacro: no session');
     }
-    await session.setMacro(macro);
+    await session.setMacro(
+      MacroTransferDefinition(
+        slot: macro.slot,
+        modeWire: macro.mode.wireValue,
+        loopTimes: macro.loopTimes,
+        actions: [
+          for (final action in macro.actions)
+            MacroTransferAction(
+              keyCode: action.keyCode,
+              isBreak: action.isBreak,
+              delay: action.delay,
+            ),
+        ],
+      ),
+    );
     final current = [...(_macros[card.devId] ?? const <MacroDefinition>[])];
     final index = current.indexWhere((m) => m.slot == macro.slot);
     if (index == -1) {
@@ -744,22 +746,24 @@ class DeviceScope {
       throw StateError('Failed to read current sensor/other block');
     }
 
-    // why: L5 owns wire encoding; these two bytes are tri-state (0xFF/0x0F),
-    // so a raw 1/0 would read back as neither on nor off. 18-byte layout:
-    // ripple at [0], angleSnap at [2].
-    const translate = TranslationCodec();
-    final dataBlock = Uint8List.fromList(current.data);
-    dataBlock[0] = translate.triStateBoolToWire(rippleControl);
-    dataBlock[2] = translate.triStateBoolToWire(angleSnap);
+    final dataBlock = TelinkB80ConfigBlockCodec.patchSensorOther(
+      current.data,
+      rippleEnabled: rippleControl,
+      angleSnapEnabled: angleSnap,
+    );
 
     await session.setSensorOther(dataBlock);
   }
 
-  /// Commits angle tune value into the 14-byte 0xD4 block.
+  /// Commits the Angle Tune enable flag and value into the D4 block.
   ///
   /// why: angle tune shares one block with ripple/angle snap/LOD/debounce/sleep/wheel,
   /// so the current block is read first and only the angle tune byte is replaced.
-  Future<void> commitAngleTune(DiscoveredCardState card, int wireValue) async {
+  Future<void> commitAngleTune(
+    DiscoveredCardState card,
+    bool enabled,
+    int wireValue,
+  ) async {
     final session = _sessionForCard(card);
     if (session == null || !session.isAlive) {
       throw StateError('commitAngleTune: no session');
@@ -770,10 +774,11 @@ class DeviceScope {
       throw StateError('Failed to read current sensor/other block');
     }
 
-    // why: angle tune VALUE is at byte index 7 in the 18-byte 0xD4 block
-    // [angleTune(6), angleValue(7)]. The angleTune ON/OFF toggle is at [6].
-    final dataBlock = Uint8List.fromList(current.data);
-    dataBlock[7] = wireValue;
+    final dataBlock = TelinkB80ConfigBlockCodec.patchSensorOther(
+      current.data,
+      angleTuneEnabled: enabled,
+      angleTuneWire: wireValue,
+    );
 
     await session.setSensorOther(dataBlock);
   }
@@ -793,9 +798,10 @@ class DeviceScope {
       throw StateError('Failed to read current sensor/other block');
     }
 
-    // why: LOD is at byte index 4 in the 18-byte 0xD4 block.
-    final dataBlock = Uint8List.fromList(current.data);
-    dataBlock[4] = wire;
+    final dataBlock = TelinkB80ConfigBlockCodec.patchSensorOther(
+      current.data,
+      lodWire: wire,
+    );
 
     await session.setSensorOther(dataBlock);
   }
@@ -815,9 +821,10 @@ class DeviceScope {
       throw StateError('Failed to read current sensor/other block');
     }
 
-    // why: performance is at byte index 9 in the 18-byte 0xD4 block.
-    final dataBlock = Uint8List.fromList(current.data);
-    dataBlock[9] = wire;
+    final dataBlock = TelinkB80ConfigBlockCodec.patchSensorOther(
+      current.data,
+      performanceWire: wire,
+    );
 
     await session.setSensorOther(dataBlock);
   }
@@ -837,8 +844,10 @@ class DeviceScope {
       throw StateError('Failed to read current sensor/other block');
     }
 
-    final dataBlock = Uint8List.fromList(current.data);
-    dataBlock[13] = wire;
+    final dataBlock = TelinkB80ConfigBlockCodec.patchSensorOther(
+      current.data,
+      debounceWire: wire,
+    );
 
     await session.setSensorOther(dataBlock);
   }
@@ -857,8 +866,10 @@ class DeviceScope {
       throw StateError('Failed to read current sensor/other block');
     }
 
-    final dataBlock = Uint8List.fromList(current.data);
-    dataBlock[15] = wire;
+    final dataBlock = TelinkB80ConfigBlockCodec.patchSensorOther(
+      current.data,
+      sleepWire: wire,
+    );
 
     await session.setSensorOther(dataBlock);
   }
@@ -878,10 +889,40 @@ class DeviceScope {
       throw StateError('Failed to read current sensor/other block');
     }
 
-    const translate = TranslationCodec();
-    final dataBlock = Uint8List.fromList(current.data);
-    dataBlock[17] = translate.triStateBoolToWire(invert);
+    final dataBlock = TelinkB80ConfigBlockCodec.patchSensorOther(
+      current.data,
+      wheelInvert: invert,
+    );
 
+    await session.setSensorOther(dataBlock);
+  }
+
+  /// Reads the live D4 block once and applies every staged semantic parameter
+  /// in one L5-owned patch before one SET. This preserves all untouched bytes.
+  Future<void> commitParameterSettings(
+    DiscoveredCardState card,
+    ParameterSettingsPatch patch,
+  ) async {
+    final session = _sessionForCard(card);
+    if (session == null || !session.isAlive) {
+      throw StateError('commitParameterSettings: no session');
+    }
+    final current = await session.querySensorOther();
+    if (current == null) {
+      throw StateError('Failed to read current sensor/other block');
+    }
+    final dataBlock = TelinkB80ConfigBlockCodec.patchSensorOther(
+      current.data,
+      rippleEnabled: patch.rippleEnabled,
+      angleSnapEnabled: patch.angleSnapEnabled,
+      angleTuneEnabled: patch.angleTuneEnabled,
+      angleTuneWire: patch.angleTuneWire,
+      lodWire: patch.lodWire,
+      performanceWire: patch.performanceWire,
+      debounceWire: patch.debounceWire,
+      sleepWire: patch.sleepWire,
+      wheelInvert: patch.wheelInvert,
+    );
     await session.setSensorOther(dataBlock);
   }
 
@@ -900,16 +941,16 @@ class DeviceScope {
       throw StateError('commitRgbBacklight: no session');
     }
 
-    const translate = TranslationCodec();
-    final dataBlock = Uint8List(8);
-    dataBlock[0] = translate.triStateBoolToWire(values.enable);
-    dataBlock[1] = values.modeId & 0xFF;
-    dataBlock[2] = values.brightness & 0xFF;
-    dataBlock[3] = values.speed & 0xFF;
-    dataBlock[4] = values.r & 0xFF;
-    dataBlock[5] = values.g & 0xFF;
-    dataBlock[6] = values.b & 0xFF;
-    dataBlock[7] = values.sleepTime & 0xFF;
+    final dataBlock = TelinkB80ConfigBlockCodec.encodeRgbBacklight(
+      enabled: values.enable,
+      modeId: values.modeId,
+      brightness: values.brightness,
+      speed: values.speed,
+      red: values.r,
+      green: values.g,
+      blue: values.b,
+      sleepWire: values.sleepTime,
+    );
 
     await session.setRgbBacklight(dataBlock);
   }
@@ -1185,8 +1226,11 @@ class DeviceScope {
       devId: entry.devId,
       displayName: entry.model,
       connectionMode: session.device.mode.mode,
-      // USB and receiver both show mouse FW (not dongle).
+      // The card keeps the historical mouse-only label; Device Setting renders
+      // both A8 values independently.
       firmwareVersion: _firmwareLabel(firmware),
+      mouseFirmwareVersion: firmware?.mouseVersionLabel ?? '',
+      dongleFirmwareVersion: firmware?.dongleVersionLabel ?? '',
       batteryPercentage: battery?.percent ?? -1,
       isCharging: battery?.isCharging ?? false,
       physicalHandle: session.device.hidDevice,
@@ -1214,7 +1258,7 @@ class DeviceScope {
     }
     _performanceSubs.clear();
     _sessions.clear();
-    await _watcher.stop();
+    await _runtime.stop();
     await _osdEvents.close();
     await _batteryLowOsdEvents.close();
     _lowBatteryAlerts.clear();
@@ -1223,20 +1267,4 @@ class DeviceScope {
     busy.dispose();
     settingsVersion.dispose();
   }
-}
-
-// --- last-device hint (web localStorage; no-op on non-web) ---
-
-const _lastHidKey = 'driver_hub.lastHid';
-
-void _saveLastDevice(DiscoveredDevice d) {
-  if (!kIsWeb) return;
-  try {
-    final payload = jsonEncode({
-      'vendorId': d.mode.vid,
-      'productId': d.mode.pid,
-      'productName': d.entry.model,
-    });
-    writeLocalStorage(_lastHidKey, payload);
-  } catch (_) {}
 }

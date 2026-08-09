@@ -1,4 +1,5 @@
 import 'package:driver_hub/layer2_capabilities/capabilities.dart';
+import 'package:driver_hub/layer2_capabilities/dpi_wire_profile.dart';
 import 'package:driver_hub/layer5_codec/codecs/keyvalue_table.dart';
 
 /// L5 wire → meaning maps for settings (and later SET reverse maps).
@@ -103,142 +104,46 @@ class TranslationCodec {
     return v;
   }
 
-  /// Wire unit → display DPI for the active sensor transform.
-  ///
-  /// Transforms are selected per sensor profile (`sensors.json`):
-  /// - `identity` — wire value is DPI (`0x0320` → 800)
-  /// - `divide` — display = wire × factor
-  /// - `multiply` — display = wire ÷ factor
-  /// - `paw3311` — [cpiTables] by register mode; the mode is inferred from
-  ///   the value's range (≤10000 → mode 0x50, >10000 → mode 0xD0), falling
-  ///   back to the legacy flat [cpiMap], then `(wire + 1) × factor`.
-  ///
-  /// KNOWN ISSUE (PAW3311 two-mode collision): the 0x50 and 0xD0 tables share
-  /// wire codes — e.g. `0x8d` = 5950 under mode 0x50 but 12000 under mode 0xD0.
-  /// The wire byte carries no mode flag, so a cold read cannot disambiguate; we
-  /// try 0x50 first, so a stage the device holds as >10000 (0xD0) may read back
-  /// as the colliding low-mode value. The active mode is in SPI register 0x4D;
-  /// reading it over HID config is unconfirmed (needs firmware dev). Until then
-  /// this is a read-side display limitation only — writes are unaffected.
-  int dpiWireUnitToDisplay(
-    int wire, {
-    required String transform,
-    required int factor,
-    Map<int, int> cpiMap = const {},
-    Map<int, Map<int, int>> cpiTables = const {},
-  }) {
-    switch (transform) {
-      case 'identity':
-        return wire;
-      case 'divide':
-        return wire * factor;
-      case 'multiply':
-        if (factor == 0) {
-          throw ArgumentError.value(factor, 'factor', 'multiply factor must be non-zero');
-        }
-        return wire ~/ factor;
-      case 'paw3311':
-        // Infer PAW3311 register mode from the CPI range the value maps into:
-        // mode 0x50 covers ≤10000, mode 0xD0 covers >10000. Try both.
-        for (final mode in [0x50, 0xD0]) {
-          final table = cpiTables[mode];
-          if (table == null) continue;
-          final mapped = table[wire & 0xFF];
-          if (mapped != null) return mapped;
-        }
-        final legacy = cpiMap[wire & 0xFF];
-        if (legacy != null) return legacy;
-        return (wire + 1) * factor;
-      default:
-        throw ArgumentError.value(transform, 'transform', 'unknown DPI transform');
+  /// Wire unit → display DPI using the L2-owned USB profile.
+  int dpiWireUnitToDisplay(int wire, {required DpiWireProfile profile}) {
+    if (profile.transform != 'identity' || profile.factor != 1) {
+      throw ArgumentError.value(
+        profile.key,
+        'profile',
+        'unsupported DPI wire profile',
+      );
     }
+    return wire;
   }
 
-  /// Display DPI → wire unit for the active sensor transform (encode).
-  ///
-  /// Inverse of [dpiWireUnitToDisplay]:
-  /// - `identity` — DPI is the wire value (`800` → 0x0320)
-  /// - `divide` — wire = DPI ÷ factor
-  /// - `multiply` — wire = DPI × factor
-  /// - `paw3311` — look up DPI in [cpiTables]; the mode is chosen by the DPI
-  ///   value's range (≤10000 → 0x50, >10000 → 0xD0). Falls back to the
-  ///   legacy [cpiMap] reverse lookup, then `(DPI ÷ factor) - 1`.
-  ///
-  /// Returns null if the DPI is not representable in this encoding.
-  int? dpiDisplayToWireUnit(
-    int dpi, {
-    required String transform,
-    required int factor,
-    Map<int, int> cpiMap = const {},
-    Map<int, Map<int, int>> cpiTables = const {},
-  }) {
-    switch (transform) {
-      case 'identity':
-        return dpi;
-      case 'divide':
-        return dpi ~/ factor;
-      case 'multiply':
-        return dpi * factor;
-      case 'paw3311':
-        final mode = dpi > 10000 ? 0xD0 : 0x50;
-        final table = cpiTables[mode];
-        if (table != null) {
-          for (final e in table.entries) {
-            if (e.value == dpi) return e.key;
-          }
-        }
-        for (final e in cpiMap.entries) {
-          if (e.value == dpi) return e.key;
-        }
-        final fallback = (dpi ~/ factor) - 1;
-        return fallback >= 0 ? fallback : null;
-      default:
-        throw ArgumentError.value(transform, 'transform', 'unknown DPI transform');
+  /// Display DPI → wire unit using the L2-owned USB profile.
+  int? dpiDisplayToWireUnit(int dpi, {required DpiWireProfile profile}) {
+    if (profile.transform != 'identity' || profile.factor != 1) {
+      throw ArgumentError.value(
+        profile.key,
+        'profile',
+        'unsupported DPI wire profile',
+      );
     }
+    return dpi;
   }
 
-  /// Decode one C4 stage using the sensor encoding for this device.
-  ///
-  /// [bytesPerAxis], [independentXY], [transform], [factor], [cpiMap], and
-  /// [cpiTables] come from the device’s sensor table — not hard-coded chips.
+  /// Decode one C4 stage using the L2-owned USB profile.
   ({int value, int? y}) decodeDpiStageWire({
     required int b0,
     required int b1,
-    required int bytesPerAxis,
-    required String endian,
+    required DpiWireProfile profile,
     required bool independentXY,
-    required String transform,
-    required int factor,
-    Map<int, int> cpiMap = const {},
-    Map<int, Map<int, int>> cpiTables = const {},
   }) {
     if (!independentXY) {
-      final wire = bytesPerAxis == 1
+      final wire = profile.bytesPerAxis == 1
           ? (b0 & 0xFF)
-          : dpiAxisBytesToWire([b0 & 0xFF, b1 & 0xFF], endian: endian);
-      final dpi = dpiWireUnitToDisplay(
-        wire,
-        transform: transform,
-        factor: factor,
-        cpiMap: cpiMap,
-        cpiTables: cpiTables,
-      );
+          : dpiAxisBytesToWire([b0 & 0xFF, b1 & 0xFF], endian: profile.endian);
+      final dpi = dpiWireUnitToDisplay(wire, profile: profile);
       return (value: dpi, y: null);
     }
-    final x = dpiWireUnitToDisplay(
-      b0 & 0xFF,
-      transform: transform,
-      factor: factor,
-      cpiMap: cpiMap,
-      cpiTables: cpiTables,
-    );
-    final y = dpiWireUnitToDisplay(
-      b1 & 0xFF,
-      transform: transform,
-      factor: factor,
-      cpiMap: cpiMap,
-      cpiTables: cpiTables,
-    );
+    final x = dpiWireUnitToDisplay(b0 & 0xFF, profile: profile);
+    final y = dpiWireUnitToDisplay(b1 & 0xFF, profile: profile);
     return (value: x, y: y);
   }
 

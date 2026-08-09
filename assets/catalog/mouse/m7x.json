@@ -49,6 +49,7 @@
   "dpi": {
     "maxLevels": 8,
     "defaultLevel": 2,
+    "wireProfile": "telink_b80_dpi16",
     "range": {
       "minDpi": 50,
       "maxDpi": 12000,
@@ -72,6 +73,7 @@
     ]
   },
   "sensor": {
+    "model": "PAW3311",
     "present": true,
     "sensorTuning": true,
     "angleTune": false,

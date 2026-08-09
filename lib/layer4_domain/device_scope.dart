@@ -6,7 +6,6 @@ import 'package:driver_hub/layer1_discovery/device_session.dart';
 import 'package:driver_hub/layer1_discovery/device_watcher.dart';
 import 'package:driver_hub/layer1_discovery/discovered_device.dart';
 import 'package:driver_hub/layer2_capabilities/capabilities.dart';
-import 'package:driver_hub/layer2_capabilities/sensor_profiles.dart';
 import 'package:driver_hub/layer4_domain/bloc/device_settings_bloc.dart';
 import 'package:driver_hub/layer5_codec/button_mapping_slot.dart';
 import 'package:driver_hub/layer4_domain/models/device_settings_state.dart';
@@ -27,9 +26,8 @@ import 'package:hid_tool/hid_tool.dart';
 ///
 /// One entry per verified device, keyed by device path → multi-device.
 class DeviceScope {
-  DeviceScope({
-    DeviceScanner? scanner,
-  }) : _scanner = scanner ?? DeviceScanner() {
+  DeviceScope({DeviceScanner? scanner})
+    : _scanner = scanner ?? DeviceScanner() {
     _watcher = DeviceWatcher(
       scanner: _scanner,
       protocolFactory: () => const MouseProtocol(),
@@ -135,8 +133,10 @@ class DeviceScope {
     final battery = await _queryBattery(session);
     final firmware = await _queryFirmware(session);
     if (!session.isAlive) {
-      debugPrint('[scope] ${session.device.entry.model} gone mid-query, '
-          'skipping publish');
+      debugPrint(
+        '[scope] ${session.device.entry.model} gone mid-query, '
+        'skipping publish',
+      );
       return;
     }
     // Soft battery: always show card after verify; unknown battery is "—".
@@ -181,7 +181,9 @@ class DeviceScope {
   ///
   /// Caps-first partials are written into [_settings] and bump
   /// [settingsVersion] before the final packed result returns.
-  Future<DeviceSettingsState> loadOnboardSettings(DiscoveredCardState card) async {
+  Future<DeviceSettingsState> loadOnboardSettings(
+    DiscoveredCardState card,
+  ) async {
     final session = _sessionForCard(card);
     if (session == null || !session.isAlive) {
       return DeviceSettingsState(
@@ -294,10 +296,7 @@ class DeviceScope {
     await session.setReportRate(dataBlock);
   }
 
-  Future<void> commitDpiLevel(
-    DiscoveredCardState card,
-    int dpiLevel,
-  ) async {
+  Future<void> commitDpiLevel(DiscoveredCardState card, int dpiLevel) async {
     final session = _sessionForCard(card);
     if (session == null || !session.isAlive) {
       throw StateError('commitDpiLevel: no session');
@@ -339,11 +338,12 @@ class DeviceScope {
       throw StateError('commitDpiValues: no session');
     }
 
-    final profile = SensorProfiles.forDevice(card.devId);
-    final table = profile == null ? null : SensorProfiles.table(profile.table);
-    final enc = table?.dpiEncoding;
+    final caps = DeviceCapabilityStore.forDevice(card.devId);
+    final enc = caps?.dpi?.wireProfile;
     if (enc == null) {
-      throw StateError('commitDpiValues: no sensor encoding for ${card.devId}');
+      throw StateError(
+        'commitDpiValues: no L2 DPI wire profile for ${card.devId}',
+      );
     }
 
     final current = await session.queryDpiTable();
@@ -356,27 +356,13 @@ class DeviceScope {
     for (final e in levelValues.entries) {
       final idx = e.key - 1; // 1-based level -> 0-based slot
       if (idx < 0 || idx >= 8) continue;
-      final wire = translate.dpiDisplayToWireUnit(
-        e.value,
-        transform: enc.transform,
-        factor: enc.factor,
-        cpiMap: enc.cpiMap,
-        cpiTables: enc.cpiTables,
-      );
+      final wire = translate.dpiDisplayToWireUnit(e.value, profile: enc);
       if (wire == null) {
         throw StateError('DPI value ${e.value} not encodable on this sensor');
       }
-      // why: 0xC4 table is always 2 bytes/stage (TelinkB80 structure doc), and
-      // the GET decode reads the value from the FIRST byte of each pair (b0).
-      // So write value-byte first, pad second. Multi-byte wire values keep
-      // big-endian order (hi first); single-byte codes (PAW3311) pad with 0x00.
-      if (enc.bytesPerAxis == 1) {
-        dataBlock[idx * 2] = wire & 0xFF; // value in first byte (matches GET b0)
-        dataBlock[idx * 2 + 1] = 0x00;
-      } else {
-        dataBlock[idx * 2] = (wire >> 8) & 0xFF; // hi
-        dataBlock[idx * 2 + 1] = wire & 0xFF; // lo
-      }
+      // C4 stores eight two-byte big-endian DPI values.
+      dataBlock[idx * 2] = (wire >> 8) & 0xFF;
+      dataBlock[idx * 2 + 1] = wire & 0xFF;
     }
 
     await session.setDpiTable(dataBlock);
@@ -401,23 +387,25 @@ class DeviceScope {
       throw StateError('commitDpiStages: no session');
     }
 
-    final profile = SensorProfiles.forDevice(card.devId);
-    final table = profile == null ? null : SensorProfiles.table(profile.table);
-    final enc = table?.dpiEncoding;
-    if (enc == null) {
-      throw StateError('commitDpiStages: no sensor encoding for ${card.devId}');
-    }
     final caps = DeviceCapabilityStore.forDevice(card.devId);
-    final capLevels = caps?.dpi?.levels;
-    final defaultDpi =
-        (capLevels != null && capLevels.isNotEmpty) ? capLevels.last.value : 1600;
+    final dpi = caps?.dpi;
+    final enc = dpi?.wireProfile;
+    if (enc == null) {
+      throw StateError(
+        'commitDpiStages: no L2 DPI wire profile for ${card.devId}',
+      );
+    }
+    final capLevels = dpi?.levels;
+    if (capLevels == null || capLevels.isEmpty) {
+      throw StateError(
+        'commitDpiStages: no catalog DPI levels for ${card.devId}',
+      );
+    }
+    final defaultDpi = capLevels.last.value;
     const translate = TranslationCodec();
     final defaultWire = translate.dpiDisplayToWireUnit(
       defaultDpi,
-      transform: enc.transform,
-      factor: enc.factor,
-      cpiMap: enc.cpiMap,
-      cpiTables: enc.cpiTables,
+      profile: enc,
     );
     if (defaultWire == null) {
       throw StateError('commitDpiStages: default DPI not encodable');
@@ -429,27 +417,15 @@ class DeviceScope {
       final stage = i < stagedLevels.length ? stagedLevels[i] : null;
       final wire = stage == null
           ? defaultWire
-          : translate.dpiDisplayToWireUnit(
-              stage.value,
-              transform: enc.transform,
-              factor: enc.factor,
-              cpiMap: enc.cpiMap,
-              cpiTables: enc.cpiTables,
-            );
+          : translate.dpiDisplayToWireUnit(stage.value, profile: enc);
       if (wire == null) {
-        throw StateError('commitDpiStages: value not encodable at slot ${i + 1}');
+        throw StateError(
+          'commitDpiStages: value not encodable at slot ${i + 1}',
+        );
       }
-      // why: 0xC4 table is always 2 bytes/stage (TelinkB80 structure doc), and
-      // the GET decode reads the value from the FIRST byte of each pair (b0).
-      // So write value-byte first, pad second. Multi-byte wire values keep
-      // big-endian order (hi first); single-byte codes (PAW3311) pad with 0x00.
-      if (enc.bytesPerAxis == 1) {
-        dataBlock[i * 2] = wire & 0xFF; // value in first byte (matches GET b0)
-        dataBlock[i * 2 + 1] = 0x00;
-      } else {
-        dataBlock[i * 2] = (wire >> 8) & 0xFF; // hi
-        dataBlock[i * 2 + 1] = wire & 0xFF; // lo
-      }
+      // C4 stores eight two-byte big-endian DPI values.
+      dataBlock[i * 2] = (wire >> 8) & 0xFF;
+      dataBlock[i * 2 + 1] = wire & 0xFF;
     }
     await session.setDpiTable(dataBlock);
 
@@ -539,10 +515,7 @@ class DeviceScope {
   ///
   /// why: angle tune shares one block with ripple/angle snap/LOD/debounce/sleep/wheel,
   /// so the current block is read first and only the angle tune byte is replaced.
-  Future<void> commitAngleTune(
-    DiscoveredCardState card,
-    int wireValue,
-  ) async {
+  Future<void> commitAngleTune(DiscoveredCardState card, int wireValue) async {
     final session = _sessionForCard(card);
     if (session == null || !session.isAlive) {
       throw StateError('commitAngleTune: no session');
@@ -565,10 +538,7 @@ class DeviceScope {
   ///
   /// why: LOD shares one block with ripple/angle snap/angle tune/debounce/sleep/wheel,
   /// so the current block is read first and only the LOD byte is replaced.
-  Future<void> commitLod(
-    DiscoveredCardState card,
-    int wire,
-  ) async {
+  Future<void> commitLod(DiscoveredCardState card, int wire) async {
     final session = _sessionForCard(card);
     if (session == null || !session.isAlive) {
       throw StateError('commitLod: no session');
@@ -590,10 +560,7 @@ class DeviceScope {
   ///
   /// TODO(mock): real performance semantics pending; this just writes the
   /// selected wire value into the performance byte.
-  Future<void> commitPerformance(
-    DiscoveredCardState card,
-    int wire,
-  ) async {
+  Future<void> commitPerformance(DiscoveredCardState card, int wire) async {
     final session = _sessionForCard(card);
     if (session == null || !session.isAlive) {
       throw StateError('commitPerformance: no session');
@@ -615,10 +582,7 @@ class DeviceScope {
   ///
   /// why: debounce is at byte index 11, per the 14-byte layout
   /// [... performance(4), 0..0, debounce(11), sleep(12), wheel(13)].
-  Future<void> commitDebounce(
-    DiscoveredCardState card,
-    int wire,
-  ) async {
+  Future<void> commitDebounce(DiscoveredCardState card, int wire) async {
     final session = _sessionForCard(card);
     if (session == null || !session.isAlive) {
       throw StateError('commitDebounce: no session');
@@ -638,10 +602,7 @@ class DeviceScope {
   /// Commits the sleep time index into the 14-byte 0xD4 block.
   ///
   /// why: sleep is at byte index 12, per the 14-byte layout.
-  Future<void> commitSleep(
-    DiscoveredCardState card,
-    int wire,
-  ) async {
+  Future<void> commitSleep(DiscoveredCardState card, int wire) async {
     final session = _sessionForCard(card);
     if (session == null || !session.isAlive) {
       throw StateError('commitSleep: no session');
@@ -662,10 +623,7 @@ class DeviceScope {
   ///
   /// why: L5 owns wire encoding; wheel direction is tri-state (0xFF/0x0F),
   /// so a raw 1/0 would read back as neither on nor off.
-  Future<void> commitWheelInvert(
-    DiscoveredCardState card,
-    bool invert,
-  ) async {
+  Future<void> commitWheelInvert(DiscoveredCardState card, bool invert) async {
     final session = _sessionForCard(card);
     if (session == null || !session.isAlive) {
       throw StateError('commitWheelInvert: no session');
@@ -781,11 +739,17 @@ class DeviceScope {
   //   }
   // }
 
-  void _patchBattery(String path, BatteryResult battery, {required String source}) {
+  void _patchBattery(
+    String path,
+    BatteryResult battery, {
+    required String source,
+  }) {
     final prev = _cards[path];
     if (prev == null) return;
-    debugPrint('[scope] live battery ($source) ${prev.displayName}: '
-        '${battery.percent}% charging=${battery.isCharging}');
+    debugPrint(
+      '[scope] live battery ($source) ${prev.displayName}: '
+      '${battery.percent}% charging=${battery.isCharging}',
+    );
     _cards[path] = prev.copyWith(
       batteryPercentage: battery.percent,
       isCharging: battery.isCharging,
@@ -800,16 +764,22 @@ class DeviceScope {
     try {
       final result = await session.queryBattery();
       if (result == null) {
-        debugPrint('[scope] battery skipped: ${session.device.entry.model} '
-            'no longer alive');
+        debugPrint(
+          '[scope] battery skipped: ${session.device.entry.model} '
+          'no longer alive',
+        );
         return null;
       }
-      debugPrint('[scope] battery for ${session.device.entry.model}: '
-          '${result.percent}% charging=${result.isCharging}');
+      debugPrint(
+        '[scope] battery for ${session.device.entry.model}: '
+        '${result.percent}% charging=${result.isCharging}',
+      );
       return result;
     } catch (e) {
-      debugPrint('[scope] battery query failed for '
-          '${session.device.entry.model}: $e');
+      debugPrint(
+        '[scope] battery query failed for '
+        '${session.device.entry.model}: $e',
+      );
       return null;
     }
   }
@@ -819,29 +789,40 @@ class DeviceScope {
     try {
       final result = await session.queryFirmware();
       if (result == null) {
-        debugPrint('[scope] firmware skipped: ${session.device.entry.model} '
-            'no longer alive');
+        debugPrint(
+          '[scope] firmware skipped: ${session.device.entry.model} '
+          'no longer alive',
+        );
         return null;
       }
-      debugPrint('[scope] firmware for ${session.device.entry.model}: '
-          'mouse=${result.mouseVersionLabel} '
-          'dongle=${result.dongleVersionLabel}');
+      debugPrint(
+        '[scope] firmware for ${session.device.entry.model}: '
+        'mouse=${result.mouseVersionLabel} '
+        'dongle=${result.dongleVersionLabel}',
+      );
       return result;
     } catch (e) {
-      debugPrint('[scope] firmware query failed for '
-          '${session.device.entry.model}: $e');
+      debugPrint(
+        '[scope] firmware query failed for '
+        '${session.device.entry.model}: $e',
+      );
       return null;
     }
   }
 
   /// Publishes a card for a verified [session].
   /// Battery/firmware null → sentinels ("—" on the card); session stays usable.
-  void _upsert(DeviceSession session, BatteryResult? battery,
-      [FirmwareResult? firmware]) {
+  void _upsert(
+    DeviceSession session,
+    BatteryResult? battery, [
+    FirmwareResult? firmware,
+  ]) {
     final path = session.device.hidDevice.path;
     if (battery == null) {
-      debugPrint('[scope] no battery yet for ${session.device.entry.model} '
-          '— card shown with Battery —');
+      debugPrint(
+        '[scope] no battery yet for ${session.device.entry.model} '
+        '— card shown with Battery —',
+      );
     }
     _cards[path] = _cardStateFor(session, battery, firmware);
     cards.value = List.unmodifiable(_cards.values);
@@ -858,8 +839,11 @@ class DeviceScope {
   }
 
   /// L1 → L3 bridge: catalog + optional A4/A8. Unknown battery → -1 ("—").
-  DiscoveredCardState _cardStateFor(DeviceSession session, BatteryResult? battery,
-      [FirmwareResult? firmware]) {
+  DiscoveredCardState _cardStateFor(
+    DeviceSession session,
+    BatteryResult? battery, [
+    FirmwareResult? firmware,
+  ]) {
     final entry = session.device.entry;
     return DiscoveredCardState(
       devId: entry.devId,

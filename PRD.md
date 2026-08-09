@@ -58,8 +58,8 @@ the pipeline runs end to end without hardware.
 - N2. The real device protocol. Handshake and battery are stubbed.
 - N3. Live plug/unplug detection. Scan is user-triggered.
 - N4. Per-device settings persistence.
-- N5. Sensor profile loading (`sensors.json`). Required only when DPI math is
-  implemented.
+- N5. Sensor-chip-specific DPI profile loading. The shared Telink B80 USB DPI
+  wire profile is part of the L2 capability model.
 
 ## 6. Flow
 
@@ -235,7 +235,7 @@ failure on device A stops device A only.
 ```
 core/device/
   capabilities.dart              DeviceCapabilities + CapabilityStore (hardcoded)
-  sensor_profiles.dart           SensorProfiles (hardcoded)
+  dpi_wire_profile.dart          Shared Telink B80 DPI wire profile (L2)
 features/mouse/
   protocol/
     device_protocol.dart         DeviceProtocol, DeviceHandshake, DeviceStatus

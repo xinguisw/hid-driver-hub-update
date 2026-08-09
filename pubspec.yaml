@@ -100,7 +100,7 @@ flutter:
   ## this one is assests list
   assets:
     - assets/catalog/supported_model.json
-    # All per-mouse JSON under mouse/ (m7xse.json, …) + sensors.json — no pubspec edit per mouse.
+    # All per-mouse capability JSON under mouse/. No pubspec edit per mouse.
     - assets/catalog/mouse/
     # Action catalog tabs (mouse.json, …) — remap panel lists; L2 loads.
     - assets/catalog/action/

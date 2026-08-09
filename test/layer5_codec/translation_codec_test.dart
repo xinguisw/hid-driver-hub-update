@@ -1,10 +1,12 @@
 import 'package:driver_hub/layer2_capabilities/capabilities.dart';
+import 'package:driver_hub/layer2_capabilities/dpi_wire_profile.dart';
 import 'package:driver_hub/layer5_codec/codecs/keyvalue_table.dart';
 import 'package:driver_hub/layer5_codec/codecs/translation_codec.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   const t = TranslationCodec();
+  const profile = DpiWireProfiles.telinkB80Dpi16;
   const keys = KeyvalueTable();
 
   group('TranslationCodec.reportRateWireToHz', () {
@@ -65,18 +67,12 @@ void main() {
   group('TranslationCodec DPI table wire', () {
     test('hex 0x0320 → decimal 800 (identity big-endian)', () {
       expect(t.dpiAxisBytesToWire([0x03, 0x20], endian: 'big'), 0x0320);
-      expect(
-        t.dpiWireUnitToDisplay(0x0320, transform: 'identity', factor: 1),
-        800,
-      );
+      expect(t.dpiWireUnitToDisplay(0x0320, profile: profile), 800);
       final stage = t.decodeDpiStageWire(
         b0: 0x03,
         b1: 0x20,
-        bytesPerAxis: 2,
-        endian: 'big',
+        profile: profile,
         independentXY: false,
-        transform: 'identity',
-        factor: 1,
       );
       expect(stage.value, 800);
       expect(stage.y, isNull);
@@ -97,11 +93,8 @@ void main() {
               .decodeDpiStageWire(
                 b0: s.$1,
                 b1: s.$2,
-                bytesPerAxis: 2,
-                endian: 'big',
+                profile: profile,
                 independentXY: false,
-                transform: 'identity',
-                factor: 1,
               )
               .value,
       ];
@@ -112,117 +105,23 @@ void main() {
       expect(values[4], 5000);
     });
 
-    test('unknown transform throws', () {
+    test('unsupported profile transform throws', () {
+      const unsupported = DpiWireProfile(
+        key: 'unsupported',
+        transform: 'divide',
+        factor: 50,
+        bytesPerAxis: 1,
+        endian: 'big',
+      );
       expect(
-        () => t.dpiWireUnitToDisplay(1, transform: 'mystery', factor: 1),
+        () => t.dpiWireUnitToDisplay(1, profile: unsupported),
         throwsArgumentError,
       );
     });
 
-    test('PAW3311 SDK cpiMap 0x13→840; Y ignored', () {
-      const map = {
-        0x13: 840,
-        0x26: 1200,
-        0x39: 1620,
-        0x55: 3180,
-      };
-      expect(
-        t.dpiWireUnitToDisplay(0x13, transform: 'paw3311', factor: 50, cpiMap: map),
-        840,
-      );
-      final stage = t.decodeDpiStageWire(
-        b0: 0x13,
-        b1: 0x00,
-        bytesPerAxis: 1,
-        endian: 'big',
-        independentXY: false,
-        transform: 'paw3311',
-        factor: 50,
-        cpiMap: map,
-      );
-      expect(stage.value, 840);
-      expect(stage.y, isNull);
-      // Unmapped code uses (wire+1)*factor
-      expect(
-        t.dpiWireUnitToDisplay(0x0F, transform: 'paw3311', factor: 50, cpiMap: map),
-        800,
-      );
-    });
-
-    test('PAW-style divide wire*factor', () {
-      expect(
-        t.dpiWireUnitToDisplay(16, transform: 'divide', factor: 50),
-        800,
-      );
-      final stage = t.decodeDpiStageWire(
-        b0: 16,
-        b1: 32,
-        bytesPerAxis: 1,
-        endian: 'big',
-        independentXY: true,
-        transform: 'divide',
-        factor: 50,
-      );
-      expect(stage.value, 800);
-      expect(stage.y, 1600);
-    });
-
-    test('PAW3311 full Setting-2 tables decode by range (mode inference)', () {
-      const tables = {
-        0x50: {0x01: 50, 0x13: 800, 0x76: 5000, 0xED: 10000},
-        0xD0: {0x76: 10100, 0x8D: 12000},
-      };
-      // Mode 0x50 values
-      expect(
-        t.dpiWireUnitToDisplay(0x01, transform: 'paw3311', factor: 50, cpiTables: tables),
-        50,
-      );
-      expect(
-        t.dpiWireUnitToDisplay(0x13, transform: 'paw3311', factor: 50, cpiTables: tables),
-        800,
-      );
-      // 0x76 resolves to 0x50 (5000) on decode — range inference.
-      expect(
-        t.dpiWireUnitToDisplay(0x76, transform: 'paw3311', factor: 50, cpiTables: tables),
-        5000,
-      );
-      expect(
-        t.dpiWireUnitToDisplay(0xED, transform: 'paw3311', factor: 50, cpiTables: tables),
-        10000,
-      );
-    });
-
-    test('PAW3311 encode picks mode 0xD0 for >10000', () {
-      const tables = {
-        0x50: {0x01: 50, 0x13: 800, 0x76: 5000, 0xED: 10000},
-        0xD0: {0x76: 10100, 0x8D: 12000},
-      };
-      expect(
-        t.dpiDisplayToWireUnit(800, transform: 'paw3311', factor: 50, cpiTables: tables),
-        0x13,
-      );
-      // 10100 is only in mode 0xD0
-      expect(
-        t.dpiDisplayToWireUnit(10100, transform: 'paw3311', factor: 50, cpiTables: tables),
-        0x76,
-      );
-      expect(
-        t.dpiDisplayToWireUnit(12000, transform: 'paw3311', factor: 50, cpiTables: tables),
-        0x8D,
-      );
-    });
-
-    test('encode identity/divide inverse', () {
+    test('encode and decode use the shared direct profile', () {
       // identity: 800 -> wire 0x0320 (via dpiAxisBytesToWire)
-      expect(
-        t.dpiDisplayToWireUnit(800, transform: 'identity', factor: 1),
-        800,
-      );
-      // divide: 800 / 50 = 16
-      expect(
-        t.dpiDisplayToWireUnit(800, transform: 'divide', factor: 50),
-        16,
-      );
+      expect(t.dpiDisplayToWireUnit(800, profile: profile), 800);
     });
   });
 
@@ -284,14 +183,8 @@ void main() {
     });
 
     test('consumer action shares the same key table', () {
-      expect(
-        t.buttonActionToLabel(action: 0x13, param1: 0xB1),
-        'Play / pause',
-      );
-      expect(
-        t.buttonActionToLabel(action: 0x13, param1: 0xAC),
-        'Calculator',
-      );
+      expect(t.buttonActionToLabel(action: 0x13, param1: 0xB1), 'Play / pause');
+      expect(t.buttonActionToLabel(action: 0x13, param1: 0xAC), 'Calculator');
     });
 
     test('empty slots and unmapped bytes', () {
@@ -299,10 +192,7 @@ void main() {
       expect(t.buttonActionToLabel(action: 0x12, param1: 0x02), 'Key 0x02');
     });
     test('macro and unknown', () {
-      expect(
-        t.buttonActionToLabel(action: 0x14, param1: 3),
-        'Macro play (#3)',
-      );
+      expect(t.buttonActionToLabel(action: 0x14, param1: 3), 'Macro play (#3)');
       expect(
         t.buttonActionToLabel(action: 0x99, param1: 1, param2: 2, param3: 3),
         'Unknown action 0x99 (p=1,2,3)',

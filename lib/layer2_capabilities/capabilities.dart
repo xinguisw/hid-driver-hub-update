@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/services.dart' show rootBundle;
 
-import 'package:driver_hub/layer2_capabilities/sensor_profiles.dart';
+import 'package:driver_hub/layer2_capabilities/dpi_wire_profile.dart';
 
 /// Capabilities of a supported device.
 ///
@@ -43,26 +43,29 @@ class DeviceCapabilities {
       buttons: json['buttons'] == null
           ? null
           : ButtonCapabilities.fromJson(
-              json['buttons'] as Map<String, dynamic>),
+              json['buttons'] as Map<String, dynamic>,
+            ),
       reportRate: json['reportRate'] == null
           ? null
           : ReportRateCapabilities.fromJson(
-              json['reportRate'] as Map<String, dynamic>),
+              json['reportRate'] as Map<String, dynamic>,
+            ),
       dpi: json['dpi'] == null
           ? null
           : DpiCapabilities.fromJson(json['dpi'] as Map<String, dynamic>),
       sensor: json['sensor'] == null
           ? null
-          : SensorCapabilities.fromJson(
-              json['sensor'] as Map<String, dynamic>),
+          : SensorCapabilities.fromJson(json['sensor'] as Map<String, dynamic>),
       otherFeatures: json['otherFeatures'] == null
           ? null
           : OtherFeaturesCapabilities.fromJson(
-              json['otherFeatures'] as Map<String, dynamic>),
+              json['otherFeatures'] as Map<String, dynamic>,
+            ),
       rgbBacklight: json['rgbBacklight'] == null
           ? null
           : RgbBacklightCapabilities.fromJson(
-              json['rgbBacklight'] as Map<String, dynamic>),
+              json['rgbBacklight'] as Map<String, dynamic>,
+            ),
       macro: json['macro'] == null
           ? null
           : MacroCapabilities.fromJson(json['macro'] as Map<String, dynamic>),
@@ -71,10 +74,6 @@ class DeviceCapabilities {
           : OsdCapabilities.fromJson(json['osd'] as Map<String, dynamic>),
     );
   }
-
-  /// Sensor profile for this product [devId], or null if none.
-  /// USB and 2.4G use the same profile (one sensor per device id).
-  SensorProfile? sensorProfileFor() => SensorProfiles.forDevice(devId);
 }
 
 class ButtonCapabilities {
@@ -146,6 +145,7 @@ class ReportRateCapabilities {
 class DpiCapabilities {
   final int maxLevels;
   final int defaultLevel;
+  final String wireProfileKey;
   final DpiRange range;
   final bool independentXY;
   final bool rgbPerStage;
@@ -153,6 +153,7 @@ class DpiCapabilities {
   const DpiCapabilities({
     required this.maxLevels,
     required this.defaultLevel,
+    required this.wireProfileKey,
     required this.range,
     required this.independentXY,
     required this.rgbPerStage,
@@ -163,6 +164,7 @@ class DpiCapabilities {
     return DpiCapabilities(
       maxLevels: json['maxLevels'] as int,
       defaultLevel: json['defaultLevel'] as int,
+      wireProfileKey: json['wireProfile'] as String,
       range: DpiRange.fromJson(json['range'] as Map<String, dynamic>),
       independentXY: json['independentXY'] as bool,
       rgbPerStage: json['rgbPerStage'] as bool,
@@ -171,6 +173,9 @@ class DpiCapabilities {
           .toList(growable: false),
     );
   }
+
+  /// Shared L2 wire parameters for this product's USB DPI path.
+  DpiWireProfile? get wireProfile => DpiWireProfiles.forKey(wireProfileKey);
 }
 
 /// DPI value bounds + step model for one product.
@@ -204,8 +209,8 @@ class DpiRange {
       tiers: json['tiers'] == null
           ? null
           : (json['tiers'] as List)
-              .map((e) => DpiStepTier.fromJson(e as Map<String, dynamic>))
-              .toList(growable: false),
+                .map((e) => DpiStepTier.fromJson(e as Map<String, dynamic>))
+                .toList(growable: false),
     );
   }
 
@@ -265,10 +270,7 @@ class DpiStepTier {
   const DpiStepTier({required this.max, required this.step});
 
   factory DpiStepTier.fromJson(Map<String, dynamic> json) {
-    return DpiStepTier(
-      max: json['max'] as int,
-      step: json['step'] as int,
-    );
+    return DpiStepTier(max: json['max'] as int, step: json['step'] as int);
   }
 }
 
@@ -296,15 +298,19 @@ class DpiLevel {
 /// [sensorTuning] is grouped: ripple control + angle snap (both or neither).
 /// [angleTune] is a separate capability.
 class SensorCapabilities {
+  final String? model;
   final bool present;
   final SensorPerformance? performance;
+
   /// Grouped: ripple control + angle snap (both or neither).
   final bool sensorTuning;
+
   /// Separate feature from [sensorTuning].
   final bool angleTune;
   final AngleTuneCapabilities? angleTuneDetails;
   final LiftOffDistance? liftOffDistance;
   const SensorCapabilities({
+    this.model,
     required this.present,
     this.performance,
     required this.sensorTuning,
@@ -315,21 +321,25 @@ class SensorCapabilities {
 
   factory SensorCapabilities.fromJson(Map<String, dynamic> json) {
     return SensorCapabilities(
+      model: json['model'] as String?,
       present: json['present'] as bool,
       performance: json['performance'] == null
           ? null
           : SensorPerformance.fromJson(
-              json['performance'] as Map<String, dynamic>),
+              json['performance'] as Map<String, dynamic>,
+            ),
       sensorTuning: json['sensorTuning'] as bool,
       angleTune: json['angleTune'] as bool,
       angleTuneDetails: json['angleTuneDetails'] == null
           ? null
           : AngleTuneCapabilities.fromJson(
-              json['angleTuneDetails'] as Map<String, dynamic>),
+              json['angleTuneDetails'] as Map<String, dynamic>,
+            ),
       liftOffDistance: json['liftOffDistance'] == null
           ? null
           : LiftOffDistance.fromJson(
-              json['liftOffDistance'] as Map<String, dynamic>),
+              json['liftOffDistance'] as Map<String, dynamic>,
+            ),
     );
   }
 }
@@ -363,8 +373,8 @@ class AngleTuneCapabilities {
       options: json['options'] == null
           ? null
           : (json['options'] as List)
-              .map((e) => AngleTuneOption.fromJson(e as Map<String, dynamic>))
-              .toList(),
+                .map((e) => AngleTuneOption.fromJson(e as Map<String, dynamic>))
+                .toList(),
     );
   }
 }
@@ -487,7 +497,8 @@ class OtherFeaturesCapabilities {
       buttonDebounce: json['buttonDebounce'] == null
           ? null
           : ButtonDebounce.fromJson(
-              json['buttonDebounce'] as Map<String, dynamic>),
+              json['buttonDebounce'] as Map<String, dynamic>,
+            ),
       sleepTime: json['sleepTime'] == null
           ? null
           : SleepTime.fromJson(json['sleepTime'] as Map<String, dynamic>),
@@ -548,8 +559,9 @@ class RgbBacklightCapabilities {
           .toList(growable: false),
       brightnessLevels: json['brightnessLevels'] as int,
       speedLevels: json['speedLevels'] as int,
-      sleepTimeOptions:
-          (json['sleepTimeOptions'] as List).map((e) => e as int).toList(),
+      sleepTimeOptions: (json['sleepTimeOptions'] as List)
+          .map((e) => e as int)
+          .toList(),
     );
   }
 }

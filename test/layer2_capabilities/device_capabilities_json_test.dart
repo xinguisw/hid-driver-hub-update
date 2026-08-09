@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:driver_hub/layer2_capabilities/capabilities.dart';
-import 'package:driver_hub/layer2_capabilities/sensor_profiles.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -22,10 +21,20 @@ void main() {
     expect(caps.dpi!.range.maxDpi, 5000);
     expect(caps.dpi!.range.stepMode, 'fixed');
     expect(caps.dpi!.range.step, 50);
+    expect(caps.dpi!.wireProfileKey, 'telink_b80_dpi16');
+    expect(caps.sensor!.model, 'SG8925');
     expect(caps.dpi!.rgbPerStage, isFalse);
     expect(caps.dpi!.levels.length, 8);
-    expect(caps.dpi!.levels.map((e) => e.value).toList(),
-        [800, 1600, 2400, 3200, 5000, 1600, 1600, 1600]);
+    expect(caps.dpi!.levels.map((e) => e.value).toList(), [
+      800,
+      1600,
+      2400,
+      3200,
+      5000,
+      1600,
+      1600,
+      1600,
+    ]);
     expect(caps.sensor!.present, isTrue);
     expect(caps.sensor!.sensorTuning, isFalse);
     expect(caps.sensor!.angleTune, isFalse);
@@ -61,76 +70,70 @@ void main() {
     expect(DeviceCapabilityStore.forDevice('unknown'), isNull);
   });
 
-  test('DeviceCapabilityStore loads m7x.json (M7X, PAW3311, DPI RGB)', () async {
-    await DeviceCapabilityStore.load('m7x');
-    final caps = DeviceCapabilityStore.forDevice('01AA');
-    expect(caps, isNotNull);
-    expect(caps!.devId, '01AA');
-    expect(caps.displayNameKey, 'device.m7x.name');
-    expect(caps.reportRate!.options, [1000, 500, 250, 125]);
-    expect(caps.dpi!.range.maxDpi, 12000);
-    expect(caps.dpi!.range.stepMode, 'tiered');
-    expect(caps.dpi!.range.tiers!.length, 2);
-    expect(caps.dpi!.range.tiers![0].max, 10000);
-    expect(caps.dpi!.range.tiers![0].step, 50);
-    expect(caps.dpi!.range.tiers![1].max, 12000);
-    expect(caps.dpi!.range.tiers![1].step, 100);
-    expect(caps.dpi!.rgbPerStage, isTrue);
-    expect(caps.sensor!.sensorTuning, isTrue);
-    expect(caps.sensor!.angleTune, isFalse);
-    expect(caps.sensor!.liftOffDistance!.present, isFalse);
-    expect(caps.otherFeatures!.sleepTime!.present, isTrue);
-    expect(caps.rgbBacklight!.present, isFalse);
-  });
+  test(
+    'DeviceCapabilityStore loads m7x.json (M7X, PAW3311, DPI RGB)',
+    () async {
+      await DeviceCapabilityStore.load('m7x');
+      final caps = DeviceCapabilityStore.forDevice('01AA');
+      expect(caps, isNotNull);
+      expect(caps!.devId, '01AA');
+      expect(caps.displayNameKey, 'device.m7x.name');
+      expect(caps.reportRate!.options, [1000, 500, 250, 125]);
+      expect(caps.dpi!.range.maxDpi, 12000);
+      expect(caps.dpi!.range.stepMode, 'tiered');
+      expect(caps.dpi!.range.tiers!.length, 2);
+      expect(caps.dpi!.range.tiers![0].max, 10000);
+      expect(caps.dpi!.range.tiers![0].step, 50);
+      expect(caps.dpi!.range.tiers![1].max, 12000);
+      expect(caps.dpi!.range.tiers![1].step, 100);
+      expect(caps.dpi!.rgbPerStage, isTrue);
+      expect(caps.sensor!.sensorTuning, isTrue);
+      expect(caps.sensor!.angleTune, isFalse);
+      expect(caps.sensor!.liftOffDistance!.present, isFalse);
+      expect(caps.otherFeatures!.sleepTime!.present, isTrue);
+      expect(caps.rgbBacklight!.present, isFalse);
+    },
+  );
 
-  test('DeviceCapabilityStore loads m7x_pro.json (M7X PRO, PAW3395, backlight)', () async {
-    await DeviceCapabilityStore.load('m7x pro');
-    final caps = DeviceCapabilityStore.forDevice('03AA');
-    expect(caps, isNotNull);
-    expect(caps!.devId, '03AA');
-    expect(caps.displayNameKey, 'device.m7x_pro.name');
-    expect(caps.reportRate!.options, [1000, 500, 250, 125]);
-    expect(caps.dpi!.range.maxDpi, 24000);
-    expect(caps.dpi!.range.stepMode, 'fixed');
-    expect(caps.dpi!.range.step, 50);
-    expect(caps.dpi!.rgbPerStage, isTrue);
-    expect(caps.sensor!.sensorTuning, isTrue);
-    expect(caps.sensor!.angleTune, isTrue);
-    expect(caps.sensor!.angleTuneDetails!.options!.length, 5);
-    expect(caps.sensor!.liftOffDistance!.present, isTrue);
-    expect(caps.sensor!.liftOffDistance!.options.length, 2);
-    expect(caps.rgbBacklight!.present, isTrue);
-    expect(caps.rgbBacklight!.modes.length, 8);
-    expect(caps.rgbBacklight!.sleepTimeOptions.length, 7);
-  });
+  test(
+    'DeviceCapabilityStore loads m7x_pro.json (M7X PRO, PAW3395, backlight)',
+    () async {
+      await DeviceCapabilityStore.load('m7x pro');
+      final caps = DeviceCapabilityStore.forDevice('03AA');
+      expect(caps, isNotNull);
+      expect(caps!.devId, '03AA');
+      expect(caps.displayNameKey, 'device.m7x_pro.name');
+      expect(caps.reportRate!.options, [1000, 500, 250, 125]);
+      expect(caps.dpi!.range.maxDpi, 24000);
+      expect(caps.dpi!.range.stepMode, 'fixed');
+      expect(caps.dpi!.range.step, 50);
+      expect(caps.dpi!.rgbPerStage, isTrue);
+      expect(caps.sensor!.sensorTuning, isTrue);
+      expect(caps.sensor!.angleTune, isTrue);
+      expect(caps.sensor!.angleTuneDetails!.options!.length, 5);
+      expect(caps.sensor!.liftOffDistance!.present, isTrue);
+      expect(caps.sensor!.liftOffDistance!.options.length, 2);
+      expect(caps.rgbBacklight!.present, isTrue);
+      expect(caps.rgbBacklight!.modes.length, 8);
+      expect(caps.rgbBacklight!.sleepTimeOptions.length, 7);
+    },
+  );
 
-  test('SensorProfiles maps all three mice to their sensors', () async {
-    SensorProfiles.debugReset();
-    await SensorProfiles.load();
-    expect(SensorProfiles.forDevice('02AA')!.chip, 'SG8925');
-    expect(SensorProfiles.forDevice('01AA')!.chip, 'PAW3311');
-    expect(SensorProfiles.forDevice('03AA')!.chip, 'PAW3395');
-    expect(SensorProfiles.forDevice('03AA')!.table, 'PAW3395/high_res');
-    final sigma = SensorProfiles.table('SG8925/std');
-    expect(sigma, isNotNull);
-    expect(sigma!.dpiEncoding.transform, 'identity');
-    expect(sigma.dpiEncoding.bytesPerAxis, 2);
-    final paw3311 = SensorProfiles.table('PAW3311/std');
-    expect(paw3311, isNotNull);
-    expect(paw3311!.dpiEncoding.transform, 'paw3311');
-    // PAW3311 Setting 2 tables: mode 0x50 covers 50-10000, mode 0xD0 covers
-    // 10100-12000. Spot-check known wire->cpi entries.
-    final mode50 = paw3311.dpiEncoding.cpiTables[0x50]!;
-    expect(mode50[0x01], 50);
-    expect(mode50[0x13], 800);
-    expect(mode50[0xED], 10000);
-    final modeD0 = paw3311.dpiEncoding.cpiTables[0xD0]!;
-    expect(modeD0[0x76], 10100);
-    expect(modeD0[0x8D], 12000);
-    final paw = SensorProfiles.table('PAW3395/high_res');
-    expect(paw, isNotNull);
-    expect(paw!.dpiEncoding.factor, 50);
-    expect(SensorProfiles.table('PAW3395/std_res')!.dpiEncoding.factor, 25);
-  });
+  test(
+    'all mouse capabilities use the shared Telink B80 DPI profile',
+    () async {
+      for (final model in ['m7xse', 'm7x', 'm7x pro']) {
+        await DeviceCapabilityStore.load(model);
+      }
+      for (final devId in ['02AA', '01AA', '03AA']) {
+        final caps = DeviceCapabilityStore.forDevice(devId);
+        expect(caps, isNotNull);
+        expect(caps!.dpi!.wireProfileKey, 'telink_b80_dpi16');
+        expect(caps.dpi!.wireProfile, isNotNull);
+        expect(caps.dpi!.wireProfile!.bytesPerAxis, 2);
+        expect(caps.dpi!.wireProfile!.endian, 'big');
+        expect(caps.dpi!.wireProfile!.transform, 'identity');
+      }
+    },
+  );
 }
-

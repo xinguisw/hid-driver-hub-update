@@ -1,12 +1,9 @@
 import 'package:driver_hub/layer2_capabilities/capabilities.dart';
-import 'package:driver_hub/layer2_capabilities/sensor_profiles.dart';
 import 'package:driver_hub/layer4_domain/models/device_settings_state.dart';
 import 'package:driver_hub/layer5_codec/codecs/translation_codec.dart';
 
-/// Pure pack: product matrix → presence + option lists on [DeviceSettingsState].
-///
-/// Does not touch live GET values. Caller overlays wire/translate after GETs.
-/// Sensor chip comes from [SensorProfiles] when already loaded.
+/// Pure pack: product matrix → presence and option lists on
+/// [DeviceSettingsState]. Sensor identity comes from each mouse's L2 JSON.
 DeviceSettingsState applyCapabilitiesToSettings(
   DeviceSettingsState state,
   DeviceCapabilities caps,
@@ -67,18 +64,15 @@ DeviceSettingsState applyCapabilitiesToSettings(
     next = next.copyWith(
       hasSensorTuning: sensor.sensorTuning,
       hasAngleTune: sensor.angleTune,
-      angleTuneOptions:
-          (angleTune != null && angleTune.present) ? angleTune.options : null,
+      angleTuneOptions: (angleTune != null && angleTune.present)
+          ? angleTune.options
+          : null,
       hasLod: lod?.present ?? false,
       lodOptions: (lod != null && lod.present) ? lod.options : null,
       hasPerformance: perf?.present ?? false,
-      performanceOptions:
-          (perf != null && perf.present) ? perf.options : null,
+      performanceOptions: (perf != null && perf.present) ? perf.options : null,
     );
-    final profile = SensorProfiles.forDevice(caps.devId);
-    if (profile != null) {
-      next = next.copyWith(sensorChip: profile.chip);
-    }
+    next = next.copyWith(sensorChip: sensor.model);
   }
 
   final other = caps.otherFeatures;
@@ -86,17 +80,14 @@ DeviceSettingsState applyCapabilitiesToSettings(
     final debounce = other.buttonDebounce;
     final sleep = other.sleepTime;
     next = next.copyWith(
-      hasButtonDebounce:
-          other.present && (debounce?.present ?? false),
-      debounceOptions:
-          (other.present && debounce != null && debounce.present)
-              ? debounce.options
-              : null,
+      hasButtonDebounce: other.present && (debounce?.present ?? false),
+      debounceOptions: (other.present && debounce != null && debounce.present)
+          ? debounce.options
+          : null,
       hasSleepTime: other.present && (sleep?.present ?? false),
-      sleepOptions:
-          (other.present && sleep != null && sleep.present)
-              ? sleep.options
-              : null,
+      sleepOptions: (other.present && sleep != null && sleep.present)
+          ? sleep.options
+          : null,
       hasWheelInvert: other.present && other.wheelDirectionInvert,
     );
   }

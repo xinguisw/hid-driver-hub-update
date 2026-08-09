@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:driver_hub/layer2_capabilities/action_catalog.dart';
 import 'package:driver_hub/layer2_capabilities/capabilities.dart';
-import 'package:driver_hub/layer2_capabilities/sensor_profiles.dart';
 import 'package:driver_hub/layer4_domain/device_repository.dart';
 import 'package:driver_hub/layer4_domain/models/device_settings_state.dart';
 import 'package:driver_hub/layer4_domain/models/discovered_card_state.dart';
@@ -100,7 +99,7 @@ Future<DeviceSettingsState> queryOnboardConfig(
                 : null,
             buttonLabel: state.buttons != null && i < state.buttons!.length
                 ? (state.buttons![i].buttonLabel ??
-                    translate.buttonIdToLabel(i + 1))
+                      translate.buttonIdToLabel(i + 1))
                 : translate.buttonIdToLabel(i + 1),
             actionLabel: translate.buttonActionToLabel(
               action: buttons.buttons[i].action,
@@ -115,16 +114,10 @@ Future<DeviceSettingsState> queryOnboardConfig(
             param3: buttons.buttons[i].param3,
           ),
       ];
-      state = state.copyWith(
-        buttonCount: live.length,
-        buttons: live,
-      );
+      state = state.copyWith(buttonCount: live.length, buttons: live);
       debugPrint(
         '[settings] config buttonMapping $name: '
-        '${[
-          for (var i = 0; i < buttons.buttons.length; i++)
-            'B${i + 1}=0x${buttons.buttons[i].action.toRadixString(16)}'
-        ].join(' ')}',
+        '${[for (var i = 0; i < buttons.buttons.length; i++) 'B${i + 1}=0x${buttons.buttons[i].action.toRadixString(16)}'].join(' ')}',
       );
     }
   } catch (e) {
@@ -143,10 +136,10 @@ Future<DeviceSettingsState> queryOnboardConfig(
       // L5 keeps wire; L4 packs display values via TranslationCodec.
       const translate = TranslationCodec();
       dpiActiveMask = info.dpiActiveLevel;
-      final activeCount =
-          translate.dpiActiveMaskToCount(info.dpiActiveLevel);
-      final currentLevel =
-          translate.dpiCurrentLevelWireToDisplay(info.dpiCurrentLevel);
+      final activeCount = translate.dpiActiveMaskToCount(info.dpiActiveLevel);
+      final currentLevel = translate.dpiCurrentLevelWireToDisplay(
+        info.dpiCurrentLevel,
+      );
       final hz = translate.reportRateWireToHz(info.reportRate);
       // Caps may have seeded 8 catalog stages; keep only active slots.
       final seeded = state.dpiLevels;
@@ -183,27 +176,17 @@ Future<DeviceSettingsState> queryOnboardConfig(
   try {
     final table = await session.queryDpiTable();
     if (table != null) {
-      // Decode C4 stages with this device's sensor encoding profile.
+      // Decode C4 stages with the L2-owned shared USB wire profile.
       // Active mask (C2) selects which of the eight slots are shown.
-      final sensorTable = _sensorEncodingTableFor(card);
-      if (sensorTable == null) {
+      final dpiCaps = caps?.dpi;
+      final enc = dpiCaps?.wireProfile;
+      if (dpiCaps == null || enc == null) {
         throw StateError(
-          'dpiTable: no sensor profile for $name '
+          'dpiTable: no L2 DPI wire profile for $name '
           '(devId=${card.devId} mode=${card.connectionMode})',
         );
       }
-      final enc = sensorTable.dpiEncoding;
       const translate = TranslationCodec();
-      // KNOWN ISSUE (PAW3311 two-mode collision): the 0x50 and 0xD0 lookup
-      // tables share wire codes. E.g. 0x8d = 5950 (mode 0x50) AND 12000 (mode
-      // 0xD0). The C4 read returns only the code byte — no mode flag — so a
-      // cold read / reconnect CANNOT tell which the device meant. The active
-      // mode lives in SPI register 0x4D; whether the firmware exposes it over
-      // the HID config interface is UNCONFIRMED (needs firmware dev). Until
-      // then, decode tries 0x50 first, so a stage set >10000 may display the
-      // colliding low-mode value after reconnect even though the device stored
-      // the intended high value. Write path is correct; only the read-back
-      // display is affected. See translation_codec.dart paw3311 branch.
       final decodedLevels = <DpiStageData>[];
       for (var i = 0; i < table.stages.length; i++) {
         if (dpiActiveMask != null &&
@@ -214,20 +197,13 @@ Future<DeviceSettingsState> queryOnboardConfig(
         final decoded = translate.decodeDpiStageWire(
           b0: stage.x,
           b1: stage.y,
-          bytesPerAxis: enc.bytesPerAxis,
-          endian: enc.endian,
-          independentXY: enc.independentXY,
-          transform: enc.transform,
-          factor: enc.factor,
-          cpiMap: enc.cpiMap,
-          cpiTables: enc.cpiTables,
+          profile: enc,
+          independentXY: dpiCaps.independentXY,
         );
-        final wireWord = enc.bytesPerAxis == 1
-            ? (stage.x & 0xFF)
-            : translate.dpiAxisBytesToWire(
-                [stage.x, stage.y],
-                endian: enc.endian,
-              );
+        final wireWord = translate.dpiAxisBytesToWire([
+          stage.x,
+          stage.y,
+        ], endian: enc.endian);
         debugPrint(
           '[settings] dpi L${i + 1} bytes='
           '${stage.x.toRadixString(16).padLeft(2, '0')}'
@@ -259,8 +235,8 @@ Future<DeviceSettingsState> queryOnboardConfig(
       debugPrint(
         '[settings] config dpiTable $name: stages=${table.stages.length} '
         'active=${decodedLevels.length} '
-        'sensor=${sensorTable.chip}/${sensorTable.mode} '
-        'enc=${enc.transform}/${enc.bytesPerAxis}b',
+        'sensor=${caps?.sensor?.model ?? 'unknown'} '
+        'profile=${enc.key} enc=${enc.transform}/${enc.bytesPerAxis}b',
       );
     }
   } catch (e) {
@@ -327,8 +303,9 @@ Future<DeviceSettingsState> queryOnboardConfig(
         angleTuneOn: (showAll || state.hasAngleTune)
             ? translate.triStateWireToBool(sensor.angleTune)
             : state.angleTuneOn,
-        angleTune:
-            (showAll || state.hasAngleTune) ? sensor.angleValue : state.angleTune,
+        angleTune: (showAll || state.hasAngleTune)
+            ? sensor.angleValue
+            : state.angleTune,
         angleTuneLabel: (showAll || state.hasAngleTune)
             ? translate.angleTuneWireToLabel(
                 sensor.angleValue,
@@ -395,8 +372,9 @@ Future<DeviceSettingsState> queryOnboardConfig(
           rgbModeId: light.mode,
           rgbModeLabel: translate.rgbModeToLabel(light.mode),
           rgbBrightness: light.brightness,
-          rgbBrightnessLabel:
-              translate.brightnessLevelToLabel(light.brightness),
+          rgbBrightnessLabel: translate.brightnessLevelToLabel(
+            light.brightness,
+          ),
           rgbSpeed: light.speed,
           rgbSpeedLabel: translate.speedLevelToLabel(light.speed),
           rgbR: light.r,
@@ -406,9 +384,7 @@ Future<DeviceSettingsState> queryOnboardConfig(
           rgbSleepLabel: translate.sleepIndexToLabel(light.sleepTime),
         );
       }
-      debugPrint(
-        '[settings] config rgbBacklight $name: show=$showRgb $light',
-      );
+      debugPrint('[settings] config rgbBacklight $name: show=$showRgb $light');
     }
   } catch (e) {
     final fatal = _settingsLoadFatal(e, name, 'rgbBacklight');
@@ -421,15 +397,7 @@ Future<DeviceSettingsState> queryOnboardConfig(
   return state.copyWith(loading: false);
 }
 
-/// Encoding table for this card’s sensor (after [SensorProfiles.load]).
-EncodingTable? _sensorEncodingTableFor(DiscoveredCardState card) {
-  final profile =
-      SensorProfiles.forDevice(card.devId);
-  if (profile == null) return null;
-  return SensorProfiles.table(profile.table);
-}
-
-/// Load per-model caps + sensor tables. Null if asset missing / unknown devId.
+/// Load per-model caps. Null if asset missing / unknown devId.
 Future<DeviceCapabilities?> _loadCapabilitiesForSession(
   DeviceRepository session,
   DiscoveredCardState card,
@@ -438,14 +406,7 @@ Future<DeviceCapabilities?> _loadCapabilitiesForSession(
   try {
     await DeviceCapabilityStore.load(model);
   } catch (e) {
-    debugPrint(
-      '[settings] caps load failed for model=$model: $e',
-    );
-  }
-  try {
-    await SensorProfiles.load();
-  } catch (e) {
-    debugPrint('[settings] sensor profiles load failed: $e');
+    debugPrint('[settings] caps load failed for model=$model: $e');
   }
   return DeviceCapabilityStore.forDevice(card.devId);
 }
@@ -485,7 +446,8 @@ Future<DeviceSettingsState> _packActionCatalogTab(
   DeviceSettingsState Function(
     DeviceSettingsState,
     List<ActionCatalogSectionData>,
-  ) apply,
+  )
+  apply,
 ) async {
   try {
     final loaded = await ActionCatalogStore.load(tab);
@@ -508,4 +470,3 @@ Future<DeviceSettingsState> _packActionCatalogTab(
     return state;
   }
 }
-

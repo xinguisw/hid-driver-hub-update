@@ -49,6 +49,7 @@
   "dpi": {
     "maxLevels": 8,
     "defaultLevel": 2,
+    "wireProfile": "telink_b80_dpi16",
     "range": {
       "minDpi": 50,
       "maxDpi": 5000,
@@ -69,6 +70,7 @@
     ]
   },
   "sensor": {
+    "model": "SG8925",
     "present": true,
     "sensorTuning": false,
     "angleTune": false,

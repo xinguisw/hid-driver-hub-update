@@ -9,9 +9,8 @@ import 'package:driver_hub/layer5_codec/device_type.dart';
 /// `assets/catalog/supported_model.json`.
 ///
 /// Shared device registry (mouse, later keyboard). Mouse capabilities load per
-/// model (`assets/catalog/mouse/{model}.json`, e.g. m7xse.json); sensors from
-/// `assets/catalog/mouse/sensors.json` (see [DeviceCapabilityStore],
-/// [SensorProfiles]).
+/// model (`assets/catalog/mouse/{model}.json`, e.g. m7xse.json); shared DPI
+/// wire parameters are resolved by the L2 capability model.
 /// [DeviceScanner] reads this registry to build discovery filters and to match
 /// raw [HidDevice]s back to catalog entries.
 class DeviceCatalogEntry {
@@ -90,11 +89,8 @@ class DeviceMode {
   }
 
   /// Builds the discovery filter for this mode.
-  DeviceFilter toFilter(int usagePage) => DeviceFilter(
-        vendorId: vid,
-        productId: pid,
-        usagePage: usagePage,
-      );
+  DeviceFilter toFilter(int usagePage) =>
+      DeviceFilter(vendorId: vid, productId: pid, usagePage: usagePage);
 }
 
 /// Loads the device catalog from `assets/catalog/supported_model.json`.

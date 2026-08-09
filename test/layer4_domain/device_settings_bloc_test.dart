@@ -64,7 +64,7 @@ void main() {
         commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
         commitDpiStages: (_, _) async {},
-        
+
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -92,7 +92,7 @@ void main() {
         commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
         commitDpiStages: (_, _) async {},
-        
+
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -132,17 +132,17 @@ void main() {
           commitButtonMapping: (_) async {},
           commitReportRate: (_) async {},
           commitDpiLevel: (_) async {},
-        commitDpiValues: (_) async {},
-        commitDpiStages: (_, _) async {},
-        
-        commitSensorTuning: (_, _) async {},
-        commitAngleTune: (_) async {},
-        commitLod: (_) async {},
-        commitPerformance: (_) async {},
-        commitDebounce: (_) async {},
-        commitSleep: (_) async {},
-        commitWheelInvert: (_) async {},
-        commitRgbBacklight: (_) async {},
+          commitDpiValues: (_) async {},
+          commitDpiStages: (_, _) async {},
+
+          commitSensorTuning: (_, _) async {},
+          commitAngleTune: (_) async {},
+          commitLod: (_) async {},
+          commitPerformance: (_) async {},
+          commitDebounce: (_) async {},
+          commitSleep: (_) async {},
+          commitWheelInvert: (_) async {},
+          commitRgbBacklight: (_) async {},
         );
         bloc.add(DeviceSettingsHydrated(baseSettings()));
         await pumpEventQueue();
@@ -178,7 +178,7 @@ void main() {
         commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
         commitDpiStages: (_, _) async {},
-        
+
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -226,7 +226,7 @@ void main() {
         commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
         commitDpiStages: (_, _) async {},
-        
+
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -265,17 +265,17 @@ void main() {
           },
           commitReportRate: (_) async {},
           commitDpiLevel: (_) async {},
-        commitDpiValues: (_) async {},
-        commitDpiStages: (_, _) async {},
-        
-        commitSensorTuning: (_, _) async {},
-        commitAngleTune: (_) async {},
-        commitLod: (_) async {},
-        commitPerformance: (_) async {},
-        commitDebounce: (_) async {},
-        commitSleep: (_) async {},
-        commitWheelInvert: (_) async {},
-        commitRgbBacklight: (_) async {},
+          commitDpiValues: (_) async {},
+          commitDpiStages: (_, _) async {},
+
+          commitSensorTuning: (_, _) async {},
+          commitAngleTune: (_) async {},
+          commitLod: (_) async {},
+          commitPerformance: (_) async {},
+          commitDebounce: (_) async {},
+          commitSleep: (_) async {},
+          commitWheelInvert: (_) async {},
+          commitRgbBacklight: (_) async {},
         );
         bloc.add(DeviceSettingsHydrated(baseSettings()));
         await pumpEventQueue();
@@ -302,7 +302,7 @@ void main() {
         commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
         commitDpiStages: (_, _) async {},
-        
+
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -334,12 +334,8 @@ void main() {
       dpi: DpiCapabilities(
         maxLevels: 4,
         defaultLevel: 1,
-        range: DpiRange(
-          minDpi: 50,
-          maxDpi: 3200,
-          stepMode: 'fixed',
-          step: 50,
-        ),
+        wireProfileKey: 'telink_b80_dpi16',
+        range: DpiRange(minDpi: 50, maxDpi: 3200, stepMode: 'fixed', step: 50),
         independentXY: false,
         rgbPerStage: false,
         levels: [
@@ -361,7 +357,7 @@ void main() {
         commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
         commitDpiStages: (_, _) async {},
-        
+
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -396,7 +392,7 @@ void main() {
         commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
         commitDpiStages: (_, _) async {},
-        
+
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -427,7 +423,7 @@ void main() {
         commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
         commitDpiStages: (_, _) async {},
-        
+
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -463,7 +459,7 @@ void main() {
         commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
         commitDpiStages: (_, _) async {},
-        
+
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -497,7 +493,7 @@ void main() {
           written = values;
         },
         commitDpiStages: (_, _) async {},
-        
+
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -531,7 +527,7 @@ void main() {
         commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
         commitDpiStages: (_, _) async {},
-        
+
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -542,9 +538,11 @@ void main() {
         commitRgbBacklight: (_) async {},
         capabilitiesLookup: () => caps,
       );
-      bloc.add(DeviceSettingsHydrated(
-        baseSettings().copyWith(dpiActiveLevelCount: 4, dpiMaxLevels: 8),
-      ));
+      bloc.add(
+        DeviceSettingsHydrated(
+          baseSettings().copyWith(dpiActiveLevelCount: 4, dpiMaxLevels: 8),
+        ),
+      );
       await pumpEventQueue();
       bloc.add(const DeviceSettingsDpiStageAddRequested());
       await pumpEventQueue();
@@ -561,7 +559,7 @@ void main() {
         commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
         commitDpiStages: (_, _) async {},
-        
+
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -572,18 +570,20 @@ void main() {
         commitRgbBacklight: (_) async {},
         capabilitiesLookup: () => caps,
       );
-      bloc.add(DeviceSettingsHydrated(
-        baseSettings().copyWith(
-          dpiActiveLevelCount: 4,
-          dpiMaxLevels: 8,
-          dpiLevels: const [
-            DpiStageData(level: 1, value: 800),
-            DpiStageData(level: 2, value: 1600),
-            DpiStageData(level: 3, value: 2400),
-            DpiStageData(level: 4, value: 3200),
-          ],
+      bloc.add(
+        DeviceSettingsHydrated(
+          baseSettings().copyWith(
+            dpiActiveLevelCount: 4,
+            dpiMaxLevels: 8,
+            dpiLevels: const [
+              DpiStageData(level: 1, value: 800),
+              DpiStageData(level: 2, value: 1600),
+              DpiStageData(level: 3, value: 2400),
+              DpiStageData(level: 4, value: 3200),
+            ],
+          ),
         ),
-      ));
+      );
       await pumpEventQueue();
       bloc.add(const DeviceSettingsDpiStageAddRequested());
       bloc.add(const DeviceSettingsDpiStageAddRequested());
@@ -592,35 +592,40 @@ void main() {
       await bloc.close();
     });
 
-    test('DPI stage remove stages the level and prevents last removal', () async {
-      DeviceCapabilities? caps = dpiCaps;
-      final bloc = DeviceSettingsBloc(
-        commitButtonMapping: (_) async {},
-        commitReportRate: (_) async {},
-        commitDpiLevel: (_) async {},
-        commitDpiValues: (_) async {},
-        commitDpiStages: (_, _) async {},
-        
-        commitSensorTuning: (_, _) async {},
-        commitAngleTune: (_) async {},
-        commitLod: (_) async {},
-        commitPerformance: (_) async {},
-        commitDebounce: (_) async {},
-        commitSleep: (_) async {},
-        commitWheelInvert: (_) async {},
-        commitRgbBacklight: (_) async {},
-        capabilitiesLookup: () => caps,
-      );
-      bloc.add(DeviceSettingsHydrated(
-        baseSettings().copyWith(dpiActiveLevelCount: 1),
-      ));
-      await pumpEventQueue();
-      bloc.add(const DeviceSettingsDpiStageRemoveRequested(level: 1));
-      await pumpEventQueue();
-      expect(bloc.state.dpiStageRemoveLevelStaging, isNull);
-      expect(bloc.state.lastError, isNotNull);
-      await bloc.close();
-    });
+    test(
+      'DPI stage remove stages the level and prevents last removal',
+      () async {
+        DeviceCapabilities? caps = dpiCaps;
+        final bloc = DeviceSettingsBloc(
+          commitButtonMapping: (_) async {},
+          commitReportRate: (_) async {},
+          commitDpiLevel: (_) async {},
+          commitDpiValues: (_) async {},
+          commitDpiStages: (_, _) async {},
+
+          commitSensorTuning: (_, _) async {},
+          commitAngleTune: (_) async {},
+          commitLod: (_) async {},
+          commitPerformance: (_) async {},
+          commitDebounce: (_) async {},
+          commitSleep: (_) async {},
+          commitWheelInvert: (_) async {},
+          commitRgbBacklight: (_) async {},
+          capabilitiesLookup: () => caps,
+        );
+        bloc.add(
+          DeviceSettingsHydrated(
+            baseSettings().copyWith(dpiActiveLevelCount: 1),
+          ),
+        );
+        await pumpEventQueue();
+        bloc.add(const DeviceSettingsDpiStageRemoveRequested(level: 1));
+        await pumpEventQueue();
+        expect(bloc.state.dpiStageRemoveLevelStaging, isNull);
+        expect(bloc.state.lastError, isNotNull);
+        await bloc.close();
+      },
+    );
 
     test('save DPI stage add commits and syncs count', () async {
       DeviceCapabilities? caps = dpiCaps;
@@ -643,17 +648,19 @@ void main() {
         commitRgbBacklight: (_) async {},
         capabilitiesLookup: () => caps,
       );
-      bloc.add(DeviceSettingsHydrated(
-        baseSettings().copyWith(
-          dpiActiveLevelCount: 4,
-          dpiLevels: const [
-            DpiStageData(level: 1, value: 800),
-            DpiStageData(level: 2, value: 1600),
-            DpiStageData(level: 3, value: 2400),
-            DpiStageData(level: 4, value: 3200),
-          ],
+      bloc.add(
+        DeviceSettingsHydrated(
+          baseSettings().copyWith(
+            dpiActiveLevelCount: 4,
+            dpiLevels: const [
+              DpiStageData(level: 1, value: 800),
+              DpiStageData(level: 2, value: 1600),
+              DpiStageData(level: 3, value: 2400),
+              DpiStageData(level: 4, value: 3200),
+            ],
+          ),
         ),
-      ));
+      );
       await pumpEventQueue();
       bloc.add(const DeviceSettingsDpiStageAddRequested());
       await pumpEventQueue();
@@ -687,19 +694,21 @@ void main() {
         commitRgbBacklight: (_) async {},
         capabilitiesLookup: () => caps,
       );
-      bloc.add(DeviceSettingsHydrated(
-        baseSettings().copyWith(
-          dpiActiveLevelCount: 5,
-          dpiMaxLevels: 8,
-          dpiLevels: const [
-            DpiStageData(level: 1, value: 800),
-            DpiStageData(level: 2, value: 1600),
-            DpiStageData(level: 3, value: 2400),
-            DpiStageData(level: 4, value: 3200),
-            DpiStageData(level: 5, value: 5000),
-          ],
+      bloc.add(
+        DeviceSettingsHydrated(
+          baseSettings().copyWith(
+            dpiActiveLevelCount: 5,
+            dpiMaxLevels: 8,
+            dpiLevels: const [
+              DpiStageData(level: 1, value: 800),
+              DpiStageData(level: 2, value: 1600),
+              DpiStageData(level: 3, value: 2400),
+              DpiStageData(level: 4, value: 3200),
+              DpiStageData(level: 5, value: 5000),
+            ],
+          ),
         ),
-      ));
+      );
       await pumpEventQueue();
 
       // Add a 6th stage, then remove it.
@@ -738,19 +747,21 @@ void main() {
         commitRgbBacklight: (_) async {},
         capabilitiesLookup: () => caps,
       );
-      bloc.add(DeviceSettingsHydrated(
-        baseSettings().copyWith(
-          dpiActiveLevelCount: 5,
-          dpiMaxLevels: 8,
-          dpiLevels: const [
-            DpiStageData(level: 1, value: 800),
-            DpiStageData(level: 2, value: 1600),
-            DpiStageData(level: 3, value: 2400),
-            DpiStageData(level: 4, value: 3200),
-            DpiStageData(level: 5, value: 5000),
-          ],
+      bloc.add(
+        DeviceSettingsHydrated(
+          baseSettings().copyWith(
+            dpiActiveLevelCount: 5,
+            dpiMaxLevels: 8,
+            dpiLevels: const [
+              DpiStageData(level: 1, value: 800),
+              DpiStageData(level: 2, value: 1600),
+              DpiStageData(level: 3, value: 2400),
+              DpiStageData(level: 4, value: 3200),
+              DpiStageData(level: 5, value: 5000),
+            ],
+          ),
         ),
-      ));
+      );
       await pumpEventQueue();
 
       // User clicks stage 6 (level staging) AND removes it — the two stagings
@@ -779,7 +790,7 @@ void main() {
         commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
         commitDpiStages: (_, _) async {},
-        
+
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -905,7 +916,7 @@ void main() {
         commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
         commitDpiStages: (_, _) async {},
-        
+
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -935,7 +946,7 @@ void main() {
         commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
         commitDpiStages: (_, _) async {},
-        
+
         commitSensorTuning: (r, a) async {
           ripple = r;
           angleSnap = a;
@@ -972,7 +983,7 @@ void main() {
         commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
         commitDpiStages: (_, _) async {},
-        
+
         commitSensorTuning: (_, _) async {
           throw Exception('nak');
         },
@@ -1007,7 +1018,7 @@ void main() {
         commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
         commitDpiStages: (_, _) async {},
-        
+
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -1045,7 +1056,7 @@ void main() {
         commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
         commitDpiStages: (_, _) async {},
-        
+
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -1076,7 +1087,7 @@ void main() {
         commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
         commitDpiStages: (_, _) async {},
-        
+
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -1106,7 +1117,7 @@ void main() {
         commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
         commitDpiStages: (_, _) async {},
-        
+
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -1135,7 +1146,7 @@ void main() {
         commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
         commitDpiStages: (_, _) async {},
-        
+
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (wire) async {
           written = wire;
@@ -1169,7 +1180,7 @@ void main() {
         commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
         commitDpiStages: (_, _) async {},
-        
+
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {
           throw Exception('nak');
@@ -1203,7 +1214,7 @@ void main() {
         commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
         commitDpiStages: (_, _) async {},
-        
+
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -1213,9 +1224,11 @@ void main() {
         commitWheelInvert: (_) async {},
         commitRgbBacklight: (_) async {},
       );
-      bloc.add(DeviceSettingsHydrated(
-        angleTuneSettings().copyWith(decodeErrors: {'sensorOther'}),
-      ));
+      bloc.add(
+        DeviceSettingsHydrated(
+          angleTuneSettings().copyWith(decodeErrors: {'sensorOther'}),
+        ),
+      );
       await pumpEventQueue();
       bloc.add(const DeviceSettingsAngleTuneValueChanged(wireValue: 1));
       await pumpEventQueue();
@@ -1228,41 +1241,41 @@ void main() {
   });
 
   group('DeviceSettingsBloc LOD', () {
-    DeviceSettingsState lodSettings() => baseSettings().copyWith(
-      hasLod: true,
-      lodMm: 1,
-      lodLabel: '1mm',
+    DeviceSettingsState lodSettings() =>
+        baseSettings().copyWith(hasLod: true, lodMm: 1, lodLabel: '1mm');
+
+    test(
+      'selecting an LOD stage marks dirty and leaves synced alone',
+      () async {
+        final bloc = DeviceSettingsBloc(
+          commitButtonMapping: (_) async {},
+          commitReportRate: (_) async {},
+          commitDpiLevel: (_) async {},
+          commitDpiValues: (_) async {},
+          commitDpiStages: (_, _) async {},
+
+          commitSensorTuning: (_, _) async {},
+          commitAngleTune: (_) async {},
+          commitLod: (_) async {},
+          commitPerformance: (_) async {},
+          commitDebounce: (_) async {},
+          commitSleep: (_) async {},
+          commitWheelInvert: (_) async {},
+          commitRgbBacklight: (_) async {},
+        );
+        bloc.add(DeviceSettingsHydrated(lodSettings()));
+        await pumpEventQueue();
+        bloc.add(const DeviceSettingsLodRequested(wire: 2));
+        await pumpEventQueue();
+
+        expect(bloc.state.lodStaging, 2);
+        expect(bloc.state.isDirty, true);
+        // why: staging leaves the synced live value alone.
+        expect(bloc.state.synced?.lodMm, 1);
+        expect(bloc.state.synced?.lodLabel, '1mm');
+        await bloc.close();
+      },
     );
-
-    test('selecting an LOD stage marks dirty and leaves synced alone', () async {
-      final bloc = DeviceSettingsBloc(
-        commitButtonMapping: (_) async {},
-        commitReportRate: (_) async {},
-        commitDpiLevel: (_) async {},
-        commitDpiValues: (_) async {},
-        commitDpiStages: (_, _) async {},
-        
-        commitSensorTuning: (_, _) async {},
-        commitAngleTune: (_) async {},
-        commitLod: (_) async {},
-        commitPerformance: (_) async {},
-        commitDebounce: (_) async {},
-        commitSleep: (_) async {},
-        commitWheelInvert: (_) async {},
-        commitRgbBacklight: (_) async {},
-      );
-      bloc.add(DeviceSettingsHydrated(lodSettings()));
-      await pumpEventQueue();
-      bloc.add(const DeviceSettingsLodRequested(wire: 2));
-      await pumpEventQueue();
-
-      expect(bloc.state.lodStaging, 2);
-      expect(bloc.state.isDirty, true);
-      // why: staging leaves the synced live value alone.
-      expect(bloc.state.synced?.lodMm, 1);
-      expect(bloc.state.synced?.lodLabel, '1mm');
-      await bloc.close();
-    });
 
     test('decode error on sensorOther blocks LOD staging', () async {
       final bloc = DeviceSettingsBloc(
@@ -1271,7 +1284,7 @@ void main() {
         commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
         commitDpiStages: (_, _) async {},
-        
+
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -1281,9 +1294,11 @@ void main() {
         commitWheelInvert: (_) async {},
         commitRgbBacklight: (_) async {},
       );
-      bloc.add(DeviceSettingsHydrated(
-        lodSettings().copyWith(decodeErrors: {'sensorOther'}),
-      ));
+      bloc.add(
+        DeviceSettingsHydrated(
+          lodSettings().copyWith(decodeErrors: {'sensorOther'}),
+        ),
+      );
       await pumpEventQueue();
       bloc.add(const DeviceSettingsLodRequested(wire: 2));
       await pumpEventQueue();
@@ -1301,7 +1316,7 @@ void main() {
         commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
         commitDpiStages: (_, _) async {},
-        
+
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -1331,7 +1346,7 @@ void main() {
         commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
         commitDpiStages: (_, _) async {},
-        
+
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (wire) async {
@@ -1365,7 +1380,7 @@ void main() {
         commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
         commitDpiStages: (_, _) async {},
-        
+
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {
@@ -1394,10 +1409,8 @@ void main() {
   });
 
   group('DeviceSettingsBloc performance', () {
-    DeviceSettingsState perfSettings() => baseSettings().copyWith(
-      hasPerformance: true,
-      performance: 0,
-    );
+    DeviceSettingsState perfSettings() =>
+        baseSettings().copyWith(hasPerformance: true, performance: 0);
 
     test('selecting a mode marks dirty and leaves synced alone', () async {
       final bloc = DeviceSettingsBloc(
@@ -1406,7 +1419,7 @@ void main() {
         commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
         commitDpiStages: (_, _) async {},
-        
+
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -1436,7 +1449,7 @@ void main() {
         commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
         commitDpiStages: (_, _) async {},
-        
+
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -1470,7 +1483,7 @@ void main() {
         commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
         commitDpiStages: (_, _) async {},
-        
+
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -1504,7 +1517,7 @@ void main() {
         commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
         commitDpiStages: (_, _) async {},
-        
+
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -1514,9 +1527,11 @@ void main() {
         commitWheelInvert: (_) async {},
         commitRgbBacklight: (_) async {},
       );
-      bloc.add(DeviceSettingsHydrated(
-        perfSettings().copyWith(decodeErrors: {'sensorOther'}),
-      ));
+      bloc.add(
+        DeviceSettingsHydrated(
+          perfSettings().copyWith(decodeErrors: {'sensorOther'}),
+        ),
+      );
       await pumpEventQueue();
       bloc.add(const DeviceSettingsPerformanceRequested(wire: 1));
       await pumpEventQueue();
@@ -1545,7 +1560,7 @@ void main() {
         commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
         commitDpiStages: (_, _) async {},
-        
+
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -1573,7 +1588,7 @@ void main() {
         commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
         commitDpiStages: (_, _) async {},
-        
+
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -1601,7 +1616,7 @@ void main() {
         commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
         commitDpiStages: (_, _) async {},
-        
+
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -1630,7 +1645,7 @@ void main() {
         commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
         commitDpiStages: (_, _) async {},
-        
+
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -1664,7 +1679,7 @@ void main() {
         commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
         commitDpiStages: (_, _) async {},
-        
+
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -1698,7 +1713,7 @@ void main() {
         commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
         commitDpiStages: (_, _) async {},
-        
+
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -1731,7 +1746,7 @@ void main() {
         commitDpiLevel: (_) async {},
         commitDpiValues: (_) async {},
         commitDpiStages: (_, _) async {},
-        
+
         commitSensorTuning: (_, _) async {},
         commitAngleTune: (_) async {},
         commitLod: (_) async {},
@@ -1793,52 +1808,58 @@ void main() {
       );
     }
 
-    test('staging a backlight field marks dirty and leaves synced alone', () async {
-      final bloc = buildBloc();
-      bloc.add(DeviceSettingsHydrated(backlightSettings()));
-      await pumpEventQueue();
-      bloc.add(const DeviceSettingsBacklightBrightnessRequested(level: 4));
-      await pumpEventQueue();
+    test(
+      'staging a backlight field marks dirty and leaves synced alone',
+      () async {
+        final bloc = buildBloc();
+        bloc.add(DeviceSettingsHydrated(backlightSettings()));
+        await pumpEventQueue();
+        bloc.add(const DeviceSettingsBacklightBrightnessRequested(level: 4));
+        await pumpEventQueue();
 
-      expect(bloc.state.rgbBrightnessStaging, 4);
-      expect(bloc.state.isDirty, true);
-      expect(bloc.state.synced?.rgbBrightness, 2);
-      expect(bloc.state.displayRgbBrightness, 4);
-      await bloc.close();
-    });
+        expect(bloc.state.rgbBrightnessStaging, 4);
+        expect(bloc.state.isDirty, true);
+        expect(bloc.state.synced?.rgbBrightness, 2);
+        expect(bloc.state.displayRgbBrightness, 4);
+        await bloc.close();
+      },
+    );
 
-    test('save commits one staged block overlaid on synced and syncs state', () async {
-      StagedRgbBacklight? written;
-      final bloc = buildBloc(onCommit: (v) async => written = v);
-      bloc.add(DeviceSettingsHydrated(backlightSettings()));
-      await pumpEventQueue();
-      bloc.add(const DeviceSettingsBacklightBrightnessRequested(level: 4));
-      await pumpEventQueue();
-      bloc.add(
-        const DeviceSettingsBacklightColorRequested(r: 200, g: 100, b: 50),
-      );
-      await pumpEventQueue();
-      bloc.add(const DeviceSettingsSaveBacklightRequested());
-      await pumpEventQueue();
+    test(
+      'save commits one staged block overlaid on synced and syncs state',
+      () async {
+        StagedRgbBacklight? written;
+        final bloc = buildBloc(onCommit: (v) async => written = v);
+        bloc.add(DeviceSettingsHydrated(backlightSettings()));
+        await pumpEventQueue();
+        bloc.add(const DeviceSettingsBacklightBrightnessRequested(level: 4));
+        await pumpEventQueue();
+        bloc.add(
+          const DeviceSettingsBacklightColorRequested(r: 200, g: 100, b: 50),
+        );
+        await pumpEventQueue();
+        bloc.add(const DeviceSettingsSaveBacklightRequested());
+        await pumpEventQueue();
 
-      // Staged fields win; untouched fields fall back to synced.
-      expect(written, isNotNull);
-      expect(written!.enable, true);
-      expect(written!.modeId, 3);
-      expect(written!.brightness, 4);
-      expect(written!.speed, 1);
-      expect(written!.r, 200);
-      expect(written!.g, 100);
-      expect(written!.b, 50);
-      expect(written!.sleepTime, 0);
+        // Staged fields win; untouched fields fall back to synced.
+        expect(written, isNotNull);
+        expect(written!.enable, true);
+        expect(written!.modeId, 3);
+        expect(written!.brightness, 4);
+        expect(written!.speed, 1);
+        expect(written!.r, 200);
+        expect(written!.g, 100);
+        expect(written!.b, 50);
+        expect(written!.sleepTime, 0);
 
-      expect(bloc.state.synced?.rgbBrightness, 4);
-      expect(bloc.state.synced?.rgbR, 200);
-      expect(bloc.state.rgbBrightnessStaging, isNull);
-      expect(bloc.state.rgbRStaging, isNull);
-      expect(bloc.state.isDirty, false);
-      await bloc.close();
-    });
+        expect(bloc.state.synced?.rgbBrightness, 4);
+        expect(bloc.state.synced?.rgbR, 200);
+        expect(bloc.state.rgbBrightnessStaging, isNull);
+        expect(bloc.state.rgbRStaging, isNull);
+        expect(bloc.state.isDirty, false);
+        await bloc.close();
+      },
+    );
 
     test('save rejects brightness outside capability levels', () async {
       final caps = DeviceCapabilities(
@@ -1883,9 +1904,7 @@ void main() {
     });
 
     test('save failure keeps staging and records failure', () async {
-      final bloc = buildBloc(
-        onCommit: (_) async => throw Exception('nak'),
-      );
+      final bloc = buildBloc(onCommit: (_) async => throw Exception('nak'));
       bloc.add(DeviceSettingsHydrated(backlightSettings()));
       await pumpEventQueue();
       bloc.add(const DeviceSettingsBacklightModeRequested(modeId: 1));

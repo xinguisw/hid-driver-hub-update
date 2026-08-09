@@ -15,6 +15,14 @@ class DeviceSettingsResetButtonMappingRequested extends DeviceSettingsEvent {
   const DeviceSettingsResetButtonMappingRequested();
 }
 
+/// Commits the active mouse's catalog defaults for the Performance page.
+///
+/// This is an immediate reset of report rate, DPI stages, DPI stage selection,
+/// and per-stage DPI colors when the product supports them.
+class DeviceSettingsResetDpiConfigurationRequested extends DeviceSettingsEvent {
+  const DeviceSettingsResetDpiConfigurationRequested();
+}
+
 class DeviceSettingsSaveRequested extends DeviceSettingsEvent {
   const DeviceSettingsSaveRequested();
 }

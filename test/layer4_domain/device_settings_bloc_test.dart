@@ -56,6 +56,172 @@ void main() {
     ],
   );
 
+  DeviceCapabilities resetCapabilities({
+    required String devId,
+    required int defaultReportRate,
+    required List<int> reportRateOptions,
+    bool rgbPerStage = false,
+  }) {
+    return DeviceCapabilities(
+      devId: devId,
+      displayNameKey: 'device.test',
+      reportRate: ReportRateCapabilities(
+        options: reportRateOptions,
+        defaultValue: defaultReportRate,
+      ),
+      dpi: DpiCapabilities(
+        maxLevels: 8,
+        activeLevelCount: 5,
+        defaultLevel: 2,
+        wireProfileKey: 'telink_b80_dpi16',
+        range: const DpiRange(
+          minDpi: 50,
+          maxDpi: 24000,
+          stepMode: 'fixed',
+          step: 50,
+        ),
+        independentXY: false,
+        rgbPerStage: rgbPerStage,
+        levels: const [
+          DpiLevel(level: 1, value: 800, color: '#FF0000'),
+          DpiLevel(level: 2, value: 1600, color: '#0000FF'),
+          DpiLevel(level: 3, value: 2400, color: '#00FF00'),
+          DpiLevel(level: 4, value: 3200, color: '#FFFF00'),
+          DpiLevel(level: 5, value: 5000, color: '#800080'),
+          DpiLevel(level: 6, value: 1600, color: '#00FFFF'),
+          DpiLevel(level: 7, value: 1600, color: '#FFA500'),
+          DpiLevel(level: 8, value: 1600, color: '#FFFFFF'),
+        ],
+      ),
+    );
+  }
+
+  group('DeviceSettingsBloc Performance reset', () {
+    test(
+      'uses each mouse catalog default and clears Performance staging',
+      () async {
+        const cases = [
+          (devId: '01AA', reportRate: 1000, options: [1000, 500, 250, 125]),
+          (devId: '03AA', reportRate: 1000, options: [1000, 500, 250, 125]),
+          (devId: '02AA', reportRate: 500, options: [500, 250, 125]),
+        ];
+
+        for (final item in cases) {
+          int? writtenRate;
+          int? writtenLevel;
+          List<DpiStageData>? writtenLevels;
+          int? writtenActiveCount;
+          final caps = resetCapabilities(
+            devId: item.devId,
+            defaultReportRate: item.reportRate,
+            reportRateOptions: item.options,
+          );
+          final bloc = DeviceSettingsBloc(
+            commitButtonMapping: (_) async {},
+            commitReportRate: (_) async {},
+            commitDpiLevel: (_) async {},
+            commitDpiValues: (_) async {},
+            commitDpiStages: (_, _) async {},
+            commitDpiConfigurationDefaults: (rate, level, levels, count) async {
+              writtenRate = rate;
+              writtenLevel = level;
+              writtenLevels = levels;
+              writtenActiveCount = count;
+            },
+            commitSensorTuning: (_, _) async {},
+            commitAngleTune: (_) async {},
+            commitLod: (_) async {},
+            commitPerformance: (_) async {},
+            commitDebounce: (_) async {},
+            commitSleep: (_) async {},
+            commitWheelInvert: (_) async {},
+            commitRgbBacklight: (_) async {},
+            capabilities: caps,
+          );
+          bloc.add(
+            DeviceSettingsHydrated(
+              baseSettings().copyWith(
+                reportRateOptions: item.options,
+                reportRateHz: 125,
+                dpiMaxLevels: 8,
+                dpiActiveLevelCount: 3,
+                dpiActiveIndex: 1,
+                dpiLevels: const [
+                  DpiStageData(level: 1, value: 400),
+                  DpiStageData(level: 2, value: 600),
+                  DpiStageData(level: 3, value: 800),
+                ],
+              ),
+            ),
+          );
+          await pumpEventQueue();
+          bloc.add(const DeviceSettingsReportRateRequested(hz: 125));
+          bloc.add(const DeviceSettingsDpiLevelRequested(level: 3));
+          await pumpEventQueue();
+          bloc.add(const DeviceSettingsResetDpiConfigurationRequested());
+          await pumpEventQueue();
+
+          expect(writtenRate, item.reportRate);
+          expect(writtenLevel, 2);
+          expect(writtenActiveCount, 5);
+          expect(writtenLevels, hasLength(8));
+          expect(bloc.state.synced?.reportRateHz, item.reportRate);
+          expect(bloc.state.synced?.dpiActiveIndex, 2);
+          expect(bloc.state.synced?.dpiActiveLevelCount, 5);
+          expect(bloc.state.synced?.dpiLevels, hasLength(5));
+          expect(bloc.state.reportRateStaging, isNull);
+          expect(bloc.state.dpiCurrentLevelStaging, isNull);
+          expect(bloc.state.isDirty, false);
+          expect(bloc.state.committing, false);
+          expect(bloc.state.lastError, isNull);
+          await bloc.close();
+        }
+      },
+    );
+
+    test('preserves settings when the immediate reset fails', () async {
+      final caps = resetCapabilities(
+        devId: '03AA',
+        defaultReportRate: 1000,
+        reportRateOptions: const [1000, 500, 250, 125],
+      );
+      final bloc = DeviceSettingsBloc(
+        commitButtonMapping: (_) async {},
+        commitReportRate: (_) async {},
+        commitDpiLevel: (_) async {},
+        commitDpiValues: (_) async {},
+        commitDpiStages: (_, _) async {},
+        commitDpiConfigurationDefaults: (_, _, _, _) async {
+          throw StateError('write failed');
+        },
+        commitSensorTuning: (_, _) async {},
+        commitAngleTune: (_) async {},
+        commitLod: (_) async {},
+        commitPerformance: (_) async {},
+        commitDebounce: (_) async {},
+        commitSleep: (_) async {},
+        commitWheelInvert: (_) async {},
+        commitRgbBacklight: (_) async {},
+        capabilities: caps,
+      );
+      final original = baseSettings().copyWith(
+        reportRateOptions: const [1000, 500, 250, 125],
+        reportRateHz: 250,
+        dpiActiveIndex: 1,
+      );
+      bloc.add(DeviceSettingsHydrated(original));
+      await pumpEventQueue();
+      bloc.add(const DeviceSettingsResetDpiConfigurationRequested());
+      await pumpEventQueue();
+
+      expect(bloc.state.synced?.reportRateHz, 250);
+      expect(bloc.state.synced?.dpiActiveIndex, 1);
+      expect(bloc.state.committing, false);
+      expect(bloc.state.lastError, contains('write failed'));
+      await bloc.close();
+    });
+  });
+
   group('DeviceSettingsBloc button mapping', () {
     test('hydrate seeds synced, not dirty', () async {
       final bloc = DeviceSettingsBloc(

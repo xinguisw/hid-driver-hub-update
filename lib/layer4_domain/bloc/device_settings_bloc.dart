@@ -19,15 +19,19 @@ typedef DpiLevelCommit = Future<void> Function(int dpiLevel);
 
 typedef DpiValuesCommit = Future<void> Function(Map<int, int> levelValues);
 
-typedef DpiStagesCommit = Future<void> Function(
-  List<DpiStageData> stagedLevels,
-  int activeCount,
-);
+typedef DpiStagesCommit =
+    Future<void> Function(List<DpiStageData> stagedLevels, int activeCount);
 
-typedef SensorTuningCommit = Future<void> Function(
-  bool rippleControl,
-  bool angleSnap,
-);
+typedef DpiConfigurationDefaultsCommit =
+    Future<void> Function(
+      int reportRateHz,
+      int dpiLevel,
+      List<DpiStageData> defaultLevels,
+      int activeCount,
+    );
+
+typedef SensorTuningCommit =
+    Future<void> Function(bool rippleControl, bool angleSnap);
 
 typedef AngleTuneCommit = Future<void> Function(int wireValue);
 
@@ -79,6 +83,7 @@ class DeviceSettingsBloc
     required this.commitDpiLevel,
     required this.commitDpiValues,
     required this.commitDpiStages,
+    this.commitDpiConfigurationDefaults,
     required this.commitSensorTuning,
     required this.commitAngleTune,
     required this.commitLod,
@@ -102,6 +107,7 @@ class DeviceSettingsBloc
        ) {
     on<DeviceSettingsHydrated>(_onHydrated);
     on<DeviceSettingsResetButtonMappingRequested>(_onResetButtonMapping);
+    on<DeviceSettingsResetDpiConfigurationRequested>(_onResetDpiConfiguration);
     on<DeviceSettingsSaveRequested>(_onSave);
     on<DeviceSettingsCancelRequested>(_onCancel);
     on<DeviceSettingsNavigationRequested>(_onNavigationRequested);
@@ -150,6 +156,7 @@ class DeviceSettingsBloc
   final DpiLevelCommit commitDpiLevel;
   final DpiValuesCommit commitDpiValues;
   final DpiStagesCommit commitDpiStages;
+  final DpiConfigurationDefaultsCommit? commitDpiConfigurationDefaults;
   final SensorTuningCommit commitSensorTuning;
   final AngleTuneCommit commitAngleTune;
   final LodCommit commitLod;
@@ -261,6 +268,143 @@ class DeviceSettingsBloc
       ),
     );
     debugPrint('[bloc] reset buttonMapping: synced');
+  }
+
+  Future<void> _onResetDpiConfiguration(
+    DeviceSettingsResetDpiConfigurationRequested event,
+    Emitter<DeviceSettingsViewState> emit,
+  ) async {
+    if (state.committing) return;
+
+    final synced = state.synced;
+    if (synced == null) {
+      emit(
+        state.copyWith(
+          lastError: 'reset DPI configuration: no settings loaded',
+        ),
+      );
+      return;
+    }
+
+    final commitDefaults = commitDpiConfigurationDefaults;
+    if (commitDefaults == null) {
+      emit(
+        state.copyWith(
+          lastError: 'reset DPI configuration: commit is not wired',
+        ),
+      );
+      return;
+    }
+
+    final caps = activeCapabilities;
+    final reportRateCaps = caps?.reportRate;
+    final dpiCaps = caps?.dpi;
+    if (reportRateCaps == null || dpiCaps == null) {
+      emit(
+        state.copyWith(
+          lastError: 'reset DPI configuration: capabilities unavailable',
+        ),
+      );
+      return;
+    }
+    if (synced.decodeErrors.contains('reportRateDpi')) {
+      emit(state.copyWith(lastError: 'DPI unavailable: decode error'));
+      return;
+    }
+
+    final defaultReportRate = reportRateCaps.defaultValue;
+    if (!reportRateCaps.options.contains(defaultReportRate)) {
+      emit(
+        state.copyWith(
+          lastError:
+              'reset DPI configuration: default report rate '
+              '$defaultReportRate not in options ${reportRateCaps.options}',
+        ),
+      );
+      return;
+    }
+
+    final activeCount = dpiCaps.activeLevelCount;
+    final defaultLevel = dpiCaps.defaultLevel;
+    final defaultLevels = [
+      for (final level in dpiCaps.levels)
+        DpiStageData(
+          level: level.level,
+          value: level.value,
+          color: level.color.isEmpty ? null : level.color,
+        ),
+    ];
+    if (defaultLevels.isEmpty ||
+        activeCount < 1 ||
+        activeCount > dpiCaps.maxLevels ||
+        activeCount > defaultLevels.length ||
+        defaultLevel < 1 ||
+        defaultLevel > activeCount) {
+      emit(
+        state.copyWith(
+          lastError: 'reset DPI configuration: invalid DPI catalog defaults',
+        ),
+      );
+      return;
+    }
+
+    debugPrint(
+      '[bloc] reset DPI configuration immediate commit '
+      'rate=${defaultReportRate}Hz level=$defaultLevel active=$activeCount',
+    );
+    emit(state.copyWith(committing: true, clearError: true));
+
+    try {
+      await commitDefaults(
+        defaultReportRate,
+        defaultLevel,
+        defaultLevels,
+        activeCount,
+      );
+    } catch (e) {
+      debugPrint('[bloc] reset DPI configuration failed: $e');
+      final failures = state.consecutiveFailures + 1;
+      emit(
+        state.copyWith(
+          committing: false,
+          lastError: 'reset DPI configuration failed: $e',
+          consecutiveFailures: failures,
+        ),
+      );
+      if (failures >= failureEscalateThreshold) {
+        onEscalationRequested?.call(
+          'reset DPI configuration failed $failures consecutive times',
+        );
+      }
+      return;
+    }
+
+    const translate = TranslationCodec();
+    final reportRateWire = translate.reportRateHzToWire(defaultReportRate);
+    final activeLevels = defaultLevels
+        .take(activeCount)
+        .toList(growable: false);
+    final nextSynced = synced.copyWith(
+      reportRateHz: defaultReportRate,
+      reportRateLabel: reportRateWire == null
+          ? synced.reportRateLabel
+          : translate.reportRateWireToLabel(reportRateWire),
+      dpiActiveLevelCount: activeCount,
+      dpiActiveIndex: defaultLevel,
+      dpiLevels: activeLevels,
+    );
+    final nextState = state.copyWith(
+      synced: nextSynced,
+      committing: false,
+      consecutiveFailures: 0,
+      clearError: true,
+      clearReportRateStaging: true,
+      clearDpiCurrentLevelStaging: true,
+      clearDpiValueStaging: true,
+      clearDpiStageStaging: true,
+    );
+    emit(nextState.copyWith(isDirty: nextState.hasAnyStaging));
+    debugPrint('[bloc] reset DPI configuration: synced');
   }
 
   Future<void> _onSave(
@@ -390,7 +534,9 @@ class DeviceSettingsBloc
 
     // why: stageButtonMappingFromLive would seed from a baseline that never decoded
     if (synced.decodeErrors.contains('buttonMapping')) {
-      emit(state.copyWith(lastError: 'button mapping unavailable: decode error'));
+      emit(
+        state.copyWith(lastError: 'button mapping unavailable: decode error'),
+      );
       return;
     }
 
@@ -444,18 +590,27 @@ class DeviceSettingsBloc
       return;
     }
     if (synced.decodeErrors.contains('buttonMapping')) {
-      emit(state.copyWith(lastError: 'button mapping unavailable: decode error'));
+      emit(
+        state.copyWith(lastError: 'button mapping unavailable: decode error'),
+      );
       return;
     }
     if (event.macroSlot < 1 || event.macroSlot > 16) {
-      emit(state.copyWith(lastError: 'macro slot out of range: ${event.macroSlot}'));
+      emit(
+        state.copyWith(
+          lastError: 'macro slot out of range: ${event.macroSlot}',
+        ),
+      );
       return;
     }
-    var staging = state.buttonMappingStaging ??
+    var staging =
+        state.buttonMappingStaging ??
         stageButtonMappingFromLive(synced.buttons);
     final index = event.buttonId - 1;
     if (index < 0 || index >= staging.length) {
-      emit(state.copyWith(lastError: 'button id out of range: ${event.buttonId}'));
+      emit(
+        state.copyWith(lastError: 'button id out of range: ${event.buttonId}'),
+      );
       return;
     }
     staging = List<ButtonMappingSlot>.from(staging);
@@ -465,11 +620,13 @@ class DeviceSettingsBloc
       param2: 0,
       param3: 0,
     );
-    emit(state.copyWith(
-      buttonMappingStaging: staging,
-      isDirty: true,
-      clearError: true,
-    ));
+    emit(
+      state.copyWith(
+        buttonMappingStaging: staging,
+        isDirty: true,
+        clearError: true,
+      ),
+    );
     debugPrint('[bloc] button B${event.buttonId} → macro M${event.macroSlot}');
   }
 
@@ -489,7 +646,9 @@ class DeviceSettingsBloc
 
     // why: same staging buffer as slot-requested — same undecoded baseline risk
     if (synced.decodeErrors.contains('buttonMapping')) {
-      emit(state.copyWith(lastError: 'button mapping unavailable: decode error'));
+      emit(
+        state.copyWith(lastError: 'button mapping unavailable: decode error'),
+      );
       return;
     }
 
@@ -638,10 +797,7 @@ class DeviceSettingsBloc
       return;
     }
 
-    final nextSynced = synced.copyWith(
-      reportRateHz: staging,
-      clearError: true,
-    );
+    final nextSynced = synced.copyWith(reportRateHz: staging, clearError: true);
     emit(
       DeviceSettingsViewState(
         synced: nextSynced,
@@ -710,7 +866,8 @@ class DeviceSettingsBloc
       }
     }
 
-    final dpiSaveRequested = dpiLevel != null ||
+    final dpiSaveRequested =
+        dpiLevel != null ||
         (dpiValues != null && dpiValues.isNotEmpty) ||
         hasStageStaging;
     if (dpiSaveRequested && synced.decodeErrors.contains('reportRateDpi')) {
@@ -838,7 +995,8 @@ class DeviceSettingsBloc
       if (!validLevels.contains(event.level)) {
         emit(
           state.copyWith(
-            lastError: 'DPI level ${event.level} not in capabilities $validLevels',
+            lastError:
+                'DPI level ${event.level} not in capabilities $validLevels',
           ),
         );
         return;
@@ -976,11 +1134,7 @@ class DeviceSettingsBloc
     final next = {...?state.dpiValueStaging};
     next[event.level] = snapped;
     emit(
-      state.copyWith(
-        dpiValueStaging: next,
-        isDirty: true,
-        clearError: true,
-      ),
+      state.copyWith(dpiValueStaging: next, isDirty: true, clearError: true),
     );
 
     debugPrint('[bloc] DPI value staged: level=${event.level} value=$snapped');
@@ -1037,10 +1191,7 @@ class DeviceSettingsBloc
         );
       }
     }
-    final nextSynced = synced.copyWith(
-      dpiLevels: levels,
-      clearError: true,
-    );
+    final nextSynced = synced.copyWith(dpiLevels: levels, clearError: true);
     emit(
       DeviceSettingsViewState(
         synced: nextSynced,
@@ -1087,11 +1238,9 @@ class DeviceSettingsBloc
     // color (mock: slot 1 Red ... slot 8 White), so a newly added slot shows
     // its correct default instead of null/previous color.
     final defaultColor = _defaultDpiColorForLevel(synced, newLevel);
-    levels.add(DpiStageData(
-      level: newLevel,
-      value: defaultDpi,
-      color: defaultColor,
-    ));
+    levels.add(
+      DpiStageData(level: newLevel, value: defaultDpi, color: defaultColor),
+    );
     emit(
       state.copyWith(
         dpiStageAddStaging: true,
@@ -1127,11 +1276,13 @@ class DeviceSettingsBloc
     final removed = levels.where((l) => l.level != event.level).toList();
     final reindexed = <DpiStageData>[];
     for (var i = 0; i < removed.length; i++) {
-      reindexed.add(DpiStageData(
-        level: i + 1,
-        value: removed[i].value,
-        color: removed[i].color,
-      ));
+      reindexed.add(
+        DpiStageData(
+          level: i + 1,
+          value: removed[i].value,
+          color: removed[i].color,
+        ),
+      );
     }
     emit(
       state.copyWith(
@@ -1538,11 +1689,7 @@ class DeviceSettingsBloc
     }
 
     emit(
-      state.copyWith(
-        lodStaging: event.wire,
-        isDirty: true,
-        clearError: true,
-      ),
+      state.copyWith(lodStaging: event.wire, isDirty: true, clearError: true),
     );
 
     debugPrint('[bloc] LOD staged: wire=${event.wire}');
@@ -1814,11 +1961,7 @@ class DeviceSettingsBloc
     }
 
     emit(
-      state.copyWith(
-        sleepStaging: event.wire,
-        isDirty: true,
-        clearError: true,
-      ),
+      state.copyWith(sleepStaging: event.wire, isDirty: true, clearError: true),
     );
 
     debugPrint('[bloc] sleep time staged: wire=${event.wire}');
@@ -1928,7 +2071,9 @@ class DeviceSettingsBloc
 
     final synced = state.synced;
     if (synced == null) {
-      emit(state.copyWith(lastError: 'save wheel direction: no synced settings'));
+      emit(
+        state.copyWith(lastError: 'save wheel direction: no synced settings'),
+      );
       return;
     }
 
@@ -1954,10 +2099,7 @@ class DeviceSettingsBloc
       return;
     }
 
-    final nextSynced = synced.copyWith(
-      wheelInvert: staging,
-      clearError: true,
-    );
+    final nextSynced = synced.copyWith(wheelInvert: staging, clearError: true);
     emit(
       DeviceSettingsViewState(
         synced: nextSynced,
@@ -2131,7 +2273,8 @@ class DeviceSettingsBloc
     DeviceSettingsSaveBacklightRequested event,
     Emitter<DeviceSettingsViewState> emit,
   ) async {
-    final hasStaging = state.rgbEnableStaging != null ||
+    final hasStaging =
+        state.rgbEnableStaging != null ||
         state.rgbModeIdStaging != null ||
         state.rgbBrightnessStaging != null ||
         state.rgbSpeedStaging != null ||
@@ -2169,9 +2312,10 @@ class DeviceSettingsBloc
     // FR-RGB-001/002/004): never send an out-of-range or unsupported value.
     final caps = activeCapabilities?.rgbBacklight;
     if (caps != null && caps.present) {
-      if (caps.modes.isNotEmpty &&
-          !caps.modes.any((m) => m.id == modeId)) {
-        emit(state.copyWith(lastError: 'save backlight: unsupported mode $modeId'));
+      if (caps.modes.isNotEmpty && !caps.modes.any((m) => m.id == modeId)) {
+        emit(
+          state.copyWith(lastError: 'save backlight: unsupported mode $modeId'),
+        );
         return;
       }
       if (brightness < 0 || brightness >= caps.brightnessLevels) {
@@ -2184,7 +2328,9 @@ class DeviceSettingsBloc
       }
       if (speed < 0 || speed >= caps.speedLevels) {
         emit(
-          state.copyWith(lastError: 'save backlight: speed $speed out of range'),
+          state.copyWith(
+            lastError: 'save backlight: speed $speed out of range',
+          ),
         );
         return;
       }
@@ -2238,8 +2384,9 @@ class DeviceSettingsBloc
       rgbModeId: modeId,
       rgbModeLabel: const TranslationCodec().rgbModeToLabel(modeId),
       rgbBrightness: brightness,
-      rgbBrightnessLabel:
-          const TranslationCodec().brightnessLevelToLabel(brightness),
+      rgbBrightnessLabel: const TranslationCodec().brightnessLevelToLabel(
+        brightness,
+      ),
       rgbSpeed: speed,
       rgbSpeedLabel: const TranslationCodec().speedLevelToLabel(speed),
       rgbR: r,

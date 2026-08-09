@@ -233,6 +233,14 @@ class DeviceScope {
       commitDpiLevel: (level) => commitDpiLevel(card, level),
       commitDpiValues: (values) => commitDpiValues(card, values),
       commitDpiStages: (staged, count) => commitDpiStages(card, staged, count),
+      commitDpiConfigurationDefaults: (reportRate, dpiLevel, levels, count) =>
+          commitDpiConfigurationDefaults(
+            card,
+            reportRateHz: reportRate,
+            dpiLevel: dpiLevel,
+            defaultLevels: levels,
+            activeCount: count,
+          ),
       commitSensorTuning: (ripple, snap) =>
           commitSensorTuning(card, ripple, snap),
       commitAngleTune: (wireValue) => commitAngleTune(card, wireValue),
@@ -267,7 +275,8 @@ class DeviceScope {
 
   /// Lowest unused hardware slot, or null when all 16 slots are allocated.
   int? nextMacroSlot(DiscoveredCardState card) {
-    final used = _macros[card.devId]?.map((m) => m.slot).toSet() ?? const <int>{};
+    final used =
+        _macros[card.devId]?.map((m) => m.slot).toSet() ?? const <int>{};
     for (var slot = 1; slot <= MacroDefinition.maxSlots; slot++) {
       if (!used.contains(slot)) return slot;
     }
@@ -511,6 +520,114 @@ class DeviceScope {
     infoBlock[1] = current.dpiCurrentLevel;
     infoBlock[2] = newMask;
     await session.setReportRate(infoBlock);
+  }
+
+  /// Commits the complete catalog default for the Performance page.
+  ///
+  /// The reset is an application-defined catalog reset, not a guessed
+  /// firmware factory-reset opcode. C4 receives the catalog DPI table, C6 is
+  /// written only for products with per-stage RGB, and C2 receives the
+  /// catalog report rate, current level, and active-stage mask.
+  Future<void> commitDpiConfigurationDefaults(
+    DiscoveredCardState card, {
+    required int reportRateHz,
+    required int dpiLevel,
+    required List<DpiStageData> defaultLevels,
+    required int activeCount,
+  }) async {
+    final session = _sessionForCard(card);
+    if (session == null || !session.isAlive) {
+      throw StateError('commitDpiConfigurationDefaults: no session');
+    }
+
+    final caps = DeviceCapabilityStore.forDevice(card.devId);
+    final dpi = caps?.dpi;
+    final enc = dpi?.wireProfile;
+    if (enc == null) {
+      throw StateError(
+        'commitDpiConfigurationDefaults: no L2 DPI wire profile for '
+        '${card.devId}',
+      );
+    }
+    if (defaultLevels.isEmpty ||
+        defaultLevels.length > 8 ||
+        activeCount < 1 ||
+        activeCount > 8 ||
+        activeCount > defaultLevels.length) {
+      throw StateError(
+        'commitDpiConfigurationDefaults: invalid catalog DPI defaults',
+      );
+    }
+
+    const translate = TranslationCodec();
+    final reportRateWire = translate.reportRateHzToWire(reportRateHz);
+    if (reportRateWire == null) {
+      throw StateError(
+        'commitDpiConfigurationDefaults: unknown report rate $reportRateHz',
+      );
+    }
+    final dpiLevelWire = translate.dpiCurrentLevelDisplayToWire(dpiLevel);
+    if (dpiLevelWire == null || dpiLevel > activeCount) {
+      throw StateError(
+        'commitDpiConfigurationDefaults: invalid DPI level $dpiLevel',
+      );
+    }
+
+    final capLevels = dpi?.levels;
+    if (capLevels == null || capLevels.isEmpty) {
+      throw StateError(
+        'commitDpiConfigurationDefaults: no catalog DPI levels for '
+        '${card.devId}',
+      );
+    }
+    final defaultWire = translate.dpiDisplayToWireUnit(
+      capLevels.last.value,
+      profile: enc,
+    );
+    if (defaultWire == null) {
+      throw StateError(
+        'commitDpiConfigurationDefaults: default DPI not encodable',
+      );
+    }
+
+    final dataBlock = Uint8List(16);
+    for (var i = 0; i < 8; i++) {
+      final stage = i < defaultLevels.length ? defaultLevels[i] : null;
+      final wire = stage == null
+          ? defaultWire
+          : translate.dpiDisplayToWireUnit(stage.value, profile: enc);
+      if (wire == null) {
+        throw StateError(
+          'commitDpiConfigurationDefaults: value not encodable at slot '
+          '${i + 1}',
+        );
+      }
+      dataBlock[i * 2] = (wire >> 8) & 0xFF;
+      dataBlock[i * 2 + 1] = wire & 0xFF;
+    }
+    await session.setDpiTable(dataBlock);
+
+    if (dpi?.rgbPerStage ?? false) {
+      final defaultColor = _defaultDpiColorHex(card);
+      final defaultRgb = _hexToRgb(defaultColor);
+      final rgbBlock = Uint8List(24);
+      for (var i = 0; i < 8; i++) {
+        final stage = i < defaultLevels.length ? defaultLevels[i] : null;
+        final color = stage?.color;
+        final rgb = color == null || color.isEmpty
+            ? defaultRgb
+            : _hexToRgb(color);
+        rgbBlock[i * 3] = rgb[0];
+        rgbBlock[i * 3 + 1] = rgb[1];
+        rgbBlock[i * 3 + 2] = rgb[2];
+      }
+      await session.setDpiRgb(rgbBlock);
+    }
+
+    final activeMask = (1 << activeCount) - 1;
+    await session.setReportRate(
+      Uint8List.fromList([reportRateWire, dpiLevelWire, activeMask]),
+    );
   }
 
   /// Default RGB color (hex) for the refilled slot, from the catalog.

@@ -1,4 +1,5 @@
 import 'package:driver_hub/layer4_domain/models/device_settings_state.dart';
+import 'package:driver_hub/layer4_domain/models/macro.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -15,6 +16,8 @@ class HubButtonMappingPanel extends StatefulWidget {
     this.specialActionCatalog,
     this.onActionSelected,
     this.onComboSelected,
+    this.macroSlots = const [],
+    this.onMacroSelected,
   });
 
   final int? selectedButtonId;
@@ -27,6 +30,8 @@ class HubButtonMappingPanel extends StatefulWidget {
 
   /// Called when user completes a special combo (modifiers + key).
   final void Function(List<String> modifierIds, String keyChar)? onComboSelected;
+  final List<MacroDefinition> macroSlots;
+  final ValueChanged<int>? onMacroSelected;
 
   static const double width = 280;
 
@@ -211,12 +216,74 @@ class _HubButtonMappingPanelState extends State<HubButtonMappingPanel> {
                       }
                     },
                   ),
-                _ => const SizedBox.expand(),
+                _ => _MacroCatalogBody(
+                    macros: widget.macroSlots,
+                    selectedSlot: _selectedCatalogId == null
+                        ? null
+                        : int.tryParse(
+                            _selectedCatalogId!.replaceFirst('macro.', ''),
+                          ),
+                    onSelect: (slot) {
+                      setState(() => _selectedCatalogId = 'macro.$slot');
+                      widget.onMacroSelected?.call(slot);
+                    },
+                  ),
               },
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _MacroCatalogBody extends StatelessWidget {
+  const _MacroCatalogBody({
+    required this.macros,
+    required this.selectedSlot,
+    required this.onSelect,
+  });
+
+  final List<MacroDefinition> macros;
+  final int? selectedSlot;
+  final ValueChanged<int> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    if (macros.isEmpty) {
+      return const Center(child: Text('No macros configured'));
+    }
+    return ListView(
+      padding: const EdgeInsets.only(bottom: 16),
+      children: [
+        const Padding(
+          padding: EdgeInsets.fromLTRB(12, 12, 12, 4),
+          child: Text('Macro'),
+        ),
+        for (final macro in macros)
+          Material(
+            color: macro.slot == selectedSlot
+                ? Theme.of(context).colorScheme.primary
+                : Colors.transparent,
+            child: InkWell(
+              onTap: () => onSelect(macro.slot),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
+                child: Text(
+                  macro.name.isEmpty ? 'M${macro.slot}' : macro.name,
+                  style: TextStyle(
+                    color: macro.slot == selectedSlot
+                        ? Theme.of(context).colorScheme.onPrimary
+                        : Theme.of(context).colorScheme.onSurface,
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

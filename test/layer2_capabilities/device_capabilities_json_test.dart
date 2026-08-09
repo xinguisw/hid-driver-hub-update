@@ -68,7 +68,9 @@ void main() {
     expect(caps.rgbBacklight!.present, isFalse);
     expect(caps.rgbBacklight!.modes.length, 8);
     expect(caps.rgbBacklight!.sleepTimeOptions.length, 7);
-    expect(caps.macro, isNull);
+    expect(caps.macro, isNotNull);
+    expect(caps.macro!.slots, 16);
+    expect(caps.macro!.maxLength, 30);
     expect(caps.osd!.enabled, isTrue);
     expect(DeviceCapabilityStore.forDevice('unknown'), isNull);
   });
@@ -94,6 +96,8 @@ void main() {
       expect(caps.sensor!.angleTune, isFalse);
       expect(caps.sensor!.liftOffDistance!.present, isFalse);
       expect(caps.otherFeatures!.sleepTime!.present, isTrue);
+      expect(caps.macro!.slots, 16);
+      expect(caps.macro!.maxLength, 30);
       expect(caps.rgbBacklight!.present, isFalse);
     },
   );
@@ -116,6 +120,8 @@ void main() {
       expect(caps.sensor!.angleTuneDetails!.options!.length, 5);
       expect(caps.sensor!.liftOffDistance!.present, isTrue);
       expect(caps.sensor!.liftOffDistance!.options.length, 2);
+      expect(caps.macro!.slots, 16);
+      expect(caps.macro!.maxLength, 30);
       expect(caps.rgbBacklight!.present, isTrue);
       expect(caps.rgbBacklight!.modes.length, 8);
       expect(caps.rgbBacklight!.sleepTimeOptions.length, 7);
@@ -131,7 +137,10 @@ void main() {
       for (final devId in ['02AA', '01AA', '03AA']) {
         final caps = DeviceCapabilityStore.forDevice(devId);
         expect(caps, isNotNull);
-        expect(caps!.dpi!.activeLevelCount, 5);
+        expect(caps!.macro, isNotNull);
+        expect(caps.macro!.slots, 16);
+        expect(caps.macro!.maxLength, 30);
+        expect(caps.dpi!.activeLevelCount, 5);
         expect(caps.otherFeatures!.sleepTime!.defaultWire, 4);
         expect(caps.dpi!.wireProfileKey, 'telink_b80_dpi16');
         expect(caps.dpi!.wireProfile, isNotNull);

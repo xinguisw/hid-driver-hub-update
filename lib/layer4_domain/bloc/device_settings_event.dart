@@ -47,6 +47,17 @@ class DeviceSettingsButtonMappingSlotRequested extends DeviceSettingsEvent {
   final String catalogId;
 }
 
+/// User selected a saved macro slot for a physical button.
+class DeviceSettingsMacroMappingRequested extends DeviceSettingsEvent {
+  const DeviceSettingsMacroMappingRequested({
+    required this.buttonId,
+    required this.macroSlot,
+  });
+
+  final int buttonId;
+  final int macroSlot;
+}
+
 /// User selected a special combination (modifiers + key) for a button slot.
 ///
 /// L3 passes modifier catalog IDs and the captured character. L4 translates

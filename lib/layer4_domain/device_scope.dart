@@ -10,11 +10,14 @@ import 'package:driver_hub/layer4_domain/bloc/device_settings_bloc.dart';
 import 'package:driver_hub/layer5_codec/button_mapping_slot.dart';
 import 'package:driver_hub/layer4_domain/models/device_settings_state.dart';
 import 'package:driver_hub/layer4_domain/models/discovered_card_state.dart';
+import 'package:driver_hub/layer4_domain/models/macro.dart';
+import 'package:driver_hub/layer4_domain/macro_repository.dart';
 import 'package:driver_hub/layer4_domain/settings_onboard_query.dart';
 import 'package:driver_hub/layer5_codec/codecs/translation_codec.dart';
 import 'package:driver_hub/layer5_codec/device_protocol.dart';
 import 'package:driver_hub/layer6_transport/hid_session.dart';
 import 'package:driver_hub/layer6_transport/local_storage.dart';
+import 'package:driver_hub/layer6_transport/macro_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hid_tool/hid_tool.dart';
 
@@ -26,8 +29,9 @@ import 'package:hid_tool/hid_tool.dart';
 ///
 /// One entry per verified device, keyed by device path → multi-device.
 class DeviceScope {
-  DeviceScope({DeviceScanner? scanner})
-    : _scanner = scanner ?? DeviceScanner() {
+  DeviceScope({DeviceScanner? scanner, MacroRepository? macroRepository})
+    : _scanner = scanner ?? DeviceScanner(),
+      _macroRepository = macroRepository ?? PersistentMacroRepository() {
     _watcher = DeviceWatcher(
       scanner: _scanner,
       protocolFactory: () => const MouseProtocol(),
@@ -37,6 +41,7 @@ class DeviceScope {
   }
 
   final DeviceScanner _scanner;
+  final MacroRepository _macroRepository;
   late final DeviceWatcher _watcher;
 
   /// Verified devices as card states, keyed by device path.
@@ -50,6 +55,11 @@ class DeviceScope {
 
   /// Last hydrated settings per device path, for the life of the connection.
   final _settings = <String, DeviceSettingsState>{};
+
+  /// Macro registry cached per catalog device id for the current app session.
+  /// The registry is the app-side source of truth because the firmware defines
+  /// no macro GET/read-back operation.
+  final _macros = <String, List<MacroDefinition>>{};
 
   // --- Polling for battery and charging (DISABLED) ---
   // Manager decision: no A4 poll. Battery/charging stay real-time via OSD push
@@ -243,6 +253,50 @@ class DeviceScope {
       capabilitiesLookup: () => DeviceCapabilityStore.forDevice(card.devId),
       onSaveCompleted: onSaveCompleted,
     );
+  }
+
+  /// Load the semantic macro registry for one device from the L6 backend.
+  Future<List<MacroDefinition>> loadMacros(DiscoveredCardState card) async {
+    final loaded = await _macroRepository.load(card.devId);
+    _macros[card.devId] = List.unmodifiable(loaded);
+    return _macros[card.devId]!;
+  }
+
+  List<MacroDefinition> macrosFor(DiscoveredCardState card) =>
+      List.unmodifiable(_macros[card.devId] ?? const []);
+
+  /// Lowest unused hardware slot, or null when all 16 slots are allocated.
+  int? nextMacroSlot(DiscoveredCardState card) {
+    final used = _macros[card.devId]?.map((m) => m.slot).toSet() ?? const <int>{};
+    for (var slot = 1; slot <= MacroDefinition.maxSlots; slot++) {
+      if (!used.contains(slot)) return slot;
+    }
+    return null;
+  }
+
+  /// FR-OPS Save: validate, write all three hardware chunks, then persist the
+  /// semantic registry only after the device reports final status OK.
+  Future<void> saveMacro(
+    DiscoveredCardState card,
+    MacroDefinition macro,
+  ) async {
+    final errors = validateMacro(macro);
+    if (errors.isNotEmpty) throw FormatException(errors.join('; '));
+    final session = _sessionForCard(card);
+    if (session == null || !session.isAlive) {
+      throw StateError('saveMacro: no session');
+    }
+    await session.setMacro(macro);
+    final current = [...(_macros[card.devId] ?? const <MacroDefinition>[])];
+    final index = current.indexWhere((m) => m.slot == macro.slot);
+    if (index == -1) {
+      current.add(macro);
+    } else {
+      current[index] = macro;
+    }
+    current.sort((a, b) => a.slot.compareTo(b.slot));
+    await _macroRepository.save(card.devId, current);
+    _macros[card.devId] = List.unmodifiable(current);
   }
 
   Future<void> commitButtonMapping(

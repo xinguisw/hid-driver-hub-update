@@ -2,6 +2,8 @@ import 'device_type.dart';
 import 'package:driver_hub/layer5_codec/codec_exception.dart';
 import 'package:driver_hub/layer5_codec/codecs/translation_codec.dart';
 import 'package:driver_hub/layer5_codec/utils/crc16.dart';
+import 'package:driver_hub/layer5_codec/macro_codec.dart';
+import 'package:driver_hub/layer4_domain/models/macro.dart';
 import 'package:driver_hub/layer6_transport/hid_session.dart';
 import 'package:flutter/foundation.dart';
 
@@ -263,6 +265,9 @@ abstract class DeviceProtocol {
   /// `enable` is tri-state (0xFF on / 0x0F off); `brightness`/`speed` are level
   /// indices; `sleepTime` is an index into the catalog's `sleepTimeOptions`.
   Future<void> setRgbBacklight(HidSession session, Uint8List dataBlock);
+
+  /// Write one macro through the dedicated three-chunk report-8 transfer.
+  Future<void> setMacro(HidSession session, MacroDefinition macro);
 }
 
 /// Standard mouse protocol. 32-byte frame over report id 7.
@@ -932,6 +937,56 @@ class MouseProtocol implements DeviceProtocol {
         '(reason=0x${(reason & 0xFF).toRadixString(16).padLeft(2, '0')})',
       );
     }
+  }
+
+  @override
+  Future<void> setMacro(HidSession session, MacroDefinition macro) async {
+    final chunks = MacroTransferCodec.chunkTransfer(macro);
+    for (var chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
+      final frame = MacroTransferCodec.buildChunkFrame(
+        macroIndex: macro.slot,
+        chunkIndex: chunkIndex,
+        payload: chunks[chunkIndex],
+      );
+      debugPrint('[proto] macro: SET slot=${macro.slot} chunk=$chunkIndex '
+          'data=${_hex(chunks[chunkIndex])}');
+      final reply = await session.sendAndWait(
+        data: frame,
+        reportId: MacroTransferCodec.reportId,
+        reportLength: MacroTransferCodec.frameLength,
+        match: (raw) => _matchesMacroReply(raw, macro.slot, chunkIndex),
+        timeout: _sendTimeout,
+      );
+      final body = _stripMacroReportId(reply);
+      final status = MacroTransferCodec.parseReplyStatus(body);
+      debugPrint('[proto] macro: reply slot=${macro.slot} chunk=$chunkIndex '
+          'status=0x${status.toRadixString(16)}');
+      if ((chunkIndex < 2 && status != MacroTransferCodec.statusReceived) ||
+          (chunkIndex == 2 && status != MacroTransferCodec.statusOk)) {
+        throw FormatException(
+          'Macro SET rejected: slot=${macro.slot} chunk=$chunkIndex '
+          'status=0x${status.toRadixString(16)}',
+        );
+      }
+    }
+  }
+
+  static bool _matchesMacroReply(
+      Uint8List raw, int macroIndex, int chunkIndex) {
+    final body = _stripMacroReportId(raw);
+    if (body.length <= 5 || body[0] != MacroTransferCodec.opcode) return false;
+    return body[1] == chunkIndex &&
+        body[3] == macroIndex &&
+        body[5] >= MacroTransferCodec.statusReceived;
+  }
+
+  static Uint8List _stripMacroReportId(Uint8List raw) {
+    if (raw.length >= 2 &&
+        raw[0] == MacroTransferCodec.reportId &&
+        raw[1] == MacroTransferCodec.opcode) {
+      return Uint8List.fromList(raw.sublist(1));
+    }
+    return raw;
   }
 
   /// GET ask: opcode 0x07, addrs set, len 0 (sheet: request only needs addrs).

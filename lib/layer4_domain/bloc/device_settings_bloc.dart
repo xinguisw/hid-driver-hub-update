@@ -106,6 +106,7 @@ class DeviceSettingsBloc
     on<DeviceSettingsCancelRequested>(_onCancel);
     on<DeviceSettingsNavigationRequested>(_onNavigationRequested);
     on<DeviceSettingsButtonMappingSlotRequested>(_onButtonMappingSlotRequested);
+    on<DeviceSettingsMacroMappingRequested>(_onMacroMappingRequested);
     on<DeviceSettingsSpecialComboRequested>(_onSpecialComboRequested);
     on<DeviceSettingsReportRateRequested>(_onReportRateRequested);
     on<DeviceSettingsSaveReportRateRequested>(_onSaveReportRate);
@@ -431,6 +432,45 @@ class DeviceSettingsBloc
       '[bloc] button B${event.buttonId} → ${event.catalogId} '
       '(action=0x${slot.action.toRadixString(16)})',
     );
+  }
+
+  void _onMacroMappingRequested(
+    DeviceSettingsMacroMappingRequested event,
+    Emitter<DeviceSettingsViewState> emit,
+  ) {
+    final synced = state.synced;
+    if (synced == null) {
+      emit(state.copyWith(lastError: 'no settings loaded'));
+      return;
+    }
+    if (synced.decodeErrors.contains('buttonMapping')) {
+      emit(state.copyWith(lastError: 'button mapping unavailable: decode error'));
+      return;
+    }
+    if (event.macroSlot < 1 || event.macroSlot > 16) {
+      emit(state.copyWith(lastError: 'macro slot out of range: ${event.macroSlot}'));
+      return;
+    }
+    var staging = state.buttonMappingStaging ??
+        stageButtonMappingFromLive(synced.buttons);
+    final index = event.buttonId - 1;
+    if (index < 0 || index >= staging.length) {
+      emit(state.copyWith(lastError: 'button id out of range: ${event.buttonId}'));
+      return;
+    }
+    staging = List<ButtonMappingSlot>.from(staging);
+    staging[index] = ButtonMappingSlot(
+      action: 0x14,
+      param1: event.macroSlot,
+      param2: 0,
+      param3: 0,
+    );
+    emit(state.copyWith(
+      buttonMappingStaging: staging,
+      isDirty: true,
+      clearError: true,
+    ));
+    debugPrint('[bloc] button B${event.buttonId} → macro M${event.macroSlot}');
   }
 
   /// User selected a special combination (modifiers + key) for a button slot.

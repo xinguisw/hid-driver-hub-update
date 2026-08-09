@@ -8,6 +8,7 @@ import 'package:flutter/foundation.dart';
 
 import 'package:driver_hub/layer5_codec/device_protocol.dart';
 import 'package:driver_hub/layer5_codec/codecs/osd_codec.dart';
+import 'package:driver_hub/layer4_domain/models/macro.dart';
 
 /// State of a device session, emitted to the card.
 class DeviceSessionState {
@@ -212,6 +213,14 @@ class DeviceSession implements DeviceRepository {
       throw StateError('setRgbBacklight: session not alive');
     }
     await _protocol.setRgbBacklight(_session, dataBlock);
+  }
+
+  /// Thin L1 forwarder for the dedicated macro transfer (L5 owns framing).
+  Future<void> setMacro(MacroDefinition macro) async {
+    if (!isAlive) {
+      throw StateError('setMacro: session not alive');
+    }
+    await _protocol.setMacro(_session, macro);
   }
 
   @override

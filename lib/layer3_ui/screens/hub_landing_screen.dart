@@ -216,6 +216,15 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                                   ),
                                 );
                               },
+                              macroSlots: widget.scope.macrosFor(widget.card),
+                              onMacroSelected: (macroSlot) {
+                                _settingsBloc.add(
+                                  DeviceSettingsMacroMappingRequested(
+                                    buttonId: _selectedButtonId!,
+                                    macroSlot: macroSlot,
+                                  ),
+                                );
+                              },
                             ),
                           ],
                         ],
@@ -224,7 +233,13 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                   ),
                 )
               else if (_selectedIndex == _macroIndex)
-                const Expanded(child: HubMacroPanel())
+                Expanded(
+                  child: HubMacroPanel(
+                    scope: widget.scope,
+                    card: widget.card,
+                    onChanged: () => setState(() {}),
+                  ),
+                )
               else if (_selectedIndex == _performanceIndex)
                 Expanded(
                   child: BlocBuilder<DeviceSettingsBloc, DeviceSettingsViewState>(

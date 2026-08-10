@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 import 'package:driver_hub/layer4_domain/device_scope.dart';
 import 'package:driver_hub/layer4_domain/models/discovered_card_state.dart';
 import 'package:driver_hub/layer4_domain/models/macro.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -412,6 +413,27 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
     }
   }
 
+  void _onPointerSignal(PointerSignalEvent event) {
+    if (!_recording || event.kind != ui.PointerDeviceKind.mouse) return;
+    // why: the Stop button is part of this editor's Listener subtree; a
+    // scroll over it must not become a recorded macro action.
+    if (_isPointerOver(_stopRecordingKey, event.position)) return;
+    // why: calibration input is deliberately excluded from macro recording,
+    // including wheel input received while calibration is active.
+    if (_calibrationMode || event is! PointerScrollEvent) return;
+
+    final verticalDelta = event.scrollDelta.dy;
+    if (verticalDelta == 0) return;
+    final isWheelUp = verticalDelta < 0;
+    // Protocol: MacroAction key_code 0xF1–0xF7 are mouse events. Buttons use
+    // F1–F5 with make+break; wheel uses the remaining F6/F7 the same way so
+    // the firmware sees a complete press/release pair per notch.
+    final code = isWheelUp ? 0xF6 : 0xF7;
+    final label = isWheelUp ? 'Wheel up' : 'Wheel down';
+    _appendRecordedAction(code: code, isBreak: false, label: label);
+    _appendRecordedAction(code: code, isBreak: true, label: label);
+  }
+
   bool _isPointerOver(GlobalKey key, Offset position) {
     final renderObject = key.currentContext?.findRenderObject();
     if (renderObject is! RenderBox || !renderObject.hasSize) return false;
@@ -437,6 +459,8 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
             ('Middle click', 0xF3),
             ('Mouse button 4', 0xF4),
             ('Mouse button 5', 0xF5),
+            ('Wheel up', 0xF6),
+            ('Wheel down', 0xF7),
           ])
             SimpleDialogOption(
               onPressed: () => Navigator.pop(context, item),
@@ -733,6 +757,7 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
             behavior: HitTestBehavior.translucent,
             onPointerDown: _onPointerEvent,
             onPointerUp: _onPointerEvent,
+            onPointerSignal: _onPointerSignal,
             child: Focus(
               focusNode: _recordFocus,
               onKeyEvent: _onRecordKeyEvent,
@@ -763,6 +788,7 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
                           Expanded(
                             child: DropdownButtonFormField<MacroMode>(
                               initialValue: draft.mode,
+                              isExpanded: true,
                               decoration: const InputDecoration(
                                 labelText: 'Macro type',
                               ),
@@ -770,7 +796,10 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
                                 for (final mode in MacroMode.values)
                                   DropdownMenuItem(
                                     value: mode,
-                                    child: Text(mode.label),
+                                    child: Text(
+                                      mode.label,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
                                   ),
                               ],
                               onChanged: (mode) {

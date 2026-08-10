@@ -4,6 +4,7 @@ import 'package:driver_hub/layer4_domain/macro_repository.dart';
 import 'package:driver_hub/layer4_domain/macro_timing_probe.dart';
 import 'package:driver_hub/layer4_domain/models/discovered_card_state.dart';
 import 'package:driver_hub/layer4_domain/models/macro.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -91,6 +92,43 @@ void main() {
       find.descendant(of: keyUpRow, matching: find.text('0 ms')),
       findsOneWidget,
     );
+  });
+
+  testWidgets('recording captures mouse wheel direction as macro actions', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(home: Scaffold(body: HubMacroPanel())),
+    );
+
+    await tester.tap(find.text('Create Macro'));
+    await tester.pump();
+    await tester.tap(find.text('Start Recording'));
+    await tester.pump();
+
+    final editor = find.byType(Listener).last;
+    final position = tester.getCenter(editor);
+    await tester.sendEventToBinding(
+      PointerScrollEvent(
+        kind: PointerDeviceKind.mouse,
+        position: position,
+        scrollDelta: const Offset(0, -20),
+      ),
+    );
+    await tester.sendEventToBinding(
+      PointerScrollEvent(
+        kind: PointerDeviceKind.mouse,
+        position: position,
+        scrollDelta: const Offset(0, 20),
+      ),
+    );
+    await tester.pump();
+    await tester.tap(find.text('Stop Recording'));
+    await tester.pump();
+
+    // One notch = make + break, same pair shape as mouse buttons.
+    expect(find.text('Wheel up'), findsNWidgets(2));
+    expect(find.text('Wheel down'), findsNWidgets(2));
   });
 
   testWidgets('saving recorded actions validates the captured action list', (

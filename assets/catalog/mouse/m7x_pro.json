@@ -8,37 +8,37 @@
         "id": 1,
         "labelKey": "button.left_click",
         "remappable": true,
-        "hotspot": { "x": 0.22, "y": 0.12, "r": 0.03 }
+        "hotspot": { "x": 0.40, "y": 0.30, "r": 0.03 }
       },
       {
         "id": 2,
         "labelKey": "button.right_click",
         "remappable": true,
-        "hotspot": { "x": 0.78, "y": 0.12, "r": 0.03 }
+        "hotspot": { "x": 0.61, "y": 0.30, "r": 0.03 }
       },
       {
         "id": 3,
         "labelKey": "button.middle_click",
         "remappable": true,
-        "hotspot": { "x": 0.5, "y": 0.14, "r": 0.03 }
+        "hotspot": { "x": 0.51, "y": 0.24, "r": 0.03 }
       },
       {
         "id": 4,
         "labelKey": "button.forward",
         "remappable": true,
-        "hotspot": { "x": 0.1, "y": 0.55, "r": 0.03 }
+        "hotspot": { "x": 0.33, "y": 0.45, "r": 0.03 }
       },
       {
         "id": 5,
         "labelKey": "button.back",
         "remappable": true,
-        "hotspot": { "x": 0.1, "y": 0.65, "r": 0.03 }
+        "hotspot": { "x": 0.33, "y": 0.55, "r": 0.03 }
       },
       {
         "id": 6,
         "labelKey": "button.dpi_cycle",
         "remappable": true,
-        "hotspot": { "x": 0.5, "y": 0.3, "r": 0.03 }
+        "hotspot": { "x": 0.61, "y": 0.60, "r": 0.03 }
       }
     ]
   },

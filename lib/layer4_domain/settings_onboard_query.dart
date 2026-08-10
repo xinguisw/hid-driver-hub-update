@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:driver_hub/layer2_capabilities/action_catalog.dart';
 import 'package:driver_hub/layer2_capabilities/capabilities.dart';
-import 'package:driver_hub/layer1_discovery/device_settings_gateway.dart';
+import 'package:driver_hub/layer4_domain/device_repository.dart';
 import 'package:driver_hub/layer4_domain/models/device_settings_state.dart';
 import 'package:driver_hub/layer4_domain/models/discovered_card_state.dart';
 import 'package:driver_hub/layer4_domain/settings_capabilities_pack.dart';
@@ -10,8 +10,7 @@ import 'package:driver_hub/layer5_codec/codec_exception.dart';
 import 'package:driver_hub/layer5_codec/codecs/translation_codec.dart';
 import 'package:flutter/foundation.dart';
 
-/// L4: hydrate [DeviceSettingsState] from L2 blueprints + live GETs via a
-/// [DeviceSettingsGateway].
+/// L4: hydrate [DeviceSettingsState] from L2 blueprints + live GETs via [DeviceRepository].
 ///
 /// Not discovery lifecycle (L1). Not UI (L3). Caller supplies a live repository.
 
@@ -27,7 +26,7 @@ import 'package:flutter/foundation.dart';
 /// Handshake failure or [TimeoutException] on any GET →
 /// [DeviceSettingsState.error] (caller should pop home). Other errors soft-fail.
 Future<DeviceSettingsState> queryOnboardConfig(
-  DeviceSettingsGateway session,
+  DeviceRepository session,
   DiscoveredCardState card, {
   void Function(DeviceSettingsState partial)? onPartial,
 }) async {
@@ -43,7 +42,7 @@ Future<DeviceSettingsState> queryOnboardConfig(
   }
 
   // --- L2 product matrix (show/hide + options); soft-fail if missing ---
-  final caps = await _loadCapabilitiesForCard(card);
+  final caps = await _loadCapabilitiesForSession(session, card);
   final hasCaps = caps != null;
   if (hasCaps) {
     state = applyCapabilitiesToSettings(state, caps);
@@ -298,7 +297,7 @@ Future<DeviceSettingsState> queryOnboardConfig(
         lodLabel: (showAll || state.hasLod)
             ? translate.lodWireToLabel(
                 sensor.lod,
-                state.lodOptions ?? const <LodOption>[],
+                _l2LodOptions(state.lodOptions),
               )
             : state.lodLabel,
         angleTuneOn: (showAll || state.hasAngleTune)
@@ -310,7 +309,7 @@ Future<DeviceSettingsState> queryOnboardConfig(
         angleTuneLabel: (showAll || state.hasAngleTune)
             ? translate.angleTuneWireToLabel(
                 sensor.angleValue,
-                state.angleTuneOptions ?? const <AngleTuneOption>[],
+                _l2AngleTuneOptions(state.angleTuneOptions),
               )
             : state.angleTuneLabel,
         performance: (showAll || state.hasPerformance)
@@ -322,7 +321,7 @@ Future<DeviceSettingsState> queryOnboardConfig(
         debounceLabel: (showAll || state.hasButtonDebounce)
             ? translate.optionPairWireToLabel(
                 sensor.debounceTime,
-                state.debounceOptions ?? const <OptionPair>[],
+                _l2SettingsOptions(state.debounceOptions),
               )
             : state.debounceLabel,
         sleepSeconds: (showAll || state.hasSleepTime)
@@ -331,7 +330,7 @@ Future<DeviceSettingsState> queryOnboardConfig(
         sleepLabel: (showAll || state.hasSleepTime)
             ? translate.optionPairWireToLabel(
                 sensor.sleepTime,
-                state.sleepOptions ?? const <OptionPair>[],
+                _l2SettingsOptions(state.sleepOptions),
               )
             : state.sleepLabel,
         wheelInvert: (showAll || state.hasWheelInvert)
@@ -399,10 +398,11 @@ Future<DeviceSettingsState> queryOnboardConfig(
 }
 
 /// Load per-model caps. Null if asset missing / unknown devId.
-Future<DeviceCapabilities?> _loadCapabilitiesForCard(
+Future<DeviceCapabilities?> _loadCapabilitiesForSession(
+  DeviceRepository session,
   DiscoveredCardState card,
 ) async {
-  final model = card.displayName;
+  final model = session.card.displayName;
   try {
     await DeviceCapabilityStore.load(model);
   } catch (e) {
@@ -470,3 +470,19 @@ Future<DeviceSettingsState> _packActionCatalogTab(
     return state;
   }
 }
+
+List<LodOption> _l2LodOptions(List<LodOptionData>? options) => [
+  for (final option in options ?? const <LodOptionData>[])
+    LodOption(wire: option.wire, mm: option.mm),
+];
+
+List<AngleTuneOption> _l2AngleTuneOptions(List<AngleTuneOptionData>? options) =>
+    [
+      for (final option in options ?? const <AngleTuneOptionData>[])
+        AngleTuneOption(wire: option.wire, label: option.label),
+    ];
+
+List<OptionPair> _l2SettingsOptions(List<SettingsOptionData>? options) => [
+  for (final option in options ?? const <SettingsOptionData>[])
+    OptionPair(wire: option.wire, label: option.label),
+];

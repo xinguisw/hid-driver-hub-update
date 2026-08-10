@@ -1,3 +1,4 @@
+import 'package:driver_hub/layer2_capabilities/capabilities.dart';
 import 'package:driver_hub/layer3_ui/widgets/hub_backlight_panel.dart';
 import 'package:driver_hub/layer3_ui/widgets/hub_button_mapping_panel.dart';
 import 'package:driver_hub/layer3_ui/widgets/hub_device_setting_panel.dart';
@@ -15,6 +16,13 @@ import 'package:driver_hub/layer4_domain/models/device_settings_state.dart';
 import 'package:driver_hub/layer4_domain/models/discovered_card_state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+
+String _dpiColorHex(Color color) {
+  int channel(double value) => (value * 255).round().clamp(0, 255);
+  String part(int value) => value.toRadixString(16).padLeft(2, '0');
+  return '#${part(channel(color.r))}${part(channel(color.g))}${part(channel(color.b))}'
+      .toUpperCase();
+}
 
 /// Per-device hub shell after card tap on home.
 ///
@@ -62,7 +70,10 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
       _settingsBloc.add(DeviceSettingsHydrated(cached));
     }
     widget.scope.cards.addListener(_onCardsChanged);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loadOnboardConfig());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadOnboardConfig();
+      _loadMacros();
+    });
   }
 
   @override
@@ -103,6 +114,18 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
     debugPrint('[hub] ${widget.card.displayName}: onboard config done');
   }
 
+  Future<void> _loadMacros() async {
+    try {
+      await widget.scope.loadMacros(widget.card);
+      if (mounted) setState(() {});
+      debugPrint('[hub] ${widget.card.displayName}: macros loaded');
+    } catch (error) {
+      debugPrint(
+        '[hub] ${widget.card.displayName}: macro load failed ($error)',
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final selected = widget.scope.resolveCard(widget.card);
@@ -121,31 +144,25 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
         child: Scaffold(
           body: Row(
             children: [
-              BlocBuilder<DeviceSettingsBloc, DeviceSettingsViewState>(
-                buildWhen: (previous, next) =>
-                    previous.synced?.hasRgbBacklight !=
-                    next.synced?.hasRgbBacklight,
-                builder: (context, view) => HubLeftSidebar(
-                  card: selected,
-                  selectedIndex: _selectedIndex,
-                  hasRgbBacklight: view.synced?.hasRgbBacklight ?? false,
-                  onDestinationSelected: (index) {
-                    // FR-OPS-005: dirty sweep when navigating away from button mapping
-                    if (_selectedIndex == _buttonMappingIndex &&
-                        index != _buttonMappingIndex) {
-                      _settingsBloc.add(
-                        const DeviceSettingsNavigationRequested(),
-                      );
+              HubLeftSidebar(
+                card: selected,
+                selectedIndex: _selectedIndex,
+                onDestinationSelected: (index) {
+                  // FR-OPS-005: dirty sweep when navigating away from button mapping
+                  if (_selectedIndex == _buttonMappingIndex &&
+                      index != _buttonMappingIndex) {
+                    _settingsBloc.add(
+                      const DeviceSettingsNavigationRequested(),
+                    );
+                  }
+                  setState(() {
+                    _selectedIndex = index;
+                    if (index != _buttonMappingIndex) {
+                      _selectedButtonId = null;
                     }
-                    setState(() {
-                      _selectedIndex = index;
-                      if (index != _buttonMappingIndex) {
-                        _selectedButtonId = null;
-                      }
-                    });
-                  },
-                  onDeviceTap: () => Navigator.of(context).maybePop(),
-                ),
+                  });
+                },
+                onDeviceTap: () => Navigator.of(context).maybePop(),
               ),
               const VerticalDivider(thickness: 1, width: 1),
               if (_selectedIndex == _buttonMappingIndex)
@@ -274,6 +291,15 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                               dpiStages:
                                   view.dpiStageLevelsStaging ??
                                   display?.dpiLevels,
+                              dpiRgbPerStage: display?.dpiRgbPerStage ?? false,
+                              onDpiColorChanged: (change) {
+                                bloc.add(
+                                  DeviceSettingsDpiColorRequested(
+                                    level: change.level,
+                                    color: _dpiColorHex(change.color),
+                                  ),
+                                );
+                              },
                               // why: highlight the user's UI selection; fall
                               // back to the device's active level initially.
                               dpiCurrentLevel:
@@ -351,7 +377,8 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                               if (view.reportRateStaging != null ||
                                   view.dpiCurrentLevelStaging != null ||
                                   hasDpiValueStaging ||
-                                  hasDpiStageStaging) {
+                                  hasDpiStageStaging ||
+                                  view.dpiStageLevelsStaging != null) {
                                 bloc.add(
                                   const DeviceSettingsSaveDpiConfigurationRequested(),
                                 );
@@ -483,8 +510,9 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                                 final current =
                                     view.angleTuneStaging ??
                                     (synced?.angleTune ?? 0);
-                                final options = synced?.angleTuneOptions;
-                                if (options == null) return;
+                                final options =
+                                    synced?.angleTuneOptions ??
+                                    const <AngleTuneOptionData>[];
                                 final idx = options.indexWhere(
                                   (o) => o.wire == current,
                                 );
@@ -500,8 +528,9 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                                 final current =
                                     view.angleTuneStaging ??
                                     (synced?.angleTune ?? 0);
-                                final options = synced?.angleTuneOptions;
-                                if (options == null) return;
+                                final options =
+                                    synced?.angleTuneOptions ??
+                                    const <AngleTuneOptionData>[];
                                 final idx = options.indexWhere(
                                   (o) => o.wire == current,
                                 );
@@ -519,9 +548,37 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                             isDirty: view.isDirty,
                             committing: view.committing,
                             onSave: () {
-                              bloc.add(
-                                const DeviceSettingsSaveParameterSettingsRequested(),
-                              );
+                              if (view.rippleControlStaging != null ||
+                                  view.angleSnapStaging != null) {
+                                bloc.add(
+                                  const DeviceSettingsSaveSensorTuningRequested(),
+                                );
+                              } else if (view.angleTuneStaging != null ||
+                                  view.angleTuneEnabledStaging != null) {
+                                bloc.add(
+                                  const DeviceSettingsSaveAngleTuneRequested(),
+                                );
+                              } else if (view.lodStaging != null) {
+                                bloc.add(
+                                  const DeviceSettingsSaveLodRequested(),
+                                );
+                              } else if (view.performanceStaging != null) {
+                                bloc.add(
+                                  const DeviceSettingsSavePerformanceRequested(),
+                                );
+                              } else if (view.debounceStaging != null) {
+                                bloc.add(
+                                  const DeviceSettingsSaveButtonDebounceRequested(),
+                                );
+                              } else if (view.sleepStaging != null) {
+                                bloc.add(
+                                  const DeviceSettingsSaveSleepTimeRequested(),
+                                );
+                              } else if (view.wheelInvertStaging != null) {
+                                bloc.add(
+                                  const DeviceSettingsSaveWheelInvertRequested(),
+                                );
+                              }
                             },
                             onCancel: () {
                               bloc.add(const DeviceSettingsCancelRequested());
@@ -546,16 +603,30 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                         p.rgbRStaging != n.rgbRStaging ||
                         p.rgbGStaging != n.rgbGStaging ||
                         p.rgbBStaging != n.rgbBStaging ||
-                        p.rgbSleepTimeStaging != n.rgbSleepTimeStaging ||
-                        p.lastError != n.lastError,
+                        p.rgbSleepTimeStaging != n.rgbSleepTimeStaging,
                     builder: (context, view) {
                       final synced = view.synced;
                       final bloc = context.read<DeviceSettingsBloc>();
+                      // why: sleep options live in L2 capability schema, not in
+                      // synced state — sourced from RgbBacklightCapabilities
+                      // (never hardcoded) per FR-RGB-004 / FR-ARC-001.
+                      final sleepOpts = DeviceCapabilityStore.forDevice(
+                        widget.card.devId,
+                      )?.rgbBacklight?.sleepTimeOptions;
                       return Column(
                         children: [
                           Expanded(
                             child: HubBacklightPanel(
-                              rgbModes: synced?.rgbModes,
+                              rgbModes: [
+                                for (final m
+                                    in synced?.rgbModes ??
+                                        const <RgbModeData>[])
+                                  RgbMode(
+                                    id: m.id,
+                                    nameKey: m.nameKey,
+                                    supportsColor: m.supportsColor,
+                                  ),
+                              ],
                               // why: dropdown shows the human label (L5-owned),
                               // not the raw localization key.
                               rgbModeLabels: [
@@ -574,7 +645,7 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                               rgbG: view.displayRgbG,
                               rgbB: view.displayRgbB,
                               rgbSleepTime: view.displayRgbSleepTime,
-                              rgbSleepOptions: synced?.rgbSleepOptions,
+                              rgbSleepOptions: sleepOpts,
                               onEnableChanged: (v) => bloc.add(
                                 DeviceSettingsBacklightEnableRequested(
                                   enable: v,
@@ -621,19 +692,6 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                               bloc.add(const DeviceSettingsCancelRequested());
                             },
                           ),
-                          if (view.lastError != null)
-                            Padding(
-                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                              child: Align(
-                                alignment: Alignment.centerLeft,
-                                child: Text(
-                                  view.lastError!,
-                                  style: TextStyle(
-                                    color: Theme.of(context).colorScheme.error,
-                                  ),
-                                ),
-                              ),
-                            ),
                         ],
                       );
                     },
@@ -642,14 +700,7 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
               else if (_selectedIndex == _deviceSettingIndex)
                 Expanded(child: HubDeviceSettingPanel(card: selected))
               else if (_selectedIndex == _appSettingsIndex)
-                Expanded(
-                  child: AppSettingsPanel(
-                    lowBatteryThreshold: widget.scope.batteryLowThreshold,
-                    onLowBatteryThresholdChanged: (threshold) {
-                      widget.scope.setLowBatteryThreshold(threshold);
-                    },
-                  ),
-                )
+                const Expanded(child: AppSettingsPanel())
               else
                 const Expanded(child: Center(child: Text(''))),
             ],

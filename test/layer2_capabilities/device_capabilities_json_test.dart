@@ -150,4 +150,30 @@ void main() {
       }
     },
   );
+
+  test('all three mouse catalogs use the M7X PRO left/right hotspots', () async {
+    for (final model in ['m7xse', 'm7x', 'm7x pro']) {
+      await DeviceCapabilityStore.load(model);
+    }
+
+    for (final devId in ['02AA', '01AA', '03AA']) {
+      final caps = DeviceCapabilityStore.forDevice(devId);
+      expect(caps, isNotNull);
+      final buttons = caps!.buttons!.list;
+
+      const expectedHotspots = [
+        (x: 0.40, y: 0.30),
+        (x: 0.61, y: 0.30),
+        (x: 0.51, y: 0.24),
+        (x: 0.33, y: 0.45),
+        (x: 0.33, y: 0.55),
+        (x: 0.61, y: 0.60),
+      ];
+
+      for (var i = 0; i < expectedHotspots.length; i++) {
+        expect(buttons[i].hotspot.x, expectedHotspots[i].x);
+        expect(buttons[i].hotspot.y, expectedHotspots[i].y);
+      }
+    }
+  });
 }

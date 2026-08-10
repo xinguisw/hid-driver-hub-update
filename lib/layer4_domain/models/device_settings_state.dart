@@ -1,5 +1,3 @@
-import 'package:driver_hub/layer2_capabilities/capabilities.dart';
-
 /// View model for one device's settings (same role as [DiscoveredCardState]).
 ///
 /// Pure data — no HID, no DeviceCapabilityStore, no widgets. Owner packs this from
@@ -8,6 +6,50 @@ import 'package:driver_hub/layer2_capabilities/capabilities.dart';
 ///
 /// Presence of a feature: non-null option list or explicit has* where needed.
 /// Live values: nullable until query succeeds.
+class AngleTuneOptionData {
+  const AngleTuneOptionData({required this.wire, required this.label});
+
+  final int wire;
+  final String label;
+
+  @override
+  bool operator ==(Object other) =>
+      other is AngleTuneOptionData &&
+      wire == other.wire &&
+      label == other.label;
+
+  @override
+  int get hashCode => Object.hash(wire, label);
+}
+
+class LodOptionData {
+  const LodOptionData({required this.wire, required this.mm});
+
+  final int wire;
+  final double mm;
+
+  @override
+  bool operator ==(Object other) =>
+      other is LodOptionData && wire == other.wire && mm == other.mm;
+
+  @override
+  int get hashCode => Object.hash(wire, mm);
+}
+
+class SettingsOptionData {
+  const SettingsOptionData({required this.wire, required this.label});
+
+  final int wire;
+  final String label;
+
+  @override
+  bool operator ==(Object other) =>
+      other is SettingsOptionData && wire == other.wire && label == other.label;
+
+  @override
+  int get hashCode => Object.hash(wire, label);
+}
+
 class DeviceSettingsState {
   final String devId;
   final String displayName;
@@ -102,7 +144,7 @@ class DeviceSettingsState {
   /// (e.g. 3950) use a continuous -30°..+30° instead of a lookup table;
   /// when the wire formula is confirmed this becomes the options list and
   /// the range is carried separately.
-  final List<AngleTuneOption>? angleTuneOptions;
+  final List<AngleTuneOptionData>? angleTuneOptions;
 
   /// Live angle tune enable flag (tri-state [6]); null = unknown.
   final bool? angleTuneOn;
@@ -116,7 +158,7 @@ class DeviceSettingsState {
   final bool hasLod;
 
   /// LOD options (wire + mm); null/empty = no LOD.
-  final List<LodOption>? lodOptions;
+  final List<LodOptionData>? lodOptions;
 
   /// Live LOD wire level (for later SET); prefer [lodLabel] for display.
   final int? lodMm;
@@ -137,7 +179,7 @@ class DeviceSettingsState {
   // --- Other ---
 
   final bool hasSleepTime;
-  final List<OptionPair>? sleepOptions;
+  final List<SettingsOptionData>? sleepOptions;
 
   /// Live sleep wire index (for later SET); prefer [sleepLabel] for display.
   final int? sleepSeconds;
@@ -146,7 +188,7 @@ class DeviceSettingsState {
   final String? sleepLabel;
 
   final bool hasButtonDebounce;
-  final List<OptionPair>? debounceOptions;
+  final List<SettingsOptionData>? debounceOptions;
 
   /// Live debounce wire index (for later SET); prefer [debounceLabel] for display.
   final int? debounceMs;
@@ -176,9 +218,6 @@ class DeviceSettingsState {
   final String? rgbBrightnessLabel;
 
   final int? rgbSpeedLevels;
-
-  /// Capability-provided RGB sleep timeout values, for L3 rendering.
-  final List<int>? rgbSleepOptions;
 
   /// Live speed level index (for later SET); prefer [rgbSpeedLabel].
   final int? rgbSpeed;
@@ -256,7 +295,6 @@ class DeviceSettingsState {
     this.rgbBrightness,
     this.rgbBrightnessLabel,
     this.rgbSpeedLevels,
-    this.rgbSleepOptions,
     this.rgbSpeed,
     this.rgbSpeedLabel,
     this.rgbR,
@@ -293,12 +331,12 @@ class DeviceSettingsState {
     String? sensorChip,
     bool? hasSensorTuning,
     bool? hasAngleTune,
-    List<AngleTuneOption>? angleTuneOptions,
+    List<AngleTuneOptionData>? angleTuneOptions,
     bool? angleTuneOn,
     int? angleTune,
     String? angleTuneLabel,
     bool? hasLod,
-    List<LodOption>? lodOptions,
+    List<LodOptionData>? lodOptions,
     int? lodMm,
     String? lodLabel,
     bool? hasPerformance,
@@ -307,11 +345,11 @@ class DeviceSettingsState {
     bool? rippleOn,
     bool? angleSnapOn,
     bool? hasSleepTime,
-    List<OptionPair>? sleepOptions,
+    List<SettingsOptionData>? sleepOptions,
     int? sleepSeconds,
     String? sleepLabel,
     bool? hasButtonDebounce,
-    List<OptionPair>? debounceOptions,
+    List<SettingsOptionData>? debounceOptions,
     int? debounceMs,
     String? debounceLabel,
     bool? hasWheelInvert,
@@ -325,7 +363,6 @@ class DeviceSettingsState {
     int? rgbBrightness,
     String? rgbBrightnessLabel,
     int? rgbSpeedLevels,
-    List<int>? rgbSleepOptions,
     int? rgbSpeed,
     String? rgbSpeedLabel,
     int? rgbR,
@@ -401,7 +438,6 @@ class DeviceSettingsState {
       rgbBrightness: rgbBrightness ?? this.rgbBrightness,
       rgbBrightnessLabel: rgbBrightnessLabel ?? this.rgbBrightnessLabel,
       rgbSpeedLevels: rgbSpeedLevels ?? this.rgbSpeedLevels,
-      rgbSleepOptions: rgbSleepOptions ?? this.rgbSleepOptions,
       rgbSpeed: rgbSpeed ?? this.rgbSpeed,
       rgbSpeedLabel: rgbSpeedLabel ?? this.rgbSpeedLabel,
       rgbR: rgbR ?? this.rgbR,
@@ -485,72 +521,72 @@ class DeviceSettingsState {
 
   @override
   int get hashCode => Object.hashAll([
-    devId,
-    displayName,
-    connectionMode,
-    loading,
-    error,
-    Object.hashAll(reportRateOptions ?? const []),
-    reportRateHz,
-    reportRateLabel,
-    dpiMax,
-    dpiMin,
-    dpiStep,
-    dpiStepMode,
-    dpiMaxLevels,
-    dpiActiveLevelCount,
-    dpiDefaultLevel,
-    Object.hashAll(dpiLevels ?? const []),
-    dpiActiveIndex,
-    dpiRgbPerStage,
-    buttonCount,
-    Object.hashAll(buttons ?? const []),
-    Object.hashAll(mouseActionCatalog ?? const []),
-    Object.hashAll(keyboardActionCatalog ?? const []),
-    Object.hashAll(specialActionCatalog ?? const []),
-    sensorChip,
-    hasSensorTuning,
-    hasAngleTune,
-    Object.hashAll(angleTuneOptions ?? const []),
-    angleTuneOn,
-    angleTune,
-    angleTuneLabel,
-    hasLod,
-    Object.hashAll(lodOptions ?? const []),
-    lodMm,
-    lodLabel,
-    hasPerformance,
-    Object.hashAll(performanceOptions ?? const []),
-    performance,
-    rippleOn,
-    angleSnapOn,
-    hasSleepTime,
-    Object.hashAll(sleepOptions ?? const []),
-    sleepSeconds,
-    sleepLabel,
-    hasButtonDebounce,
-    Object.hashAll(debounceOptions ?? const []),
-    debounceMs,
-    debounceLabel,
-    hasWheelInvert,
-    wheelInvert,
-    hasRgbBacklight,
-    Object.hashAll(rgbModes ?? const []),
-    rgbEnable,
-    rgbModeId,
-    rgbModeLabel,
-    rgbBrightnessLevels,
-    rgbBrightness,
-    rgbBrightnessLabel,
-    rgbSpeedLevels,
-    rgbSpeed,
-    rgbSpeedLabel,
-    rgbR,
-    rgbG,
-    rgbB,
-    rgbSleepTime,
-    rgbSleepLabel,
-  ]);
+        devId,
+        displayName,
+        connectionMode,
+        loading,
+        error,
+        Object.hashAll(reportRateOptions ?? const []),
+        reportRateHz,
+        reportRateLabel,
+        dpiMax,
+        dpiMin,
+        dpiStep,
+        dpiStepMode,
+        dpiMaxLevels,
+        dpiActiveLevelCount,
+        dpiDefaultLevel,
+        Object.hashAll(dpiLevels ?? const []),
+        dpiActiveIndex,
+        dpiRgbPerStage,
+        buttonCount,
+        Object.hashAll(buttons ?? const []),
+        Object.hashAll(mouseActionCatalog ?? const []),
+        Object.hashAll(keyboardActionCatalog ?? const []),
+        Object.hashAll(specialActionCatalog ?? const []),
+        sensorChip,
+        hasSensorTuning,
+        hasAngleTune,
+        Object.hashAll(angleTuneOptions ?? const []),
+        angleTuneOn,
+        angleTune,
+        angleTuneLabel,
+        hasLod,
+        Object.hashAll(lodOptions ?? const []),
+        lodMm,
+        lodLabel,
+        hasPerformance,
+        Object.hashAll(performanceOptions ?? const []),
+        performance,
+        rippleOn,
+        angleSnapOn,
+        hasSleepTime,
+        Object.hashAll(sleepOptions ?? const []),
+        sleepSeconds,
+        sleepLabel,
+        hasButtonDebounce,
+        Object.hashAll(debounceOptions ?? const []),
+        debounceMs,
+        debounceLabel,
+        hasWheelInvert,
+        wheelInvert,
+        hasRgbBacklight,
+        Object.hashAll(rgbModes ?? const []),
+        rgbEnable,
+        rgbModeId,
+        rgbModeLabel,
+        rgbBrightnessLevels,
+        rgbBrightness,
+        rgbBrightnessLabel,
+        rgbSpeedLevels,
+        rgbSpeed,
+        rgbSpeedLabel,
+        rgbR,
+        rgbG,
+        rgbB,
+        rgbSleepTime,
+        rgbSleepLabel,
+      ]);
 }
 
 /// One DPI stage row (data only). [value] = wire X; [y] = wire Y when known.
@@ -679,19 +715,19 @@ class ButtonData {
 
   @override
   int get hashCode => Object.hash(
-    id,
-    labelKey,
-    remappable,
-    hotspotX,
-    hotspotY,
-    hotspotR,
-    buttonLabel,
-    actionLabel,
-    action,
-    param1,
-    param2,
-    param3,
-  );
+        id,
+        labelKey,
+        remappable,
+        hotspotX,
+        hotspotY,
+        hotspotR,
+        buttonLabel,
+        actionLabel,
+        action,
+        param1,
+        param2,
+        param3,
+      );
 }
 
 /// One RGB mode option (data only).

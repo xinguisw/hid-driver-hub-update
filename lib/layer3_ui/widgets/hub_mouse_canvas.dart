@@ -258,7 +258,7 @@ class _CalloutLayout {
       );
       final r = ((rNorm ?? 0.04) * imageRect.shortestSide).clamp(6.0, 24.0);
 
-      final label = b.actionLabel ?? b.buttonLabel ?? 'B${b.id}';
+      final label = mouseButtonCalloutText(b);
       final tp = TextPainter(
         text: TextSpan(text: label, style: labelStyle),
         textDirection: TextDirection.ltr,
@@ -270,7 +270,7 @@ class _CalloutLayout {
       late final Offset stemEnd;
       late final Offset labelOrigin;
 
-      // why: 1 left←, 2 right→, 4/5 side← horizontal; middle/others vertical
+      // why: 1 left←, 2 right→, 4/5 side←, 6 DPI→ horizontal; middle vertical
       switch (_stemKind(b.id)) {
         case _StemKind.horizontalLeft:
           stemStart = Offset(c.dx - r, c.dy);
@@ -321,13 +321,35 @@ class _CalloutLayout {
       case 5: // backward
         return _StemKind.horizontalLeft;
       case 2: // right
+      case 6: // DPI cycle
         return _StemKind.horizontalRight;
-      default: // middle, dpi, …
+      default: // middle, …
         return _StemKind.vertical;
     }
   }
 
   static double _max(double a, double b) => a > b ? a : b;
+}
+
+/// Selects the label rendered beside a physical mouse button.
+///
+/// The callout identifies the physical key; its current assigned action is
+/// retained separately in [ButtonData.actionLabel] for mapping controls.
+String mouseButtonCalloutLabel(ButtonData button) =>
+    button.buttonLabel ?? button.actionLabel ?? 'B${button.id}';
+
+/// Text rendered beside a physical mouse button.
+///
+/// Show the current assigned action directly. The physical label and button ID
+/// remain fallbacks for an action that has not been decoded yet.
+String mouseButtonCalloutText(ButtonData button) {
+  final action = button.actionLabel;
+  if (action != null && action.isNotEmpty) return action;
+
+  final physical = button.buttonLabel;
+  if (physical != null && physical.isNotEmpty) return physical;
+
+  return 'B${button.id}';
 }
 
 class _HotspotPainter extends CustomPainter {

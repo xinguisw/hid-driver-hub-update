@@ -1024,6 +1024,12 @@ class MouseProtocol implements DeviceProtocol {
         );
       }
     }
+    // why: only status 0x02 on chunk 2 means flash write finished; surface
+    // that so incomplete 2-chunk traces are easy to spot in device logs.
+    debugPrint(
+      '[proto] macro: SET complete slot=${macro.slot} '
+      'actions=${macro.actions.length}',
+    );
   }
 
   static bool _matchesMacroReply(

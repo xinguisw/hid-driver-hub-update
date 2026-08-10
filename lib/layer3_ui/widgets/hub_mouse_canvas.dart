@@ -333,10 +333,11 @@ class _CalloutLayout {
 
 /// Selects the label rendered beside a physical mouse button.
 ///
-/// The callout identifies the physical key; its current assigned action is
-/// retained separately in [ButtonData.actionLabel] for mapping controls.
+/// Callouts show the live assigned action (straight action). The physical
+/// button name remains on [ButtonData.buttonLabel] for mapping chrome that
+/// still needs the hardware identity.
 String mouseButtonCalloutLabel(ButtonData button) =>
-    button.buttonLabel ?? button.actionLabel ?? 'B${button.id}';
+    button.actionLabel ?? button.buttonLabel ?? 'B${button.id}';
 
 /// Text rendered beside a physical mouse button.
 ///

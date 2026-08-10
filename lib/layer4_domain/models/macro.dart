@@ -5,7 +5,8 @@
 /// protocol reference.
 enum MacroMode {
   loop(0x00, 'Loop'),
-  stopOnAnyKey(0x01, 'Stop on any key'),
+  // SDRD FR-MCR-003: continuous until keyboard keystroke or mouse click.
+  stopOnAnyKey(0x01, 'Stop on any key or mouse click'),
   playOnHold(0x02, 'Play on hold');
 
   const MacroMode(this.wireValue, this.label);
@@ -201,6 +202,7 @@ List<String> validateMacro(MacroDefinition macro) {
     final isKeyboard =
         (action.keyCode >= 0x04 && action.keyCode <= 0xA4) ||
         (action.keyCode >= 0xE0 && action.keyCode <= 0xE7);
+    // Protocol MacroAction key_code: 0xF1–0xF7 = mouse event.
     final isMouse = action.keyCode >= 0xF1 && action.keyCode <= 0xF7;
     final isTiming = action.keyCode >= 0x01 && action.keyCode <= 0x03;
     if (!isKeyboard && !isMouse && !isTiming) {

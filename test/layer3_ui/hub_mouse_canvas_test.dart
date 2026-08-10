@@ -4,27 +4,27 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('mouseButtonCalloutLabel', () {
-    test('keeps the physical label when the live action differs', () {
+    test('shows the live assigned action when remapped', () {
+      const button = ButtonData(
+        id: 3,
+        labelKey: 'button.middle',
+        remappable: true,
+        buttonLabel: 'Middle',
+        actionLabel: 'DPI cycle',
+      );
+
+      expect(mouseButtonCalloutLabel(button), 'DPI cycle');
+    });
+
+    test('falls back to the physical label when no action label exists', () {
       const button = ButtonData(
         id: 4,
         labelKey: 'button.forward',
         remappable: true,
         buttonLabel: 'Forward',
-        actionLabel: 'Backward',
       );
 
       expect(mouseButtonCalloutLabel(button), 'Forward');
-    });
-
-    test('falls back to the live action when no physical label exists', () {
-      const button = ButtonData(
-        id: 5,
-        labelKey: 'button.back',
-        remappable: true,
-        actionLabel: 'Backward',
-      );
-
-      expect(mouseButtonCalloutLabel(button), 'Backward');
     });
 
     test('falls back to the button id when no labels exist', () {

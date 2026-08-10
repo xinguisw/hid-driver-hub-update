@@ -142,6 +142,20 @@ class DeviceSettingsDpiValueRequested extends DeviceSettingsEvent {
   final int value;
 }
 
+/// User selected a per-stage DPI RGB color on a capable device.
+class DeviceSettingsDpiColorRequested extends DeviceSettingsEvent {
+  const DeviceSettingsDpiColorRequested({
+    required this.level,
+    required this.color,
+  });
+
+  /// 1-based DPI stage level.
+  final int level;
+
+  /// Normalized UI color in `#RRGGBB` form.
+  final String color;
+}
+
 /// Save all staged DPI value changes to device.
 class DeviceSettingsSaveDpiValuesRequested extends DeviceSettingsEvent {
   const DeviceSettingsSaveDpiValuesRequested();

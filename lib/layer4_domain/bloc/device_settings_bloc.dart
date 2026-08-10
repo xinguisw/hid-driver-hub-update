@@ -120,6 +120,7 @@ class DeviceSettingsBloc
     on<DeviceSettingsDpiLevelRequested>(_onDpiLevelRequested);
     on<DeviceSettingsSaveDpiLevelRequested>(_onSaveDpiLevel);
     on<DeviceSettingsDpiValueRequested>(_onDpiValueRequested);
+    on<DeviceSettingsDpiColorRequested>(_onDpiColorRequested);
     on<DeviceSettingsSaveDpiValuesRequested>(_onSaveDpiValues);
     on<DeviceSettingsDpiStageAddRequested>(_onDpiStageAddRequested);
     on<DeviceSettingsDpiStageRemoveRequested>(_onDpiStageRemoveRequested);
@@ -841,7 +842,9 @@ class DeviceSettingsBloc
         ? null
         : Map<int, int>.from(state.dpiValueStaging!);
     final hasStageStaging =
-        state.dpiStageAddStaging || state.dpiStageRemoveLevelStaging != null;
+        state.dpiStageLevelsStaging != null ||
+        state.dpiStageAddStaging ||
+        state.dpiStageRemoveLevelStaging != null;
     final stagedLevels = state.dpiStageLevelsStaging == null
         ? null
         : List<DpiStageData>.from(state.dpiStageLevelsStaging!);
@@ -1138,6 +1141,61 @@ class DeviceSettingsBloc
     );
 
     debugPrint('[bloc] DPI value staged: level=${event.level} value=$snapped');
+  }
+
+  /// Stages a DPI RGB color by reusing the complete DPI-stage transaction.
+  void _onDpiColorRequested(
+    DeviceSettingsDpiColorRequested event,
+    Emitter<DeviceSettingsViewState> emit,
+  ) {
+    final synced = state.synced;
+    if (synced == null) {
+      emit(state.copyWith(lastError: 'no settings loaded'));
+      return;
+    }
+    if (synced.decodeErrors.contains('dpiRgb')) {
+      emit(state.copyWith(lastError: 'DPI RGB unavailable: decode error'));
+      return;
+    }
+
+    final dpi = activeCapabilities?.dpi;
+    if (dpi == null || !dpi.rgbPerStage) {
+      emit(state.copyWith(lastError: 'DPI RGB unavailable for this device'));
+      return;
+    }
+    if (!RegExp(r'^#[0-9A-Fa-f]{6}$').hasMatch(event.color)) {
+      emit(state.copyWith(lastError: 'DPI RGB color must be #RRGGBB'));
+      return;
+    }
+
+    final List<DpiStageData> levels = [
+      ...(state.dpiStageLevelsStaging ?? synced.dpiLevels ?? const []),
+    ];
+    final index = levels.indexWhere((level) => level.level == event.level);
+    if (index < 0) {
+      emit(
+        state.copyWith(lastError: 'DPI RGB level ${event.level} unavailable'),
+      );
+      return;
+    }
+
+    final current = levels[index];
+    levels[index] = DpiStageData(
+      level: current.level,
+      value: current.value,
+      y: current.y,
+      color: event.color.toUpperCase(),
+    );
+    emit(
+      state.copyWith(
+        dpiStageLevelsStaging: levels,
+        isDirty: true,
+        clearError: true,
+      ),
+    );
+    debugPrint(
+      '[bloc] DPI RGB color staged: level=${event.level} color=${event.color}',
+    );
   }
 
   /// Save all staged DPI value changes to device.
@@ -1587,10 +1645,11 @@ class DeviceSettingsBloc
 
     // why: L5 owns wire→label; the catalog options come from synced state.
     const translate = TranslationCodec();
-    final label = translate.angleTuneWireToLabel(
-      event.wireValue,
-      synced.angleTuneOptions ?? const <AngleTuneOption>[],
-    );
+    final label = translate.angleTuneWireToLabel(event.wireValue, [
+      for (final option
+          in synced.angleTuneOptions ?? const <AngleTuneOptionData>[])
+        AngleTuneOption(wire: option.wire, label: option.label),
+    ]);
 
     emit(
       state.copyWith(

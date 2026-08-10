@@ -297,7 +297,7 @@ Future<DeviceSettingsState> queryOnboardConfig(
         lodLabel: (showAll || state.hasLod)
             ? translate.lodWireToLabel(
                 sensor.lod,
-                state.lodOptions ?? const <LodOption>[],
+                _l2LodOptions(state.lodOptions),
               )
             : state.lodLabel,
         angleTuneOn: (showAll || state.hasAngleTune)
@@ -309,7 +309,7 @@ Future<DeviceSettingsState> queryOnboardConfig(
         angleTuneLabel: (showAll || state.hasAngleTune)
             ? translate.angleTuneWireToLabel(
                 sensor.angleValue,
-                state.angleTuneOptions ?? const <AngleTuneOption>[],
+                _l2AngleTuneOptions(state.angleTuneOptions),
               )
             : state.angleTuneLabel,
         performance: (showAll || state.hasPerformance)
@@ -321,7 +321,7 @@ Future<DeviceSettingsState> queryOnboardConfig(
         debounceLabel: (showAll || state.hasButtonDebounce)
             ? translate.optionPairWireToLabel(
                 sensor.debounceTime,
-                state.debounceOptions ?? const <OptionPair>[],
+                _l2SettingsOptions(state.debounceOptions),
               )
             : state.debounceLabel,
         sleepSeconds: (showAll || state.hasSleepTime)
@@ -330,7 +330,7 @@ Future<DeviceSettingsState> queryOnboardConfig(
         sleepLabel: (showAll || state.hasSleepTime)
             ? translate.optionPairWireToLabel(
                 sensor.sleepTime,
-                state.sleepOptions ?? const <OptionPair>[],
+                _l2SettingsOptions(state.sleepOptions),
               )
             : state.sleepLabel,
         wheelInvert: (showAll || state.hasWheelInvert)
@@ -470,3 +470,19 @@ Future<DeviceSettingsState> _packActionCatalogTab(
     return state;
   }
 }
+
+List<LodOption> _l2LodOptions(List<LodOptionData>? options) => [
+  for (final option in options ?? const <LodOptionData>[])
+    LodOption(wire: option.wire, mm: option.mm),
+];
+
+List<AngleTuneOption> _l2AngleTuneOptions(List<AngleTuneOptionData>? options) =>
+    [
+      for (final option in options ?? const <AngleTuneOptionData>[])
+        AngleTuneOption(wire: option.wire, label: option.label),
+    ];
+
+List<OptionPair> _l2SettingsOptions(List<SettingsOptionData>? options) => [
+  for (final option in options ?? const <SettingsOptionData>[])
+    OptionPair(wire: option.wire, label: option.label),
+];

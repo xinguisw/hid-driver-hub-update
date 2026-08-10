@@ -1,4 +1,4 @@
-import 'package:driver_hub/layer2_capabilities/capabilities.dart';
+import 'package:driver_hub/layer4_domain/models/device_settings_state.dart';
 import 'package:flutter/material.dart';
 
 /// Parameter Setting page — sensor feature + other feature.
@@ -43,10 +43,10 @@ class HubParameterPanel extends StatelessWidget {
     this.onWheelInvertChanged,
   });
 
-  final List<LodOption>? lodOptions;
+  final List<LodOptionData>? lodOptions;
   final List<int>? performanceOptions;
-  final List<OptionPair>? buttonDebounceOptions;
-  final List<OptionPair>? sleepTimeOptions;
+  final List<SettingsOptionData>? buttonDebounceOptions;
+  final List<SettingsOptionData>? sleepTimeOptions;
 
   /// L2 gates: each feature hides when the device lacks it.
   final bool hasSensorTuning;
@@ -81,7 +81,8 @@ class HubParameterPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasSensorContent = hasSensorTuning || hasLod || hasAngleTune || hasPerformance;
+    final hasSensorContent =
+        hasSensorTuning || hasLod || hasAngleTune || hasPerformance;
     final hasOtherContent = hasButtonDebounce || hasWheelInvert || hasSleepTime;
 
     return SingleChildScrollView(
@@ -164,7 +165,7 @@ class _SensorFeatureGroup extends StatelessWidget {
     required this.hasPerformance,
   });
 
-  final List<LodOption> lodOptions;
+  final List<LodOptionData> lodOptions;
   final List<int> performanceOptions;
   final bool hasSensorTuning;
   final bool hasLod;
@@ -297,7 +298,7 @@ class _LodBox extends StatelessWidget {
     required this.onLodChanged,
   });
 
-  final List<LodOption> options;
+  final List<LodOptionData> options;
   final int? lodMm;
   final ValueChanged<int>? onLodChanged;
 
@@ -340,7 +341,6 @@ class _LodBox extends StatelessWidget {
       ),
     );
   }
-
 }
 
 class _AngleTuneBox extends StatelessWidget {
@@ -477,8 +477,8 @@ class _OtherFeatureGroup extends StatelessWidget {
     required this.hasSleepTime,
   });
 
-  final List<OptionPair> buttonDebounceOptions;
-  final List<OptionPair> sleepTimeOptions;
+  final List<SettingsOptionData> buttonDebounceOptions;
+  final List<SettingsOptionData> sleepTimeOptions;
   final int? debounceMs;
   final int? sleepSeconds;
   final bool? wheelInvert;
@@ -560,7 +560,7 @@ class _OptionsBox extends StatelessWidget {
   });
 
   final String title;
-  final List<OptionPair> options;
+  final List<SettingsOptionData> options;
 
   /// Wire value of the currently selected option (if any).
   final int? selectedWire;
@@ -606,10 +606,7 @@ class _OptionsBox extends StatelessWidget {
 /// Backed by the tri-state wheel-direction byte (0xFF/0x0F/0x00); the bool is
 /// the decoded "invert" flag. L4 owns encode/decode, L3 only paints.
 class _WheelBox extends StatelessWidget {
-  const _WheelBox({
-    required this.invert,
-    required this.onInvertChanged,
-  });
+  const _WheelBox({required this.invert, required this.onInvertChanged});
 
   final bool invert;
   final ValueChanged<bool>? onInvertChanged;

@@ -736,6 +736,67 @@ void main() {
       },
     );
 
+    test(
+      'DPI RGB color stages per-stage color and saves with DPI stages',
+      () async {
+        final caps = resetCapabilities(
+          devId: '02AA',
+          defaultReportRate: 500,
+          reportRateOptions: const [500, 250, 125],
+          rgbPerStage: true,
+        );
+        List<DpiStageData>? writtenLevels;
+        final bloc = DeviceSettingsBloc(
+          commitButtonMapping: (_) async {},
+          commitReportRate: (_) async {},
+          commitDpiLevel: (_) async {},
+          commitDpiValues: (_) async {},
+          commitDpiStages: (levels, _) async {
+            writtenLevels = levels;
+          },
+          commitSensorTuning: (_, _) async {},
+          commitAngleTune: (_) async {},
+          commitLod: (_) async {},
+          commitPerformance: (_) async {},
+          commitDebounce: (_) async {},
+          commitSleep: (_) async {},
+          commitWheelInvert: (_) async {},
+          commitRgbBacklight: (_) async {},
+          capabilities: caps,
+        );
+        bloc.add(
+          DeviceSettingsHydrated(
+            baseSettings().copyWith(
+              dpiActiveLevelCount: 2,
+              dpiMaxLevels: 8,
+              dpiLevels: const [
+                DpiStageData(level: 1, value: 800, color: '#FF0000'),
+                DpiStageData(level: 2, value: 1600, color: '#0000FF'),
+              ],
+            ),
+          ),
+        );
+        await pumpEventQueue();
+
+        bloc.add(
+          const DeviceSettingsDpiColorRequested(level: 1, color: '#12abEF'),
+        );
+        await pumpEventQueue();
+
+        expect(bloc.state.dpiStageLevelsStaging, hasLength(2));
+        expect(bloc.state.dpiStageLevelsStaging!.first.color, '#12ABEF');
+        expect(bloc.state.isDirty, true);
+
+        bloc.add(const DeviceSettingsSaveDpiConfigurationRequested());
+        await pumpEventQueue();
+
+        expect(writtenLevels!.first.color, '#12ABEF');
+        expect(bloc.state.dpiStageLevelsStaging, isNull);
+        expect(bloc.state.isDirty, false);
+        await bloc.close();
+      },
+    );
+
     test('DPI stage add stages and prevents over-max', () async {
       DeviceCapabilities? caps = dpiCaps;
       final bloc = DeviceSettingsBloc(

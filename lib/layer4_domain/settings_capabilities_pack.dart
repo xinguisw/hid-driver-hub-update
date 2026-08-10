@@ -65,10 +65,19 @@ DeviceSettingsState applyCapabilitiesToSettings(
       hasSensorTuning: sensor.sensorTuning,
       hasAngleTune: sensor.angleTune,
       angleTuneOptions: (angleTune != null && angleTune.present)
-          ? angleTune.options
+          ? [
+              for (final option
+                  in angleTune.options ?? const <AngleTuneOption>[])
+                AngleTuneOptionData(wire: option.wire, label: option.label),
+            ]
           : null,
       hasLod: lod?.present ?? false,
-      lodOptions: (lod != null && lod.present) ? lod.options : null,
+      lodOptions: (lod != null && lod.present)
+          ? [
+              for (final option in lod.options)
+                LodOptionData(wire: option.wire, mm: option.mm),
+            ]
+          : null,
       hasPerformance: perf?.present ?? false,
       performanceOptions: (perf != null && perf.present) ? perf.options : null,
     );
@@ -82,11 +91,17 @@ DeviceSettingsState applyCapabilitiesToSettings(
     next = next.copyWith(
       hasButtonDebounce: other.present && (debounce?.present ?? false),
       debounceOptions: (other.present && debounce != null && debounce.present)
-          ? debounce.options
+          ? [
+              for (final option in debounce.options)
+                SettingsOptionData(wire: option.wire, label: option.label),
+            ]
           : null,
       hasSleepTime: other.present && (sleep?.present ?? false),
       sleepOptions: (other.present && sleep != null && sleep.present)
-          ? sleep.options
+          ? [
+              for (final option in sleep.options)
+                SettingsOptionData(wire: option.wire, label: option.label),
+            ]
           : null,
       hasWheelInvert: other.present && other.wheelDirectionInvert,
     );

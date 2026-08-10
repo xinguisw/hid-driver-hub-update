@@ -23,6 +23,8 @@ class HubPerformancePanel extends StatelessWidget {
     this.onDpiStageAdd,
     this.onDpiStageRemove,
     this.dpiRemoveEnabled = false,
+    this.dpiRgbPerStage = false,
+    this.onDpiColorChanged,
     this.reportRateOptions,
     this.reportRateHz,
     this.reportRateStaging,
@@ -43,6 +45,8 @@ class HubPerformancePanel extends StatelessWidget {
   final VoidCallback? onDpiStageAdd;
   final VoidCallback? onDpiStageRemove;
   final bool dpiRemoveEnabled;
+  final bool dpiRgbPerStage;
+  final ValueChanged<({int level, Color color})>? onDpiColorChanged;
   final List<int>? reportRateOptions;
   final int? reportRateHz;
   final int? reportRateStaging;
@@ -72,6 +76,8 @@ class HubPerformancePanel extends StatelessWidget {
             onAddStage: () => onDpiStageAdd?.call(),
             onRemoveStage: () => onDpiStageRemove?.call(),
             removeEnabled: dpiRemoveEnabled,
+            rgbPerStage: dpiRgbPerStage,
+            onColorChanged: onDpiColorChanged,
           ),
           const SizedBox(height: 24),
           // Report Rate
@@ -107,6 +113,8 @@ class _DpiSettingsGroup extends StatelessWidget {
     required this.onAddStage,
     required this.onRemoveStage,
     this.removeEnabled = false,
+    this.rgbPerStage = false,
+    this.onColorChanged,
   });
 
   final List<DpiStageData> stages;
@@ -128,6 +136,8 @@ class _DpiSettingsGroup extends StatelessWidget {
   /// True only when the user has selected a level (so `x` removes the
   /// selection, not the device's default active level).
   final bool removeEnabled;
+  final bool rgbPerStage;
+  final ValueChanged<({int level, Color color})>? onColorChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -167,7 +177,9 @@ class _DpiSettingsGroup extends StatelessWidget {
               const SizedBox(width: 8),
               // Remove stage: disabled when only one remains or no selection.
               InkWell(
-                onTap: activeCount <= 1 || !removeEnabled ? null : onRemoveStage,
+                onTap: activeCount <= 1 || !removeEnabled
+                    ? null
+                    : onRemoveStage,
                 child: const Padding(
                   padding: EdgeInsets.symmetric(horizontal: 6),
                   child: Text(
@@ -200,9 +212,10 @@ class _DpiSettingsGroup extends StatelessWidget {
                       min: dpiMin,
                       max: dpiMax,
                       step: dpiStep,
-                      onValueChanged: (value) => onValueChanged(
-                        (level: stage.level, value: value),
-                      ),
+                      onValueChanged: (value) =>
+                          onValueChanged((level: stage.level, value: value)),
+                      rgbPerStage: rgbPerStage,
+                      onColorChanged: onColorChanged,
                     ),
                 ],
               );
@@ -272,6 +285,8 @@ class _DpiSliderRow extends StatelessWidget {
     required this.max,
     this.step,
     required this.onValueChanged,
+    this.rgbPerStage = false,
+    this.onColorChanged,
   });
 
   final DpiStageData stage;
@@ -286,12 +301,15 @@ class _DpiSliderRow extends StatelessWidget {
   final int? step;
 
   final ValueChanged<int> onValueChanged;
+  final bool rgbPerStage;
+  final ValueChanged<({int level, Color color})>? onColorChanged;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final divisions =
-        step == null || step! < 1 ? null : ((max - min) ~/ step!).clamp(1, 1000);
+    final divisions = step == null || step! < 1
+        ? null
+        : ((max - min) ~/ step!).clamp(1, 1000);
     return Container(
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
@@ -303,6 +321,22 @@ class _DpiSliderRow extends StatelessWidget {
         children: [
           Row(
             children: [
+              if (rgbPerStage) ...[
+                _DpiColorButton(
+                  color: _colorFromHex(stage.color),
+                  onTap: () async {
+                    final color = await showDialog<Color>(
+                      context: context,
+                      builder: (_) =>
+                          _DpiColorDialog(initial: _colorFromHex(stage.color)),
+                    );
+                    if (color != null) {
+                      onColorChanged?.call((level: stage.level, color: color));
+                    }
+                  },
+                ),
+                const SizedBox(width: 6),
+              ],
               Text('DPI ${stage.level}'),
               const Spacer(),
               Text('$stagedValue'),
@@ -326,6 +360,223 @@ class _DpiSliderRow extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+Color _colorFromHex(String? value) {
+  final raw = value?.replaceFirst('#', '');
+  final parsed = raw == null || raw.length != 6
+      ? null
+      : int.tryParse(raw, radix: 16);
+  return parsed == null ? Colors.white : Color(0xFF000000 | parsed);
+}
+
+String _colorToHex(Color color) {
+  int channel(double value) => (value * 255).round().clamp(0, 255);
+  String part(int value) => value.toRadixString(16).padLeft(2, '0');
+  return '#${part(channel(color.r))}${part(channel(color.g))}${part(channel(color.b))}'
+      .toUpperCase();
+}
+
+class _DpiColorButton extends StatelessWidget {
+  const _DpiColorButton({required this.color, required this.onTap});
+
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: 'DPI stage color',
+      child: InkWell(
+        onTap: onTap,
+        customBorder: const CircleBorder(),
+        child: Padding(
+          padding: const EdgeInsets.all(2),
+          child: Container(
+            width: 12,
+            height: 12,
+            decoration: BoxDecoration(
+              color: color,
+              shape: BoxShape.circle,
+              border: Border.all(color: Theme.of(context).colorScheme.outline),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DpiColorDialog extends StatefulWidget {
+  const _DpiColorDialog({required this.initial});
+
+  final Color initial;
+
+  @override
+  State<_DpiColorDialog> createState() => _DpiColorDialogState();
+}
+
+class _DpiColorDialogState extends State<_DpiColorDialog> {
+  late HSVColor _hsv;
+
+  @override
+  void initState() {
+    super.initState();
+    _hsv = HSVColor.fromColor(widget.initial);
+  }
+
+  void _setSv(Offset local, double width, double height) {
+    final saturation = (local.dx / width).clamp(0.0, 1.0);
+    final value = 1 - (local.dy / height).clamp(0.0, 1.0);
+    setState(() {
+      _hsv = _hsv.withSaturation(saturation).withValue(value);
+    });
+  }
+
+  void _setHue(Offset local, double width) {
+    setState(() {
+      _hsv = _hsv.withHue((local.dx / width * 360).clamp(0.0, 359.999));
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _hsv.toColor();
+    return AlertDialog(
+      title: const Text('DPI stage color'),
+      content: SizedBox(
+        width: 300,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(_colorToHex(color)),
+            ),
+            const SizedBox(height: 8),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final width = constraints.maxWidth;
+                const height = 160.0;
+                return GestureDetector(
+                  onPanDown: (details) =>
+                      _setSv(details.localPosition, width, height),
+                  onPanUpdate: (details) =>
+                      _setSv(details.localPosition, width, height),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(6),
+                    child: SizedBox(
+                      width: width,
+                      height: height,
+                      child: Stack(
+                        children: [
+                          Positioned.fill(
+                            child: ColoredBox(
+                              color: HSVColor.fromAHSV(
+                                1,
+                                _hsv.hue,
+                                1,
+                                1,
+                              ).toColor(),
+                            ),
+                          ),
+                          const Positioned.fill(
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [Colors.white, Colors.transparent],
+                                ),
+                              ),
+                            ),
+                          ),
+                          const Positioned.fill(
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: [Colors.transparent, Colors.black],
+                                ),
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            left: (_hsv.saturation * width - 8).clamp(
+                              0.0,
+                              width - 16,
+                            ),
+                            top: ((1 - _hsv.value) * height - 8).clamp(
+                              0.0,
+                              height - 16,
+                            ),
+                            child: Container(
+                              width: 16,
+                              height: 16,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.white,
+                                  width: 2,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 8),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final width = constraints.maxWidth;
+                const height = 18.0;
+                return GestureDetector(
+                  onPanDown: (details) => _setHue(details.localPosition, width),
+                  onPanUpdate: (details) =>
+                      _setHue(details.localPosition, width),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(6),
+                    child: SizedBox(
+                      width: width,
+                      height: height,
+                      child: const DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              Colors.red,
+                              Colors.yellow,
+                              Colors.green,
+                              Colors.cyan,
+                              Colors.blue,
+                              Colors.purple,
+                              Colors.red,
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(color),
+          child: const Text('Done'),
+        ),
+      ],
     );
   }
 }

@@ -17,6 +17,13 @@ import 'package:driver_hub/layer4_domain/models/discovered_card_state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+String _dpiColorHex(Color color) {
+  int channel(double value) => (value * 255).round().clamp(0, 255);
+  String part(int value) => value.toRadixString(16).padLeft(2, '0');
+  return '#${part(channel(color.r))}${part(channel(color.g))}${part(channel(color.b))}'
+      .toUpperCase();
+}
+
 /// Per-device hub shell after card tap on home.
 ///
 /// L3 only: dispatch BLoC events + paint [displaySettings]. No L1 session,
@@ -284,6 +291,15 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                               dpiStages:
                                   view.dpiStageLevelsStaging ??
                                   display?.dpiLevels,
+                              dpiRgbPerStage: display?.dpiRgbPerStage ?? false,
+                              onDpiColorChanged: (change) {
+                                bloc.add(
+                                  DeviceSettingsDpiColorRequested(
+                                    level: change.level,
+                                    color: _dpiColorHex(change.color),
+                                  ),
+                                );
+                              },
                               // why: highlight the user's UI selection; fall
                               // back to the device's active level initially.
                               dpiCurrentLevel:
@@ -361,7 +377,8 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                               if (view.reportRateStaging != null ||
                                   view.dpiCurrentLevelStaging != null ||
                                   hasDpiValueStaging ||
-                                  hasDpiStageStaging) {
+                                  hasDpiStageStaging ||
+                                  view.dpiStageLevelsStaging != null) {
                                 bloc.add(
                                   const DeviceSettingsSaveDpiConfigurationRequested(),
                                 );
@@ -495,7 +512,7 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                                     (synced?.angleTune ?? 0);
                                 final options =
                                     synced?.angleTuneOptions ??
-                                    const <AngleTuneOption>[];
+                                    const <AngleTuneOptionData>[];
                                 final idx = options.indexWhere(
                                   (o) => o.wire == current,
                                 );
@@ -513,7 +530,7 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                                     (synced?.angleTune ?? 0);
                                 final options =
                                     synced?.angleTuneOptions ??
-                                    const <AngleTuneOption>[];
+                                    const <AngleTuneOptionData>[];
                                 final idx = options.indexWhere(
                                   (o) => o.wire == current,
                                 );

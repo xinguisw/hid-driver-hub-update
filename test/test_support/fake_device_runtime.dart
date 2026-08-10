@@ -1,5 +1,5 @@
 import 'package:driver_hub/layer1_discovery/device_runtime.dart';
-import 'package:driver_hub/layer1_discovery/device_session.dart';
+import 'package:driver_hub/layer1_discovery/device_settings_gateway.dart';
 import 'package:driver_hub/layer1_discovery/device_watcher.dart';
 import 'package:driver_hub/layer1_discovery/discovered_device.dart';
 import 'package:driver_hub/layer4_domain/app_settings_repository.dart';
@@ -15,14 +15,13 @@ class FakeDeviceRuntime implements DeviceRuntime {
   Future<List<DiscoveredDevice>> discoverAuthorized() async => const [];
 
   @override
-  Future<DeviceSession?> openAndRegister(DiscoveredDevice device) async => null;
-
-  @override
-  void saveLastDeviceHint(DiscoveredDevice device) {}
+  Future<DeviceSettingsGateway?> openAndRegister(
+    DiscoveredDevice device,
+  ) async => null;
 
   @override
   void startWatching({
-    required DeviceSessionCallback onConnect,
+    required DeviceGatewayConnectCallback onConnect,
     required DeviceDisconnectCallback onDisconnect,
   }) {}
 

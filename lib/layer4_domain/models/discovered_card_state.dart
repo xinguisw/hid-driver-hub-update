@@ -19,6 +19,9 @@ class DiscoveredCardState {
   /// Dongle firmware shown in Device Setting. Empty on query failure.
   final String dongleFirmwareVersion;
 
+  /// Stable non-HID key used by L4 to bind this card to its device gateway.
+  final String deviceKey;
+
   /// 0..100, or -1 when unknown (A4 failed; may update via OSD/poll).
   final int batteryPercentage;
   final bool isCharging;
@@ -37,6 +40,7 @@ class DiscoveredCardState {
     required this.firmwareVersion,
     this.mouseFirmwareVersion = '',
     this.dongleFirmwareVersion = '',
+    this.deviceKey = '',
     required this.batteryPercentage,
     required this.isCharging,
     required this.physicalHandle,
@@ -51,6 +55,7 @@ class DiscoveredCardState {
     String? firmwareVersion,
     String? mouseFirmwareVersion,
     String? dongleFirmwareVersion,
+    String? deviceKey,
     int? batteryPercentage,
     bool? isCharging,
     dynamic physicalHandle,
@@ -65,6 +70,7 @@ class DiscoveredCardState {
       mouseFirmwareVersion: mouseFirmwareVersion ?? this.mouseFirmwareVersion,
       dongleFirmwareVersion:
           dongleFirmwareVersion ?? this.dongleFirmwareVersion,
+      deviceKey: deviceKey ?? this.deviceKey,
       batteryPercentage: batteryPercentage ?? this.batteryPercentage,
       isCharging: isCharging ?? this.isCharging,
       physicalHandle: physicalHandle ?? this.physicalHandle,
@@ -84,6 +90,7 @@ class DiscoveredCardState {
           firmwareVersion == other.firmwareVersion &&
           mouseFirmwareVersion == other.mouseFirmwareVersion &&
           dongleFirmwareVersion == other.dongleFirmwareVersion &&
+          deviceKey == other.deviceKey &&
           batteryPercentage == other.batteryPercentage &&
           isCharging == other.isCharging &&
           physicalHandle == other.physicalHandle &&
@@ -98,6 +105,7 @@ class DiscoveredCardState {
       firmwareVersion.hashCode ^
       mouseFirmwareVersion.hashCode ^
       dongleFirmwareVersion.hashCode ^
+      deviceKey.hashCode ^
       batteryPercentage.hashCode ^
       isCharging.hashCode ^
       physicalHandle.hashCode ^

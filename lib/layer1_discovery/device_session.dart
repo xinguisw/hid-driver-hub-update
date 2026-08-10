@@ -74,11 +74,23 @@ class DeviceSession implements DeviceSettingsGateway {
   Stream<DeviceSessionState> get state => _controller.stream;
 
   /// OSD report 9 opcode 2 (and web short frames) parsed to battery.
+  @override
   Stream<BatteryResult> get batteryPushes => _batteryPushes.stream;
 
   /// OSD report 9 opcode 1 performance changes, still in L5 wire units.
+  @override
   Stream<OsdPerformanceResult> get performancePushes =>
       _performancePushes.stream;
+
+  @override
+  DeviceGatewayInfo get info => DeviceGatewayInfo(
+    deviceKey: device.hidDevice.path,
+    devId: device.entry.devId,
+    displayName: device.entry.model,
+    connectionMode: device.mode.mode,
+    imageSmall: device.entry.image.small,
+    imageLarge: device.entry.image.large,
+  );
 
   /// Whether the underlying transport is still open.
   @override
@@ -117,11 +129,13 @@ class DeviceSession implements DeviceSettingsGateway {
     }
   }
 
+  @override
   Future<BatteryResult?> queryBattery() async {
     if (!isAlive) return null;
     return _protocol.queryBattery(_session);
   }
 
+  @override
   Future<FirmwareResult?> queryFirmware() async {
     if (!isAlive) return null;
     return _protocol.queryFirmware(_session);
@@ -134,6 +148,7 @@ class DeviceSession implements DeviceSettingsGateway {
   }
 
   /// Thin L1 forwarder for B2 SET (L5 encodes + CRC).
+  @override
   Future<void> setButtonMapping(List<ButtonMappingEntry> buttons) async {
     if (!isAlive) {
       throw StateError('setButtonMapping: session not alive');
@@ -145,6 +160,7 @@ class DeviceSession implements DeviceSettingsGateway {
   ///
   /// [dataBlock] must be exactly 3 bytes:
   /// `[reportRateWire, dpiCurrentLevel, dpiActiveLevel]`.
+  @override
   Future<void> setReportRate(Uint8List dataBlock) async {
     if (!isAlive) {
       throw StateError('setReportRate: session not alive');
@@ -177,6 +193,7 @@ class DeviceSession implements DeviceSettingsGateway {
   }
 
   /// Thin L1 forwarder for D4 SET (L5 encodes + CRC).
+  @override
   Future<void> setSensorOther(Uint8List dataBlock) async {
     if (!isAlive) {
       throw StateError('setSensorOther: session not alive');
@@ -185,6 +202,7 @@ class DeviceSession implements DeviceSettingsGateway {
   }
 
   /// Thin L1 forwarder for C4 SET (L5 encodes + CRC).
+  @override
   Future<void> setDpiTable(Uint8List dataBlock) async {
     if (!isAlive) {
       throw StateError('setDpiTable: session not alive');
@@ -193,6 +211,7 @@ class DeviceSession implements DeviceSettingsGateway {
   }
 
   /// Thin L1 forwarder for C6 SET (L5 encodes + CRC).
+  @override
   Future<void> setDpiRgb(Uint8List dataBlock) async {
     if (!isAlive) {
       throw StateError('setDpiRgb: session not alive');
@@ -201,6 +220,7 @@ class DeviceSession implements DeviceSettingsGateway {
   }
 
   /// Thin L1 forwarder for E2 SET (L5 encodes + CRC).
+  @override
   Future<void> setRgbBacklight(Uint8List dataBlock) async {
     if (!isAlive) {
       throw StateError('setRgbBacklight: session not alive');
@@ -209,6 +229,7 @@ class DeviceSession implements DeviceSettingsGateway {
   }
 
   /// Thin L1 forwarder for the dedicated macro transfer (L5 owns framing).
+  @override
   Future<void> setMacro(MacroTransferDefinition macro) async {
     if (!isAlive) {
       throw StateError('setMacro: session not alive');

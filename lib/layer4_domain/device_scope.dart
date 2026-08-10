@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:driver_hub/layer1_discovery/device_runtime.dart';
-import 'package:driver_hub/layer1_discovery/device_session.dart';
+import 'package:driver_hub/layer1_discovery/device_settings_gateway.dart';
 import 'package:driver_hub/layer1_discovery/discovered_device.dart';
 import 'package:driver_hub/layer2_capabilities/capabilities.dart';
 import 'package:driver_hub/layer4_domain/app_settings_repository.dart';
@@ -20,7 +20,6 @@ import 'package:driver_hub/layer5_codec/codecs/translation_codec.dart';
 import 'package:driver_hub/layer5_codec/device_protocol.dart';
 import 'package:driver_hub/layer5_codec/macro_codec.dart';
 import 'package:flutter/foundation.dart';
-import 'package:hid_tool/hid_tool.dart';
 
 /// L4 domain scope: owns [DiscoveredCardState] cards and settings load entry.
 ///
@@ -49,8 +48,9 @@ class DeviceScope {
   /// Verified devices as card states, keyed by device path.
   final _cards = <String, DiscoveredCardState>{};
 
-  /// Live sessions for OSD (and optional A4 poll if re-enabled), keyed by path.
-  final _sessions = <String, DeviceSession>{};
+  /// Live device gateways for OSD (and optional A4 poll if re-enabled), keyed
+  /// by path.
+  final _sessions = <String, DeviceSettingsGateway>{};
 
   /// OSD battery subscriptions per device path.
   final _batterySubs = <String, StreamSubscription<BatteryResult>>{};
@@ -113,7 +113,6 @@ class DeviceScope {
     await _loadLowBatteryThreshold();
     _runtime.startWatching(
       onConnect: (session) {
-        _runtime.saveLastDeviceHint(session.device);
         _publishCard(session); // verified by watcher → query A4/A8 → show
       },
       onDisconnect: (path, vid, pid) => _remove(path),
@@ -190,15 +189,15 @@ class DeviceScope {
   /// Queries battery (A4) and firmware (A8) before publishing. Called from
   /// [_startAndRegister] (launch/scan) and watcher [onConnect] (hot-plug).
   ///
-  /// Guards on [DeviceSession.isAlive] after the awaits: if the device
+  /// Guards on the gateway's liveness after the awaits: if the device
   /// disconnected mid-query the watcher already removed its card, so don't
   /// re-add a stale one.
-  Future<void> _publishCard(DeviceSession session) async {
+  Future<void> _publishCard(DeviceSettingsGateway session) async {
     final battery = await _queryBattery(session);
     final firmware = await _queryFirmware(session);
     if (!session.isAlive) {
       debugPrint(
-        '[scope] ${session.device.entry.model} gone mid-query, '
+        '[scope] ${session.info.displayName} gone mid-query, '
         'skipping publish',
       );
       return;
@@ -208,7 +207,7 @@ class DeviceScope {
     // Onboard config GETs (B2/C2/…) only when user opens settings (card tap).
     _upsert(session, battery, firmware);
     if (battery != null) {
-      _evaluateLowBattery(session.device.hidDevice.path, battery);
+      _evaluateLowBattery(session.info.deviceKey, battery);
     }
     _startLiveBattery(session);
   }
@@ -222,6 +221,9 @@ class DeviceScope {
   /// Latest card snapshot from [cards], or [snap] if not found.
   DiscoveredCardState resolveCard(DiscoveredCardState snap) {
     final list = cards.value;
+    for (final c in list) {
+      if (c.deviceKey.isNotEmpty && c.deviceKey == snap.deviceKey) return c;
+    }
     for (final c in list) {
       if (identical(c.physicalHandle, snap.physicalHandle) ||
           c.physicalHandle == snap.physicalHandle) {
@@ -969,19 +971,18 @@ class DeviceScope {
     settingsVersion.value++;
   }
 
-  DeviceSession? _sessionForCard(DiscoveredCardState card) {
+  DeviceSettingsGateway? _sessionForCard(DiscoveredCardState card) {
     final path = _pathForCard(card);
     return path == null ? null : _sessions[path];
   }
 
   String? _pathForCard(DiscoveredCardState card) {
-    final handle = card.physicalHandle;
-    return handle is HidDevice ? handle.path : null;
+    return card.deviceKey.isEmpty ? null : card.deviceKey;
   }
 
   /// Subscribe to device OSD battery/charging pushes (real-time from device).
-  void _startLiveBattery(DeviceSession session) {
-    final path = session.device.hidDevice.path;
+  void _startLiveBattery(DeviceSettingsGateway session) {
+    final path = session.info.deviceKey;
     _sessions[path] = session;
     _bindBatteryPush(session);
     _bindPerformancePush(session);
@@ -990,8 +991,8 @@ class DeviceScope {
   }
 
   /// Live OSD battery (report 9 opcode 2) → patch existing card.
-  void _bindBatteryPush(DeviceSession session) {
-    final path = session.device.hidDevice.path;
+  void _bindBatteryPush(DeviceSettingsGateway session) {
+    final path = session.info.deviceKey;
     _batterySubs.remove(path)?.cancel();
     _batterySubs[path] = session.batteryPushes.listen((b) {
       _patchBattery(path, b, source: 'osd');
@@ -999,16 +1000,33 @@ class DeviceScope {
   }
 
   /// Live OSD performance (report 9 opcode 1) → semantic event for L3.
-  void _bindPerformancePush(DeviceSession session) {
-    final path = session.device.hidDevice.path;
+  void _bindPerformancePush(DeviceSettingsGateway session) {
+    final path = session.info.deviceKey;
     _performanceSubs.remove(path)?.cancel();
     _performanceSubs[path] = session.performancePushes.listen((event) {
       final settings = _settings[path];
       final translate = const TranslationCodec();
       final dpiLevel = translate.dpiCurrentLevelWireToDisplay(event.dpiLevel);
+      final reportRateHz = translate.reportRateWireToHz(event.reportRateWire);
+      final reportRateLabel = translate.reportRateWireToLabel(
+        event.reportRateWire,
+      );
+
+      // The device is the source of truth for physical button changes. Keep
+      // the L4 snapshot current so a settings page opened after the event
+      // starts from the actual active DPI/report-rate values.
+      if (settings != null) {
+        _settings[path] = settings.copyWith(
+          dpiActiveIndex: dpiLevel,
+          reportRateHz: reportRateHz,
+          reportRateLabel: reportRateLabel,
+        );
+        settingsVersion.value++;
+      }
+
       final dpiLabel = _dpiOsdLabel(dpiLevel, settings);
       final osdEvent = OsdPerformanceEvent(
-        reportRateLabel: translate.reportRateWireToLabel(event.reportRateWire),
+        reportRateLabel: reportRateLabel,
         dpiLevel: dpiLevel,
         dpiLabel: dpiLabel,
       );
@@ -1071,12 +1089,12 @@ class DeviceScope {
   // }
   //
   // Future<void> _pollAllBatteries() async {
-  //   final snapshot = Map<String, DeviceSession>.from(_sessions);
+  //   final snapshot = Map<String, DeviceSettingsGateway>.from(_sessions);
   //   for (final entry in snapshot.entries) {
   //     final path = entry.key;
   //     final session = entry.value;
   //     if (!session.isAlive) continue;
-  //     debugPrint('[scope] poll A4 ${session.device.entry.model}');
+  //     debugPrint('[scope] poll A4 ${session.info.displayName}');
   //     final battery = await _queryBattery(session);
   //     if (battery == null) continue;
   //     if (!session.isAlive || !_cards.containsKey(path)) continue;
@@ -1141,43 +1159,43 @@ class DeviceScope {
   /// Queries battery+charging via A4. Returns null on failure (device gone,
   /// query threw) so the caller can fall back to sentinels rather than hiding
   /// a verified device.
-  Future<BatteryResult?> _queryBattery(DeviceSession session) async {
+  Future<BatteryResult?> _queryBattery(DeviceSettingsGateway session) async {
     try {
       final result = await session.queryBattery();
       if (result == null) {
         debugPrint(
-          '[scope] battery skipped: ${session.device.entry.model} '
+          '[scope] battery skipped: ${session.info.displayName} '
           'no longer alive',
         );
         return null;
       }
       debugPrint(
-        '[scope] battery for ${session.device.entry.model}: '
+        '[scope] battery for ${session.info.displayName}: '
         '${result.percent}% charging=${result.isCharging}',
       );
       return result;
     } catch (e) {
       debugPrint(
         '[scope] battery query failed for '
-        '${session.device.entry.model}: $e',
+        '${session.info.displayName}: $e',
       );
       return null;
     }
   }
 
   /// Queries mouse/dongle firmware via A8. Returns null on failure (best-effort).
-  Future<FirmwareResult?> _queryFirmware(DeviceSession session) async {
+  Future<FirmwareResult?> _queryFirmware(DeviceSettingsGateway session) async {
     try {
       final result = await session.queryFirmware();
       if (result == null) {
         debugPrint(
-          '[scope] firmware skipped: ${session.device.entry.model} '
+          '[scope] firmware skipped: ${session.info.displayName} '
           'no longer alive',
         );
         return null;
       }
       debugPrint(
-        '[scope] firmware for ${session.device.entry.model}: '
+        '[scope] firmware for ${session.info.displayName}: '
         'mouse=${result.mouseVersionLabel} '
         'dongle=${result.dongleVersionLabel}',
       );
@@ -1185,7 +1203,7 @@ class DeviceScope {
     } catch (e) {
       debugPrint(
         '[scope] firmware query failed for '
-        '${session.device.entry.model}: $e',
+        '${session.info.displayName}: $e',
       );
       return null;
     }
@@ -1194,14 +1212,14 @@ class DeviceScope {
   /// Publishes a card for a verified [session].
   /// Battery/firmware null → sentinels ("—" on the card); session stays usable.
   void _upsert(
-    DeviceSession session,
+    DeviceSettingsGateway session,
     BatteryResult? battery, [
     FirmwareResult? firmware,
   ]) {
-    final path = session.device.hidDevice.path;
+    final path = session.info.deviceKey;
     if (battery == null) {
       debugPrint(
-        '[scope] no battery yet for ${session.device.entry.model} '
+        '[scope] no battery yet for ${session.info.displayName} '
         '— card shown with Battery —',
       );
     }
@@ -1223,25 +1241,26 @@ class DeviceScope {
 
   /// L1 → L3 bridge: catalog + optional A4/A8. Unknown battery → -1 ("—").
   DiscoveredCardState _cardStateFor(
-    DeviceSession session,
+    DeviceSettingsGateway session,
     BatteryResult? battery, [
     FirmwareResult? firmware,
   ]) {
-    final entry = session.device.entry;
+    final info = session.info;
     return DiscoveredCardState(
-      devId: entry.devId,
-      displayName: entry.model,
-      connectionMode: session.device.mode.mode,
+      devId: info.devId,
+      displayName: info.displayName,
+      connectionMode: info.connectionMode,
       // The card keeps the historical mouse-only label; Device Setting renders
       // both A8 values independently.
       firmwareVersion: _firmwareLabel(firmware),
       mouseFirmwareVersion: firmware?.mouseVersionLabel ?? '',
       dongleFirmwareVersion: firmware?.dongleVersionLabel ?? '',
+      deviceKey: info.deviceKey,
       batteryPercentage: battery?.percent ?? -1,
       isCharging: battery?.isCharging ?? false,
-      physicalHandle: session.device.hidDevice,
-      imageSmall: entry.image.small,
-      imageLarge: entry.image.large,
+      physicalHandle: null,
+      imageSmall: info.imageSmall,
+      imageLarge: info.imageLarge,
     );
   }
 

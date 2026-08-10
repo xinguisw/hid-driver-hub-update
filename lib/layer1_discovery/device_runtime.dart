@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:driver_hub/layer1_discovery/device_scanner.dart';
+import 'package:driver_hub/layer1_discovery/device_settings_gateway.dart';
 import 'package:driver_hub/layer1_discovery/device_session.dart';
 import 'package:driver_hub/layer1_discovery/device_watcher.dart';
 import 'package:driver_hub/layer1_discovery/discovered_device.dart';
@@ -18,12 +19,10 @@ abstract interface class DeviceRuntime {
 
   Future<List<DiscoveredDevice>> discover();
 
-  Future<DeviceSession?> openAndRegister(DiscoveredDevice device);
-
-  void saveLastDeviceHint(DiscoveredDevice device);
+  Future<DeviceSettingsGateway?> openAndRegister(DiscoveredDevice device);
 
   void startWatching({
-    required DeviceSessionCallback onConnect,
+    required DeviceGatewayConnectCallback onConnect,
     required DeviceDisconnectCallback onDisconnect,
   });
 
@@ -56,7 +55,9 @@ class LiveDeviceRuntime implements DeviceRuntime {
   Future<List<DiscoveredDevice>> discover() => _scanner.discover();
 
   @override
-  Future<DeviceSession?> openAndRegister(DiscoveredDevice device) async {
+  Future<DeviceSettingsGateway?> openAndRegister(
+    DiscoveredDevice device,
+  ) async {
     final session = DeviceSession(
       device: device,
       session: HidSession(device.hidDevice),
@@ -66,12 +67,12 @@ class LiveDeviceRuntime implements DeviceRuntime {
       await session.dispose();
       return null;
     }
+    _saveLastDeviceHint(device);
     _watcher.register(session);
     return session;
   }
 
-  @override
-  void saveLastDeviceHint(DiscoveredDevice device) {
+  void _saveLastDeviceHint(DiscoveredDevice device) {
     if (!kIsWeb) return;
     try {
       writeLocalStorage(
@@ -89,10 +90,16 @@ class LiveDeviceRuntime implements DeviceRuntime {
 
   @override
   void startWatching({
-    required DeviceSessionCallback onConnect,
+    required DeviceGatewayConnectCallback onConnect,
     required DeviceDisconnectCallback onDisconnect,
   }) {
-    _watcher.start(onConnect: onConnect, onDisconnect: onDisconnect);
+    _watcher.start(
+      onConnect: (session) {
+        _saveLastDeviceHint(session.device);
+        onConnect(session);
+      },
+      onDisconnect: onDisconnect,
+    );
   }
 
   @override

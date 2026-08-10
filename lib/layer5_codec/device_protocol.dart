@@ -1,5 +1,6 @@
 import 'device_type.dart';
 import 'package:driver_hub/layer5_codec/codec_exception.dart';
+import 'package:driver_hub/layer5_codec/button_mapping_wire_order.dart';
 import 'package:driver_hub/layer5_codec/codecs/translation_codec.dart';
 import 'package:driver_hub/layer5_codec/utils/crc16.dart';
 import 'package:driver_hub/layer5_codec/macro_codec.dart';
@@ -30,10 +31,13 @@ class BatteryResult {
 class FirmwareResult {
   /// 4 mouse-firmware bytes (ack[5..8]), wire order.
   final List<int> mouseVersion;
+
   /// 4 dongle-firmware bytes (ack[9..12]), wire order.
   final List<int> dongleVersion;
-  const FirmwareResult(
-      {required this.mouseVersion, required this.dongleVersion});
+  const FirmwareResult({
+    required this.mouseVersion,
+    required this.dongleVersion,
+  });
 
   /// Wire e.g. 04 03 02 01 → display "1.2.3.4" (little-endian version).
   String get mouseVersionLabel => formatFirmwareVersion(mouseVersion);
@@ -72,6 +76,7 @@ class ButtonMappingEntry {
 
 /// addrs 0xB2 — button mapping (len 24 = 6 × 4).
 class ButtonMappingResult {
+  /// Entries in logical UI order: Left, Right, Middle, Forward, Backward, DPI.
   final List<ButtonMappingEntry> buttons;
   final Uint8List raw;
   const ButtonMappingResult({required this.buttons, required this.raw});
@@ -109,6 +114,7 @@ class DpiTableEntry {
 /// addrs 0xC4 — DPI table (len 16 = 8 interleaved byte pairs).
 class DpiTableResult {
   final List<DpiTableEntry> stages;
+
   /// Config data payload only (typically 16 bytes), for sensor decode.
   final Uint8List data;
   final Uint8List raw;
@@ -215,6 +221,8 @@ abstract class DeviceProtocol {
   Future<ButtonMappingResult> queryButtonMapping(HidSession session);
 
   /// SET addrs 0xB2 — write full button map (6 × 4 + CRC). Chart encoding loop.
+  /// [buttons] is supplied in logical UI order; the shared B2 slot permutation
+  /// is applied before the wire frame and CRC are built.
   Future<void> setButtonMapping(
     HidSession session,
     List<ButtonMappingEntry> buttons,
@@ -304,10 +312,11 @@ class MouseProtocol implements DeviceProtocol {
   static const int _dataOff = 5;
 
   /// Config CRC covers this many bytes from data offset (includes zero pad).
-  static const int configCrcPayloadLength = 24; //no opcode/addrs/len//no crc - pure data
+  static const int configCrcPayloadLength =
+      24; //no opcode/addrs/len//no crc - pure data
   /// Stripped body: header(5) + payload slot(24) + CRC(2).
-  static const int configBodyLength =
-      _dataOff + configCrcPayloadLength + 2;
+  static const int configBodyLength = _dataOff + configCrcPayloadLength + 2;
+
   /// Desktop raw may be report-id + body.
   static const int configRawMaxLength = 1 + configBodyLength;
 
@@ -350,8 +359,10 @@ class MouseProtocol implements DeviceProtocol {
     );
     debugPrint('[proto] handshake: received ack ${_hex(ack)} (${ack.length}B)');
     final result = _parseAck(ack);
-    debugPrint('[proto] handshake: deviceType=${result.deviceType} '
-        'deviceId="${result.deviceId}"');
+    debugPrint(
+      '[proto] handshake: deviceType=${result.deviceType} '
+      'deviceId="${result.deviceId}"',
+    );
     return result;
   }
 
@@ -387,8 +398,10 @@ class MouseProtocol implements DeviceProtocol {
         'Unexpected handshake ack opcode: 0x${opcode.toRadixString(16)}',
       );
     }
-    final idBytes =
-        ack.sublist(_ackDeviceIdOffset, _ackDeviceIdOffset + _deviceIdLength);
+    final idBytes = ack.sublist(
+      _ackDeviceIdOffset,
+      _ackDeviceIdOffset + _deviceIdLength,
+    );
     return DeviceHandshake(
       deviceType: DeviceType.fromCode(ack[_ackDeviceTypeOffset]),
       deviceId: idBytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join(),
@@ -472,9 +485,13 @@ class MouseProtocol implements DeviceProtocol {
       throw FormatException('Firmware ack too short: ${ack.length} bytes');
     }
     final mouse = ack.sublist(
-        _firmwareMouseOffset, _firmwareMouseOffset + _firmwareVersionLength);
+      _firmwareMouseOffset,
+      _firmwareMouseOffset + _firmwareVersionLength,
+    );
     final dongle = ack.sublist(
-        _firmwareDongleOffset, _firmwareDongleOffset + _firmwareVersionLength);
+      _firmwareDongleOffset,
+      _firmwareDongleOffset + _firmwareVersionLength,
+    );
     return FirmwareResult(mouseVersion: mouse, dongleVersion: dongle);
   }
 
@@ -486,14 +503,19 @@ class MouseProtocol implements DeviceProtocol {
     final data = _configData(raw, addrsButtonMapping);
     final buttons = <ButtonMappingEntry>[];
     for (var i = 0; i + 3 < data.length && buttons.length < 6; i += 4) {
-      buttons.add(ButtonMappingEntry(
-        action: data[i],
-        param1: data[i + 1],
-        param2: data[i + 2],
-        param3: data[i + 3],
-      ));
+      buttons.add(
+        ButtonMappingEntry(
+          action: data[i],
+          param1: data[i + 1],
+          param2: data[i + 2],
+          param3: data[i + 3],
+        ),
+      );
     }
-    return ButtonMappingResult(buttons: buttons, raw: raw);
+    return ButtonMappingResult(
+      buttons: buttonMappingWireToUi(buttons),
+      raw: raw,
+    );
   }
 
   @override
@@ -538,7 +560,7 @@ class MouseProtocol implements DeviceProtocol {
 
   /// Build SET body for B2 (no report id). Exactly 6 entries → 24 data + CRC.
   ///
-  /// L5 encoding loop only: map domain entries → frame + checksum.
+  /// L5 encoding loop: map logical UI entries → wire frame + checksum.
   static Uint8List buildButtonMappingSetFrame(
     List<ButtonMappingEntry> buttons,
   ) {
@@ -549,12 +571,13 @@ class MouseProtocol implements DeviceProtocol {
         'button mapping SET requires exactly 6 slots',
       );
     }
+    final wireButtons = buttonMappingUiToWire(buttons);
     final frame = Uint8List(_frameLength);
     frame[_opOff] = _setOpcode;
     frame[_addrsOff] = addrsButtonMapping;
     frame[_lenOff] = configCrcPayloadLength;
     var o = _dataOff;
-    for (final b in buttons) {
+    for (final b in wireButtons) {
       frame[o++] = b.action & 0xFF;
       frame[o++] = b.param1 & 0xFF;
       frame[o++] = b.param2 & 0xFF;
@@ -569,7 +592,8 @@ class MouseProtocol implements DeviceProtocol {
 
   @override
   Future<ReportRateDpiInfoResult> queryReportRateDpiInfo(
-      HidSession session) async {
+    HidSession session,
+  ) async {
     final raw = await _getConfig(session, addrsReportRateDpi, 'reportRateDpi');
     final data = _configData(raw, addrsReportRateDpi);
     if (data.length < 3) {
@@ -948,8 +972,10 @@ class MouseProtocol implements DeviceProtocol {
         chunkIndex: chunkIndex,
         payload: chunks[chunkIndex],
       );
-      debugPrint('[proto] macro: SET slot=${macro.slot} chunk=$chunkIndex '
-          'data=${_hex(chunks[chunkIndex])}');
+      debugPrint(
+        '[proto] macro: SET slot=${macro.slot} chunk=$chunkIndex '
+        'data=${_hex(chunks[chunkIndex])}',
+      );
       final reply = await session.sendAndWait(
         data: frame,
         reportId: MacroTransferCodec.reportId,
@@ -959,8 +985,10 @@ class MouseProtocol implements DeviceProtocol {
       );
       final body = _stripMacroReportId(reply);
       final status = MacroTransferCodec.parseReplyStatus(body);
-      debugPrint('[proto] macro: reply slot=${macro.slot} chunk=$chunkIndex '
-          'status=0x${status.toRadixString(16)}');
+      debugPrint(
+        '[proto] macro: reply slot=${macro.slot} chunk=$chunkIndex '
+        'status=0x${status.toRadixString(16)}',
+      );
       if ((chunkIndex < 2 && status != MacroTransferCodec.statusReceived) ||
           (chunkIndex == 2 && status != MacroTransferCodec.statusOk)) {
         throw FormatException(
@@ -972,7 +1000,10 @@ class MouseProtocol implements DeviceProtocol {
   }
 
   static bool _matchesMacroReply(
-      Uint8List raw, int macroIndex, int chunkIndex) {
+    Uint8List raw,
+    int macroIndex,
+    int chunkIndex,
+  ) {
     final body = _stripMacroReportId(raw);
     if (body.length <= 5 || body[0] != MacroTransferCodec.opcode) return false;
     return body[1] == chunkIndex &&
@@ -1004,8 +1035,10 @@ class MouseProtocol implements DeviceProtocol {
     String label,
   ) async {
     final ask = _buildGetFrame(addrs);
-    debugPrint('[proto] $label: GET addrs=0x${addrs.toRadixString(16)} '
-        'ask ${_hex(ask)}');
+    debugPrint(
+      '[proto] $label: GET addrs=0x${addrs.toRadixString(16)} '
+      'ask ${_hex(ask)}',
+    );
     final ack = await session.sendAndWait(
       data: ask,
       reportId: _reportId,
@@ -1047,7 +1080,9 @@ class MouseProtocol implements DeviceProtocol {
     String label = 'config',
   }) {
     if (raw.isEmpty || raw.length > configRawMaxLength) {
-      debugPrint('[proto] $label: REJECT raw length ${raw.length} (max $configRawMaxLength) raw=${_hex(raw)}');
+      debugPrint(
+        '[proto] $label: REJECT raw length ${raw.length} (max $configRawMaxLength) raw=${_hex(raw)}',
+      );
       throw CodecException(
         label: label,
         reason: 'raw length ${raw.length} (max $configRawMaxLength)',
@@ -1056,7 +1091,9 @@ class MouseProtocol implements DeviceProtocol {
     }
     final body = stripReportId(raw);
     if (body.length < configBodyLength) {
-      debugPrint('[proto] $label: REJECT body length ${body.length} (need $configBodyLength) raw=${_hex(raw)}');
+      debugPrint(
+        '[proto] $label: REJECT body length ${body.length} (need $configBodyLength) raw=${_hex(raw)}',
+      );
       throw CodecException(
         label: label,
         reason: 'body length ${body.length} (need $configBodyLength)',
@@ -1064,7 +1101,9 @@ class MouseProtocol implements DeviceProtocol {
       );
     }
     if (body.length > configBodyLength) {
-      debugPrint('[proto] $label: REJECT body length ${body.length} (max $configBodyLength) raw=${_hex(raw)}');
+      debugPrint(
+        '[proto] $label: REJECT body length ${body.length} (max $configBodyLength) raw=${_hex(raw)}',
+      );
       throw CodecException(
         label: label,
         reason: 'body length ${body.length} (max $configBodyLength)',
@@ -1075,17 +1114,22 @@ class MouseProtocol implements DeviceProtocol {
     // Header: block address (B2, C2, C4, C6, D4, E2, …).
     final gotAddrs = body[_addrsOff];
     if (gotAddrs != addrs) {
-      debugPrint('[proto] $label: REJECT addrs=0x${gotAddrs.toRadixString(16)} want=0x${addrs.toRadixString(16)} raw=${_hex(raw)}');
+      debugPrint(
+        '[proto] $label: REJECT addrs=0x${gotAddrs.toRadixString(16)} want=0x${addrs.toRadixString(16)} raw=${_hex(raw)}',
+      );
       throw CodecException(
         label: label,
-        reason: 'addrs 0x${gotAddrs.toRadixString(16)} (want 0x${addrs.toRadixString(16)})',
+        reason:
+            'addrs 0x${gotAddrs.toRadixString(16)} (want 0x${addrs.toRadixString(16)})',
         raw: raw,
       );
     }
 
     final len = body[_lenOff];
     if (len > configCrcPayloadLength) {
-      debugPrint('[proto] $label: REJECT len=$len (max $configCrcPayloadLength) raw=${_hex(raw)}');
+      debugPrint(
+        '[proto] $label: REJECT len=$len (max $configCrcPayloadLength) raw=${_hex(raw)}',
+      );
       throw CodecException(
         label: label,
         reason: 'len $len (max $configCrcPayloadLength)',
@@ -1117,7 +1161,9 @@ class MouseProtocol implements DeviceProtocol {
       'match=$match',
     );
     if (!match) {
-      debugPrint('[proto] $label: REJECT CRC mismatch calc=$calcHex wire=$wireHex raw=${_hex(raw)}');
+      debugPrint(
+        '[proto] $label: REJECT CRC mismatch calc=$calcHex wire=$wireHex raw=${_hex(raw)}',
+      );
       throw CodecException(
         label: label,
         reason: 'CRC mismatch: calc=$calcHex wire=$wireHex',
@@ -1199,7 +1245,11 @@ class MouseProtocol implements DeviceProtocol {
       b == _nakOpcode;
 
   /// True when payload opcode (after optional report-id byte) equals [opcode].
-  static bool matchesOpcode(Uint8List raw, int opcode, {int reportId = _reportId}) {
+  static bool matchesOpcode(
+    Uint8List raw,
+    int opcode, {
+    int reportId = _reportId,
+  }) {
     final body = stripReportId(raw, reportId: reportId);
     return body.isNotEmpty && body[0] == opcode;
   }

@@ -258,7 +258,7 @@ class _CalloutLayout {
       );
       final r = ((rNorm ?? 0.04) * imageRect.shortestSide).clamp(6.0, 24.0);
 
-      final label = b.actionLabel ?? b.buttonLabel ?? 'B${b.id}';
+      final label = mouseButtonCalloutLabel(b);
       final tp = TextPainter(
         text: TextSpan(text: label, style: labelStyle),
         textDirection: TextDirection.ltr,
@@ -329,6 +329,13 @@ class _CalloutLayout {
 
   static double _max(double a, double b) => a > b ? a : b;
 }
+
+/// Selects the label rendered beside a physical mouse button.
+///
+/// The callout identifies the physical key; its current assigned action is
+/// retained separately in [ButtonData.actionLabel] for mapping controls.
+String mouseButtonCalloutLabel(ButtonData button) =>
+    button.buttonLabel ?? button.actionLabel ?? 'B${button.id}';
 
 class _HotspotPainter extends CustomPainter {
   _HotspotPainter({

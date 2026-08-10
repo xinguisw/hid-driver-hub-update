@@ -150,4 +150,21 @@ void main() {
       }
     },
   );
+
+  test('all three mouse catalogs use the M7X PRO left/right hotspots', () async {
+    for (final model in ['m7xse', 'm7x', 'm7x pro']) {
+      await DeviceCapabilityStore.load(model);
+    }
+
+    for (final devId in ['02AA', '01AA', '03AA']) {
+      final caps = DeviceCapabilityStore.forDevice(devId);
+      expect(caps, isNotNull);
+      final buttons = caps!.buttons!.list;
+
+      expect(buttons[0].hotspot.x, 0.40);
+      expect(buttons[0].hotspot.y, 0.30);
+      expect(buttons[1].hotspot.x, 0.61);
+      expect(buttons[1].hotspot.y, 0.30);
+    }
+  });
 }

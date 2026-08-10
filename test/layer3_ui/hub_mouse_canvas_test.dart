@@ -37,4 +37,41 @@ void main() {
       expect(mouseButtonCalloutLabel(button), 'B6');
     });
   });
+
+  group('mouseButtonCalloutText', () {
+    test('shows only the current assignment', () {
+      const button = ButtonData(
+        id: 4,
+        labelKey: 'button.forward',
+        remappable: true,
+        buttonLabel: 'Forward',
+        actionLabel: 'DPI cycle',
+      );
+
+      expect(mouseButtonCalloutText(button), 'DPI cycle');
+    });
+
+    test('shows a same-name assignment only once', () {
+      const button = ButtonData(
+        id: 3,
+        labelKey: 'button.middle_click',
+        remappable: true,
+        buttonLabel: 'Middle click',
+        actionLabel: 'Middle click',
+      );
+
+      expect(mouseButtonCalloutText(button), 'Middle click');
+    });
+
+    test('falls back to the physical label when no action exists', () {
+      const button = ButtonData(
+        id: 6,
+        labelKey: 'button.dpi_cycle',
+        remappable: true,
+        buttonLabel: 'DPI cycle',
+      );
+
+      expect(mouseButtonCalloutText(button), 'DPI cycle');
+    });
+  });
 }

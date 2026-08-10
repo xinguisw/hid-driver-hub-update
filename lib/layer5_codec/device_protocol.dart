@@ -1,5 +1,6 @@
 import 'device_type.dart';
 import 'package:driver_hub/layer5_codec/codec_exception.dart';
+import 'package:driver_hub/layer5_codec/button_mapping_wire_order.dart';
 import 'package:driver_hub/layer5_codec/codecs/translation_codec.dart';
 import 'package:driver_hub/layer5_codec/utils/crc16.dart';
 import 'package:driver_hub/layer5_codec/macro_codec.dart';
@@ -74,6 +75,7 @@ class ButtonMappingEntry {
 
 /// addrs 0xB2 — button mapping (len 24 = 6 × 4).
 class ButtonMappingResult {
+  /// Entries in logical UI order: Left, Right, Middle, Forward, Backward, DPI.
   final List<ButtonMappingEntry> buttons;
   final Uint8List raw;
   const ButtonMappingResult({required this.buttons, required this.raw});
@@ -218,6 +220,8 @@ abstract class DeviceProtocol {
   Future<ButtonMappingResult> queryButtonMapping(ProtocolTransport session);
 
   /// SET addrs 0xB2 — write full button map (6 × 4 + CRC). Chart encoding loop.
+  /// [buttons] is supplied in logical UI order; the shared B2 slot permutation
+  /// is applied before the wire frame and CRC are built.
   Future<void> setButtonMapping(
     ProtocolTransport session,
     List<ButtonMappingEntry> buttons,
@@ -514,7 +518,10 @@ class MouseProtocol implements DeviceProtocol {
         ),
       );
     }
-    return ButtonMappingResult(buttons: buttons, raw: raw);
+    return ButtonMappingResult(
+      buttons: buttonMappingWireToUi(buttons),
+      raw: raw,
+    );
   }
 
   @override
@@ -559,7 +566,7 @@ class MouseProtocol implements DeviceProtocol {
 
   /// Build SET body for B2 (no report id). Exactly 6 entries → 24 data + CRC.
   ///
-  /// L5 encoding loop only: map domain entries → frame + checksum.
+  /// L5 encoding loop: map logical UI entries → wire frame + checksum.
   static Uint8List buildButtonMappingSetFrame(
     List<ButtonMappingEntry> buttons,
   ) {
@@ -570,12 +577,13 @@ class MouseProtocol implements DeviceProtocol {
         'button mapping SET requires exactly 6 slots',
       );
     }
+    final wireButtons = buttonMappingUiToWire(buttons);
     final frame = Uint8List(_frameLength);
     frame[_opOff] = _setOpcode;
     frame[_addrsOff] = addrsButtonMapping;
     frame[_lenOff] = configCrcPayloadLength;
     var o = _dataOff;
-    for (final b in buttons) {
+    for (final b in wireButtons) {
       frame[o++] = b.action & 0xFF;
       frame[o++] = b.param1 & 0xFF;
       frame[o++] = b.param2 & 0xFF;

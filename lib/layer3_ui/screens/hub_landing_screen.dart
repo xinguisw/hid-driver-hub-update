@@ -621,16 +621,7 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                         children: [
                           Expanded(
                             child: HubBacklightPanel(
-                              rgbModes: [
-                                for (final m
-                                    in synced?.rgbModes ??
-                                        const <RgbModeData>[])
-                                  RgbMode(
-                                    id: m.id,
-                                    nameKey: m.nameKey,
-                                    supportsColor: m.supportsColor,
-                                  ),
-                              ],
+                              rgbModes: synced?.rgbModes,
                               // why: dropdown shows the human label (L5-owned),
                               // not the raw localization key.
                               rgbModeLabels: [
@@ -704,7 +695,14 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
               else if (_selectedIndex == _deviceSettingIndex)
                 Expanded(child: HubDeviceSettingPanel(card: selected))
               else if (_selectedIndex == _appSettingsIndex)
-                const Expanded(child: AppSettingsPanel())
+                Expanded(
+                  child: AppSettingsPanel(
+                    lowBatteryThreshold: widget.scope.batteryLowThreshold,
+                    onLowBatteryThresholdChanged: (threshold) {
+                      widget.scope.setLowBatteryThreshold(threshold);
+                    },
+                  ),
+                )
               else
                 const Expanded(child: Center(child: Text(''))),
             ],

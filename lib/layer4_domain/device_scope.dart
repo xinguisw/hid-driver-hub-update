@@ -6,6 +6,7 @@ import 'package:driver_hub/layer1_discovery/discovered_device.dart';
 import 'package:driver_hub/layer2_capabilities/capabilities.dart';
 import 'package:driver_hub/layer4_domain/app_settings_repository.dart';
 import 'package:driver_hub/layer4_domain/bloc/device_settings_bloc.dart';
+import 'package:driver_hub/layer4_domain/device_repository.dart';
 import 'package:driver_hub/layer5_codec/button_mapping_slot.dart';
 import 'package:driver_hub/layer4_domain/models/device_settings_state.dart';
 import 'package:driver_hub/layer4_domain/models/discovered_card_state.dart';
@@ -265,7 +266,7 @@ class DeviceScope {
     }
     final path = _pathForCard(card);
     final packed = await queryOnboardConfig(
-      session,
+      _GatewayDeviceRepository(session, card),
       card,
       onPartial: (partial) {
         if (path == null) return;
@@ -1292,4 +1293,45 @@ class DeviceScope {
     busy.dispose();
     settingsVersion.dispose();
   }
+}
+
+/// L4 adapter from the L1 lifecycle gateway to the L4 hydration port.
+///
+/// The onboarding query depends on [DeviceRepository], so the L1 gateway is
+/// wrapped here instead of crossing the query boundary as a concrete session.
+class _GatewayDeviceRepository implements DeviceRepository {
+  _GatewayDeviceRepository(this._gateway, this._card);
+
+  final DeviceSettingsGateway _gateway;
+  final DiscoveredCardState _card;
+
+  @override
+  bool get isAlive => _gateway.isAlive;
+
+  @override
+  DiscoveredCardState get card => _card;
+
+  @override
+  Future<bool> rehandshake() => _gateway.rehandshake();
+
+  @override
+  Future<ButtonMappingResult?> queryButtonMapping() =>
+      _gateway.queryButtonMapping();
+
+  @override
+  Future<ReportRateDpiInfoResult?> queryReportRateDpiInfo() =>
+      _gateway.queryReportRateDpiInfo();
+
+  @override
+  Future<DpiTableResult?> queryDpiTable() => _gateway.queryDpiTable();
+
+  @override
+  Future<DpiRgbResult?> queryDpiRgb() => _gateway.queryDpiRgb();
+
+  @override
+  Future<SensorOtherResult?> querySensorOther() => _gateway.querySensorOther();
+
+  @override
+  Future<RgbBacklightResult?> queryRgbBacklight() =>
+      _gateway.queryRgbBacklight();
 }

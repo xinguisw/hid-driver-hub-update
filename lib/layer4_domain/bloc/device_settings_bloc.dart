@@ -2337,7 +2337,11 @@ class DeviceSettingsBloc
           ? synced.angleTuneLabel
           : const TranslationCodec().angleTuneWireToLabel(
               patch.angleTuneWire!,
-              synced.angleTuneOptions ?? const <AngleTuneOption>[],
+              [
+                for (final option
+                    in synced.angleTuneOptions ?? const <AngleTuneOptionData>[])
+                  AngleTuneOption(wire: option.wire, label: option.label),
+              ],
             ),
       lodMm: patch.lodWire ?? synced.lodMm,
       performance: patch.performanceWire ?? synced.performance,

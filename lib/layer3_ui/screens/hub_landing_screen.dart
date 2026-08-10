@@ -99,6 +99,7 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
     try {
       await widget.scope.loadMacros(widget.card);
       if (mounted) setState(() {});
+      debugPrint('[hub] ${widget.card.displayName}: macros loaded');
     } catch (error) {
       // Macro storage is app-local and optional for the rest of hub startup;
       // keep Button Mapping available while retaining a diagnostic signal.
@@ -127,18 +128,6 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
     }
     _settingsBloc.add(DeviceSettingsHydrated(packed));
     debugPrint('[hub] ${widget.card.displayName}: onboard config done');
-  }
-
-  Future<void> _loadMacros() async {
-    try {
-      await widget.scope.loadMacros(widget.card);
-      if (mounted) setState(() {});
-      debugPrint('[hub] ${widget.card.displayName}: macros loaded');
-    } catch (error) {
-      debugPrint(
-        '[hub] ${widget.card.displayName}: macro load failed ($error)',
-      );
-    }
   }
 
   @override

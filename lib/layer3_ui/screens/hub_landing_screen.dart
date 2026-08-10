@@ -63,7 +63,10 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
       _settingsBloc.add(DeviceSettingsHydrated(cached));
     }
     widget.scope.cards.addListener(_onCardsChanged);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loadOnboardConfig());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadOnboardConfig();
+      _loadMacros();
+    });
   }
 
   @override
@@ -102,6 +105,18 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
     }
     _settingsBloc.add(DeviceSettingsHydrated(packed));
     debugPrint('[hub] ${widget.card.displayName}: onboard config done');
+  }
+
+  Future<void> _loadMacros() async {
+    try {
+      await widget.scope.loadMacros(widget.card);
+      if (mounted) setState(() {});
+      debugPrint('[hub] ${widget.card.displayName}: macros loaded');
+    } catch (error) {
+      debugPrint(
+        '[hub] ${widget.card.displayName}: macro load failed ($error)',
+      );
+    }
   }
 
   @override

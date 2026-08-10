@@ -4,12 +4,16 @@
 /// the conversion from device telemetry to these product-level labels; L3
 /// decides how the labels are rendered.
 class OsdPerformanceEvent {
+  final String deviceId;
   final String? reportRateLabel;
+  final int? reportRateHz;
   final int dpiLevel;
   final String dpiLabel;
 
   const OsdPerformanceEvent({
+    required this.deviceId,
     required this.reportRateLabel,
+    required this.reportRateHz,
     required this.dpiLevel,
     required this.dpiLabel,
   });
@@ -18,12 +22,15 @@ class OsdPerformanceEvent {
   bool operator ==(Object other) =>
       identical(this, other) ||
       other is OsdPerformanceEvent &&
+          deviceId == other.deviceId &&
           reportRateLabel == other.reportRateLabel &&
+          reportRateHz == other.reportRateHz &&
           dpiLevel == other.dpiLevel &&
           dpiLabel == other.dpiLabel;
 
   @override
-  int get hashCode => Object.hash(reportRateLabel, dpiLevel, dpiLabel);
+  int get hashCode =>
+      Object.hash(deviceId, reportRateLabel, reportRateHz, dpiLevel, dpiLabel);
 }
 
 /// Semantic low-battery event for the desktop OSD.

@@ -10,6 +10,22 @@ class DeviceSettingsHydrated extends DeviceSettingsEvent {
   final DeviceSettingsState settings;
 }
 
+/// A performance value changed on the physical device outside the settings UI.
+///
+/// The values are already translated by L4. This event keeps the settings BLoC
+/// synchronized without exposing HID/report bytes to presentation code.
+class DeviceSettingsLivePerformanceUpdated extends DeviceSettingsEvent {
+  const DeviceSettingsLivePerformanceUpdated({
+    required this.dpiLevel,
+    required this.reportRateHz,
+    required this.reportRateLabel,
+  });
+
+  final int dpiLevel;
+  final int? reportRateHz;
+  final String? reportRateLabel;
+}
+
 /// Commits the factory-default button mapping immediately.
 class DeviceSettingsResetButtonMappingRequested extends DeviceSettingsEvent {
   const DeviceSettingsResetButtonMappingRequested();

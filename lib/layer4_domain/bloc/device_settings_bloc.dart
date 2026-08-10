@@ -171,6 +171,7 @@ class DeviceSettingsBloc
          ),
        ) {
     on<DeviceSettingsHydrated>(_onHydrated);
+    on<DeviceSettingsLivePerformanceUpdated>(_onLivePerformanceUpdated);
     on<DeviceSettingsResetButtonMappingRequested>(_onResetButtonMapping);
     on<DeviceSettingsResetDpiConfigurationRequested>(_onResetDpiConfiguration);
     on<DeviceSettingsSaveRequested>(_onSave);
@@ -257,6 +258,25 @@ class DeviceSettingsBloc
         clearError: true,
         consecutiveFailures: 0,
         committing: false,
+      ),
+    );
+  }
+
+  void _onLivePerformanceUpdated(
+    DeviceSettingsLivePerformanceUpdated event,
+    Emitter<DeviceSettingsViewState> emit,
+  ) {
+    final synced = state.synced;
+    if (synced == null) return;
+
+    emit(
+      state.copyWith(
+        synced: synced.copyWith(
+          dpiActiveIndex: event.dpiLevel,
+          reportRateHz: event.reportRateHz,
+          reportRateLabel: event.reportRateLabel,
+        ),
+        clearError: true,
       ),
     );
   }

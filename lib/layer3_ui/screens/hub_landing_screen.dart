@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:driver_hub/layer2_capabilities/capabilities.dart';
 import 'package:driver_hub/layer3_ui/widgets/hub_backlight_panel.dart';
 import 'package:driver_hub/layer3_ui/widgets/hub_button_mapping_panel.dart';
@@ -14,6 +16,7 @@ import 'package:driver_hub/layer4_domain/bloc/device_settings_state_view.dart';
 import 'package:driver_hub/layer4_domain/device_scope.dart';
 import 'package:driver_hub/layer4_domain/models/device_settings_state.dart';
 import 'package:driver_hub/layer4_domain/models/discovered_card_state.dart';
+import 'package:driver_hub/layer4_domain/models/osd_event.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -43,6 +46,7 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
   int? _selectedButtonId;
   int? _selectedDpiLevel;
   late final DeviceSettingsBloc _settingsBloc;
+  StreamSubscription<OsdPerformanceEvent>? _performanceSubscription;
 
   static const int _buttonMappingIndex = 0;
   static const int _macroIndex = 1;
@@ -70,6 +74,9 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
       _settingsBloc.add(DeviceSettingsHydrated(cached));
     }
     widget.scope.cards.addListener(_onCardsChanged);
+    _performanceSubscription = widget.scope.osdEvents.listen(
+      _onLivePerformance,
+    );
     // why: one frame after mount — load onboard config and macro catalog
     // together so Button Mapping Macro tab has slots without visiting Macro first.
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -81,8 +88,25 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
   @override
   void dispose() {
     widget.scope.cards.removeListener(_onCardsChanged);
+    unawaited(_performanceSubscription?.cancel());
     _settingsBloc.close();
     super.dispose();
+  }
+
+  void _onLivePerformance(OsdPerformanceEvent event) {
+    if (!mounted || event.deviceId != widget.card.devId) return;
+
+    _settingsBloc.add(
+      DeviceSettingsLivePerformanceUpdated(
+        dpiLevel: event.dpiLevel,
+        reportRateHz: event.reportRateHz,
+        reportRateLabel: event.reportRateLabel,
+      ),
+    );
+
+    // The active hardware stage, rather than a stale UI selection, is what
+    // the Performance page should highlight after a physical button change.
+    setState(() => _selectedDpiLevel = event.dpiLevel);
   }
 
   void _onCardsChanged() {

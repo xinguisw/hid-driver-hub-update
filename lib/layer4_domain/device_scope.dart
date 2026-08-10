@@ -1027,7 +1027,9 @@ class DeviceScope {
 
       final dpiLabel = _dpiOsdLabel(dpiLevel, settings);
       final osdEvent = OsdPerformanceEvent(
+        deviceId: session.info.devId,
         reportRateLabel: reportRateLabel,
+        reportRateHz: reportRateHz,
         dpiLevel: dpiLevel,
         dpiLabel: dpiLabel,
       );
@@ -1043,11 +1045,13 @@ class DeviceScope {
     if (dpiLevel == null) return;
 
     final reportRateHz = settings.reportRateHz;
-    _publishOsdEvent(
+      _publishOsdEvent(
       OsdPerformanceEvent(
+        deviceId: settings.devId,
         reportRateLabel: reportRateHz == null
             ? settings.reportRateLabel
             : '$reportRateHz Hz',
+        reportRateHz: reportRateHz,
         dpiLevel: dpiLevel,
         dpiLabel: _dpiOsdLabel(dpiLevel, settings),
       ),

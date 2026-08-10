@@ -265,6 +265,8 @@ class DeviceScope {
 
   /// Load the semantic macro registry for one device from the L6 backend.
   Future<List<MacroDefinition>> loadMacros(DiscoveredCardState card) async {
+    final cached = _macros[card.devId];
+    if (cached != null) return cached;
     final loaded = await _macroRepository.load(card.devId);
     _macros[card.devId] = List.unmodifiable(loaded);
     return _macros[card.devId]!;

@@ -172,8 +172,8 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
   void _startRecording() {
     setState(() {
       _recording = true;
-      _events.clear();
-      _syncDraftActions();
+      // Recording an existing macro extends its current sequence. Reset is
+      // the explicit action for replacing the sequence with the saved copy.
       _pressedKeyCodes.clear();
       _pressedKeyLabels.clear();
       _activePointerCode = null;
@@ -581,6 +581,16 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
   }
 
   void _cancel() {
+    final draft = _draft;
+    MacroDefinition? saved;
+    if (draft != null) {
+      for (final macro in _macros) {
+        if (macro.slot == draft.slot) {
+          saved = macro;
+          break;
+        }
+      }
+    }
     setState(() {
       _recording = false;
       _calibrationMode = false;
@@ -588,8 +598,21 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
       _pressedKeyLabels.clear();
       _activePointerCode = null;
       _activePointerLabel = null;
-      _draft = _macros.isEmpty ? null : _draftFrom(_macros.first);
-      _events.clear();
+      if (saved != null) {
+        // Discard only the current editor buffer; restore the selected slot's
+        // last saved definition, not the first macro in the list.
+        _events
+          ..clear()
+          ..addAll(saved.actions);
+        _draft = _draftFrom(saved);
+        _calibrationMode = _isTimingProbeMacro(saved);
+      } else {
+        // A newly-created macro has no persisted value to restore. Cancel
+        // closes that draft without creating or deleting a saved macro.
+        _events.clear();
+        _draft = null;
+        _selectedSlot = null;
+      }
       _error = null;
     });
   }

@@ -168,4 +168,64 @@ void main() {
     expect(find.text('Please select a shortcut to edit'), findsNothing);
     expect(find.text('Macro type'), findsOneWidget);
   });
+
+  testWidgets(
+    'recording an existing macro appends and cancel restores its saved actions',
+    (tester) async {
+      final repository = InMemoryMacroRepository();
+      await repository.save('03AA', [
+        const MacroDefinition(
+          slot: 1,
+          name: 'M1',
+          mode: MacroMode.loop,
+          loopTimes: 1,
+          actions: [
+            MacroAction(keyCode: 0x04, isBreak: false, delay: 0, label: 'A'),
+          ],
+        ),
+      ]);
+      final scope = DeviceScope(macroRepository: repository);
+      const card = DiscoveredCardState(
+        devId: '03AA',
+        displayName: 'M7X PRO',
+        connectionMode: 0,
+        firmwareVersion: '',
+        batteryPercentage: -1,
+        isCharging: false,
+        physicalHandle: null,
+        imageSmall: '',
+        imageLarge: '',
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: HubMacroPanel(scope: scope, card: card),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      await tester.tap(find.text('M1'));
+      await tester.pump();
+      await tester.tap(find.text('Start Recording'));
+      await tester.pump();
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.keyB);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.keyB);
+      await tester.tap(find.text('Stop Recording'));
+      await tester.pump();
+
+      expect(find.text('A'), findsOneWidget);
+      expect(find.text('B'), findsNWidgets(2));
+
+      final cancelButton = find.text('Cancel');
+      await tester.ensureVisible(cancelButton);
+      await tester.tap(cancelButton);
+      await tester.pump();
+
+      expect(find.text('A'), findsOneWidget);
+      expect(find.text('B'), findsNothing);
+    },
+  );
 }

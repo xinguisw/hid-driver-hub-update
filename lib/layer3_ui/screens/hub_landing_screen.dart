@@ -70,6 +70,8 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
       _settingsBloc.add(DeviceSettingsHydrated(cached));
     }
     widget.scope.cards.addListener(_onCardsChanged);
+    // why: one frame after mount — load onboard config and macro catalog
+    // together so Button Mapping Macro tab has slots without visiting Macro first.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadOnboardConfig();
       _loadMacros();
@@ -91,6 +93,19 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
       return;
     }
     setState(() {});
+  }
+
+  Future<void> _loadMacros() async {
+    try {
+      await widget.scope.loadMacros(widget.card);
+      if (mounted) setState(() {});
+    } catch (error) {
+      // Macro storage is app-local and optional for the rest of hub startup;
+      // keep Button Mapping available while retaining a diagnostic signal.
+      debugPrint(
+        '[hub] ${widget.card.displayName}: macro catalog load failed: $error',
+      );
+    }
   }
 
   Future<void> _loadOnboardConfig() async {

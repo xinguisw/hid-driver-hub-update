@@ -186,6 +186,8 @@ class RgbBacklightResult {
   final int g;
   final int b;
   final int sleepTime;
+  /// Decoded eight-byte E2 payload, kept separate from the full HID frame.
+  final Uint8List data;
   final Uint8List raw;
   const RgbBacklightResult({
     required this.enable,
@@ -196,6 +198,7 @@ class RgbBacklightResult {
     required this.g,
     required this.b,
     required this.sleepTime,
+    required this.data,
     required this.raw,
   });
 
@@ -897,6 +900,7 @@ class MouseProtocol implements DeviceProtocol {
       g: data[5],
       b: data[6],
       sleepTime: data[7],
+      data: Uint8List.fromList(data),
       raw: raw,
     );
   }

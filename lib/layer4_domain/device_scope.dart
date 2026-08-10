@@ -945,7 +945,7 @@ class DeviceScope {
       throw StateError('Failed to read current RGB backlight block');
     }
     final dataBlock = TelinkB80ConfigBlockCodec.patchRgbBacklight(
-      current.raw,
+      current.data,
       enabled: patch.enabled,
       modeId: patch.modeId,
       brightness: patch.brightness,

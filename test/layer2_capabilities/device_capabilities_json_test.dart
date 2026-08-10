@@ -161,10 +161,19 @@ void main() {
       expect(caps, isNotNull);
       final buttons = caps!.buttons!.list;
 
-      expect(buttons[0].hotspot.x, 0.40);
-      expect(buttons[0].hotspot.y, 0.30);
-      expect(buttons[1].hotspot.x, 0.61);
-      expect(buttons[1].hotspot.y, 0.30);
+      const expectedHotspots = [
+        (x: 0.40, y: 0.30),
+        (x: 0.61, y: 0.30),
+        (x: 0.51, y: 0.24),
+        (x: 0.33, y: 0.45),
+        (x: 0.33, y: 0.55),
+        (x: 0.61, y: 0.60),
+      ];
+
+      for (var i = 0; i < expectedHotspots.length; i++) {
+        expect(buttons[i].hotspot.x, expectedHotspots[i].x);
+        expect(buttons[i].hotspot.y, expectedHotspots[i].y);
+      }
     }
   });
 }

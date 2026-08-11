@@ -1,3 +1,72 @@
+import 'dart:typed_data';
+
+bool _bytesEqual(Uint8List? a, Uint8List? b) {
+  if (identical(a, b)) return true;
+  if (a == null || b == null || a.length != b.length) return false;
+  for (var i = 0; i < a.length; i++) {
+    if (a[i] != b[i]) return false;
+  }
+  return true;
+}
+
+/// Raw payloads loaded during settings hydration and reused by SET operations.
+class DeviceSettingsRawBlocks {
+  DeviceSettingsRawBlocks({
+    Uint8List? reportRateDpi,
+    Uint8List? dpiTable,
+    Uint8List? dpiRgb,
+    Uint8List? sensorOther,
+    Uint8List? rgbBacklight,
+  }) : reportRateDpi = _copy(reportRateDpi),
+       dpiTable = _copy(dpiTable),
+       dpiRgb = _copy(dpiRgb),
+       sensorOther = _copy(sensorOther),
+       rgbBacklight = _copy(rgbBacklight);
+
+  final Uint8List? reportRateDpi;
+  final Uint8List? dpiTable;
+  final Uint8List? dpiRgb;
+  final Uint8List? sensorOther;
+  final Uint8List? rgbBacklight;
+
+  DeviceSettingsRawBlocks copyWith({
+    Uint8List? reportRateDpi,
+    Uint8List? dpiTable,
+    Uint8List? dpiRgb,
+    Uint8List? sensorOther,
+    Uint8List? rgbBacklight,
+  }) {
+    return DeviceSettingsRawBlocks(
+      reportRateDpi: reportRateDpi ?? this.reportRateDpi,
+      dpiTable: dpiTable ?? this.dpiTable,
+      dpiRgb: dpiRgb ?? this.dpiRgb,
+      sensorOther: sensorOther ?? this.sensorOther,
+      rgbBacklight: rgbBacklight ?? this.rgbBacklight,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      other is DeviceSettingsRawBlocks &&
+      _bytesEqual(reportRateDpi, other.reportRateDpi) &&
+      _bytesEqual(dpiTable, other.dpiTable) &&
+      _bytesEqual(dpiRgb, other.dpiRgb) &&
+      _bytesEqual(sensorOther, other.sensorOther) &&
+      _bytesEqual(rgbBacklight, other.rgbBacklight);
+
+  @override
+  int get hashCode => Object.hash(
+    reportRateDpi == null ? null : Object.hashAll(reportRateDpi!),
+    dpiTable == null ? null : Object.hashAll(dpiTable!),
+    dpiRgb == null ? null : Object.hashAll(dpiRgb!),
+    sensorOther == null ? null : Object.hashAll(sensorOther!),
+    rgbBacklight == null ? null : Object.hashAll(rgbBacklight!),
+  );
+
+  static Uint8List? _copy(Uint8List? value) =>
+      value == null ? null : Uint8List.fromList(value);
+}
+
 /// View model for one device's settings (same role as [DiscoveredCardState]).
 ///
 /// Pure data — no HID, no DeviceCapabilityStore, no widgets. Owner packs this from
@@ -66,6 +135,12 @@ class DeviceSettingsState {
   /// why: a block that never decoded has no trustworthy baseline, so L4 must
   /// not stage or dirty its controls (flow.drawio "Layer 5", decode-error box).
   final Set<String> decodeErrors;
+
+  /// Complete config payloads from the initial settings hydration GETs.
+  ///
+  /// Save operations patch these snapshots instead of querying the device
+  /// again, preserving reserved and firmware-specific bytes.
+  final DeviceSettingsRawBlocks? rawBlocks;
 
   // --- Report rate (matrix: options differ per product) ---
 
@@ -242,6 +317,7 @@ class DeviceSettingsState {
     this.loading = false,
     this.error,
     this.decodeErrors = const <String>{},
+    this.rawBlocks,
     this.reportRateOptions,
     this.reportRateHz,
     this.reportRateLabel,
@@ -371,6 +447,7 @@ class DeviceSettingsState {
     int? rgbSleepTime,
     String? rgbSleepLabel,
     Set<String>? decodeErrors,
+    DeviceSettingsRawBlocks? rawBlocks,
     bool clearError = false,
   }) {
     return DeviceSettingsState(
@@ -384,6 +461,7 @@ class DeviceSettingsState {
       decodeErrors: clearError
           ? const <String>{}
           : (decodeErrors ?? this.decodeErrors),
+      rawBlocks: rawBlocks ?? this.rawBlocks,
       reportRateOptions: reportRateOptions ?? this.reportRateOptions,
       reportRateHz: reportRateHz ?? this.reportRateHz,
       reportRateLabel: reportRateLabel ?? this.reportRateLabel,
@@ -458,6 +536,7 @@ class DeviceSettingsState {
           connectionMode == other.connectionMode &&
           loading == other.loading &&
           error == other.error &&
+          rawBlocks == other.rawBlocks &&
           _listEq(reportRateOptions, other.reportRateOptions) &&
           reportRateHz == other.reportRateHz &&
           reportRateLabel == other.reportRateLabel &&
@@ -521,72 +600,73 @@ class DeviceSettingsState {
 
   @override
   int get hashCode => Object.hashAll([
-        devId,
-        displayName,
-        connectionMode,
-        loading,
-        error,
-        Object.hashAll(reportRateOptions ?? const []),
-        reportRateHz,
-        reportRateLabel,
-        dpiMax,
-        dpiMin,
-        dpiStep,
-        dpiStepMode,
-        dpiMaxLevels,
-        dpiActiveLevelCount,
-        dpiDefaultLevel,
-        Object.hashAll(dpiLevels ?? const []),
-        dpiActiveIndex,
-        dpiRgbPerStage,
-        buttonCount,
-        Object.hashAll(buttons ?? const []),
-        Object.hashAll(mouseActionCatalog ?? const []),
-        Object.hashAll(keyboardActionCatalog ?? const []),
-        Object.hashAll(specialActionCatalog ?? const []),
-        sensorChip,
-        hasSensorTuning,
-        hasAngleTune,
-        Object.hashAll(angleTuneOptions ?? const []),
-        angleTuneOn,
-        angleTune,
-        angleTuneLabel,
-        hasLod,
-        Object.hashAll(lodOptions ?? const []),
-        lodMm,
-        lodLabel,
-        hasPerformance,
-        Object.hashAll(performanceOptions ?? const []),
-        performance,
-        rippleOn,
-        angleSnapOn,
-        hasSleepTime,
-        Object.hashAll(sleepOptions ?? const []),
-        sleepSeconds,
-        sleepLabel,
-        hasButtonDebounce,
-        Object.hashAll(debounceOptions ?? const []),
-        debounceMs,
-        debounceLabel,
-        hasWheelInvert,
-        wheelInvert,
-        hasRgbBacklight,
-        Object.hashAll(rgbModes ?? const []),
-        rgbEnable,
-        rgbModeId,
-        rgbModeLabel,
-        rgbBrightnessLevels,
-        rgbBrightness,
-        rgbBrightnessLabel,
-        rgbSpeedLevels,
-        rgbSpeed,
-        rgbSpeedLabel,
-        rgbR,
-        rgbG,
-        rgbB,
-        rgbSleepTime,
-        rgbSleepLabel,
-      ]);
+    devId,
+    displayName,
+    connectionMode,
+    rawBlocks,
+    loading,
+    error,
+    Object.hashAll(reportRateOptions ?? const []),
+    reportRateHz,
+    reportRateLabel,
+    dpiMax,
+    dpiMin,
+    dpiStep,
+    dpiStepMode,
+    dpiMaxLevels,
+    dpiActiveLevelCount,
+    dpiDefaultLevel,
+    Object.hashAll(dpiLevels ?? const []),
+    dpiActiveIndex,
+    dpiRgbPerStage,
+    buttonCount,
+    Object.hashAll(buttons ?? const []),
+    Object.hashAll(mouseActionCatalog ?? const []),
+    Object.hashAll(keyboardActionCatalog ?? const []),
+    Object.hashAll(specialActionCatalog ?? const []),
+    sensorChip,
+    hasSensorTuning,
+    hasAngleTune,
+    Object.hashAll(angleTuneOptions ?? const []),
+    angleTuneOn,
+    angleTune,
+    angleTuneLabel,
+    hasLod,
+    Object.hashAll(lodOptions ?? const []),
+    lodMm,
+    lodLabel,
+    hasPerformance,
+    Object.hashAll(performanceOptions ?? const []),
+    performance,
+    rippleOn,
+    angleSnapOn,
+    hasSleepTime,
+    Object.hashAll(sleepOptions ?? const []),
+    sleepSeconds,
+    sleepLabel,
+    hasButtonDebounce,
+    Object.hashAll(debounceOptions ?? const []),
+    debounceMs,
+    debounceLabel,
+    hasWheelInvert,
+    wheelInvert,
+    hasRgbBacklight,
+    Object.hashAll(rgbModes ?? const []),
+    rgbEnable,
+    rgbModeId,
+    rgbModeLabel,
+    rgbBrightnessLevels,
+    rgbBrightness,
+    rgbBrightnessLabel,
+    rgbSpeedLevels,
+    rgbSpeed,
+    rgbSpeedLabel,
+    rgbR,
+    rgbG,
+    rgbB,
+    rgbSleepTime,
+    rgbSleepLabel,
+  ]);
 }
 
 /// One DPI stage row (data only). [value] = wire X; [y] = wire Y when known.
@@ -715,19 +795,19 @@ class ButtonData {
 
   @override
   int get hashCode => Object.hash(
-        id,
-        labelKey,
-        remappable,
-        hotspotX,
-        hotspotY,
-        hotspotR,
-        buttonLabel,
-        actionLabel,
-        action,
-        param1,
-        param2,
-        param3,
-      );
+    id,
+    labelKey,
+    remappable,
+    hotspotX,
+    hotspotY,
+    hotspotR,
+    buttonLabel,
+    actionLabel,
+    action,
+    param1,
+    param2,
+    param3,
+  );
 }
 
 /// One RGB mode option (data only).

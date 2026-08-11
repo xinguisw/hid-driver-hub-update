@@ -138,11 +138,16 @@ class DpiRgbEntry {
 /// addrs 0xC6 — DPI RGB (len 24 = 8 × RGB).
 class DpiRgbResult {
   final List<DpiRgbEntry> stages;
+  final Uint8List data;
   final Uint8List raw;
-  const DpiRgbResult({required this.stages, required this.raw});
+  const DpiRgbResult({
+    required this.stages,
+    required this.data,
+    required this.raw,
+  });
 }
 
-/// addrs 0xD4 — sensor + other (len 14).
+/// addrs 0xD4 — sensor + other (len 18).
 class SensorOtherResult {
   final int rippleControl;
   final int angleSnap;
@@ -188,6 +193,7 @@ class RgbBacklightResult {
   final int g;
   final int b;
   final int sleepTime;
+
   /// Decoded eight-byte E2 payload, kept separate from the full HID frame.
   final Uint8List data;
   final Uint8List raw;
@@ -581,22 +587,15 @@ class MouseProtocol implements DeviceProtocol {
       );
     }
     final wireButtons = buttonMappingUiToWire(buttons);
-    final frame = Uint8List(_frameLength);
-    frame[_opOff] = _setOpcode;
-    frame[_addrsOff] = addrsButtonMapping;
-    frame[_lenOff] = configCrcPayloadLength;
-    var o = _dataOff;
+    final dataBlock = Uint8List(configCrcPayloadLength);
+    var o = 0;
     for (final b in wireButtons) {
-      frame[o++] = b.action & 0xFF;
-      frame[o++] = b.param1 & 0xFF;
-      frame[o++] = b.param2 & 0xFF;
-      frame[o++] = b.param3 & 0xFF;
+      dataBlock[o++] = b.action & 0xFF;
+      dataBlock[o++] = b.param1 & 0xFF;
+      dataBlock[o++] = b.param2 & 0xFF;
+      dataBlock[o++] = b.param3 & 0xFF;
     }
-    final payload = frame.sublist(_dataOff, _dataOff + configCrcPayloadLength);
-    final crc = const Crc16().bytes(payload);
-    frame[_dataOff + configCrcPayloadLength] = crc[0];
-    frame[_dataOff + configCrcPayloadLength + 1] = crc[1];
-    return frame;
+    return _buildConfigSetFrame(addrsButtonMapping, dataBlock);
   }
 
   @override
@@ -626,7 +625,10 @@ class MouseProtocol implements DeviceProtocol {
 
     // Log SET frame: data bytes + CRC
     final setData = ask.sublist(_dataOff, _dataOff + 3);
-    final setCrc = ask.sublist(_dataOff + 3, _dataOff + 5);
+    final setCrc = ask.sublist(
+      _dataOff + configCrcPayloadLength,
+      _dataOff + configCrcPayloadLength + 2,
+    );
     debugPrint(
       '[proto] $label: SET addrs=0x${addrsReportRateDpi.toRadixString(16)} '
       'data=${_hex(setData)} crc=${_hex(setCrc)}',
@@ -680,18 +682,7 @@ class MouseProtocol implements DeviceProtocol {
         'report rate SET requires exactly 3 bytes',
       );
     }
-    final frame = Uint8List(_frameLength);
-    frame[_opOff] = _setOpcode;
-    frame[_addrsOff] = addrsReportRateDpi;
-    frame[_lenOff] = 3;
-    frame[_dataOff] = dataBlock[0];
-    frame[_dataOff + 1] = dataBlock[1];
-    frame[_dataOff + 2] = dataBlock[2];
-    final payload = frame.sublist(_dataOff, _dataOff + 3);
-    final crc = const Crc16().bytes(payload);
-    frame[_dataOff + 3] = crc[0];
-    frame[_dataOff + 4] = crc[1];
-    return frame;
+    return _buildConfigSetFrame(addrsReportRateDpi, dataBlock);
   }
 
   @override
@@ -719,21 +710,12 @@ class MouseProtocol implements DeviceProtocol {
         'DPI table SET requires exactly 16 bytes',
       );
     }
-    final frame = Uint8List(_frameLength);
-    frame[_opOff] = _setOpcode;
-    frame[_addrsOff] = addrsDpiTable;
-    frame[_lenOff] = 16;
-    for (var i = 0; i < 16; i++) {
-      frame[_dataOff + i] = dataBlock[i];
-    }
+    final frame = _buildConfigSetFrame(addrsDpiTable, dataBlock);
     final payload = frame.sublist(_dataOff, _dataOff + 16);
-    final crc = const Crc16().bytes(payload);
-    frame[_dataOff + 16] = crc[0];
-    frame[_dataOff + 17] = crc[1];
 
     debugPrint(
       '[proto] $label: SET addrs=0x${addrsDpiTable.toRadixString(16)} '
-      'data=${_hex(payload)} crc=${_hex(crc)}',
+      'data=${_hex(payload)} crc=${_hex(frame.sublist(29, 31))}',
     );
 
     final ack = await session.sendAndWait(
@@ -746,7 +728,6 @@ class MouseProtocol implements DeviceProtocol {
 
     validateConfigAckFrame(ack, addrs: addrsDpiTable, label: label);
     verifyConfigAckCrc(ack, label: label);
-    debugPrint('[proto] $label: SET ack ${_hex(ack)} (${ack.length}B)');
   }
 
   @override
@@ -757,7 +738,7 @@ class MouseProtocol implements DeviceProtocol {
     for (var i = 0; i + 2 < data.length && stages.length < 8; i += 3) {
       stages.add(DpiRgbEntry(r: data[i], g: data[i + 1], b: data[i + 2]));
     }
-    return DpiRgbResult(stages: stages, raw: raw);
+    return DpiRgbResult(stages: stages, data: data, raw: raw);
   }
 
   @override
@@ -770,21 +751,12 @@ class MouseProtocol implements DeviceProtocol {
         'DPI RGB SET requires exactly 24 bytes (8 stages x R,G,B)',
       );
     }
-    final frame = Uint8List(_frameLength);
-    frame[_opOff] = _setOpcode;
-    frame[_addrsOff] = addrsDpiRgb;
-    frame[_lenOff] = 24;
-    for (var i = 0; i < 24; i++) {
-      frame[_dataOff + i] = dataBlock[i];
-    }
+    final frame = _buildConfigSetFrame(addrsDpiRgb, dataBlock);
     final payload = frame.sublist(_dataOff, _dataOff + 24);
-    final crc = const Crc16().bytes(payload);
-    frame[_dataOff + 24] = crc[0];
-    frame[_dataOff + 25] = crc[1];
 
     debugPrint(
       '[proto] $label: SET addrs=0x${addrsDpiRgb.toRadixString(16)} '
-      'data=${_hex(payload)} crc=${_hex(crc)}',
+      'data=${_hex(payload)} crc=${_hex(frame.sublist(29, 31))}',
     );
 
     final ack = await session.sendAndWait(
@@ -839,21 +811,12 @@ class MouseProtocol implements DeviceProtocol {
         'sensor/other SET requires exactly 18 bytes',
       );
     }
-    final frame = Uint8List(_frameLength);
-    frame[_opOff] = _setOpcode;
-    frame[_addrsOff] = addrsSensorOther;
-    frame[_lenOff] = 18;
-    for (var i = 0; i < 18; i++) {
-      frame[_dataOff + i] = dataBlock[i];
-    }
+    final frame = _buildConfigSetFrame(addrsSensorOther, dataBlock);
     final payload = frame.sublist(_dataOff, _dataOff + 18);
-    final crc = const Crc16().bytes(payload);
-    frame[_dataOff + 18] = crc[0];
-    frame[_dataOff + 19] = crc[1];
 
     debugPrint(
       '[proto] $label: SET addrs=0x${addrsSensorOther.toRadixString(16)} '
-      'data=${_hex(payload)} crc=${_hex(crc)}',
+      'data=${_hex(payload)} crc=${_hex(frame.sublist(29, 31))}',
     );
 
     final ack = await session.sendAndWait(
@@ -868,7 +831,7 @@ class MouseProtocol implements DeviceProtocol {
     final body = stripReportId(ack);
     final op = body.isEmpty ? -1 : body[_opOff];
     if (op == _getOpcode || op == _setOpcode) {
-      final ackData = body.sublist(_dataOff, _dataOff + 14);
+      final ackData = body.sublist(_dataOff, _dataOff + 18);
       final ackCrc = body.sublist(body.length - 2, body.length);
       debugPrint(
         '[proto] $label: ACK data=${_hex(ackData)} crc=${_hex(ackCrc)}',
@@ -916,7 +879,8 @@ class MouseProtocol implements DeviceProtocol {
   /// Pure 0xE2 SET frame builder (no session) — extracted for unit tests.
   ///
   /// 32-byte body: `[0x08][0][0][0xE2][8][8 data bytes][zeros…][CRC lo][CRC hi]`.
-  /// CRC16-Modbus over the 8 data bytes (offsets 5..12), stored at 13..14.
+  /// CRC16-Modbus covers the fixed 24-byte payload at body offsets 5..28 and
+  /// is stored at body offsets 29..30, equivalent to raw HID offsets 30..31.
   static Uint8List buildRgbBacklightSetFrame(Uint8List dataBlock) {
     if (dataBlock.length != 8) {
       throw ArgumentError.value(
@@ -925,18 +889,7 @@ class MouseProtocol implements DeviceProtocol {
         'RGB backlight SET requires exactly 8 bytes',
       );
     }
-    final frame = Uint8List(_frameLength);
-    frame[_opOff] = _setOpcode;
-    frame[_addrsOff] = addrsRgbBacklight;
-    frame[_lenOff] = 8;
-    for (var i = 0; i < 8; i++) {
-      frame[_dataOff + i] = dataBlock[i];
-    }
-    final payload = frame.sublist(_dataOff, _dataOff + 8);
-    final crc = const Crc16().bytes(payload);
-    frame[_dataOff + 8] = crc[0];
-    frame[_dataOff + 9] = crc[1];
-    return frame;
+    return _buildConfigSetFrame(addrsRgbBacklight, dataBlock);
   }
 
   @override
@@ -950,7 +903,7 @@ class MouseProtocol implements DeviceProtocol {
 
     debugPrint(
       '[proto] $label: SET addrs=0x${addrsRgbBacklight.toRadixString(16)} '
-      'data=${_hex(payload)} crc=${_hex(frame.sublist(_dataOff + 8, _dataOff + 10))}',
+      'data=${_hex(payload)} crc=${_hex(frame.sublist(29, 31))}',
     );
 
     final ack = await session.sendAndWait(
@@ -1051,6 +1004,33 @@ class MouseProtocol implements DeviceProtocol {
       return Uint8List.fromList(raw.sublist(1));
     }
     return raw;
+  }
+
+  /// Builds a config SET body with the protocol's fixed 24-byte CRC payload.
+  ///
+  /// The length field describes the meaningful bytes, but the CRC always
+  /// covers dat[0..23] and is stored in the final two data positions. This
+  /// body is sent with report id 0x07 by the transport, so those positions are
+  /// desktop raw offsets 30 and 31.
+  static Uint8List _buildConfigSetFrame(int addrs, Uint8List dataBlock) {
+    if (dataBlock.length > configCrcPayloadLength) {
+      throw ArgumentError.value(
+        dataBlock.length,
+        'dataBlock.length',
+        'config SET data cannot exceed $configCrcPayloadLength bytes',
+      );
+    }
+    final frame = Uint8List(_frameLength);
+    frame[_opOff] = _setOpcode;
+    frame[_addrsOff] = addrs;
+    frame[_lenOff] = dataBlock.length;
+    frame.setRange(_dataOff, _dataOff + dataBlock.length, dataBlock);
+
+    final payload = frame.sublist(_dataOff, _dataOff + configCrcPayloadLength);
+    final crc = const Crc16().bytes(payload);
+    frame[_dataOff + configCrcPayloadLength] = crc[0];
+    frame[_dataOff + configCrcPayloadLength + 1] = crc[1];
+    return frame;
   }
 
   /// GET ask: opcode 0x07, addrs set, len 0 (sheet: request only needs addrs).

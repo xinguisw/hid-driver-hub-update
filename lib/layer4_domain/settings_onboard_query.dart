@@ -156,6 +156,13 @@ Future<DeviceSettingsState> queryOnboardConfig(
         dpiActiveIndex: currentLevel,
         dpiActiveLevelCount: activeCount,
         dpiLevels: filteredSeed ?? state.dpiLevels,
+        rawBlocks: (state.rawBlocks ?? DeviceSettingsRawBlocks()).copyWith(
+          reportRateDpi: Uint8List.fromList([
+            info.reportRate,
+            info.dpiCurrentLevel,
+            info.dpiActiveLevel,
+          ]),
+        ),
       );
       debugPrint(
         '[settings] config reportRateDpi $name: '
@@ -231,7 +238,12 @@ Future<DeviceSettingsState> queryOnboardConfig(
         );
       }
       dpiLevels = decodedLevels;
-      state = state.copyWith(dpiLevels: dpiLevels);
+      state = state.copyWith(
+        dpiLevels: dpiLevels,
+        rawBlocks: (state.rawBlocks ?? DeviceSettingsRawBlocks()).copyWith(
+          dpiTable: table.data,
+        ),
+      );
       debugPrint(
         '[settings] config dpiTable $name: stages=${table.stages.length} '
         'active=${decodedLevels.length} '
@@ -249,27 +261,34 @@ Future<DeviceSettingsState> queryOnboardConfig(
 
   try {
     final rgb = await session.queryDpiRgb();
-    if (rgb != null && dpiLevels != null) {
-      // Colors only matter when product matrix allows per-stage RGB.
-      // Map by hardware stage index (level - 1), not filtered list index.
-      final useColors = !hasCaps || state.dpiRgbPerStage;
-      final merged = <DpiStageData>[
-        for (final d in dpiLevels)
-          DpiStageData(
-            level: d.level,
-            value: d.value,
-            y: d.y,
-            color: () {
-              if (!useColors) return d.color;
-              final hi = d.level - 1;
-              if (hi < 0 || hi >= rgb.stages.length) return d.color;
-              final c = rgb.stages[hi];
-              return _rgbHex(c.r, c.g, c.b);
-            }(),
-          ),
-      ];
-      state = state.copyWith(dpiLevels: merged);
-      debugPrint('[settings] config dpiRgb $name: ok useColors=$useColors');
+    if (rgb != null) {
+      state = state.copyWith(
+        rawBlocks: (state.rawBlocks ?? DeviceSettingsRawBlocks()).copyWith(
+          dpiRgb: rgb.data,
+        ),
+      );
+      if (dpiLevels != null) {
+        // Colors only matter when product matrix allows per-stage RGB.
+        // Map by hardware stage index (level - 1), not filtered list index.
+        final useColors = !hasCaps || state.dpiRgbPerStage;
+        final merged = <DpiStageData>[
+          for (final d in dpiLevels)
+            DpiStageData(
+              level: d.level,
+              value: d.value,
+              y: d.y,
+              color: () {
+                if (!useColors) return d.color;
+                final hi = d.level - 1;
+                if (hi < 0 || hi >= rgb.stages.length) return d.color;
+                final c = rgb.stages[hi];
+                return _rgbHex(c.r, c.g, c.b);
+              }(),
+            ),
+        ];
+        state = state.copyWith(dpiLevels: merged);
+        debugPrint('[settings] config dpiRgb $name: ok useColors=$useColors');
+      }
     }
   } catch (e) {
     final fatal = _settingsLoadFatal(e, name, 'dpiRgb');
@@ -336,6 +355,9 @@ Future<DeviceSettingsState> queryOnboardConfig(
         wheelInvert: (showAll || state.hasWheelInvert)
             ? translate.triStateWireToBool(sensor.wheelDirection)
             : state.wheelInvert,
+        rawBlocks: (state.rawBlocks ?? DeviceSettingsRawBlocks()).copyWith(
+          sensorOther: sensor.data,
+        ),
       );
       if (showAll) {
         // No matrix: keep previous "show whatever GET returned" behavior.
@@ -363,6 +385,11 @@ Future<DeviceSettingsState> queryOnboardConfig(
     final light = await session.queryRgbBacklight();
     if (light != null) {
       final showRgb = !hasCaps || state.hasRgbBacklight;
+      state = state.copyWith(
+        rawBlocks: (state.rawBlocks ?? DeviceSettingsRawBlocks()).copyWith(
+          rgbBacklight: light.data,
+        ),
+      );
       if (showRgb) {
         // why: L5 labels + tri-state; wire ids kept for later SET.
         const translate = TranslationCodec();

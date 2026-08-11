@@ -4,6 +4,17 @@ import 'package:flutter/services.dart' show rootBundle;
 
 import 'package:driver_hub/layer2_capabilities/dpi_wire_profile.dart';
 
+/// Protocol conversion parameters consumed by Layer 5 macro encoding.
+///
+/// These values are capability data, not presentation constants. Layer 3 and
+/// Layer 4 use the semantic wheel actions exposed by [MacroAction].
+class MacroWireActions {
+  const MacroWireActions._();
+
+  static const wheelUp = 0xC6;
+  static const wheelDown = 0xC7;
+}
+
 /// Capabilities of a supported device.
 ///
 /// Product data lives per mouse: [assets/catalog/mouse/{modelSlug}.json]
@@ -144,6 +155,7 @@ class ReportRateCapabilities {
 
 class DpiCapabilities {
   final int maxLevels;
+
   /// Number of DPI stages enabled by the product's default configuration.
   final int activeLevelCount;
   final int defaultLevel;
@@ -528,6 +540,7 @@ class ButtonDebounce {
 
 class SleepTime {
   final bool present;
+
   /// Default option wire index from the product capability description.
   final int defaultWire;
   final List<OptionPair> options;

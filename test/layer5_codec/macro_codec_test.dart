@@ -27,25 +27,28 @@ void main() {
     expect(transfer.sublist(67), crc);
   });
 
-  test('encodes wheel actions as F6/F7 make+break mouse events', () {
-    final wheelMacro = macro.copyWith(
-      actions: const [
-        MacroAction(keyCode: 0xF6, isBreak: false, delay: 1),
-        MacroAction(keyCode: 0xF6, isBreak: true, delay: 0),
-        MacroAction(keyCode: 0xF7, isBreak: false, delay: 1),
-        MacroAction(keyCode: 0xF7, isBreak: true, delay: 0),
+  test('encodes wheel actions as C6/C7 make+break mouse events', () {
+    final wheelMacro = MacroTransferDefinition(
+      slot: macro.slot,
+      modeWire: macro.modeWire,
+      loopTimes: macro.loopTimes,
+      actions: [
+        MacroTransferAction(keyCode: 0xC6, isBreak: false, delay: 1),
+        MacroTransferAction(keyCode: 0xC6, isBreak: true, delay: 0),
+        MacroTransferAction(keyCode: 0xC7, isBreak: false, delay: 1),
+        MacroTransferAction(keyCode: 0xC7, isBreak: true, delay: 0),
       ],
     );
 
     expect(MacroTransferCodec.encodePacket(wheelMacro).sublist(7, 15), [
       0x01,
-      0xF6,
+      0xC6,
       0x80,
-      0xF6,
+      0xC6,
       0x01,
-      0xF7,
+      0xC7,
       0x80,
-      0xF7,
+      0xC7,
     ]);
   });
 

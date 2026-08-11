@@ -1,3 +1,5 @@
+import 'package:driver_hub/layer2_capabilities/capabilities.dart';
+
 /// Wire keyvalue byte → display name, and combo assembly.
 ///
 /// Owned by L5 as a standalone table so [TranslationCodec] (and later SET
@@ -107,7 +109,9 @@ class KeyvalueTable {
     // Mouse
     0xC0: 'DPI', 0xC1: 'Left click', 0xC2: 'Right click',
     0xC3: 'Middle click', 0xC4: 'Mouse button 4',
-    0xC5: 'Mouse button 5', 0xC6: 'Wheel up', 0xC7: 'Wheel down',
+    0xC5: 'Mouse button 5',
+    MacroWireActions.wheelUp: 'Wheel up',
+    MacroWireActions.wheelDown: 'Wheel down',
 
     // Tool
     0xC8: 'Device power', 0xC9: 'Bind', 0xCA: 'Keyboard', 0xCB: 'Lock',

@@ -1,3 +1,5 @@
+import 'package:driver_hub/layer2_capabilities/capabilities.dart';
+
 /// Domain representation of one Telink B80 macro.
 ///
 /// The domain keeps semantic values and does not know the HID frame layout.
@@ -32,6 +34,27 @@ class MacroAction {
     required this.delay,
     this.label,
   });
+  const MacroAction.wheelUp({
+    required bool isBreak,
+    required int delay,
+    String? label,
+  }) : this(
+         keyCode: MacroWireActions.wheelUp,
+         isBreak: isBreak,
+         delay: delay,
+         label: label,
+       );
+
+  const MacroAction.wheelDown({
+    required bool isBreak,
+    required int delay,
+    String? label,
+  }) : this(
+         keyCode: MacroWireActions.wheelDown,
+         isBreak: isBreak,
+         delay: delay,
+         label: label,
+       );
 
   /// Keyboard, mouse, or timing-special code from the protocol reference.
   final int keyCode;
@@ -202,8 +225,13 @@ List<String> validateMacro(MacroDefinition macro) {
     final isKeyboard =
         (action.keyCode >= 0x04 && action.keyCode <= 0xA4) ||
         (action.keyCode >= 0xE0 && action.keyCode <= 0xE7);
-    // Protocol MacroAction key_code: 0xF1–0xF7 = mouse event.
-    final isMouse = action.keyCode >= 0xF1 && action.keyCode <= 0xF7;
+    // Existing macro mouse-button values remain F1-F5. Layer 2 owns the
+    // device conversion parameters for the C6/C7 wheel actions.
+    final isMouseButton = action.keyCode >= 0xF1 && action.keyCode <= 0xF5;
+    final isMouseWheel =
+        action.keyCode == MacroWireActions.wheelUp ||
+        action.keyCode == MacroWireActions.wheelDown;
+    final isMouse = isMouseButton || isMouseWheel;
     final isTiming = action.keyCode >= 0x01 && action.keyCode <= 0x03;
     if (!isKeyboard && !isMouse && !isTiming) {
       errors.add('Action ${i + 1} has an unsupported key code');

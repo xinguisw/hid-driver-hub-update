@@ -7,6 +7,8 @@ import 'package:driver_hub/layer4_domain/models/macro.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../test_support/fake_device_runtime.dart';
+
 void main() {
   testWidgets(
     'hub entry preloads macros before Button Mapping reads the catalog',
@@ -50,6 +52,7 @@ void main() {
 
         expect(scope.macrosFor(_card), hasLength(1));
         expect(scope.macrosFor(_card).single.name, 'M1');
+        expect(find.text('Backlight Setting'), findsOneWidget);
       } finally {
         await scope.dispose();
       }
@@ -71,7 +74,11 @@ const _card = DiscoveredCardState(
 
 class _ConnectedDeviceScope extends DeviceScope {
   _ConnectedDeviceScope(MacroRepository repository)
-    : super(macroRepository: repository);
+    : super.forTesting(
+        runtime: const FakeDeviceRuntime(),
+        macroRepository: repository,
+        appSettingsRepository: MemoryAppSettingsRepository(),
+      );
 
   @override
   bool isCardConnected(DiscoveredCardState card) => true;
@@ -84,6 +91,7 @@ class _ConnectedDeviceScope extends DeviceScope {
       devId: card.devId,
       displayName: card.displayName,
       connectionMode: card.connectionMode,
+      hasRgbBacklight: true,
     );
   }
 }

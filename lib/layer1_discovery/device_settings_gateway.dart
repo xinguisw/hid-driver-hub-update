@@ -71,7 +71,32 @@ abstract interface class DeviceSettingsGateway {
 
   Future<void> setSensorOther(Uint8List dataBlock);
 
+  Future<Uint8List> setSensorOtherPatch(
+    Uint8List currentBlock, {
+    bool? rippleEnabled,
+    bool? angleSnapEnabled,
+    bool? angleTuneEnabled,
+    int? angleTuneWire,
+    int? lodWire,
+    int? performanceWire,
+    int? debounceWire,
+    int? sleepWire,
+    bool? wheelInvert,
+  });
+
   Future<void> setRgbBacklight(Uint8List dataBlock);
+
+  Future<Uint8List> setRgbBacklightPatch(
+    Uint8List currentBlock, {
+    bool? enabled,
+    int? modeId,
+    int? brightness,
+    int? speed,
+    int? red,
+    int? green,
+    int? blue,
+    int? sleepWire,
+  });
 
   Future<void> setMacro(MacroTransferDefinition macro);
 }

@@ -172,25 +172,31 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
         child: Scaffold(
           body: Row(
             children: [
-              HubLeftSidebar(
-                card: selected,
-                selectedIndex: _selectedIndex,
-                onDestinationSelected: (index) {
-                  // FR-OPS-005: dirty sweep when navigating away from button mapping
-                  if (_selectedIndex == _buttonMappingIndex &&
-                      index != _buttonMappingIndex) {
-                    _settingsBloc.add(
-                      const DeviceSettingsNavigationRequested(),
-                    );
-                  }
-                  setState(() {
-                    _selectedIndex = index;
-                    if (index != _buttonMappingIndex) {
-                      _selectedButtonId = null;
+              BlocBuilder<DeviceSettingsBloc, DeviceSettingsViewState>(
+                buildWhen: (previous, next) =>
+                    previous.synced?.hasRgbBacklight !=
+                    next.synced?.hasRgbBacklight,
+                builder: (context, view) => HubLeftSidebar(
+                  card: selected,
+                  selectedIndex: _selectedIndex,
+                  hasRgbBacklight: view.synced?.hasRgbBacklight ?? false,
+                  onDestinationSelected: (index) {
+                    // FR-OPS-005: dirty sweep when navigating away from button mapping
+                    if (_selectedIndex == _buttonMappingIndex &&
+                        index != _buttonMappingIndex) {
+                      _settingsBloc.add(
+                        const DeviceSettingsNavigationRequested(),
+                      );
                     }
-                  });
-                },
-                onDeviceTap: () => Navigator.of(context).maybePop(),
+                    setState(() {
+                      _selectedIndex = index;
+                      if (index != _buttonMappingIndex) {
+                        _selectedButtonId = null;
+                      }
+                    });
+                  },
+                  onDeviceTap: () => Navigator.of(context).maybePop(),
+                ),
               ),
               const VerticalDivider(thickness: 1, width: 1),
               if (_selectedIndex == _buttonMappingIndex)

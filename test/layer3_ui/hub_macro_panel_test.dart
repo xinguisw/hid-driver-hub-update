@@ -228,7 +228,12 @@ void main() {
           ],
         ),
       ]);
-      final scope = DeviceScope(macroRepository: repository);
+      final scope = DeviceScope(
+        runtime: const FakeDeviceRuntime(),
+        macroRepository: repository,
+        appSettingsRepository: MemoryAppSettingsRepository(),
+      );
+      addTearDown(scope.dispose);
       const card = DiscoveredCardState(
         devId: '03AA',
         displayName: 'M7X PRO',

@@ -16,7 +16,6 @@ import 'package:driver_hub/layer4_domain/macro_repository.dart';
 import 'package:driver_hub/layer4_domain/low_battery_alert_policy.dart';
 import 'package:driver_hub/layer4_domain/settings_onboard_query.dart';
 import 'package:driver_hub/layer5_codec/codecs/osd_codec.dart';
-import 'package:driver_hub/layer5_codec/codecs/telink_b80_config_block_codec.dart';
 import 'package:driver_hub/layer5_codec/codecs/translation_codec.dart';
 import 'package:driver_hub/layer5_codec/device_protocol.dart';
 import 'package:driver_hub/layer5_codec/macro_codec.dart';
@@ -35,6 +34,14 @@ class DeviceScope {
     required MacroRepository macroRepository,
     required AppSettingsRepository appSettingsRepository,
   }) => DeviceScope._(runtime, macroRepository, appSettingsRepository);
+
+  /// Named generative entry point for tests that need to override the domain
+  /// boundary while still supplying the real runtime dependencies.
+  DeviceScope.forTesting({
+    required DeviceRuntime runtime,
+    required MacroRepository macroRepository,
+    required AppSettingsRepository appSettingsRepository,
+  }) : this._(runtime, macroRepository, appSettingsRepository);
 
   DeviceScope._(
     this._runtime,
@@ -408,6 +415,65 @@ class DeviceScope {
     await session.setButtonMapping(entries);
   }
 
+  DeviceSettingsRawBlocks _requireRawBlocks(
+    DiscoveredCardState card,
+    String operation,
+  ) {
+    final path = _pathForCard(card);
+    final raw = path == null ? null : _settings[path]?.rawBlocks;
+    if (raw == null) {
+      throw StateError(
+        '$operation: raw settings snapshot unavailable; reload settings',
+      );
+    }
+    return raw;
+  }
+
+  void _updateRawBlocks(DiscoveredCardState card, DeviceSettingsRawBlocks raw) {
+    final path = _pathForCard(card);
+    final current = path == null ? null : _settings[path];
+    if (path != null && current != null) {
+      _settings[path] = current.copyWith(rawBlocks: raw);
+    }
+  }
+
+  Future<void> _commitSensorOtherPatch(
+    DiscoveredCardState card,
+    String operation, {
+    bool? rippleEnabled,
+    bool? angleSnapEnabled,
+    bool? angleTuneEnabled,
+    int? angleTuneWire,
+    int? lodWire,
+    int? performanceWire,
+    int? debounceWire,
+    int? sleepWire,
+    bool? wheelInvert,
+  }) async {
+    final session = _sessionForCard(card);
+    if (session == null || !session.isAlive) {
+      throw StateError('$operation: no session');
+    }
+    final raw = _requireRawBlocks(card, operation);
+    final d4 = raw.sensorOther;
+    if (d4 == null || d4.length != 18) {
+      throw StateError('$operation: D4 raw block is unavailable');
+    }
+    final dataBlock = await session.setSensorOtherPatch(
+      d4,
+      rippleEnabled: rippleEnabled,
+      angleSnapEnabled: angleSnapEnabled,
+      angleTuneEnabled: angleTuneEnabled,
+      angleTuneWire: angleTuneWire,
+      lodWire: lodWire,
+      performanceWire: performanceWire,
+      debounceWire: debounceWire,
+      sleepWire: sleepWire,
+      wheelInvert: wheelInvert,
+    );
+    _updateRawBlocks(card, raw.copyWith(sensorOther: dataBlock));
+  }
+
   Future<void> commitReportRate(
     DiscoveredCardState card,
     int reportRateHz,
@@ -417,26 +483,21 @@ class DeviceScope {
       throw StateError('commitReportRate: no session');
     }
 
-    // Convert Hz to wire value
     const translate = TranslationCodec();
     final wireValue = translate.reportRateHzToWire(reportRateHz);
     if (wireValue == null) {
       throw StateError('Unknown report rate Hz: $reportRateHz');
     }
 
-    // Read current 3-byte block from device
-    final currentBlock = await session.queryReportRateDpiInfo();
-    if (currentBlock == null) {
-      throw StateError('Failed to read current report rate block');
+    final raw = _requireRawBlocks(card, 'commitReportRate');
+    final c2 = raw.reportRateDpi;
+    if (c2 == null || c2.length != 3) {
+      throw StateError('commitReportRate: C2 raw block is unavailable');
     }
-
-    // Build new block: [newReportRateWire, currentDpiLevel, currentDpiActive]
-    final dataBlock = Uint8List(3);
+    final dataBlock = Uint8List.fromList(c2);
     dataBlock[0] = wireValue;
-    dataBlock[1] = currentBlock.dpiCurrentLevel;
-    dataBlock[2] = currentBlock.dpiActiveLevel;
-
     await session.setReportRate(dataBlock);
+    _updateRawBlocks(card, raw.copyWith(reportRateDpi: dataBlock));
   }
 
   Future<void> commitDpiLevel(DiscoveredCardState card, int dpiLevel) async {
@@ -445,33 +506,27 @@ class DeviceScope {
       throw StateError('commitDpiLevel: no session');
     }
 
-    // Convert 1-based display level to 0-based wire value
     const translate = TranslationCodec();
     final wireValue = translate.dpiCurrentLevelDisplayToWire(dpiLevel);
     if (wireValue == null) {
       throw StateError('Invalid DPI level: $dpiLevel');
     }
 
-    // Read current 3-byte block from device
-    final currentBlock = await session.queryReportRateDpiInfo();
-    if (currentBlock == null) {
-      throw StateError('Failed to read current DPI block');
+    final raw = _requireRawBlocks(card, 'commitDpiLevel');
+    final c2 = raw.reportRateDpi;
+    if (c2 == null || c2.length != 3) {
+      throw StateError('commitDpiLevel: C2 raw block is unavailable');
     }
-
-    // Build new block: [currentReportRateWire, newDpiLevelWire, currentDpiActive]
-    final dataBlock = Uint8List(3);
-    dataBlock[0] = currentBlock.reportRate;
+    final dataBlock = Uint8List.fromList(c2);
     dataBlock[1] = wireValue;
-    dataBlock[2] = currentBlock.dpiActiveLevel;
-
     await session.setReportRate(dataBlock);
+    _updateRawBlocks(card, raw.copyWith(reportRateDpi: dataBlock));
   }
 
   /// Commits staged DPI value changes into the 0xC4 table.
   ///
-  /// Reads the current table, encodes each staged level's DPI number to wire
-  /// bytes using the device's sensor encoding, and writes the full 16-byte
-  /// block back (read-before-write; the C4 table is a shared block).
+  /// Encodes each staged level into the hydrated 16-byte snapshot and writes
+  /// the complete shared block back.
   Future<void> commitDpiValues(
     DiscoveredCardState card,
     Map<int, int> levelValues,
@@ -489,13 +544,14 @@ class DeviceScope {
       );
     }
 
-    final current = await session.queryDpiTable();
-    if (current == null) {
-      throw StateError('Failed to read current DPI table');
+    final raw = _requireRawBlocks(card, 'commitDpiValues');
+    final current = raw.dpiTable;
+    if (current == null || current.length != 16) {
+      throw StateError('commitDpiValues: C4 raw block is unavailable');
     }
 
     const translate = TranslationCodec();
-    final dataBlock = Uint8List.fromList(current.data);
+    final dataBlock = Uint8List.fromList(current);
     for (final e in levelValues.entries) {
       final idx = e.key - 1; // 1-based level -> 0-based slot
       if (idx < 0 || idx >= 8) continue;
@@ -509,6 +565,7 @@ class DeviceScope {
     }
 
     await session.setDpiTable(dataBlock);
+    _updateRawBlocks(card, raw.copyWith(dpiTable: dataBlock));
   }
 
   /// Commits the whole rearranged DPI stage list per FR-DPI-003.
@@ -529,6 +586,7 @@ class DeviceScope {
     if (session == null || !session.isAlive) {
       throw StateError('commitDpiStages: no session');
     }
+    final raw = _requireRawBlocks(card, 'commitDpiStages');
 
     final caps = DeviceCapabilityStore.forDevice(card.devId);
     final dpi = caps?.dpi;
@@ -571,6 +629,7 @@ class DeviceScope {
       dataBlock[i * 2 + 1] = wire & 0xFF;
     }
     await session.setDpiTable(dataBlock);
+    _updateRawBlocks(card, raw.copyWith(dpiTable: dataBlock));
 
     // 0xC6 DPI RGB only for per-stage devices (M7X/PRO); M7XSE NAKs the SET.
     if (caps?.dpi?.rgbPerStage ?? false) {
@@ -586,20 +645,24 @@ class DeviceScope {
         rgbBlock[i * 3 + 1] = c[1];
         rgbBlock[i * 3 + 2] = c[2];
       }
+      final rgbRaw = raw.dpiRgb;
+      if (rgbRaw == null || rgbRaw.length != 24) {
+        throw StateError('commitDpiStages: C6 raw block is unavailable');
+      }
       await session.setDpiRgb(rgbBlock);
+      final latestRaw = _requireRawBlocks(card, 'commitDpiStages');
+      _updateRawBlocks(card, latestRaw.copyWith(dpiRgb: rgbBlock));
     }
-
     // 0xC2 active mask: first activeCount bits set.
-    final current = await session.queryReportRateDpiInfo();
-    if (current == null) {
-      throw StateError('Failed to read current report rate/DPI block');
+    final latestRaw = _requireRawBlocks(card, 'commitDpiStages');
+    final c2 = latestRaw.reportRateDpi;
+    if (c2 == null || c2.length != 3) {
+      throw StateError('commitDpiStages: C2 raw block is unavailable');
     }
-    final newMask = (1 << activeCount) - 1;
-    final infoBlock = Uint8List(3);
-    infoBlock[0] = current.reportRate;
-    infoBlock[1] = current.dpiCurrentLevel;
-    infoBlock[2] = newMask;
+    final infoBlock = Uint8List.fromList(c2);
+    infoBlock[2] = (1 << activeCount) - 1;
     await session.setReportRate(infoBlock);
+    _updateRawBlocks(card, latestRaw.copyWith(reportRateDpi: infoBlock));
   }
 
   /// Commits the complete catalog default for the Performance page.
@@ -619,6 +682,7 @@ class DeviceScope {
     if (session == null || !session.isAlive) {
       throw StateError('commitDpiConfigurationDefaults: no session');
     }
+    final raw = _requireRawBlocks(card, 'commitDpiConfigurationDefaults');
 
     final caps = DeviceCapabilityStore.forDevice(card.devId);
     final dpi = caps?.dpi;
@@ -686,6 +750,7 @@ class DeviceScope {
       dataBlock[i * 2 + 1] = wire & 0xFF;
     }
     await session.setDpiTable(dataBlock);
+    _updateRawBlocks(card, raw.copyWith(dpiTable: dataBlock));
 
     if (dpi?.rgbPerStage ?? false) {
       final defaultColor = _defaultDpiColorHex(card);
@@ -701,13 +766,34 @@ class DeviceScope {
         rgbBlock[i * 3 + 1] = rgb[1];
         rgbBlock[i * 3 + 2] = rgb[2];
       }
+      final rgbRaw = raw.dpiRgb;
+      if (rgbRaw == null || rgbRaw.length != 24) {
+        throw StateError(
+          'commitDpiConfigurationDefaults: C6 raw block is unavailable',
+        );
+      }
       await session.setDpiRgb(rgbBlock);
+      final latestRaw = _requireRawBlocks(
+        card,
+        'commitDpiConfigurationDefaults',
+      );
+      _updateRawBlocks(card, latestRaw.copyWith(dpiRgb: rgbBlock));
     }
 
     final activeMask = (1 << activeCount) - 1;
-    await session.setReportRate(
-      Uint8List.fromList([reportRateWire, dpiLevelWire, activeMask]),
-    );
+    final latestRaw = _requireRawBlocks(card, 'commitDpiConfigurationDefaults');
+    final c2 = latestRaw.reportRateDpi;
+    if (c2 == null || c2.length != 3) {
+      throw StateError(
+        'commitDpiConfigurationDefaults: C2 raw block is unavailable',
+      );
+    }
+    final infoBlock = Uint8List.fromList(c2);
+    infoBlock[0] = reportRateWire;
+    infoBlock[1] = dpiLevelWire;
+    infoBlock[2] = activeMask;
+    await session.setReportRate(infoBlock);
+    _updateRawBlocks(card, latestRaw.copyWith(reportRateDpi: infoBlock));
   }
 
   /// Default RGB color (hex) for the refilled slot, from the catalog.
@@ -732,192 +818,95 @@ class DeviceScope {
     ];
   }
 
-  /// Commits ripple control + angle snap into the 14-byte 0xD4 block.
+  /// Commits ripple control + angle snap into the 18-byte 0xD4 block.
   ///
   /// why: sensor tuning shares one block with LOD/debounce/sleep/wheel, so the
-  /// current block is read first and only the two tuning bytes are replaced.
+  /// hydrated raw snapshot is patched and only the two tuning bytes are replaced.
   Future<void> commitSensorTuning(
     DiscoveredCardState card,
     bool rippleControl,
     bool angleSnap,
-  ) async {
-    final session = _sessionForCard(card);
-    if (session == null || !session.isAlive) {
-      throw StateError('commitSensorTuning: no session');
-    }
-
-    final current = await session.querySensorOther();
-    if (current == null) {
-      throw StateError('Failed to read current sensor/other block');
-    }
-
-    final dataBlock = TelinkB80ConfigBlockCodec.patchSensorOther(
-      current.data,
+  ) {
+    return _commitSensorOtherPatch(
+      card,
+      'commitSensorTuning',
       rippleEnabled: rippleControl,
       angleSnapEnabled: angleSnap,
     );
-
-    await session.setSensorOther(dataBlock);
   }
 
   /// Commits the Angle Tune enable flag and value into the D4 block.
   ///
   /// why: angle tune shares one block with ripple/angle snap/LOD/debounce/sleep/wheel,
-  /// so the current block is read first and only the angle tune byte is replaced.
+  /// so the hydrated raw snapshot is patched before SET.
   Future<void> commitAngleTune(
     DiscoveredCardState card,
     bool enabled,
     int wireValue,
-  ) async {
-    final session = _sessionForCard(card);
-    if (session == null || !session.isAlive) {
-      throw StateError('commitAngleTune: no session');
-    }
-
-    final current = await session.querySensorOther();
-    if (current == null) {
-      throw StateError('Failed to read current sensor/other block');
-    }
-
-    final dataBlock = TelinkB80ConfigBlockCodec.patchSensorOther(
-      current.data,
+  ) {
+    return _commitSensorOtherPatch(
+      card,
+      'commitAngleTune',
       angleTuneEnabled: enabled,
       angleTuneWire: wireValue,
     );
-
-    await session.setSensorOther(dataBlock);
   }
 
-  /// Commits the LOD value into the 14-byte 0xD4 block.
+  /// Commits the LOD value into the 18-byte 0xD4 block.
   ///
   /// why: LOD shares one block with ripple/angle snap/angle tune/debounce/sleep/wheel,
-  /// so the current block is read first and only the LOD byte is replaced.
-  Future<void> commitLod(DiscoveredCardState card, int wire) async {
-    final session = _sessionForCard(card);
-    if (session == null || !session.isAlive) {
-      throw StateError('commitLod: no session');
-    }
-
-    final current = await session.querySensorOther();
-    if (current == null) {
-      throw StateError('Failed to read current sensor/other block');
-    }
-
-    final dataBlock = TelinkB80ConfigBlockCodec.patchSensorOther(
-      current.data,
-      lodWire: wire,
-    );
-
-    await session.setSensorOther(dataBlock);
+  /// so the hydrated raw snapshot is patched before SET.
+  Future<void> commitLod(DiscoveredCardState card, int wire) {
+    return _commitSensorOtherPatch(card, 'commitLod', lodWire: wire);
   }
 
-  /// Commits the performance mode into the 14-byte 0xD4 block.
+  /// Commits the performance mode into the 18-byte 0xD4 block.
   ///
   /// TODO(mock): real performance semantics pending; this just writes the
   /// selected wire value into the performance byte.
-  Future<void> commitPerformance(DiscoveredCardState card, int wire) async {
-    final session = _sessionForCard(card);
-    if (session == null || !session.isAlive) {
-      throw StateError('commitPerformance: no session');
-    }
-
-    final current = await session.querySensorOther();
-    if (current == null) {
-      throw StateError('Failed to read current sensor/other block');
-    }
-
-    final dataBlock = TelinkB80ConfigBlockCodec.patchSensorOther(
-      current.data,
+  Future<void> commitPerformance(DiscoveredCardState card, int wire) {
+    return _commitSensorOtherPatch(
+      card,
+      'commitPerformance',
       performanceWire: wire,
     );
-
-    await session.setSensorOther(dataBlock);
   }
 
-  /// Commits the button debounce index into the 14-byte 0xD4 block.
+  /// Commits the button debounce index into the 18-byte 0xD4 block.
   ///
-  /// why: debounce is at byte index 11, per the 14-byte layout
-  /// [... performance(4), 0..0, debounce(11), sleep(12), wheel(13)].
-  Future<void> commitDebounce(DiscoveredCardState card, int wire) async {
-    final session = _sessionForCard(card);
-    if (session == null || !session.isAlive) {
-      throw StateError('commitDebounce: no session');
-    }
-
-    final current = await session.querySensorOther();
-    if (current == null) {
-      throw StateError('Failed to read current sensor/other block');
-    }
-
-    final dataBlock = TelinkB80ConfigBlockCodec.patchSensorOther(
-      current.data,
-      debounceWire: wire,
-    );
-
-    await session.setSensorOther(dataBlock);
+  /// why: debounce is at byte index 13, per the 18-byte layout.
+  Future<void> commitDebounce(DiscoveredCardState card, int wire) {
+    return _commitSensorOtherPatch(card, 'commitDebounce', debounceWire: wire);
   }
 
-  /// Commits the sleep time index into the 14-byte 0xD4 block.
+  /// Commits the sleep time index into the 18-byte 0xD4 block.
   ///
-  /// why: sleep is at byte index 12, per the 14-byte layout.
-  Future<void> commitSleep(DiscoveredCardState card, int wire) async {
-    final session = _sessionForCard(card);
-    if (session == null || !session.isAlive) {
-      throw StateError('commitSleep: no session');
-    }
-
-    final current = await session.querySensorOther();
-    if (current == null) {
-      throw StateError('Failed to read current sensor/other block');
-    }
-
-    final dataBlock = TelinkB80ConfigBlockCodec.patchSensorOther(
-      current.data,
-      sleepWire: wire,
-    );
-
-    await session.setSensorOther(dataBlock);
+  /// why: sleep is at byte index 15, per the 18-byte layout.
+  Future<void> commitSleep(DiscoveredCardState card, int wire) {
+    return _commitSensorOtherPatch(card, 'commitSleep', sleepWire: wire);
   }
 
-  /// Commits the wheel direction invert into the 14-byte 0xD4 block.
+  /// Commits the wheel direction invert into the 18-byte 0xD4 block.
   ///
   /// why: L5 owns wire encoding; wheel direction is tri-state (0xFF/0x0F),
   /// so a raw 1/0 would read back as neither on nor off.
-  Future<void> commitWheelInvert(DiscoveredCardState card, bool invert) async {
-    final session = _sessionForCard(card);
-    if (session == null || !session.isAlive) {
-      throw StateError('commitWheelInvert: no session');
-    }
-
-    final current = await session.querySensorOther();
-    if (current == null) {
-      throw StateError('Failed to read current sensor/other block');
-    }
-
-    final dataBlock = TelinkB80ConfigBlockCodec.patchSensorOther(
-      current.data,
+  Future<void> commitWheelInvert(DiscoveredCardState card, bool invert) {
+    return _commitSensorOtherPatch(
+      card,
+      'commitWheelInvert',
       wheelInvert: invert,
     );
-
-    await session.setSensorOther(dataBlock);
   }
 
-  /// Reads the live D4 block once and applies every staged semantic parameter
-  /// in one L5-owned patch before one SET. This preserves all untouched bytes.
+  /// Patches the hydrated D4 snapshot with every staged semantic parameter
+  /// in one L5-owned operation before one SET. This preserves untouched bytes.
   Future<void> commitParameterSettings(
     DiscoveredCardState card,
     ParameterSettingsPatch patch,
-  ) async {
-    final session = _sessionForCard(card);
-    if (session == null || !session.isAlive) {
-      throw StateError('commitParameterSettings: no session');
-    }
-    final current = await session.querySensorOther();
-    if (current == null) {
-      throw StateError('Failed to read current sensor/other block');
-    }
-    final dataBlock = TelinkB80ConfigBlockCodec.patchSensorOther(
-      current.data,
+  ) {
+    return _commitSensorOtherPatch(
+      card,
+      'commitParameterSettings',
       rippleEnabled: patch.rippleEnabled,
       angleSnapEnabled: patch.angleSnapEnabled,
       angleTuneEnabled: patch.angleTuneEnabled,
@@ -928,7 +917,6 @@ class DeviceScope {
       sleepWire: patch.sleepWire,
       wheelInvert: patch.wheelInvert,
     );
-    await session.setSensorOther(dataBlock);
   }
 
   /// Commits one semantic patch to the live 8-byte 0xE2 backlight block.
@@ -944,13 +932,13 @@ class DeviceScope {
     if (session == null || !session.isAlive) {
       throw StateError('commitRgbBacklight: no session');
     }
-
-    final current = await session.queryRgbBacklight();
-    if (current == null) {
-      throw StateError('Failed to read current RGB backlight block');
+    final raw = _requireRawBlocks(card, 'commitRgbBacklight');
+    final e2 = raw.rgbBacklight;
+    if (e2 == null || e2.length != 8) {
+      throw StateError('commitRgbBacklight: E2 raw block is unavailable');
     }
-    final dataBlock = TelinkB80ConfigBlockCodec.patchRgbBacklight(
-      current.data,
+    final dataBlock = await session.setRgbBacklightPatch(
+      e2,
       enabled: patch.enabled,
       modeId: patch.modeId,
       brightness: patch.brightness,
@@ -960,8 +948,7 @@ class DeviceScope {
       blue: patch.blue,
       sleepWire: patch.sleepWire,
     );
-
-    await session.setRgbBacklight(dataBlock);
+    _updateRawBlocks(card, raw.copyWith(rgbBacklight: dataBlock));
   }
 
   /// Persist BLoC-synced settings after successful Save (cache for re-entry).
@@ -1045,7 +1032,7 @@ class DeviceScope {
     if (dpiLevel == null) return;
 
     final reportRateHz = settings.reportRateHz;
-      _publishOsdEvent(
+    _publishOsdEvent(
       OsdPerformanceEvent(
         deviceId: settings.devId,
         reportRateLabel: reportRateHz == null

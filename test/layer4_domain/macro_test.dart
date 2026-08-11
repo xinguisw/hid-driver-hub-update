@@ -21,40 +21,27 @@ void main() {
 
   test('stop-on-any-key mode matches protocol 0x01 and SDRD label', () {
     expect(MacroMode.stopOnAnyKey.wireValue, 0x01);
-    expect(
-      MacroMode.stopOnAnyKey.label,
-      'Stop on any key or mouse click',
-    );
+    expect(MacroMode.stopOnAnyKey.label, 'Stop on any key or mouse click');
     expect(MacroMode.fromWire(0x01), MacroMode.stopOnAnyKey);
   });
 
-  test('accepts protocol mouse wheel actions', () {
+  test('accepts semantic protocol mouse wheel actions', () {
     final wheelMacro = macro.copyWith(
       actions: const [
-        MacroAction(keyCode: 0xF6, isBreak: false, delay: 1, label: 'Wheel up'),
-        MacroAction(keyCode: 0xF6, isBreak: true, delay: 0, label: 'Wheel up'),
-        MacroAction(
-          keyCode: 0xF7,
-          isBreak: false,
-          delay: 1,
-          label: 'Wheel down',
-        ),
-        MacroAction(
-          keyCode: 0xF7,
-          isBreak: true,
-          delay: 0,
-          label: 'Wheel down',
-        ),
+        MacroAction.wheelUp(isBreak: false, delay: 1, label: 'Wheel up'),
+        MacroAction.wheelUp(isBreak: true, delay: 0, label: 'Wheel up'),
+        MacroAction.wheelDown(isBreak: false, delay: 1, label: 'Wheel down'),
+        MacroAction.wheelDown(isBreak: true, delay: 0, label: 'Wheel down'),
       ],
     );
 
     expect(validateMacro(wheelMacro), isEmpty);
   });
 
-  test('rejects key-value wheel labels outside the macro mouse range', () {
+  test('rejects obsolete F6/F7 wheel codes', () {
     final legacyWheel = macro.copyWith(
       actions: const [
-        MacroAction(keyCode: 0xC6, isBreak: false, delay: 0, label: 'Wheel up'),
+        MacroAction(keyCode: 0xF6, isBreak: false, delay: 0, label: 'Wheel up'),
       ],
     );
 

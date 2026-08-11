@@ -337,7 +337,8 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
   }
 
   void _appendRecordedAction({
-    required int code,
+    int? code,
+    MacroAction? action,
     required bool isBreak,
     required String label,
   }) {
@@ -358,7 +359,13 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
         );
       }
       _events.add(
-        MacroAction(keyCode: code, isBreak: isBreak, delay: 0, label: label),
+        action ??
+            MacroAction(
+              keyCode: code!,
+              isBreak: isBreak,
+              delay: 0,
+              label: label,
+            ),
       );
       _syncDraftActions();
     });
@@ -425,13 +432,25 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
     final verticalDelta = event.scrollDelta.dy;
     if (verticalDelta == 0) return;
     final isWheelUp = verticalDelta < 0;
-    // Protocol: MacroAction key_code 0xF1–0xF7 are mouse events. Buttons use
-    // F1–F5 with make+break; wheel uses the remaining F6/F7 the same way so
-    // the firmware sees a complete press/release pair per notch.
-    final code = isWheelUp ? 0xF6 : 0xF7;
+    // Record each notch as a complete semantic wheel make+break pair. Layer 5
+    // resolves the device wire value during macro encoding.
     final label = isWheelUp ? 'Wheel up' : 'Wheel down';
-    _appendRecordedAction(code: code, isBreak: false, label: label);
-    _appendRecordedAction(code: code, isBreak: true, label: label);
+    final make = isWheelUp
+        ? const MacroAction.wheelUp(isBreak: false, delay: 0, label: 'Wheel up')
+        : const MacroAction.wheelDown(
+            isBreak: false,
+            delay: 0,
+            label: 'Wheel down',
+          );
+    final breakAction = isWheelUp
+        ? const MacroAction.wheelUp(isBreak: true, delay: 0, label: 'Wheel up')
+        : const MacroAction.wheelDown(
+            isBreak: true,
+            delay: 0,
+            label: 'Wheel down',
+          );
+    _appendRecordedAction(action: make, isBreak: false, label: label);
+    _appendRecordedAction(action: breakAction, isBreak: true, label: label);
   }
 
   bool _isPointerOver(GlobalKey key, Offset position) {
@@ -448,7 +467,7 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
   }
 
   Future<void> _insertMouseButton() async {
-    final selected = await showDialog<(String, int)>(
+    final selected = await showDialog<(String, int?)>(
       context: context,
       builder: (context) => SimpleDialog(
         title: const Text('Insert Mouse Button'),
@@ -459,8 +478,8 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
             ('Middle click', 0xF3),
             ('Mouse button 4', 0xF4),
             ('Mouse button 5', 0xF5),
-            ('Wheel up', 0xF6),
-            ('Wheel down', 0xF7),
+            ('Wheel up', null),
+            ('Wheel down', null),
           ])
             SimpleDialogOption(
               onPressed: () => Navigator.pop(context, item),
@@ -470,24 +489,31 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
       ),
     );
     if (selected == null || !mounted) return;
+    MacroAction action({required bool isBreak}) {
+      return switch (selected.$1) {
+        'Wheel up' => MacroAction.wheelUp(
+          isBreak: isBreak,
+          delay: 0,
+          label: selected.$1,
+        ),
+        'Wheel down' => MacroAction.wheelDown(
+          isBreak: isBreak,
+          delay: 0,
+          label: selected.$1,
+        ),
+        _ => MacroAction(
+          keyCode: selected.$2!,
+          isBreak: isBreak,
+          delay: 0,
+          label: selected.$1,
+        ),
+      };
+    }
+
     setState(() {
       _events
-        ..add(
-          MacroAction(
-            keyCode: selected.$2,
-            isBreak: false,
-            delay: 0,
-            label: selected.$1,
-          ),
-        )
-        ..add(
-          MacroAction(
-            keyCode: selected.$2,
-            isBreak: true,
-            delay: 0,
-            label: selected.$1,
-          ),
-        );
+        ..add(action(isBreak: false))
+        ..add(action(isBreak: true));
       _syncDraftActions();
     });
     _scrollRecordToEnd();

@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 
 import 'package:driver_hub/layer5_codec/device_protocol.dart';
 import 'package:driver_hub/layer5_codec/codecs/osd_codec.dart';
+import 'package:driver_hub/layer5_codec/codecs/telink_b80_config_block_codec.dart';
 import 'package:driver_hub/layer5_codec/macro_codec.dart';
 
 /// State of a device session, emitted to the card.
@@ -201,6 +202,38 @@ class DeviceSession implements DeviceSettingsGateway {
     await _protocol.setSensorOther(_session, dataBlock);
   }
 
+  @override
+  Future<Uint8List> setSensorOtherPatch(
+    Uint8List currentBlock, {
+    bool? rippleEnabled,
+    bool? angleSnapEnabled,
+    bool? angleTuneEnabled,
+    int? angleTuneWire,
+    int? lodWire,
+    int? performanceWire,
+    int? debounceWire,
+    int? sleepWire,
+    bool? wheelInvert,
+  }) async {
+    if (!isAlive) {
+      throw StateError('setSensorOtherPatch: session not alive');
+    }
+    final dataBlock = TelinkB80ConfigBlockCodec.patchSensorOther(
+      currentBlock,
+      rippleEnabled: rippleEnabled,
+      angleSnapEnabled: angleSnapEnabled,
+      angleTuneEnabled: angleTuneEnabled,
+      angleTuneWire: angleTuneWire,
+      lodWire: lodWire,
+      performanceWire: performanceWire,
+      debounceWire: debounceWire,
+      sleepWire: sleepWire,
+      wheelInvert: wheelInvert,
+    );
+    await _protocol.setSensorOther(_session, dataBlock);
+    return dataBlock;
+  }
+
   /// Thin L1 forwarder for C4 SET (L5 encodes + CRC).
   @override
   Future<void> setDpiTable(Uint8List dataBlock) async {
@@ -226,6 +259,36 @@ class DeviceSession implements DeviceSettingsGateway {
       throw StateError('setRgbBacklight: session not alive');
     }
     await _protocol.setRgbBacklight(_session, dataBlock);
+  }
+
+  @override
+  Future<Uint8List> setRgbBacklightPatch(
+    Uint8List currentBlock, {
+    bool? enabled,
+    int? modeId,
+    int? brightness,
+    int? speed,
+    int? red,
+    int? green,
+    int? blue,
+    int? sleepWire,
+  }) async {
+    if (!isAlive) {
+      throw StateError('setRgbBacklightPatch: session not alive');
+    }
+    final dataBlock = TelinkB80ConfigBlockCodec.patchRgbBacklight(
+      currentBlock,
+      enabled: enabled,
+      modeId: modeId,
+      brightness: brightness,
+      speed: speed,
+      red: red,
+      green: green,
+      blue: blue,
+      sleepWire: sleepWire,
+    );
+    await _protocol.setRgbBacklight(_session, dataBlock);
+    return dataBlock;
   }
 
   /// Thin L1 forwarder for the dedicated macro transfer (L5 owns framing).

@@ -1,4 +1,4 @@
-/// Web / non-desktop stub — window controls are unavailable in the browser.
+// Web / non-desktop stub — window controls are unavailable in the browser.
 
 void startDragging() {}
 

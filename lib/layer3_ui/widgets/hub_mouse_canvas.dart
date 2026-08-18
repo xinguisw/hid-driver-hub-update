@@ -1,11 +1,13 @@
+import 'package:driver_hub/layer3_ui/widgets/hub_button_mapping_panel.dart';
 import 'package:driver_hub/layer4_domain/models/device_settings_state.dart';
+import 'package:driver_hub/i18n/strings.g.dart';
 import 'package:flutter/material.dart';
 
 /// Center hub pane — large mouse image + hotspot callouts (skeleton).
 ///
 /// L3 only. Dot = placement; line + label = callout.
 /// Tap remappable callout **label** only → [onButtonSelected] (not the dot).
-class HubMouseCanvas extends StatelessWidget {
+class HubMouseCanvas extends StatefulWidget {
   const HubMouseCanvas({
     super.key,
     required this.imageLarge,
@@ -14,6 +16,7 @@ class HubMouseCanvas extends StatelessWidget {
     this.isDirty = false,
     this.committing = false,
     this.onButtonSelected,
+    this.onBackgroundTap,
     this.onResetToDefault,
     this.onSave,
     this.onCancel,
@@ -34,6 +37,9 @@ class HubMouseCanvas extends StatelessWidget {
   /// Button Mapping: label tap opens mapping panel; dots are placement only.
   final ValueChanged<int>? onButtonSelected;
 
+  /// Called when user taps the empty canvas background (outside any callout/dot).
+  final VoidCallback? onBackgroundTap;
+
   /// After user Confirms reset tip dialog → L3 dispatches BLoC event only.
   final VoidCallback? onResetToDefault;
 
@@ -44,7 +50,19 @@ class HubMouseCanvas extends StatelessWidget {
   final VoidCallback? onCancel;
 
   @override
+  State<HubMouseCanvas> createState() => _HubMouseCanvasState();
+}
+//Make the button hover
+
+class _HubMouseCanvasState extends State<HubMouseCanvas> {
+  int? _hoveredButtonId;
+
+  @override
   Widget build(BuildContext context) {
+    // why: Extract Theme.of(context) tokens to ensure buttons and painter adapt to Light/Dark mode
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final paneW = constraints.maxWidth;
@@ -56,46 +74,96 @@ class HubMouseCanvas extends StatelessWidget {
         // why: fixed band so mouse never jumps; Save/Cancel hide when clean (ref)
         const actionBand = 88.0;
         final drawH = (paneH - actionBand).clamp(1.0, paneH);
-        final imgMaxW = paneW * 0.5;
+        // Ensure side margins (left & right) preserve at least 115px each so text boxes & stem lines fit cleanly
+        final maxAllowedW = (paneW - 230.0).clamp(120.0, paneW * 0.5);
+        final imgMaxW = maxAllowedW;
         final imgMaxH = drawH * 0.55;
+
+        // Calculate exact fitted Rect preserving image aspect ratio (765/750 = 1.02)
+        // so hotspot coordinates (x, y) NEVER drift when window is resized/minimized
+        const double aspect = 765.0 / 750.0;
+        late final double actualW;
+        late final double actualH;
+        if (imgMaxW / imgMaxH > aspect) {
+          actualH = imgMaxH;
+          actualW = imgMaxH * aspect;
+        } else {
+          actualW = imgMaxW;
+          actualH = imgMaxW / aspect;
+        }
+
         final imageRect = Rect.fromLTWH(
-          (paneW - imgMaxW) / 2,
-          (drawH - imgMaxH) / 2,
-          imgMaxW,
-          imgMaxH,
+          (paneW - actualW) / 2,
+          (drawH - actualH) / 2,
+          actualW,
+          actualH,
         );
         final paneSize = Size(paneW, drawH);
-        final targets = _CalloutLayout.build(buttons, imageRect, paneSize);
+        final targets = _CalloutLayout.build(
+          widget.buttons,
+          imageRect,
+          paneSize,
+        );
 
         return Column(
           children: [
             Expanded(
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTapUp: (details) {
-                  final id = _hitButtonId(targets, details.localPosition);
-                  if (id != null) onButtonSelected?.call(id);
-                },
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    Positioned.fromRect(
-                      rect: imageRect,
-                      child: Image.asset(
-                        imageLarge,
-                        fit: BoxFit.contain,
-                        errorBuilder: (_, _, _) =>
-                            const Text('Mouse image missing'),
-                      ),
+              child: TapRegion(
+                groupId: hubButtonMappingTapRegionId,
+                child: MouseRegion(
+                  cursor: _hoveredButtonId != null
+                      ? SystemMouseCursors.click
+                      : SystemMouseCursors.basic,
+                  onHover: (event) {
+                    final id = _hitButtonId(targets, event.localPosition);
+                    if (id != _hoveredButtonId) {
+                      setState(() => _hoveredButtonId = id);
+                    }
+                  },
+                  onExit: (_) {
+                    if (_hoveredButtonId != null) {
+                      setState(() => _hoveredButtonId = null);
+                    }
+                  },
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTapUp: (details) {
+                      final id = _hitButtonId(targets, details.localPosition);
+                      if (id != null) {
+                        widget.onButtonSelected?.call(id);
+                      } else {
+                        widget.onBackgroundTap?.call();
+                      }
+                    },
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        Positioned.fromRect(
+                          rect: imageRect,
+                          child: Image.asset(
+                            widget.imageLarge,
+                            fit: BoxFit.fill,
+                            errorBuilder: (_, _, _) => Image.asset(
+                              'assets/images/m7xse/large.png',
+                              fit: BoxFit.fill,
+                              errorBuilder: (_, _, _) =>
+                                  Text(t.mouseCanvas.imageMissing),
+                            ),
+                          ),
+                        ),
+                        CustomPaint(
+                          size: paneSize,
+                          painter: _HotspotPainter(
+                            targets: targets,
+                            selectedButtonId: widget.selectedButtonId,
+                            hoveredButtonId: _hoveredButtonId,
+                            isDark: isDark,
+                            theme: theme,
+                          ),
+                        ),
+                      ],
                     ),
-                    CustomPaint(
-                      size: paneSize,
-                      painter: _HotspotPainter(
-                        targets: targets,
-                        selectedButtonId: selectedButtonId,
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ),
@@ -108,49 +176,73 @@ class HubMouseCanvas extends StatelessWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
+                    // why: OutlinedButton styles adapt dynamically to active theme (Theme.of(context))
                     OutlinedButton(
-                      onPressed: committing
+                      onPressed: widget.committing
                           ? null
                           : () => _onResetPressed(context),
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.black87,
-                        side: const BorderSide(color: Colors.black87),
+                        foregroundColor: theme.colorScheme.onSurface,
+                        disabledForegroundColor: theme.colorScheme.onSurface
+                            .withValues(alpha: 0.38),
+                        side: BorderSide(
+                          color: theme.colorScheme.onSurface.withValues(
+                            alpha: 0.6,
+                          ),
+                        ),
                         shape: const StadiumBorder(),
                         visualDensity: VisualDensity.compact,
                       ),
-                      child: const Text('Reset to Default'),
+                      child: Text(t.common.resetToDefault),
                     ),
                     // why: Save/Cancel when sidebar open OR dirty (after reset); Save disabled when clean
                     SizedBox(
                       height: 36,
-                      child: (selectedButtonId != null || isDirty)
+                      child: (widget.selectedButtonId != null || widget.isDirty)
                           ? Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 OutlinedButton(
-                                  onPressed: (!isDirty || committing) ? null : onSave,
+                                  onPressed:
+                                      (!widget.isDirty || widget.committing)
+                                      ? null
+                                      : widget.onSave,
                                   style: OutlinedButton.styleFrom(
-                                    foregroundColor: Colors.black87,
-                                    side: const BorderSide(
-                                      color: Colors.black87,
+                                    foregroundColor:
+                                        theme.colorScheme.onSurface,
+                                    disabledForegroundColor: theme
+                                        .colorScheme
+                                        .onSurface
+                                        .withValues(alpha: 0.38),
+                                    side: BorderSide(
+                                      color: theme.colorScheme.onSurface
+                                          .withValues(alpha: 0.6),
                                     ),
                                     shape: const StadiumBorder(),
                                     visualDensity: VisualDensity.compact,
                                   ),
-                                  child: const Text('Save'),
+                                  child: Text(t.common.save),
                                 ),
                                 const SizedBox(width: 12),
                                 OutlinedButton(
-                                  onPressed: committing ? null : onCancel,
+                                  onPressed: widget.committing
+                                      ? null
+                                      : widget.onCancel,
                                   style: OutlinedButton.styleFrom(
-                                    foregroundColor: Colors.black87,
-                                    side: const BorderSide(
-                                      color: Colors.black87,
+                                    foregroundColor:
+                                        theme.colorScheme.onSurface,
+                                    disabledForegroundColor: theme
+                                        .colorScheme
+                                        .onSurface
+                                        .withValues(alpha: 0.38),
+                                    side: BorderSide(
+                                      color: theme.colorScheme.onSurface
+                                          .withValues(alpha: 0.6),
                                     ),
                                     shape: const StadiumBorder(),
                                     visualDensity: VisualDensity.compact,
                                   ),
-                                  child: const Text('Cancel'),
+                                  child: Text(t.common.cancel),
                                 ),
                               ],
                             )
@@ -171,27 +263,26 @@ class HubMouseCanvas extends StatelessWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Tip'),
-        content: const Text('Are you sure you want to restore default keys?'),
+        title: Text(t.common.tip),
+        content: Text(t.mouseCanvas.restoreDefaultKeysTip),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
+            child: Text(t.common.cancel),
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Confirm'),
+            child: Text(t.common.confirm),
           ),
         ],
       ),
     );
-    if (confirmed == true) onResetToDefault?.call();
+    if (confirmed == true) widget.onResetToDefault?.call();
   }
 
   static int? _hitButtonId(List<_CalloutTarget> targets, Offset local) {
-    // why: label only — dot is placement, does not open mapping panel
     for (final t in targets.reversed) {
-      if (t.labelHit.contains(local)) return t.id;
+      if (t.contains(local)) return t.id;
     }
     return null;
   }
@@ -205,7 +296,8 @@ class _CalloutTarget {
     required this.stemStart,
     required this.stemEnd,
     required this.label,
-    required this.labelOrigin,
+    required this.boxRect,
+    required this.textOrigin,
     required this.labelSize,
   });
 
@@ -215,28 +307,64 @@ class _CalloutTarget {
   final Offset stemStart;
   final Offset stemEnd;
   final String label;
-  final Offset labelOrigin;
+  final Rect boxRect;
+  final Offset textOrigin;
   final Size labelSize;
 
-  Rect get labelHit => (labelOrigin & labelSize).inflate(4);
+  Rect get labelHit => boxRect.inflate(4);
+
+  /// Performs hit testing to check if pointer touch/hover coordinate [local]
+  /// falls inside the dot circle, text label box, or leader stem line.
+  bool contains(Offset local) {
+    // Dot circle hit test (minimum 16px radius touch target)
+    final minRadius = radius < 16.0 ? 16.0 : radius;
+    if ((local - center).distance <= minRadius) return true;
+
+    // Label box hit test
+    if (labelHit.contains(local)) return true;
+
+    // Stem line hit test
+    if (_distanceToSegment(local, stemStart, stemEnd) <= 8.0) return true;
+
+    return false;
+  }
+
+  static double _distanceToSegment(Offset p, Offset a, Offset b) {
+    final l2 = (b - a).distanceSquared;
+    if (l2 == 0) return (p - a).distance;
+    var t =
+        ((p.dx - a.dx) * (b.dx - a.dx) + (p.dy - a.dy) * (b.dy - a.dy)) / l2;
+    t = t.clamp(0.0, 1.0);
+    final projection = Offset(
+      a.dx + t * (b.dx - a.dx),
+      a.dy + t * (b.dy - a.dy),
+    );
+    return (p - projection).distance;
+  }
 }
 
 enum _StemKind { horizontalLeft, horizontalRight, vertical }
 
 class _CalloutLayout {
   // why: leader length in px — edit here
-  static const double stemLength = 30.0;
+  static const double stemLength = 40.0;
 
   static const labelStyle = TextStyle(
-    color: Colors.black,
+    color: Colors.black87,
     fontSize: 12,
     fontWeight: FontWeight.w500,
   );
 
   static const selectedLabelStyle = TextStyle(
-    color: Colors.orange,
+    color: Colors.white,
     fontSize: 12,
     fontWeight: FontWeight.w500,
+  );
+
+  static const hoveredLabelStyle = TextStyle(
+    color: Color(0xFFE65100),
+    fontSize: 12,
+    fontWeight: FontWeight.w600,
   );
 
   static List<_CalloutTarget> build(
@@ -244,6 +372,9 @@ class _CalloutLayout {
     Rect imageRect,
     Size paneSize,
   ) {
+    final sideMargin = (paneSize.width - imageRect.width) / 2;
+    final effectiveStemLength = (sideMargin * 0.25).clamp(16.0, stemLength);
+
     final out = <_CalloutTarget>[];
     for (final b in buttons) {
       if (!b.remappable) continue;
@@ -258,7 +389,7 @@ class _CalloutLayout {
       );
       final r = ((rNorm ?? 0.04) * imageRect.shortestSide).clamp(6.0, 24.0);
 
-      final label = mouseButtonCalloutText(b);
+      final label = b.actionLabel ?? b.buttonLabel ?? 'B${b.id}';
       final tp = TextPainter(
         text: TextSpan(text: label, style: labelStyle),
         textDirection: TextDirection.ltr,
@@ -266,36 +397,73 @@ class _CalloutLayout {
         ellipsis: '…',
       )..layout(maxWidth: paneSize.width * 0.4);
 
+      const boxPadding = EdgeInsets.symmetric(horizontal: 10.0, vertical: 5.0);
+      final boxWidth = tp.width + boxPadding.horizontal;
+      final boxHeight = tp.height + boxPadding.vertical;
+
       late final Offset stemStart;
       late final Offset stemEnd;
-      late final Offset labelOrigin;
+      late final Rect boxRect;
+      late final Offset textOrigin;
 
-      // why: 1 left←, 2 right→, 4/5 side←, 6 DPI→ horizontal; middle vertical
+      // why: 1 left←, 2 right→, 4/5 side←, 6 right→ horizontal; 3 middle vertical
       switch (_stemKind(b.id)) {
         case _StemKind.horizontalLeft:
           stemStart = Offset(c.dx - r, c.dy);
-          stemEnd = Offset(c.dx - r - stemLength, c.dy);
-          final labelX = (stemEnd.dx - tp.width - 4)
-              .clamp(0.0, _max(0.0, paneSize.width - tp.width));
-          final labelY = (c.dy - tp.height / 2)
-              .clamp(0.0, _max(0.0, paneSize.height - tp.height));
-          labelOrigin = Offset(labelX, labelY);
+          stemEnd = Offset(c.dx - r - effectiveStemLength, c.dy);
+          final boxLeft = (stemEnd.dx - boxWidth).clamp(
+            0.0,
+            _max(0.0, paneSize.width - boxWidth),
+          );
+          final boxTop = (c.dy - boxHeight / 2).clamp(
+            0.0,
+            _max(0.0, paneSize.height - boxHeight),
+          );
+          boxRect = Rect.fromLTWH(boxLeft, boxTop, boxWidth, boxHeight);
+          textOrigin = Offset(
+            boxLeft + boxPadding.left,
+            boxTop + boxPadding.top,
+          );
+
         case _StemKind.horizontalRight:
           stemStart = Offset(c.dx + r, c.dy);
-          stemEnd = Offset(c.dx + r + stemLength, c.dy);
-          final labelX = (stemEnd.dx + 4)
-              .clamp(0.0, _max(0.0, paneSize.width - tp.width));
-          final labelY = (c.dy - tp.height / 2)
-              .clamp(0.0, _max(0.0, paneSize.height - tp.height));
-          labelOrigin = Offset(labelX, labelY);
+          stemEnd = Offset(c.dx + r + effectiveStemLength, c.dy);
+          final boxLeft = (stemEnd.dx).clamp(
+            0.0,
+            _max(0.0, paneSize.width - boxWidth),
+          );
+          final boxTop = (c.dy - boxHeight / 2).clamp(
+            0.0,
+            _max(0.0, paneSize.height - boxHeight),
+          );
+          boxRect = Rect.fromLTWH(boxLeft, boxTop, boxWidth, boxHeight);
+          textOrigin = Offset(
+            boxLeft + boxPadding.left,
+            boxTop + boxPadding.top,
+          );
+
         case _StemKind.vertical:
           stemStart = Offset(c.dx, c.dy - r);
-          stemEnd = Offset(c.dx, c.dy - r - stemLength);
-          final labelX = (stemEnd.dx - tp.width / 2)
-              .clamp(0.0, _max(0.0, paneSize.width - tp.width));
-          final labelY = (stemEnd.dy - tp.height - 4)
-              .clamp(0.0, _max(0.0, paneSize.height - tp.height));
-          labelOrigin = Offset(labelX, labelY);
+          // Extend stem past the top edge of mouse image so label floats cleanly above
+          final topEdgeLimit = imageRect.top - 10.0;
+          final calculatedEnd = c.dy - r - effectiveStemLength;
+          stemEnd = Offset(
+            c.dx,
+            calculatedEnd < topEdgeLimit ? calculatedEnd : topEdgeLimit,
+          );
+          final boxLeft = (stemEnd.dx - boxWidth / 2).clamp(
+            0.0,
+            _max(0.0, paneSize.width - boxWidth),
+          );
+          final boxTop = (stemEnd.dy - boxHeight).clamp(
+            0.0,
+            _max(0.0, paneSize.height - boxHeight),
+          );
+          boxRect = Rect.fromLTWH(boxLeft, boxTop, boxWidth, boxHeight);
+          textOrigin = Offset(
+            boxLeft + boxPadding.left,
+            boxTop + boxPadding.top,
+          );
       }
 
       out.add(
@@ -306,7 +474,8 @@ class _CalloutLayout {
           stemStart: stemStart,
           stemEnd: stemEnd,
           label: label,
-          labelOrigin: labelOrigin,
+          boxRect: boxRect,
+          textOrigin: textOrigin,
           labelSize: tp.size,
         ),
       );
@@ -321,9 +490,9 @@ class _CalloutLayout {
       case 5: // backward
         return _StemKind.horizontalLeft;
       case 2: // right
-      case 6: // DPI cycle
+      case 6: // dpi cycle
         return _StemKind.horizontalRight;
-      default: // middle, …
+      default: // middle click
         return _StemKind.vertical;
     }
   }
@@ -331,75 +500,124 @@ class _CalloutLayout {
   static double _max(double a, double b) => a > b ? a : b;
 }
 
-/// Selects the label rendered beside a physical mouse button.
-///
-/// Callouts show the live assigned action (straight action). The physical
-/// button name remains on [ButtonData.buttonLabel] for mapping chrome that
-/// still needs the hardware identity.
-String mouseButtonCalloutLabel(ButtonData button) =>
-    button.actionLabel ?? button.buttonLabel ?? 'B${button.id}';
-
-/// Text rendered beside a physical mouse button.
-///
-/// Show the current assigned action directly. The physical label and button ID
-/// remain fallbacks for an action that has not been decoded yet.
-String mouseButtonCalloutText(ButtonData button) {
-  final action = button.actionLabel;
-  if (action != null && action.isNotEmpty) return action;
-
-  final physical = button.buttonLabel;
-  if (physical != null && physical.isNotEmpty) return physical;
-
-  return 'B${button.id}';
-}
-
 class _HotspotPainter extends CustomPainter {
   _HotspotPainter({
     required this.targets,
     this.selectedButtonId,
+    this.hoveredButtonId,
+    required this.isDark,
+    required this.theme,
   });
 
   final List<_CalloutTarget> targets;
   final int? selectedButtonId;
+  final int? hoveredButtonId;
+  final bool isDark;
+  final ThemeData theme;
 
   @override
   void paint(Canvas canvas, Size size) {
     for (final t in targets) {
-      final selected = t.id == selectedButtonId;
-      final accent = selected ? Colors.orange : Colors.black87;
-      final fill = Paint()
-        ..color = selected ? Colors.orange : Colors.white;
-      final stroke = Paint()
+      final isSelected = t.id == selectedButtonId;
+      final isHovered = t.id == hoveredButtonId;
+
+      final Color accent;
+      final Color dotFillColor;
+      final Color boxFillColor;
+      final Color boxBorderColor;
+      final TextStyle textStyle;
+
+      if (isSelected) {
+        accent = Colors.orange;
+        dotFillColor = Colors.orange;
+        boxFillColor = Colors.orange;
+        boxBorderColor = Colors.deepOrange;
+        textStyle = _CalloutLayout.selectedLabelStyle;
+      } else if (isHovered) {
+        accent = Colors.orange;
+        dotFillColor = Colors.orange.withValues(alpha: 0.35);
+        boxFillColor = isDark
+            ? const Color(0xFF3E2723)
+            : const Color(0xFFFFF3E0);
+        boxBorderColor = Colors.orange;
+        textStyle = isDark
+            ? _CalloutLayout.selectedLabelStyle
+            : _CalloutLayout.hoveredLabelStyle;
+      } else {
+        // why: Unselected callout pins and label boxes adapt to Dark/Light mode theme
+        accent = isDark ? theme.colorScheme.onSurface : Colors.black87;
+        dotFillColor = isDark ? theme.cardColor : Colors.white;
+        boxFillColor = isDark ? theme.cardColor : Colors.white;
+        boxBorderColor = isDark
+            ? theme.colorScheme.outline
+            : const Color(0xFFD6D6D6);
+        textStyle = isDark
+            ? TextStyle(
+                color: theme.colorScheme.onSurface,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              )
+            : _CalloutLayout.labelStyle;
+      }
+
+      final dotFill = Paint()..color = dotFillColor;
+      final dotStroke = Paint()
         ..color = accent
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.5;
+        ..strokeWidth = isSelected ? 2.5 : (isHovered ? 2.0 : 1.5);
       final linePaint = Paint()
         ..color = accent
-        ..strokeWidth = 1.5
+        ..strokeWidth = isSelected ? 2.0 : (isHovered ? 2.0 : 1.5)
         ..style = PaintingStyle.stroke;
 
-      canvas.drawCircle(t.center, t.radius, fill);
-      canvas.drawCircle(t.center, t.radius, stroke);
+      final effectiveRadius = (isSelected || isHovered)
+          ? t.radius + 1.5
+          : t.radius;
+
+      // 1. Draw dot circle on mouse button
+      canvas.drawCircle(t.center, effectiveRadius, dotFill);
+      canvas.drawCircle(t.center, effectiveRadius, dotStroke);
+
+      // 2. Draw stem line pointer
       canvas.drawLine(t.stemStart, t.stemEnd, linePaint);
 
+      // 3. Draw text container box with rounded corners and shadow
+      final rrect = RRect.fromRectAndRadius(
+        t.boxRect,
+        const Radius.circular(6.0),
+      );
+
+      final shadowPaint = Paint()
+        ..color = Colors.black.withValues(alpha: isSelected ? 0.2 : 0.08)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3.0);
+      canvas.drawRRect(rrect.shift(const Offset(0, 1.5)), shadowPaint);
+
+      final boxFill = Paint()..color = boxFillColor;
+      final boxBorder = Paint()
+        ..color = boxBorderColor
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = isSelected ? 2.0 : (isHovered ? 1.8 : 1.2);
+
+      canvas.drawRRect(rrect, boxFill);
+      canvas.drawRRect(rrect, boxBorder);
+
+      // 4. Paint text inside container box
       final tp = TextPainter(
-        text: TextSpan(
-          text: t.label,
-          style: selected
-              ? _CalloutLayout.selectedLabelStyle
-              : _CalloutLayout.labelStyle,
-        ),
+        text: TextSpan(text: t.label, style: textStyle),
         textDirection: TextDirection.ltr,
         maxLines: 1,
         ellipsis: '…',
       )..layout(maxWidth: t.labelSize.width + 1);
-      tp.paint(canvas, t.labelOrigin);
+      tp.paint(canvas, t.textOrigin);
     }
   }
 
   @override
   bool shouldRepaint(covariant _HotspotPainter oldDelegate) {
     return oldDelegate.targets != targets ||
-        oldDelegate.selectedButtonId != selectedButtonId;
+        oldDelegate.selectedButtonId != selectedButtonId ||
+        oldDelegate.hoveredButtonId != hoveredButtonId ||
+        oldDelegate.isDark != isDark ||
+        oldDelegate.theme != theme;
   }
 }

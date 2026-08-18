@@ -25,7 +25,7 @@ void main() {
         initial: DeviceSettingsViewState(
           synced: const DeviceSettingsState(
             devId: '02AA',
-            displayName: 'M7XSE',
+            displayName: 'M7X SE',
             connectionMode: 0,
             reportRateHz: 1000,
             reportRateLabel: '1000 Hz',

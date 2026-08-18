@@ -20,7 +20,7 @@ class MacroWireActions {
 /// Capabilities of a supported device.
 ///
 /// Product data lives per mouse: [assets/catalog/mouse/{modelSlug}.json]
-/// (e.g. m7xse.json). This file holds the typed model and loader only.
+/// (e.g. m7x_se.json). This file holds the typed model and loader only.
 ///
 /// Every capability block carries a [present] flag, mirroring the catalog
 /// convention. A card renders a row only when its capability is present.
@@ -649,14 +649,11 @@ class DeviceCapabilityStore {
   static final Map<String, DeviceCapabilities> _byDevId = {};
   static final Set<String> _loadedSlugs = {};
 
-  /// Asset path for a catalog model name (e.g. `M7XSE` → `.../m7xse.json`,
+  /// Asset path for a catalog model name (e.g. `M7X SE` → `.../m7x_se.json`,
   /// `M7X PRO` → `.../m7x_pro.json`). Lowercased; spaces become underscores
   /// so a space in a display name maps to the snake_case asset file.
   static String assetPathForModel(String model) {
     final lower = model.toLowerCase().replaceAll(' ', '_');
-    if (lower == 'm7x_se' || lower == 'm7xse') {
-      return '$_dir/m7xse.json';
-    }
     return '$_dir/$lower.json';
   }
 
@@ -664,8 +661,7 @@ class DeviceCapabilityStore {
   /// Call when entering mouse settings, not at app start.
   static Future<void> load(String model) async {
     final slug = model.toLowerCase().replaceAll(' ', '_');
-    if (_loadedSlugs.contains(slug) ||
-        (slug == 'm7x_se' && _loadedSlugs.contains('m7xse'))) {
+    if (_loadedSlugs.contains(slug)) {
       return;
     }
     final raw = await rootBundle.loadString(assetPathForModel(model));
@@ -673,8 +669,6 @@ class DeviceCapabilityStore {
     final caps = DeviceCapabilities.fromJson(json);
     _byDevId[caps.devId] = caps;
     _loadedSlugs.add(slug);
-    _loadedSlugs.add('m7xse');
-    _loadedSlugs.add('m7x_se');
   }
 
   /// Returns the device capabilities for [devId], or null if unsupported / not loaded.

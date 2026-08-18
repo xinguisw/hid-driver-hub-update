@@ -6,14 +6,14 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  test('applyCapabilitiesToSettings seeds M7XSE matrix presence', () async {
-    await DeviceCapabilityStore.load('m7xse');
+  test('applyCapabilitiesToSettings seeds M7X SE matrix presence', () async {
+    await DeviceCapabilityStore.load('M7X SE');
     final caps = DeviceCapabilityStore.forDevice('02AA');
     expect(caps, isNotNull);
 
     final base = const DeviceSettingsState(
       devId: '02AA',
-      displayName: 'M7XSE',
+      displayName: 'M7X SE',
       connectionMode: 0,
       loading: true,
     );
@@ -30,7 +30,7 @@ void main() {
     expect(state.dpiLevels, isNotNull);
     expect(state.dpiLevels!.length, 8);
 
-    // M7XSE matrix: only report rate, DPI, buttons, sleep time; rgb off.
+    // M7X SE matrix: only report rate, DPI, buttons, sleep time; rgb off.
     expect(state.hasSensorTuning, isFalse);
     expect(state.hasAngleTune, isFalse);
     expect(state.hasLod, isFalse);

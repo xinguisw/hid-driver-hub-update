@@ -4,12 +4,12 @@ import 'package:driver_hub/layer2_capabilities/capabilities.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  test('DeviceCapabilityStore loads m7xse.json from product matrix', () async {
-    await DeviceCapabilityStore.load('m7xse');
+  test('DeviceCapabilityStore loads m7x_se.json from product matrix', () async {
+    await DeviceCapabilityStore.load('M7X SE');
     final caps = DeviceCapabilityStore.forDevice('02AA');
     expect(caps, isNotNull);
     expect(caps!.devId, '02AA');
-    expect(caps.displayNameKey, 'device.m7xse.name');
+    expect(caps.displayNameKey, 'device.m7x_se.name');
     expect(caps.buttons!.count, 6);
     expect(caps.buttons!.list.length, 6);
     expect(caps.buttons!.list.every((b) => b.remappable), isTrue);
@@ -131,7 +131,7 @@ void main() {
   test(
     'all mouse capabilities use the shared Telink B80 DPI profile',
     () async {
-      for (final model in ['m7xse', 'm7x', 'm7x pro']) {
+      for (final model in ['m7x se', 'm7x', 'm7x pro']) {
         await DeviceCapabilityStore.load(model);
       }
       for (final devId in ['02AA', '01AA', '03AA']) {
@@ -152,7 +152,7 @@ void main() {
   );
 
   test('all three mouse catalogs use the M7X PRO left/right hotspots', () async {
-    for (final model in ['m7xse', 'm7x', 'm7x pro']) {
+    for (final model in ['m7x se', 'm7x', 'm7x pro']) {
       await DeviceCapabilityStore.load(model);
     }
 

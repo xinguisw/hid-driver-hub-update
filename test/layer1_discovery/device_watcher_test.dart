@@ -89,8 +89,8 @@ DiscoveredDevice _discovered(String path) {
     entry: const DeviceCatalogEntry(
       devId: '02AA',
       deviceType: DeviceType.mouse,
-      model: 'M7XSE',
-      deviceAttr: 'mouse_m7xse',
+      model: 'M7X SE',
+      deviceAttr: 'mouse_m7x_se',
       interfaceId: 2,
       usagePage: 0xFF02,
       image: DeviceImage(small: 'small.png', large: 'large.png'),

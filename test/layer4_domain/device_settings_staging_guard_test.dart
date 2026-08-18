@@ -6,7 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   DeviceSettingsState baseSettings() => const DeviceSettingsState(
     devId: '02AA',
-    displayName: 'M7XSE',
+    displayName: 'M7X SE',
     connectionMode: 0,
     loading: false,
     buttonCount: 6,

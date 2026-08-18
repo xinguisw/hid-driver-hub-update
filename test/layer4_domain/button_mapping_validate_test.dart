@@ -9,7 +9,7 @@ void main() {
   DeviceSettingsState synced({List<ButtonData>? buttons}) =>
       DeviceSettingsState(
         devId: '02AA',
-        displayName: 'M7XSE',
+        displayName: 'M7X SE',
         connectionMode: 0,
         buttonCount: 6,
         buttons:
@@ -114,7 +114,7 @@ void main() {
     const hotspot = Hotspot(x: 0.5, y: 0.5, r: 0.1);
     const capabilities = DeviceCapabilities(
       devId: '02AA',
-      displayNameKey: 'device.m7xse',
+      displayNameKey: 'device.m7x_se',
       buttons: ButtonCapabilities(
         count: 6,
         list: [

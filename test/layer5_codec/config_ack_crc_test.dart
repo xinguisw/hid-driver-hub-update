@@ -4,7 +4,7 @@ import 'package:driver_hub/layer5_codec/codec_exception.dart';
 import 'package:driver_hub/layer5_codec/device_protocol.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// Live M7XSE config ACKs (desktop: report id 0x07 + 31B body).
+/// Live M7X SE config ACKs (desktop: report id 0x07 + 31B body).
 void main() {
   group('MouseProtocol.validateConfigAckFrame', () {
     test('B2 desktop length + addrs OK', () {

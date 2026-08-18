@@ -357,14 +357,21 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                                       ),
                                     );
                                   },
-                                  macroSlots: widget.scope.macrosFor(
-                                    widget.card,
-                                  ),
+                                  macroSlots: widget.scope
+                                      .macrosFor(widget.card)
+                                      .indexed
+                                      .map(
+                                        (entry) => MacroSlot(
+                                          id: (entry.$1 + 1).toString(),
+                                          name: entry.$2.name,
+                                        ),
+                                      )
+                                      .toList(),
                                   onMacroSelected: (macroSlot) {
                                     _settingsBloc.add(
                                       DeviceSettingsMacroMappingRequested(
                                         buttonId: _selectedButtonId!,
-                                        macroSlot: macroSlot,
+                                        macroSlot: int.tryParse(macroSlot) ?? 0,
                                       ),
                                     );
                                   },

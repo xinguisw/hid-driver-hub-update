@@ -14,10 +14,11 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_single_instance/flutter_single_instance.dart';
+import 'package:window_manager/window_manager.dart';
 
 Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   // Set slang locale to device locale
   LocaleSettings.useDeviceLocale();
 
@@ -38,6 +39,12 @@ Future<void> main(List<String> args) async {
 
     await windowManager.ensureInitialized();
 
+    // 👇 NEW: Hide the default title bar and make window frameless
+    await windowManager.setTitleBarStyle(
+      TitleBarStyle.hidden,
+      windowButtonVisibility: false, // hides native min/max/close
+    );
+
     FlutterSingleInstance.debugMode = false;
     if (!await FlutterSingleInstance().isFirstInstance()) {
       await FlutterSingleInstance().focus();
@@ -54,11 +61,7 @@ Future<void> main(List<String> args) async {
       unawaited(window_bootstrap.configureDesktopWindow());
     });
   }
-  runApp(
-    TranslationProvider(
-      child: DriverHubApp(scope: _createDeviceScope()),
-    ),
-  );
+  runApp(TranslationProvider(child: DriverHubApp(scope: _createDeviceScope())));
 }
 
 DeviceScope _createDeviceScope() => DeviceScope(

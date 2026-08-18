@@ -681,8 +681,9 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                                         (o) =>
                                             o.label == synced?.angleTuneLabel,
                                       );
-                                      if (idx < 0)
+                                      if (idx < 0) {
                                         idx = (options.length / 2).floor();
+                                      }
                                     }
                                     if (idx > 0) {
                                       bloc.add(
@@ -707,8 +708,9 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                                         (o) =>
                                             o.label == synced?.angleTuneLabel,
                                       );
-                                      if (idx < 0)
+                                      if (idx < 0) {
                                         idx = (options.length / 2).floor();
+                                      }
                                     }
                                     if (idx >= 0 && idx < options.length - 1) {
                                       bloc.add(

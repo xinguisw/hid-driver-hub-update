@@ -9,12 +9,18 @@ import 'package:driver_hub/layer1_discovery/device_runtime.dart';
 import 'package:driver_hub/layer4_domain/device_scope.dart';
 import 'package:driver_hub/layer6_transport/app_settings_storage.dart';
 import 'package:driver_hub/layer6_transport/macro_storage.dart';
+import 'package:driver_hub/i18n/strings.g.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_single_instance/flutter_single_instance.dart';
 
 Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Set slang locale to device locale
+  LocaleSettings.useDeviceLocale();
+
   if (_isDesktop) {
     if (_isWindows && window_bootstrap.isOsdWindow(args)) {
       final osdController = OsdOverlayWindowController(
@@ -48,7 +54,11 @@ Future<void> main(List<String> args) async {
       unawaited(window_bootstrap.configureDesktopWindow());
     });
   }
-  runApp(DriverHubApp(scope: _createDeviceScope()));
+  runApp(
+    TranslationProvider(
+      child: DriverHubApp(scope: _createDeviceScope()),
+    ),
+  );
 }
 
 DeviceScope _createDeviceScope() => DeviceScope(
@@ -84,6 +94,9 @@ class DriverHubApp extends StatelessWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
       ),
+      locale: TranslationProvider.of(context).locale.flutterLocale,
+      supportedLocales: AppLocaleUtils.supportedLocales,
+      localizationsDelegates: GlobalMaterialLocalizations.delegates,
       home: DevicesScreen(scope: scope),
     );
   }

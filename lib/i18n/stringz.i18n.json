@@ -1,0 +1,123 @@
+{
+    "views": {
+        "login": {
+            "welcome": "Welcome",
+            "userName": "Username",
+            "loginButton": "Login"
+        },
+        "home": {
+            "greeting": "Hello, {userName}!"
+        }
+    },
+    "devices": {
+        "addDevice": "Add device",
+        "working": "Working...",
+        "bluetoothWarning": "The driver cannot recognize Bluetooth connection. Please use a 2.4G receiver or a cable connection",
+        "noDevices": "No devices"
+    },
+    "sidebar": {
+        "buttonMapping": "Button Mapping",
+        "macroSetting": "Macro Setting",
+        "performanceSetting": "Performance Setting",
+        "parameterSetting": "Parameter Setting",
+        "backlightSetting": "Backlight Setting",
+        "profileManagement": "Profile Management",
+        "deviceSetting": "Device Setting",
+        "mouse": "mouse",
+        "batteryLabel": "Battery {pct}%",
+        "batteryCharging": "Battery {pct}% charging",
+        "batteryEmpty": "Battery —"
+    },
+    "mapping": {
+        "mouse": "Mouse",
+        "keyboard": "Keyboard",
+        "special": "Special",
+        "macro": "Macro",
+        "modifierKey": "Modifier key"
+    },
+    "common": {
+        "save": "Save",
+        "cancel": "Cancel",
+        "confirm": "Confirm",
+        "resetToDefault": "Reset to Default",
+        "tip": "Tip",
+        "settings": "Settings",
+        "language": "Language",
+        "lightMode": "Light Mode",
+        "darkMode": "Dark Mode",
+        "switchToLightMode": "Switch to Light Mode",
+        "switchToDarkMode": "Switch to Dark Mode",
+        "forward": "Forward",
+        "reverse": "Reverse",
+        "secondsUnit": "{seconds} sec",
+        "done": "Done"
+    },
+    "mouseCanvas": {
+        "imageMissing": "Mouse image missing",
+        "restoreDefaultKeysTip": "Are you sure you want to restore default keys?"
+    },
+    "performance": {
+        "dpiSettings": "DPI settings",
+        "reportRate": "Report rate",
+        "levels": "Levels",
+        "dpiLevel": "DPI {level}",
+        "dpiStageColor": "DPI stage color"
+    },
+    "parameter": {
+        "sensorFeature": "Sensor feature",
+        "otherFeature": "Other feature",
+        "rippleControl": "Ripple Control",
+        "angleSnap": "Angle Snap",
+        "lod": "LOD",
+        "angleTune": "Angle Tune",
+        "performance": "Performance",
+        "wheelDirection": "Wheel direction"
+    },
+    "backlight": {
+        "title": "Backlight",
+        "mode": "Mode",
+        "color": "Color",
+        "powerSaving": "Power saving"
+    },
+    "actions": {
+        "left": "Left",
+        "right": "Right",
+        "middle": "Middle",
+        "forward": "Forward",
+        "backward": "Backward",
+        "dpiCycle": "DPI cycle",
+        "button": "Button {id}",
+        "disable": "Disable / No action",
+        "buttonOff": "Button off",
+        "leftClick": "Left click",
+        "rightClick": "Right click",
+        "middleClick": "Middle click",
+        "scrollUp": "Scroll up",
+        "scrollDown": "Scroll down",
+        "swingLeft": "Swing left",
+        "swingRight": "Swing right",
+        "dpiIncrease": "DPI increase",
+        "dpiDecrease": "DPI decrease",
+        "reportRate": "Report rate",
+        "profileCycle": "Profile cycle",
+        "sniper": "Sniper",
+        "macroPlay": "Macro play (#{id})"
+    },
+    "deviceSetting": {
+        "mouseFirmwareVersion": "Mouse Firmware Version",
+        "dongleFirmwareVersion": "Dongle Firmware Version",
+        "latestVersion": "Latest version",
+        "checkUpdates": "Check updates",
+        "newVersionUpdate": "New version & update"
+    },
+    "macro": {
+        "startRecording": "Start Recording",
+        "stopRecording": "Stop Recording",
+        "record": "Record",
+        "reset": "Reset",
+        "noMacrosConfigured": "No macros configured",
+        "createMacro": "Create Macro",
+        "selectShortcutEdit": "Please select a shortcut to edit",
+        "newMacro": "New Macro"
+    }
+}

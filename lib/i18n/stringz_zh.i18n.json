@@ -1,0 +1,123 @@
+{
+    "views": {
+        "login": {
+            "welcome": "欢迎",
+            "userName": "用户名",
+            "loginButton": "登录"
+        },
+        "home": {
+            "greeting": "你好，{userName}！"
+        }
+    },
+    "devices": {
+        "addDevice": "添加设备",
+        "working": "工作中...",
+        "bluetoothWarning": "该驱动程序无法识别蓝牙连接。请使用 2.4G 接收器或电缆连接",
+        "noDevices": "未发现设备"
+    },
+    "sidebar": {
+        "buttonMapping": "按键映射",
+        "macroSetting": "宏设置",
+        "performanceSetting": "性能设置",
+        "parameterSetting": "参数设置",
+        "backlightSetting": "背光设置",
+        "profileManagement": "配置文件管理",
+        "deviceSetting": "设备设置",
+        "mouse": "鼠标",
+        "batteryLabel": "电量 {pct}%",
+        "batteryCharging": "电量 {pct}% 充电中",
+        "batteryEmpty": "电量 —"
+    },
+    "mapping": {
+        "mouse": "鼠标",
+        "keyboard": "键盘",
+        "special": "特殊键",
+        "macro": "宏",
+        "modifierKey": "修饰键"
+    },
+    "common": {
+        "save": "保存",
+        "cancel": "取消",
+        "confirm": "确认",
+        "resetToDefault": "恢复默认",
+        "tip": "提示",
+        "settings": "设置",
+        "language": "语言",
+        "lightMode": "浅色模式",
+        "darkMode": "深色模式",
+        "switchToLightMode": "切换到浅色模式",
+        "switchToDarkMode": "切换到深色模式",
+        "forward": "向前",
+        "reverse": "反向",
+        "secondsUnit": "{seconds} 秒",
+        "done": "完成"
+    },
+    "mouseCanvas": {
+        "imageMissing": "鼠标图片缺失",
+        "restoreDefaultKeysTip": "您确定要恢复默认按键吗？"
+    },
+    "performance": {
+        "dpiSettings": "DPI 设置",
+        "reportRate": "回报率",
+        "levels": "档位",
+        "dpiLevel": "DPI {level}",
+        "dpiStageColor": "DPI 档位颜色"
+    },
+    "parameter": {
+        "sensorFeature": "传感器功能",
+        "otherFeature": "其他功能",
+        "rippleControl": "平滑控制",
+        "angleSnap": "角度微调",
+        "lod": "静默高度 (LOD)",
+        "angleTune": "角度调整",
+        "performance": "性能",
+        "wheelDirection": "滚轮方向"
+    },
+    "backlight": {
+        "title": "背光",
+        "mode": "模式",
+        "color": "颜色",
+        "powerSaving": "省电"
+    },
+    "actions": {
+        "left": "左键",
+        "right": "右键",
+        "middle": "中键",
+        "forward": "前进",
+        "backward": "后退",
+        "dpiCycle": "DPI 循环",
+        "button": "按键 {id}",
+        "disable": "禁用 / 无操作",
+        "buttonOff": "关闭按键",
+        "leftClick": "左键单击",
+        "rightClick": "右键单击",
+        "middleClick": "中键单击",
+        "scrollUp": "向上滚动",
+        "scrollDown": "向下滚动",
+        "swingLeft": "向左摇摆",
+        "swingRight": "向右摇摆",
+        "dpiIncrease": "增加 DPI",
+        "dpiDecrease": "减少 DPI",
+        "reportRate": "回报率",
+        "profileCycle": "配置文件循环",
+        "sniper": "狙击键",
+        "macroPlay": "宏播放 (#{id})"
+    },
+    "deviceSetting": {
+        "mouseFirmwareVersion": "鼠标固件版本",
+        "dongleFirmwareVersion": "接收器固件版本",
+        "latestVersion": "最新版本",
+        "checkUpdates": "检查更新",
+        "newVersionUpdate": "新版本与更新"
+    },
+    "macro": {
+        "startRecording": "开始录制",
+        "stopRecording": "停止录制",
+        "record": "录制",
+        "reset": "重置",
+        "noMacrosConfigured": "未配置宏",
+        "createMacro": "创建宏",
+        "selectShortcutEdit": "请选择要编辑的快捷键",
+        "newMacro": "新建宏"
+    }
+}

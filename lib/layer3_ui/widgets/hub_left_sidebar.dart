@@ -1,4 +1,5 @@
 import 'package:driver_hub/layer4_domain/models/discovered_card_state.dart';
+import 'package:driver_hub/i18n/strings.g.dart';
 import 'package:flutter/material.dart';
 
 /// Left hub nav — compact device header + destinations + collapse toggle.
@@ -36,13 +37,13 @@ class _HubLeftSidebarState extends State<HubLeftSidebar> {
   static const double _extendedWidth = 256;
 
   List<({int index, String label})> get _destinations => [
-    (index: 0, label: 'Button Mapping'),
-    (index: 1, label: 'Macro Setting'),
-    (index: 2, label: 'Performance Setting'),
-    (index: 3, label: 'Parameter Setting'),
-    if (widget.hasRgbBacklight) (index: 4, label: 'Backlight Setting'),
-    (index: 5, label: 'Profile Management'),
-    (index: 6, label: 'Device Setting'),
+    (index: 0, label: t.sidebar.buttonMapping),
+    (index: 1, label: t.sidebar.macroSetting),
+    (index: 2, label: t.sidebar.performanceSetting),
+    (index: 3, label: t.sidebar.parameterSetting),
+    if (widget.hasRgbBacklight) (index: 4, label: t.sidebar.backlightSetting),
+    (index: 5, label: t.sidebar.profileManagement),
+    (index: 6, label: t.sidebar.deviceSetting),
     (index: 7, label: 'App Setting'),
   ];
 
@@ -139,7 +140,7 @@ class _HubLeftSidebarState extends State<HubLeftSidebar> {
             // why: collapsed rail — text stand-in "mouse" (not first letter of name)
             : Center(
                 child: Text(
-                  'mouse',
+                  t.sidebar.mouse,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.labelSmall?.copyWith(
@@ -160,9 +161,9 @@ class _HubLeftSidebarState extends State<HubLeftSidebar> {
 
   String get _batteryLabel {
     final pct = widget.card.batteryPercentage;
-    if (pct < 0) return 'Battery —';
-    if (widget.card.isCharging) return 'Battery $pct% charging';
-    return 'Battery $pct%';
+    if (pct < 0) return t.sidebar.batteryEmpty;
+    if (widget.card.isCharging) return t.sidebar.batteryCharging(pct: pct.toString());
+    return t.sidebar.batteryLabel(pct: pct.toString());
   }
 
   Widget _destinationRow(String label) {

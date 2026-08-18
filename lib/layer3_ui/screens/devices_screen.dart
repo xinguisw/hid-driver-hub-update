@@ -9,6 +9,7 @@ import 'package:driver_hub/layer4_domain/models/discovered_card_state.dart';
 import 'package:driver_hub/layer4_domain/models/osd_event.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:driver_hub/i18n/strings.g.dart';
 
 /// Home screen: one [DeviceCard] per verified device.
 ///
@@ -80,7 +81,30 @@ class _DevicesScreenState extends State<DevicesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('driver_hub')),
+      appBar: AppBar(
+        title: const Text('driver_hub'),
+        actions: [
+          PopupMenuButton<AppLocale>(
+            icon: const Icon(Icons.translate, size: 20),
+            tooltip: t.common.language,
+            initialValue: TranslationProvider.of(context).locale,
+            onSelected: (AppLocale locale) {
+              LocaleSettings.setLocale(locale);
+            },
+            itemBuilder: (BuildContext context) {
+              return AppLocale.values.map((AppLocale locale) {
+                String name = locale.languageTag.toUpperCase();
+                if (locale.languageTag == 'en') name = 'English';
+                if (locale.languageTag == 'zh') name = '简体中文';
+                return PopupMenuItem<AppLocale>(
+                  value: locale,
+                  child: Text(name),
+                );
+              }).toList();
+            },
+          ),
+        ],
+      ),
       body: Column(
         children: [
           if (kIsWeb) _addDeviceBar,

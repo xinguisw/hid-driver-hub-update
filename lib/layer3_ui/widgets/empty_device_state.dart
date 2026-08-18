@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:driver_hub/i18n/strings.g.dart';
 
 /// Empty-device placeholder — a pure atom (CDD).
 ///
@@ -14,7 +15,7 @@ class EmptyDeviceState extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.all(24),
       child: Text(
-        busy ? 'Working…' : 'No devices',
+        busy ? t.devices.working : t.devices.noDevices,
         style: const TextStyle(color: Colors.grey),
       ),
     );

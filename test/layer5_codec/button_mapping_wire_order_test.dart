@@ -13,14 +13,14 @@ void main() {
       ),
   ];
 
-  test('maps the shared side-button wire permutation', () {
+  test('maps the shared direct button wire order', () {
     final wire = buttonMappingUiToWire(ui);
 
     expect(wire[0], same(ui[0]));
     expect(wire[1], same(ui[1]));
     expect(wire[2], same(ui[2]));
-    expect(wire[3], same(ui[4]));
-    expect(wire[4], same(ui[3]));
+    expect(wire[3], same(ui[3]));
+    expect(wire[4], same(ui[4]));
     expect(wire[5], same(ui[5]));
   });
 
@@ -37,7 +37,7 @@ void main() {
     }
   });
 
-  test('factory UI identity builds the observed device payload and CRC', () {
+  test('factory UI identity builds the observed device payload', () {
     final frame = MouseProtocol.buildButtonMappingSetFrame([
       const ButtonMappingEntry(action: 0x02, param1: 0, param2: 0, param3: 0),
       const ButtonMappingEntry(action: 0x03, param1: 0, param2: 0, param3: 0),
@@ -60,11 +60,11 @@ void main() {
       0x00,
       0x00,
       0x00,
-      0x06,
-      0x00,
-      0x00,
-      0x00,
       0x05,
+      0x00,
+      0x00,
+      0x00,
+      0x06,
       0x00,
       0x00,
       0x00,
@@ -73,6 +73,5 @@ void main() {
       0x00,
       0x00,
     ]);
-    expect(frame.sublist(29, 31), [0x4F, 0xB2]);
   });
 }

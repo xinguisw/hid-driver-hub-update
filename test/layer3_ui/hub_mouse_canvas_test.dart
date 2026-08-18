@@ -56,11 +56,11 @@ void main() {
         id: 3,
         labelKey: 'button.middle_click',
         remappable: true,
-        buttonLabel: 'Middle click',
-        actionLabel: 'Middle click',
+        buttonLabel: 'Middle Button',
+        actionLabel: 'Middle Button',
       );
 
-      expect(mouseButtonCalloutText(button), 'Middle click');
+      expect(mouseButtonCalloutText(button), 'Middle Button');
     });
 
     test('falls back to the physical label when no action exists', () {

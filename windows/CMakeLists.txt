@@ -61,7 +61,7 @@ include(flutter/generated_plugins.cmake)
 # (id narrowing). Not our sources — silence on that target only.
 if(TARGET cnativeapi)
   target_compile_definitions(cnativeapi PRIVATE _CRT_SECURE_NO_WARNINGS)
-  target_compile_options(cnativeapi PRIVATE /wd4996 /wd4244)
+  target_compile_options(cnativeapi PRIVATE /wd4996 /wd4244 /wd4819)
 endif()
 
 

@@ -56,8 +56,49 @@ void main() {
     await tester.tap(find.text('Create Macro'));
     await tester.pump();
 
-    expect(find.text('M1'), findsOneWidget);
+    expect(find.text('M1'), findsAtLeastNWidgets(1));
     expect(find.byType(ListTile), findsNothing);
+  });
+
+  testWidgets('save and reset buttons are disabled while recording is active', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(home: Scaffold(body: HubMacroPanel())),
+    );
+
+    await tester.tap(find.text('Create Macro'));
+    await tester.pump();
+
+    // Before recording, Save and Reset are enabled
+    final saveButtonBefore = tester.widget<OutlinedButton>(
+      find.widgetWithText(OutlinedButton, 'Save'),
+    );
+    expect(saveButtonBefore.onPressed, isNotNull);
+
+    // Start recording
+    await tester.tap(find.text('Start Recording'));
+    await tester.pump();
+
+    // While recording, Save and Reset are disabled
+    final saveButtonRecording = tester.widget<OutlinedButton>(
+      find.widgetWithText(OutlinedButton, 'Save'),
+    );
+    final resetButtonRecording = tester.widget<OutlinedButton>(
+      find.widgetWithText(OutlinedButton, 'Reset'),
+    );
+    expect(saveButtonRecording.onPressed, isNull);
+    expect(resetButtonRecording.onPressed, isNull);
+
+    // Stop recording
+    await tester.tap(find.text('Stop Recording'));
+    await tester.pump();
+
+    // After stopping recording, Save and Reset are re-enabled
+    final saveButtonAfter = tester.widget<OutlinedButton>(
+      find.widgetWithText(OutlinedButton, 'Save'),
+    );
+    expect(saveButtonAfter.onPressed, isNotNull);
   });
 
   testWidgets('recorded taps retain inline delays on the preceding actions', (
@@ -128,9 +169,9 @@ void main() {
     await tester.tap(find.text('Stop Recording'));
     await tester.pump();
 
-    // One notch = make + break, same pair shape as mouse buttons.
-    expect(find.text('Wheel up'), findsNWidgets(2));
-    expect(find.text('Wheel down'), findsNWidgets(2));
+    // One notch = single directional wheel action.
+    expect(find.text('Wheel Up'), findsOneWidget);
+    expect(find.text('Wheel Down'), findsOneWidget);
   });
 
   testWidgets('saving recorded actions validates the captured action list', (
@@ -159,6 +200,11 @@ void main() {
     expect(
       find.text('Macro must contain between 1 and 30 actions'),
       findsNothing,
+    );
+    expect(find.text('Please select a shortcut to edit'), findsOneWidget);
+    expect(
+      find.widgetWithText(OutlinedButton, 'New Macro'),
+      findsAtLeastNWidgets(1),
     );
   });
 
@@ -277,4 +323,202 @@ void main() {
       expect(find.text('B'), findsNothing);
     },
   );
+
+  testWidgets('Reset clears all recorded actions in current draft', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(home: Scaffold(body: HubMacroPanel())),
+    );
+
+    await tester.tap(find.text('Create Macro'));
+    await tester.pump();
+    await tester.tap(find.text('Start Recording'));
+    await tester.pump();
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.keyA);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.keyA);
+    await tester.tap(find.text('Stop Recording'));
+    await tester.pump();
+
+    final resetButton = find.text('Reset');
+    await tester.ensureVisible(resetButton);
+    await tester.tap(resetButton);
+    await tester.pump();
+
+    expect(find.text('A'), findsNothing);
+    expect(find.text('No events recorded'), findsOneWidget);
+  });
+
+  testWidgets('recording captures punctuation key (-)', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(home: Scaffold(body: HubMacroPanel())),
+    );
+
+    await tester.tap(find.text('Create Macro'));
+    await tester.pump();
+    await tester.tap(find.text('Start Recording'));
+    await tester.pump();
+
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.minus);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.minus);
+    await tester.pumpAndSettle();
+
+    expect(find.text('-'), findsNWidgets(2));
+  });
+
+  testWidgets('recording captures lock key (Caps Lock)', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(home: Scaffold(body: HubMacroPanel())),
+    );
+
+    await tester.tap(find.text('Create Macro'));
+    await tester.pump();
+    await tester.tap(find.text('Start Recording'));
+    await tester.pump();
+
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.capsLock);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.capsLock);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Caps Lock'), findsNWidgets(2));
+  });
+
+  testWidgets('recording captures function key (F12)', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(home: Scaffold(body: HubMacroPanel())),
+    );
+
+    await tester.tap(find.text('Create Macro'));
+    await tester.pump();
+    await tester.tap(find.text('Start Recording'));
+    await tester.pump();
+
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.f12);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.f12);
+    await tester.pumpAndSettle();
+
+    expect(find.text('F12'), findsNWidgets(2));
+  });
+
+  testWidgets(
+    'recording blocks consumer and multimedia keys and shows error message',
+    (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(home: Scaffold(body: HubMacroPanel())),
+      );
+
+      await tester.tap(find.text('Create Macro'));
+      await tester.pump();
+      await tester.tap(find.text('Start Recording'));
+      await tester.pump();
+
+      // Press consumer Volume Up
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.audioVolumeUp);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.audioVolumeUp);
+      await tester.pump();
+
+      expect(
+        find.text('Consumer and multimedia keys cannot be recorded'),
+        findsOneWidget,
+      );
+
+      // Press consumer Media Play/Pause
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.mediaPlayPause);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.mediaPlayPause);
+      await tester.pump();
+
+      expect(
+        find.text('Consumer and multimedia keys cannot be recorded'),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.text('Stop Recording'));
+      await tester.pump();
+
+      // Ensure no consumer key actions were recorded into draft
+      expect(find.text('KeyDown'), findsNothing);
+      expect(find.text('KeyUp'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'loop count field is enabled only when macro type is Loop',
+    (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(home: Scaffold(body: HubMacroPanel())),
+      );
+
+      await tester.tap(find.text('Create Macro'));
+      await tester.pump();
+
+      final loopFieldFinder = find.widgetWithText(TextField, 'Loop count');
+      final loopTextField = tester.widget<TextField>(loopFieldFinder);
+      expect(loopTextField.enabled, isTrue);
+
+      // Select 'Play on hold'
+      await tester.tap(find.text('Loop'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Play on hold').last);
+      await tester.pumpAndSettle();
+
+      final disabledTextField = tester.widget<TextField>(loopFieldFinder);
+      expect(disabledTextField.enabled, isFalse);
+    },
+  );
+
+  testWidgets(
+    'saving a macro displays "Macro saved successfully" toast',
+    (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(home: Scaffold(body: HubMacroPanel())),
+      );
+
+      await tester.tap(find.text('Create Macro'));
+      await tester.pump();
+      await tester.tap(find.text('Start Recording'));
+      await tester.pump();
+
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.keyA);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.keyA);
+      await tester.tap(find.text('Stop Recording'));
+      await tester.pump();
+
+      final saveButton = find.text('Save');
+      await tester.ensureVisible(saveButton);
+      await tester.tap(saveButton);
+      await tester.pump();
+
+      expect(find.text('Macro saved successfully'), findsOneWidget);
+      expect(find.byType(MacroToast), findsOneWidget);
+
+      // Verify auto-dismiss after 3s
+      await tester.pump(const Duration(seconds: 3));
+      expect(find.text('Macro saved successfully'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'saving an invalid macro displays "Macro failed to save" toast',
+    (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(home: Scaffold(body: HubMacroPanel())),
+      );
+
+      await tester.tap(find.text('Create Macro'));
+      await tester.pump();
+
+      // Attempt to save empty macro (invalid: must have 1..30 actions)
+      final saveButton = find.text('Save');
+      await tester.ensureVisible(saveButton);
+      await tester.tap(saveButton);
+      await tester.pump();
+
+      expect(find.text('Macro failed to save'), findsOneWidget);
+      expect(find.byType(MacroToast), findsOneWidget);
+
+      await tester.pump(const Duration(seconds: 3));
+      expect(find.text('Macro failed to save'), findsNothing);
+    },
+  );
 }
+

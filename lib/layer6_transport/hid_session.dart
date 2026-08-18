@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:typed_data';
 
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
 import 'package:hid_tool/hid_tool.dart';
 
 import 'package:driver_hub/layer5_codec/protocol_transport.dart';
@@ -68,7 +68,7 @@ class HidSession implements ProtocolTransport {
     required int reportId,
     required int reportLength,
     required bool Function(Uint8List raw) match,
-    Duration timeout = const Duration(milliseconds: 1000),
+    Duration timeout = const Duration(seconds: 3),
   }) {
     return enqueue(
       () => _sendAndWaitBody(
@@ -85,27 +85,50 @@ class HidSession implements ProtocolTransport {
     required int reportId,
     required bool Function(Uint8List raw) match,
     required Duration timeout,
+    int maxRetries = 3,
+    Duration retryDelay = const Duration(milliseconds: 120),
   }) async {
-    final done = Completer<Uint8List>();
-    final timer = Timer(timeout, () {
-      if (!done.isCompleted) {
-        if (_pending?.completer == done) _pending = null;
-        done.completeError(
-          TimeoutException(
-            'HidSession.sendAndWait timed out waiting for a matching report',
-            timeout,
-          ),
+    Object? lastError;
+    StackTrace? lastStackTrace;
+    for (var attempt = 0; attempt <= maxRetries; attempt++) {
+      if (attempt > 0) {
+        debugPrint(
+          '[hid_session] sendAndWait attempt ${attempt + 1}/${maxRetries + 1} '
+          'after error (${lastError?.toString()}), retrying in ${retryDelay.inMilliseconds}ms...',
         );
+        await Future.delayed(retryDelay);
       }
-    });
-    _pending = _PendingWait(match: match, completer: done, timer: timer);
-    try {
-      await sendReport(data, reportId: reportId);
-      return await done.future;
-    } finally {
-      timer.cancel();
-      if (_pending?.completer == done) _pending = null;
+      final done = Completer<Uint8List>();
+      final timer = Timer(timeout, () {
+        if (!done.isCompleted) {
+          if (_pending?.completer == done) _pending = null;
+          done.completeError(
+            TimeoutException(
+              'HidSession.sendAndWait timed out waiting for a matching report (attempt ${attempt + 1}/${maxRetries + 1})',
+              timeout,
+            ),
+          );
+        }
+      });
+      _pending = _PendingWait(match: match, completer: done, timer: timer);
+      try {
+        await sendReport(data, reportId: reportId);
+        return await done.future;
+      } catch (e, st) {
+        lastError = e;
+        lastStackTrace = st;
+      } finally {
+        timer.cancel();
+        if (_pending?.completer == done) _pending = null;
+      }
     }
+    Error.throwWithStackTrace(
+      lastError ??
+          TimeoutException(
+            'HidSession.sendAndWait failed after ${maxRetries + 1} attempts',
+          ),
+      lastStackTrace ?? StackTrace.current,
+    );
   }
 
   Future<void> open() async {

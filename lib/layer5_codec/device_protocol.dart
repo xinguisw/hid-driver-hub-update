@@ -45,7 +45,7 @@ class FirmwareResult {
   /// Shared mouse / receiver path: reverse wire bytes, join with dots.
   static String formatFirmwareVersion(List<int> wire) {
     if (wire.isEmpty) return '';
-    return wire.reversed.map((b) => b.toString()).join('.');
+    return wire.reversed.map((b) => (b & 0xFF).toRadixString(16)).join('.');
   }
 }
 
@@ -353,7 +353,7 @@ class MouseProtocol implements DeviceProtocol {
   static const int _firmwareDongleOffset = 7;
   static const int _firmwareVersionLength = 2;
 
-  static const Duration _sendTimeout = Duration(milliseconds: 1000);
+  static const Duration _sendTimeout = Duration(seconds: 3);
 
   @override
   Future<DeviceHandshake> handshake(
@@ -557,6 +557,7 @@ class MouseProtocol implements DeviceProtocol {
     final op = body.isEmpty ? -1 : body[_opOff];
     if (op == _getOpcode || op == _setOpcode) {
       verifyConfigAckCrc(ack, label: label);
+      verifyConfigAckPayload(ack, ask.sublist(_dataOff), label: label);
     } else {
       debugPrint(
         '[proto] $label: SET ack opcode 0x${op.toRadixString(16)} '
@@ -654,6 +655,7 @@ class MouseProtocol implements DeviceProtocol {
         '[proto] $label: ACK data=${_hex(ackData)} crc=${_hex(ackCrc)}',
       );
       verifyConfigAckCrc(ack, label: label);
+      verifyConfigAckPayload(ack, dataBlock, label: label);
     } else {
       debugPrint(
         '[proto] $label: SET ack opcode 0x${op.toRadixString(16)} '
@@ -728,6 +730,7 @@ class MouseProtocol implements DeviceProtocol {
 
     validateConfigAckFrame(ack, addrs: addrsDpiTable, label: label);
     verifyConfigAckCrc(ack, label: label);
+    verifyConfigAckPayload(ack, dataBlock, label: label);
   }
 
   @override
@@ -769,6 +772,7 @@ class MouseProtocol implements DeviceProtocol {
 
     validateConfigAckFrame(ack, addrs: addrsDpiRgb, label: label);
     verifyConfigAckCrc(ack, label: label);
+    verifyConfigAckPayload(ack, dataBlock, label: label);
     debugPrint('[proto] $label: SET ack ${_hex(ack)} (${ack.length}B)');
   }
 
@@ -837,6 +841,7 @@ class MouseProtocol implements DeviceProtocol {
         '[proto] $label: ACK data=${_hex(ackData)} crc=${_hex(ackCrc)}',
       );
       verifyConfigAckCrc(ack, label: label);
+      verifyConfigAckPayload(ack, dataBlock, label: label);
     } else {
       debugPrint(
         '[proto] $label: SET ack opcode 0x${op.toRadixString(16)} '
@@ -924,6 +929,7 @@ class MouseProtocol implements DeviceProtocol {
         '[proto] $label: ACK data=${_hex(ackData)} crc=${_hex(ackCrc)}',
       );
       verifyConfigAckCrc(ack, label: label);
+      verifyConfigAckPayload(ack, dataBlock, label: label);
     } else {
       debugPrint(
         '[proto] $label: SET ack opcode 0x${op.toRadixString(16)} '
@@ -956,25 +962,47 @@ class MouseProtocol implements DeviceProtocol {
         '[proto] macro: SET slot=${macro.slot} chunk=$chunkIndex '
         'data=${_hex(chunks[chunkIndex])}',
       );
-      final reply = await session.sendAndWait(
-        data: frame,
-        reportId: MacroTransferCodec.reportId,
-        reportLength: MacroTransferCodec.frameLength,
-        match: (raw) => _matchesMacroReply(raw, macro.slot, chunkIndex),
-        timeout: _sendTimeout,
-      );
-      final body = _stripMacroReportId(reply);
-      final status = MacroTransferCodec.parseReplyStatus(body);
-      debugPrint(
-        '[proto] macro: reply slot=${macro.slot} chunk=$chunkIndex '
-        'status=0x${status.toRadixString(16)}',
-      );
-      if ((chunkIndex < 2 && status != MacroTransferCodec.statusReceived) ||
-          (chunkIndex == 2 && status != MacroTransferCodec.statusOk)) {
-        throw FormatException(
-          'Macro SET rejected: slot=${macro.slot} chunk=$chunkIndex '
-          'status=0x${status.toRadixString(16)}',
-        );
+
+      const maxAttempts = 1;
+      const retryDelay = Duration(milliseconds: 120);
+
+      for (var attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+          if (attempt > 1) {
+            debugPrint(
+              '[proto] macro: SET slot=${macro.slot} chunk=$chunkIndex '
+              'attempt $attempt/$maxAttempts after error/NAK, retrying in 120ms...',
+            );
+            await Future.delayed(retryDelay);
+          }
+          final reply = await session.sendAndWait(
+            data: frame,
+            reportId: MacroTransferCodec.reportId,
+            reportLength: MacroTransferCodec.frameLength,
+            match: (raw) => _matchesMacroReply(raw, macro.slot, chunkIndex),
+            timeout: _sendTimeout,
+          );
+          final body = _stripMacroReportId(reply);
+          final status = MacroTransferCodec.parseReplyStatus(body);
+          debugPrint(
+            '[proto] macro: reply slot=${macro.slot} chunk=$chunkIndex '
+            'status=0x${status.toRadixString(16)} (attempt $attempt)',
+          );
+          final isAck =
+              (chunkIndex < 2 && status == MacroTransferCodec.statusReceived) ||
+              (chunkIndex == 2 && status == MacroTransferCodec.statusOk);
+          if (!isAck) {
+            throw FormatException(
+              'Macro SET rejected: slot=${macro.slot} chunk=$chunkIndex '
+              'status=0x${status.toRadixString(16)}',
+            );
+          }
+          break; // ACK received! Next chunk.
+        } catch (e) {
+          if (attempt == maxAttempts) {
+            rethrow;
+          }
+        }
       }
     }
     // why: only status 0x02 on chunk 2 means flash write finished; surface
@@ -1180,6 +1208,48 @@ class MouseProtocol implements DeviceProtocol {
       throw CodecException(
         label: label,
         reason: 'CRC mismatch: calc=$calcHex wire=$wireHex',
+        raw: raw,
+      );
+    }
+  }
+
+  /// When the mouse echoes back applied data in a SET ACK (len > 0), verifies that
+  /// the echoed data bytes match the sent data payload bytes.
+  static void verifyConfigAckPayload(
+    Uint8List raw,
+    Uint8List sentData, {
+    String label = 'config',
+  }) {
+    final body = stripReportId(raw);
+    if (body.length <= _lenOff) return;
+    final len = body[_lenOff];
+    if (len == 0) {
+      debugPrint('[proto] $label: SET ACK len=0 (no payload echoed)');
+      return;
+    }
+    final end = _dataOff + len;
+    if (body.length < end) return;
+    final echoed = body.sublist(_dataOff, end);
+    final compareLength = len < sentData.length ? len : sentData.length;
+    var match = true;
+    for (var i = 0; i < compareLength; i++) {
+      if (echoed[i] != sentData[i]) {
+        match = false;
+        break;
+      }
+    }
+    debugPrint(
+      '[proto] $label: SET ACK payload echo verification len=$len match=$match',
+    );
+    if (!match) {
+      final sentHex = _hex(sentData.sublist(0, compareLength));
+      final echoedHex = _hex(echoed.sublist(0, compareLength));
+      debugPrint(
+        '[proto] $label: REJECT SET ACK payload mismatch! sent=$sentHex echoed=$echoedHex raw=${_hex(raw)}',
+      );
+      throw CodecException(
+        label: label,
+        reason: 'SET ACK data mismatch: sent=$sentHex echoed=$echoedHex',
         raw: raw,
       );
     }

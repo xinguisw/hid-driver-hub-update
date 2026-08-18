@@ -160,17 +160,17 @@ class TranslationCodec {
   String buttonIdToLabel(int buttonId) {
     switch (buttonId) {
       case 1:
-        return 'Left';
+        return 'Left Button';
       case 2:
-        return 'Right';
+        return 'Right Button';
       case 3:
-        return 'Middle';
+        return 'Middle Button';
       case 4:
-        return 'Forward';
+        return 'Forward Button';
       case 5:
-        return 'Backward';
+        return 'Backward Button';
       case 6:
-        return 'DPI cycle';
+        return 'DPI Cycle';
       default:
         return 'Button $buttonId';
     }
@@ -187,45 +187,44 @@ class TranslationCodec {
   }) {
     switch (action) {
       case 0x00:
-        return 'Disable / No action';
       case 0x01:
-        return 'Button off';
+        return 'Disable';
       case 0x02:
-        return 'Left click';
+        return 'Left Button';
       case 0x03:
-        return 'Right click';
+        return 'Right Button';
       case 0x04:
-        return 'Middle click';
+        return 'Middle Button';
       case 0x05:
-        return 'Forward';
+        return 'Forward Button';
       case 0x06:
-        return 'Backward';
+        return 'Backward Button';
       case 0x07:
-        return 'Scroll up';
+        return 'Wheel Up';
       case 0x08:
-        return 'Scroll down';
+        return 'Wheel Down';
       case 0x09:
-        return 'Swing left';
+        return 'Tilt Left';
       case 0x0A:
-        return 'Swing right';
+        return 'Tilt Right';
       case 0x0B:
-        return 'DPI increase';
+        return 'DPI +';
       // 0x0C unused in protocol enum
       case 0x0D:
-        return 'DPI decrease';
+        return 'DPI -';
       case 0x0E:
-        return 'DPI cycle';
+        return 'DPI Cycle';
       case 0x0F:
-        return 'Report rate';
+        return 'Report Rate Cycle';
       case 0x10:
-        return 'Profile cycle';
+        return 'Profile Cycle';
       case 0x11:
         return 'Sniper';
       case 0x12:
       case 0x13:
         return keyComboToLabel(param1, param2, param3);
       case 0x14:
-        return 'Macro play (#$param1)';
+        return 'M$param1';
       default:
         return 'Unknown action 0x${action.toRadixString(16)} '
             '(p=$param1,$param2,$param3)';

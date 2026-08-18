@@ -45,6 +45,7 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
   int _selectedIndex = 0;
   int? _selectedButtonId;
   int? _selectedDpiLevel;
+  bool _isLoadingOnboard = true;
   late final DeviceSettingsBloc _settingsBloc;
   StreamSubscription<OsdPerformanceEvent>? _performanceSubscription;
 
@@ -68,6 +69,14 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
           setState(() => _selectedButtonId = null);
         }
       },
+      onEscalationRequested: (reason) {
+        debugPrint(
+          '[hub] ${widget.card.displayName}: write failure escalation ($reason) - pop home',
+        );
+        if (mounted) {
+          Navigator.of(context).maybePop();
+        }
+      },
     );
     final cached = widget.scope.settingsFor(widget.card);
     if (cached != null) {
@@ -86,6 +95,15 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
   }
 
   @override
+  void didUpdateWidget(HubLandingScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.card.devId != widget.card.devId) {
+      _loadOnboardConfig();
+      _loadMacros();
+    }
+  }
+
+  @override
   void dispose() {
     widget.scope.cards.removeListener(_onCardsChanged);
     unawaited(_performanceSubscription?.cancel());
@@ -94,7 +112,10 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
   }
 
   void _onLivePerformance(OsdPerformanceEvent event) {
-    if (!mounted || event.deviceId != widget.card.devId) return;
+    if (!mounted ||
+        event.deviceId.toLowerCase() != widget.card.devId.toLowerCase()) {
+      return;
+    }
 
     _settingsBloc.add(
       DeviceSettingsLivePerformanceUpdated(
@@ -139,8 +160,12 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
       if (mounted) Navigator.of(context).maybePop();
       return;
     }
+    Timer? loadingTimer = Timer(const Duration(seconds: 3), () {
+      if (mounted) setState(() => _isLoadingOnboard = true);
+    });
     debugPrint('[hub] ${widget.card.displayName}: loading onboard config...');
     final packed = await widget.scope.loadOnboardSettings(widget.card);
+    loadingTimer.cancel();
     if (!mounted) return;
     if (!widget.scope.isCardConnected(widget.card) || packed.error != null) {
       debugPrint(
@@ -152,591 +177,866 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
     }
     _settingsBloc.add(DeviceSettingsHydrated(packed));
     debugPrint('[hub] ${widget.card.displayName}: onboard config done');
+    if (mounted) setState(() => _isLoadingOnboard = false);
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoadingOnboard) {
+      return Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircularProgressIndicator(),
+              const SizedBox(height: 16),
+              Text(
+                'Loading device capabilities...',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     final selected = widget.scope.resolveCard(widget.card);
     return BlocProvider<DeviceSettingsBloc>.value(
       value: _settingsBloc,
       child: BlocListener<DeviceSettingsBloc, DeviceSettingsViewState>(
         listenWhen: (prev, next) =>
-            prev.synced != next.synced &&
-            next.synced != null &&
-            !next.isDirty &&
-            next.lastError == null,
+            (prev.synced != next.synced &&
+                next.synced != null &&
+                !next.isDirty &&
+                next.lastError == null) ||
+            (prev.dpiCurrentLevelStaging != next.dpiCurrentLevelStaging) ||
+            (prev.buttonMappingStaging != next.buttonMappingStaging) ||
+            (prev.isDirty != next.isDirty) ||
+            (prev.lastError != next.lastError),
         listener: (context, state) {
           final s = state.synced;
           if (s != null) widget.scope.putSettings(widget.card, s);
+          if (state.lastError != null &&
+              (state.lastError!.contains('TimeoutException') ||
+                  state.lastError!.contains('timed out'))) {
+            debugPrint(
+              '[hub] ${widget.card.displayName}: timeout error (${state.lastError}) - pop home',
+            );
+            Navigator.of(context).maybePop();
+            return;
+          }
+          if (state.dpiCurrentLevelStaging == null && !state.isDirty) {
+            if (_selectedDpiLevel != null) {
+              setState(() => _selectedDpiLevel = null);
+            }
+          }
+          if (state.buttonMappingStaging == null && !state.isDirty) {
+            if (_selectedButtonId != null) {
+              setState(() => _selectedButtonId = null);
+            }
+          }
         },
         child: Scaffold(
-          body: Row(
+          body: Stack(
             children: [
-              BlocBuilder<DeviceSettingsBloc, DeviceSettingsViewState>(
-                buildWhen: (previous, next) =>
-                    previous.synced?.hasRgbBacklight !=
-                    next.synced?.hasRgbBacklight,
-                builder: (context, view) => HubLeftSidebar(
-                  card: selected,
-                  selectedIndex: _selectedIndex,
-                  hasRgbBacklight: view.synced?.hasRgbBacklight ?? false,
-                  onDestinationSelected: (index) {
-                    // FR-OPS-005: dirty sweep when navigating away from button mapping
-                    if (_selectedIndex == _buttonMappingIndex &&
-                        index != _buttonMappingIndex) {
-                      _settingsBloc.add(
-                        const DeviceSettingsNavigationRequested(),
-                      );
-                    }
-                    setState(() {
-                      _selectedIndex = index;
-                      if (index != _buttonMappingIndex) {
-                        _selectedButtonId = null;
-                      }
-                    });
-                  },
-                  onDeviceTap: () => Navigator.of(context).maybePop(),
-                ),
-              ),
-              const VerticalDivider(thickness: 1, width: 1),
-              if (_selectedIndex == _buttonMappingIndex)
-                Expanded(
-                  child: BlocBuilder<DeviceSettingsBloc, DeviceSettingsViewState>(
-                    buildWhen: (p, n) =>
-                        p.displaySettings != n.displaySettings ||
-                        p.isDirty != n.isDirty ||
-                        p.committing != n.committing ||
-                        p.lastError != n.lastError,
-                    builder: (context, view) {
-                      final display = view.displaySettings;
-                      final buttons = display?.buttons ?? const [];
-                      final bloc = context.read<DeviceSettingsBloc>();
-                      return Row(
-                        children: [
-                          Expanded(
-                            child: HubMouseCanvas(
-                              imageLarge: selected.imageLarge,
-                              buttons: buttons,
-                              selectedButtonId: _selectedButtonId,
-                              isDirty: view.isDirty,
-                              committing: view.committing,
-                              onButtonSelected: (id) {
-                                setState(() => _selectedButtonId = id);
-                              },
-                              onResetToDefault: () {
-                                debugPrint(
-                                  '[hub] ${widget.card.displayName}: '
-                                  'dispatch reset',
-                                );
-                                bloc.add(
-                                  const DeviceSettingsResetButtonMappingRequested(),
-                                );
-                              },
-                              onSave: () {
-                                debugPrint(
-                                  '[hub] ${widget.card.displayName}: '
-                                  'dispatch save',
-                                );
-                                bloc.add(const DeviceSettingsSaveRequested());
-                              },
-                              onCancel: () {
-                                debugPrint(
-                                  '[hub] ${widget.card.displayName}: '
-                                  'dispatch cancel',
-                                );
-                                bloc.add(const DeviceSettingsCancelRequested());
-                              },
-                            ),
-                          ),
-                          if (_selectedButtonId != null) ...[
-                            const VerticalDivider(thickness: 1, width: 1),
-                            HubButtonMappingPanel(
-                              selectedButtonId: _selectedButtonId,
-                              mouseActionCatalog: display?.mouseActionCatalog,
-                              keyboardActionCatalog:
-                                  display?.keyboardActionCatalog,
-                              specialActionCatalog:
-                                  display?.specialActionCatalog,
-                              onActionSelected: (catalogId) {
-                                _settingsBloc.add(
-                                  DeviceSettingsButtonMappingSlotRequested(
-                                    buttonId: _selectedButtonId!,
-                                    catalogId: catalogId,
-                                  ),
-                                );
-                              },
-                              onComboSelected: (modifierIds, keyChar) {
-                                _settingsBloc.add(
-                                  DeviceSettingsSpecialComboRequested(
-                                    buttonId: _selectedButtonId!,
-                                    modifierIds: modifierIds,
-                                    keyChar: keyChar,
-                                  ),
-                                );
-                              },
-                              macroSlots: widget.scope.macrosFor(widget.card),
-                              onMacroSelected: (macroSlot) {
-                                _settingsBloc.add(
-                                  DeviceSettingsMacroMappingRequested(
-                                    buttonId: _selectedButtonId!,
-                                    macroSlot: macroSlot,
-                                  ),
-                                );
-                              },
-                            ),
-                          ],
-                        ],
-                      );
-                    },
+              Row(
+                children: [
+                  BlocBuilder<DeviceSettingsBloc, DeviceSettingsViewState>(
+                    buildWhen: (previous, next) =>
+                        previous.synced?.hasRgbBacklight !=
+                        next.synced?.hasRgbBacklight,
+                    builder: (context, view) => HubLeftSidebar(
+                      card: selected,
+                      selectedIndex: _selectedIndex,
+                      hasRgbBacklight: view.synced?.hasRgbBacklight ?? false,
+                      onDestinationSelected: (index) {
+                        // FR-OPS-005: dirty sweep when navigating away from any configuration page
+                        if (_selectedIndex != index) {
+                          _settingsBloc.add(
+                            const DeviceSettingsNavigationRequested(),
+                          );
+                        }
+                        setState(() {
+                          _selectedIndex = index;
+                          _selectedButtonId = null;
+                          _selectedDpiLevel = null;
+                        });
+                      },
+                      onDeviceTap: () {
+                        _settingsBloc.add(
+                          const DeviceSettingsNavigationRequested(),
+                        );
+                        setState(() {
+                          _selectedButtonId = null;
+                          _selectedDpiLevel = null;
+                        });
+                        Navigator.of(context).maybePop();
+                      },
+                    ),
                   ),
-                )
-              else if (_selectedIndex == _macroIndex)
-                Expanded(
-                  child: HubMacroPanel(
-                    scope: widget.scope,
-                    card: widget.card,
-                    onChanged: () => setState(() {}),
-                  ),
-                )
-              else if (_selectedIndex == _performanceIndex)
-                Expanded(
-                  child: BlocBuilder<DeviceSettingsBloc, DeviceSettingsViewState>(
-                    buildWhen: (p, n) =>
-                        p.displaySettings != n.displaySettings ||
-                        p.reportRateStaging != n.reportRateStaging ||
-                        p.dpiCurrentLevelStaging != n.dpiCurrentLevelStaging ||
-                        p.dpiValueStaging != n.dpiValueStaging ||
-                        p.dpiStageAddStaging != n.dpiStageAddStaging ||
-                        p.dpiStageRemoveLevelStaging !=
-                            n.dpiStageRemoveLevelStaging ||
-                        p.dpiStageLevelsStaging != n.dpiStageLevelsStaging ||
-                        p.isDirty != n.isDirty ||
-                        p.committing != n.committing ||
-                        p.lastError != n.lastError,
-                    builder: (context, view) {
-                      final display = view.displaySettings;
-                      final bloc = context.read<DeviceSettingsBloc>();
-                      return Column(
-                        children: [
-                          Expanded(
-                            child: HubPerformancePanel(
-                              // why: staged add/remove level list paints the
-                              // rearranged containers live before Save.
-                              dpiStages:
-                                  view.dpiStageLevelsStaging ??
-                                  display?.dpiLevels,
-                              dpiRgbPerStage: display?.dpiRgbPerStage ?? false,
-                              onDpiColorChanged: (change) {
-                                bloc.add(
-                                  DeviceSettingsDpiColorRequested(
-                                    level: change.level,
-                                    color: _dpiColorHex(change.color),
+                  const VerticalDivider(thickness: 1, width: 1),
+                  if (_selectedIndex == _buttonMappingIndex)
+                    Expanded(
+                      child: BlocBuilder<DeviceSettingsBloc, DeviceSettingsViewState>(
+                        buildWhen: (p, n) =>
+                            p.displaySettings != n.displaySettings ||
+                            p.isDirty != n.isDirty ||
+                            p.committing != n.committing ||
+                            p.lastError != n.lastError,
+                        builder: (context, view) {
+                          final display = view.displaySettings;
+                          final buttons = display?.buttons ?? const [];
+                          final bloc = context.read<DeviceSettingsBloc>();
+                          return Row(
+                            children: [
+                              Expanded(
+                                child: HubMouseCanvas(
+                                  imageLarge: selected.imageLarge,
+                                  buttons: buttons,
+                                  selectedButtonId: _selectedButtonId,
+                                  isDirty: view.isDirty,
+                                  committing: view.committing,
+                                  onButtonSelected: (id) {
+                                    setState(() => _selectedButtonId = id);
+                                  },
+                                  onResetToDefault: () {
+                                    debugPrint(
+                                      '[hub] ${widget.card.displayName}: '
+                                      'dispatch reset',
+                                    );
+                                    bloc.add(
+                                      const DeviceSettingsResetButtonMappingRequested(),
+                                    );
+                                  },
+                                  onSave: () {
+                                    debugPrint(
+                                      '[hub] ${widget.card.displayName}: '
+                                      'dispatch save',
+                                    );
+                                    bloc.add(
+                                      const DeviceSettingsSaveRequested(),
+                                    );
+                                  },
+                                  onCancel: () {
+                                    debugPrint(
+                                      '[hub] ${widget.card.displayName}: '
+                                      'dispatch cancel',
+                                    );
+                                    setState(() => _selectedButtonId = null);
+                                    bloc.add(
+                                      const DeviceSettingsCancelRequested(),
+                                    );
+                                  },
+                                ),
+                              ),
+                              if (_selectedButtonId != null) ...[
+                                const VerticalDivider(thickness: 1, width: 1),
+                                HubButtonMappingPanel(
+                                  selectedButtonId: _selectedButtonId,
+                                  mouseActionCatalog:
+                                      display?.mouseActionCatalog,
+                                  keyboardActionCatalog:
+                                      display?.keyboardActionCatalog,
+                                  specialActionCatalog:
+                                      display?.specialActionCatalog,
+                                  onActionSelected: (catalogId) {
+                                    _settingsBloc.add(
+                                      DeviceSettingsButtonMappingSlotRequested(
+                                        buttonId: _selectedButtonId!,
+                                        catalogId: catalogId,
+                                      ),
+                                    );
+                                  },
+                                  onComboSelected: (modifierIds, keyChar) {
+                                    _settingsBloc.add(
+                                      DeviceSettingsSpecialComboRequested(
+                                        buttonId: _selectedButtonId!,
+                                        modifierIds: modifierIds,
+                                        keyChar: keyChar,
+                                      ),
+                                    );
+                                  },
+                                  macroSlots: widget.scope.macrosFor(
+                                    widget.card,
                                   ),
-                                );
-                              },
-                              // why: highlight the user's UI selection; fall
-                              // back to the device's active level initially.
-                              dpiCurrentLevel:
-                                  _selectedDpiLevel ?? display?.dpiActiveIndex,
-                              dpiCurrentLevelStaging:
-                                  view.dpiCurrentLevelStaging,
-                              onDpiLevelSelected: (level) {
-                                setState(() => _selectedDpiLevel = level);
-                                bloc.add(
-                                  DeviceSettingsDpiLevelRequested(level: level),
-                                );
-                              },
-                              dpiMin: display?.dpiMin,
-                              dpiMax: display?.dpiMax,
-                              dpiStep: display?.dpiStep,
-                              dpiValueStaging: view.dpiValueStaging,
-                              onDpiValueChanged: (pair) {
-                                bloc.add(
-                                  DeviceSettingsDpiValueRequested(
-                                    level: pair.level,
-                                    value: pair.value,
-                                  ),
-                                );
-                              },
-                              dpiActiveLevelCount: display?.dpiActiveLevelCount,
-                              dpiMaxLevels: display?.dpiMaxLevels,
-                              onDpiStageAdd: () {
-                                bloc.add(
-                                  const DeviceSettingsDpiStageAddRequested(),
-                                );
-                              },
-                              // why: `x` only removes the user's clicked
-                              // level; disabled until a level is selected.
-                              dpiRemoveEnabled: _selectedDpiLevel != null,
-                              onDpiStageRemove: () {
-                                final level = _selectedDpiLevel;
-                                if (level != null) {
-                                  bloc.add(
-                                    DeviceSettingsDpiStageRemoveRequested(
-                                      level: level,
-                                    ),
-                                  );
-                                }
-                              },
-                              reportRateOptions: display?.reportRateOptions,
-                              reportRateHz: display?.reportRateHz,
-                              reportRateStaging: view.reportRateStaging,
-                              onReportRateChanged: (hz) {
-                                bloc.add(
-                                  DeviceSettingsReportRateRequested(hz: hz),
-                                );
-                              },
-                            ),
-                          ),
-                          _PerformanceActionBar(
-                            isDirty: view.isDirty,
-                            committing: view.committing,
-                            onReset: () {
-                              debugPrint(
-                                '[hub] ${widget.card.displayName}: '
-                                'dispatch reset DPI configuration',
-                              );
-                              setState(() => _selectedDpiLevel = null);
-                              bloc.add(
-                                const DeviceSettingsResetDpiConfigurationRequested(),
-                              );
-                            },
-                            onSave: () {
-                              final hasDpiValueStaging =
-                                  view.dpiValueStaging != null &&
-                                  view.dpiValueStaging!.isNotEmpty;
-                              final hasDpiStageStaging =
-                                  view.dpiStageAddStaging ||
-                                  view.dpiStageRemoveLevelStaging != null;
-                              if (view.reportRateStaging != null ||
-                                  view.dpiCurrentLevelStaging != null ||
-                                  hasDpiValueStaging ||
-                                  hasDpiStageStaging ||
-                                  view.dpiStageLevelsStaging != null) {
-                                bloc.add(
-                                  const DeviceSettingsSaveDpiConfigurationRequested(),
-                                );
-                              }
-                            },
-                            onCancel: () {
-                              bloc.add(const DeviceSettingsCancelRequested());
-                            },
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                )
-              else if (_selectedIndex == _parameterIndex)
-                Expanded(
-                  child: BlocBuilder<DeviceSettingsBloc, DeviceSettingsViewState>(
-                    buildWhen: (p, n) =>
-                        p.synced != n.synced ||
-                        p.rippleControlStaging != n.rippleControlStaging ||
-                        p.angleSnapStaging != n.angleSnapStaging ||
-                        p.angleTuneStaging != n.angleTuneStaging ||
-                        p.angleTuneLabelStaging != n.angleTuneLabelStaging ||
-                        p.angleTuneEnabledStaging !=
-                            n.angleTuneEnabledStaging ||
-                        p.lodStaging != n.lodStaging ||
-                        p.performanceStaging != n.performanceStaging ||
-                        p.debounceStaging != n.debounceStaging ||
-                        p.sleepStaging != n.sleepStaging ||
-                        p.wheelInvertStaging != n.wheelInvertStaging ||
-                        p.isDirty != n.isDirty ||
-                        p.committing != n.committing ||
-                        p.lastError != n.lastError,
-                    builder: (context, view) {
-                      final synced = view.synced;
-                      final bloc = context.read<DeviceSettingsBloc>();
-                      return Column(
-                        children: [
-                          Expanded(
-                            child: HubParameterPanel(
-                              hasSensorTuning: synced?.hasSensorTuning ?? false,
-                              hasLod: synced?.hasLod ?? false,
-                              hasAngleTune: synced?.hasAngleTune ?? false,
-                              hasPerformance: synced?.hasPerformance ?? false,
-                              hasButtonDebounce:
-                                  synced?.hasButtonDebounce ?? false,
-                              hasWheelInvert: synced?.hasWheelInvert ?? false,
-                              hasSleepTime: synced?.hasSleepTime ?? false,
-                              lodOptions: synced?.lodOptions,
-                              buttonDebounceOptions: synced?.debounceOptions,
-                              sleepTimeOptions: synced?.sleepOptions,
-                              rippleOn: synced?.rippleOn,
-                              rippleStaging: view.rippleControlStaging,
-                              angleSnapOn: synced?.angleSnapOn,
-                              angleSnapStaging: view.angleSnapStaging,
-                              angleTuneOn:
-                                  view.angleTuneEnabledStaging ??
-                                  synced?.angleTuneOn ??
-                                  false,
-                              // why: staged label when dirty, else live
-                              // synced label (value always visible even
-                              // when toggled off).
-                              angleTuneLabel:
-                                  view.angleTuneLabelStaging ??
-                                  synced?.angleTuneLabel ??
-                                  '0°',
-                              // why: staging paints ahead of synced so the
-                              // radio follows the tap.
-                              lodMm: view.lodStaging ?? synced?.lodMm,
-                              performance:
-                                  view.performanceStaging ??
-                                  synced?.performance,
-                              debounceMs:
-                                  view.debounceStaging ?? synced?.debounceMs,
-                              sleepSeconds:
-                                  view.sleepStaging ?? synced?.sleepSeconds,
-                              wheelInvert:
-                                  view.wheelInvertStaging ??
-                                  synced?.wheelInvert,
-                              onDebounceChanged: (wire) {
-                                bloc.add(
-                                  DeviceSettingsButtonDebounceRequested(
-                                    wire: wire,
-                                  ),
-                                );
-                              },
-                              onSleepChanged: (wire) {
-                                bloc.add(
-                                  DeviceSettingsSleepTimeRequested(wire: wire),
-                                );
-                              },
-                              onWheelInvertChanged: (invert) {
-                                bloc.add(
-                                  DeviceSettingsWheelInvertRequested(
-                                    invert: invert,
-                                  ),
-                                );
-                              },
-                              onLodChanged: (wire) {
-                                bloc.add(
-                                  DeviceSettingsLodRequested(wire: wire),
-                                );
-                              },
-                              onPerformanceChanged: (wire) {
-                                bloc.add(
-                                  DeviceSettingsPerformanceRequested(
-                                    wire: wire,
-                                  ),
-                                );
-                              },
-                              onRippleChanged: (on) {
-                                bloc.add(
-                                  DeviceSettingsRippleControlRequested(
-                                    enabled: on,
-                                  ),
-                                );
-                              },
-                              onAngleSnapChanged: (on) {
-                                bloc.add(
-                                  DeviceSettingsAngleSnapRequested(enabled: on),
-                                );
-                              },
-                              onAngleTuneToggled: (on) {
-                                bloc.add(
-                                  DeviceSettingsAngleTuneToggled(enabled: on),
-                                );
-                              },
-                              onAngleTuneDecrement: () {
-                                final current =
-                                    view.angleTuneStaging ??
-                                    (synced?.angleTune ?? 0);
-                                final options =
-                                    synced?.angleTuneOptions ??
-                                    const <AngleTuneOptionData>[];
-                                final idx = options.indexWhere(
-                                  (o) => o.wire == current,
-                                );
-                                if (idx > 0) {
-                                  bloc.add(
-                                    DeviceSettingsAngleTuneValueChanged(
-                                      wireValue: options[idx - 1].wire,
-                                    ),
-                                  );
-                                }
-                              },
-                              onAngleTuneIncrement: () {
-                                final current =
-                                    view.angleTuneStaging ??
-                                    (synced?.angleTune ?? 0);
-                                final options =
-                                    synced?.angleTuneOptions ??
-                                    const <AngleTuneOptionData>[];
-                                final idx = options.indexWhere(
-                                  (o) => o.wire == current,
-                                );
-                                if (idx >= 0 && idx < options.length - 1) {
-                                  bloc.add(
-                                    DeviceSettingsAngleTuneValueChanged(
-                                      wireValue: options[idx + 1].wire,
-                                    ),
-                                  );
-                                }
-                              },
-                            ),
-                          ),
-                          _ParameterActionBar(
-                            isDirty: view.isDirty,
-                            committing: view.committing,
-                            onSave: () {
-                              if (view.rippleControlStaging != null ||
-                                  view.angleSnapStaging != null) {
-                                bloc.add(
-                                  const DeviceSettingsSaveSensorTuningRequested(),
-                                );
-                              } else if (view.angleTuneStaging != null ||
-                                  view.angleTuneEnabledStaging != null) {
-                                bloc.add(
-                                  const DeviceSettingsSaveAngleTuneRequested(),
-                                );
-                              } else if (view.lodStaging != null) {
-                                bloc.add(
-                                  const DeviceSettingsSaveLodRequested(),
-                                );
-                              } else if (view.performanceStaging != null) {
-                                bloc.add(
-                                  const DeviceSettingsSavePerformanceRequested(),
-                                );
-                              } else if (view.debounceStaging != null) {
-                                bloc.add(
-                                  const DeviceSettingsSaveButtonDebounceRequested(),
-                                );
-                              } else if (view.sleepStaging != null) {
-                                bloc.add(
-                                  const DeviceSettingsSaveSleepTimeRequested(),
-                                );
-                              } else if (view.wheelInvertStaging != null) {
-                                bloc.add(
-                                  const DeviceSettingsSaveWheelInvertRequested(),
-                                );
-                              }
-                            },
-                            onCancel: () {
-                              bloc.add(const DeviceSettingsCancelRequested());
-                            },
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                )
-              else if (_selectedIndex == _backlightIndex)
-                Expanded(
-                  child: BlocBuilder<DeviceSettingsBloc, DeviceSettingsViewState>(
-                    buildWhen: (p, n) =>
-                        p.synced != n.synced ||
-                        p.isDirty != n.isDirty ||
-                        p.committing != n.committing ||
-                        p.rgbEnableStaging != n.rgbEnableStaging ||
-                        p.rgbModeIdStaging != n.rgbModeIdStaging ||
-                        p.rgbBrightnessStaging != n.rgbBrightnessStaging ||
-                        p.rgbSpeedStaging != n.rgbSpeedStaging ||
-                        p.rgbRStaging != n.rgbRStaging ||
-                        p.rgbGStaging != n.rgbGStaging ||
-                        p.rgbBStaging != n.rgbBStaging ||
-                        p.rgbSleepTimeStaging != n.rgbSleepTimeStaging,
-                    builder: (context, view) {
-                      final synced = view.synced;
-                      final bloc = context.read<DeviceSettingsBloc>();
-                      // why: sleep options live in L2 capability schema, not in
-                      // synced state — sourced from RgbBacklightCapabilities
-                      // (never hardcoded) per FR-RGB-004 / FR-ARC-001.
-                      final sleepOpts = DeviceCapabilityStore.forDevice(
-                        widget.card.devId,
-                      )?.rgbBacklight?.sleepTimeOptions;
-                      return Column(
-                        children: [
-                          Expanded(
-                            child: HubBacklightPanel(
-                              rgbModes: synced?.rgbModes,
-                              // why: dropdown shows the human label (L5-owned),
-                              // not the raw localization key.
-                              rgbModeLabels: [
-                                for (final m
-                                    in synced?.rgbModes ??
-                                        const <RgbModeData>[])
-                                  m.label ?? m.nameKey,
+                                  onMacroSelected: (macroSlot) {
+                                    _settingsBloc.add(
+                                      DeviceSettingsMacroMappingRequested(
+                                        buttonId: _selectedButtonId!,
+                                        macroSlot: macroSlot,
+                                      ),
+                                    );
+                                  },
+                                ),
                               ],
-                              rgbEnable: view.displayRgbEnable,
-                              rgbModeId: view.displayRgbModeId,
-                              rgbBrightnessLevels: synced?.rgbBrightnessLevels,
-                              rgbBrightness: view.displayRgbBrightness,
-                              rgbSpeedLevels: synced?.rgbSpeedLevels,
-                              rgbSpeed: view.displayRgbSpeed,
-                              rgbR: view.displayRgbR,
-                              rgbG: view.displayRgbG,
-                              rgbB: view.displayRgbB,
-                              rgbSleepTime: view.displayRgbSleepTime,
-                              rgbSleepOptions: sleepOpts,
-                              onEnableChanged: (v) => bloc.add(
-                                DeviceSettingsBacklightEnableRequested(
-                                  enable: v,
+                            ],
+                          );
+                        },
+                      ),
+                    )
+                  else if (_selectedIndex == _macroIndex)
+                    Expanded(
+                      child: HubMacroPanel(
+                        scope: widget.scope,
+                        card: widget.card,
+                        onChanged: () => setState(() {}),
+                      ),
+                    )
+                  else if (_selectedIndex == _performanceIndex)
+                    Expanded(
+                      child: BlocBuilder<DeviceSettingsBloc, DeviceSettingsViewState>(
+                        buildWhen: (p, n) =>
+                            p.displaySettings != n.displaySettings ||
+                            p.reportRateStaging != n.reportRateStaging ||
+                            p.dpiCurrentLevelStaging !=
+                                n.dpiCurrentLevelStaging ||
+                            p.dpiValueStaging != n.dpiValueStaging ||
+                            p.dpiStageAddStaging != n.dpiStageAddStaging ||
+                            p.dpiStageRemoveLevelStaging !=
+                                n.dpiStageRemoveLevelStaging ||
+                            p.dpiStageLevelsStaging !=
+                                n.dpiStageLevelsStaging ||
+                            p.dpiRgbStaging != n.dpiRgbStaging ||
+                            p.isDirty != n.isDirty ||
+                            p.committing != n.committing ||
+                            p.lastError != n.lastError,
+                        builder: (context, view) {
+                          final display = view.displaySettings;
+                          final bloc = context.read<DeviceSettingsBloc>();
+                          final baseStages =
+                              view.dpiStageLevelsStaging ?? display?.dpiLevels;
+                          final rgbStaging = view.dpiRgbStaging;
+                          final resolvedStages =
+                              (baseStages != null &&
+                                  rgbStaging != null &&
+                                  rgbStaging.isNotEmpty)
+                              ? baseStages.map((stage) {
+                                  final stagedColor = rgbStaging[stage.level];
+                                  if (stagedColor == null) return stage;
+                                  return DpiStageData(
+                                    level: stage.level,
+                                    value: stage.value,
+                                    y: stage.y,
+                                    color: stagedColor,
+                                  );
+                                }).toList()
+                              : baseStages;
+                          return Column(
+                            children: [
+                              Expanded(
+                                child: HubPerformancePanel(
+                                  // why: staged add/remove level list paints the
+                                  // rearranged containers live before Save.
+                                  dpiStages: resolvedStages,
+                                  dpiRgbPerStage:
+                                      display?.dpiRgbPerStage ?? false,
+                                  onDpiColorChanged: (change) {
+                                    bloc.add(
+                                      DeviceSettingsDpiColorRequested(
+                                        level: change.level,
+                                        color: _dpiColorHex(change.color),
+                                      ),
+                                    );
+                                  },
+                                  // why: highlight the user's UI selection; fall
+                                  // back to the device's active level initially.
+                                  dpiCurrentLevel:
+                                      _selectedDpiLevel ??
+                                      display?.dpiActiveIndex,
+                                  dpiCurrentLevelStaging:
+                                      view.dpiCurrentLevelStaging,
+                                  onDpiLevelSelected: (level) {
+                                    setState(() => _selectedDpiLevel = level);
+                                    bloc.add(
+                                      DeviceSettingsDpiLevelRequested(
+                                        level: level,
+                                      ),
+                                    );
+                                  },
+                                  dpiMin: display?.dpiMin,
+                                  dpiMax: display?.dpiMax,
+                                  dpiStep: display?.dpiStep,
+                                  dpiValueStaging: view.dpiValueStaging,
+                                  onDpiValueChanged: (pair) {
+                                    bloc.add(
+                                      DeviceSettingsDpiValueRequested(
+                                        level: pair.level,
+                                        value: pair.value,
+                                      ),
+                                    );
+                                  },
+                                  dpiActiveLevelCount:
+                                      display?.dpiActiveLevelCount,
+                                  dpiMaxLevels: display?.dpiMaxLevels,
+                                  onDpiStageAdd: () {
+                                    bloc.add(
+                                      const DeviceSettingsDpiStageAddRequested(),
+                                    );
+                                  },
+                                  // why: `x` only removes the user's clicked
+                                  // level; disabled until a level is selected.
+                                  dpiRemoveEnabled: _selectedDpiLevel != null,
+                                  onDpiStageRemove: (level) {
+                                    setState(() => _selectedDpiLevel = 1);
+                                    bloc.add(
+                                      DeviceSettingsDpiStageRemoveRequested(
+                                        level: level,
+                                      ),
+                                    );
+                                  },
+                                  reportRateOptions: display?.reportRateOptions,
+                                  reportRateHz: display?.reportRateHz,
+                                  reportRateStaging: view.reportRateStaging,
+                                  onReportRateChanged: (hz) {
+                                    bloc.add(
+                                      DeviceSettingsReportRateRequested(hz: hz),
+                                    );
+                                  },
                                 ),
                               ),
-                              onModeChanged: (id) => bloc.add(
-                                DeviceSettingsBacklightModeRequested(
-                                  modeId: id,
+                              _PerformanceActionBar(
+                                isDirty: view.isDirty,
+                                committing: view.committing,
+                                onReset: () {
+                                  debugPrint(
+                                    '[hub] ${widget.card.displayName}: '
+                                    'dispatch reset DPI configuration',
+                                  );
+                                  setState(() => _selectedDpiLevel = null);
+                                  bloc.add(
+                                    const DeviceSettingsResetDpiConfigurationRequested(),
+                                  );
+                                },
+                                onSave: () {
+                                  final hasDpiValueStaging =
+                                      view.dpiValueStaging != null &&
+                                      view.dpiValueStaging!.isNotEmpty;
+                                  final hasDpiRgbStaging =
+                                      view.dpiRgbStaging != null &&
+                                      view.dpiRgbStaging!.isNotEmpty;
+                                  final hasDpiStageStaging =
+                                      view.dpiStageAddStaging ||
+                                      view.dpiStageRemoveLevelStaging != null;
+                                  if (view.reportRateStaging != null ||
+                                      view.dpiCurrentLevelStaging != null ||
+                                      hasDpiValueStaging ||
+                                      hasDpiRgbStaging ||
+                                      hasDpiStageStaging ||
+                                      view.dpiStageLevelsStaging != null) {
+                                    bloc.add(
+                                      const DeviceSettingsSaveDpiConfigurationRequested(),
+                                    );
+                                  }
+                                },
+                                onCancel: () {
+                                  setState(() => _selectedDpiLevel = null);
+                                  bloc.add(
+                                    const DeviceSettingsCancelRequested(),
+                                  );
+                                },
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                    )
+                  else if (_selectedIndex == _parameterIndex)
+                    Expanded(
+                      child: BlocBuilder<DeviceSettingsBloc, DeviceSettingsViewState>(
+                        buildWhen: (p, n) =>
+                            p.synced != n.synced ||
+                            p.rippleControlStaging != n.rippleControlStaging ||
+                            p.angleSnapStaging != n.angleSnapStaging ||
+                            p.angleTuneStaging != n.angleTuneStaging ||
+                            p.angleTuneLabelStaging !=
+                                n.angleTuneLabelStaging ||
+                            p.angleTuneEnabledStaging !=
+                                n.angleTuneEnabledStaging ||
+                            p.lodStaging != n.lodStaging ||
+                            p.performanceStaging != n.performanceStaging ||
+                            p.debounceStaging != n.debounceStaging ||
+                            p.sleepStaging != n.sleepStaging ||
+                            p.wheelInvertStaging != n.wheelInvertStaging ||
+                            p.isDirty != n.isDirty ||
+                            p.committing != n.committing ||
+                            p.lastError != n.lastError,
+                        builder: (context, view) {
+                          final synced = view.synced;
+                          final bloc = context.read<DeviceSettingsBloc>();
+                          return Column(
+                            children: [
+                              Expanded(
+                                child: HubParameterPanel(
+                                  hasSensorTuning:
+                                      synced?.hasSensorTuning ?? false,
+                                  hasLod: synced?.hasLod ?? false,
+                                  hasAngleTune: synced?.hasAngleTune ?? false,
+                                  hasPerformance:
+                                      synced?.hasPerformance ?? false,
+                                  hasButtonDebounce:
+                                      synced?.hasButtonDebounce ?? false,
+                                  hasWheelInvert:
+                                      synced?.hasWheelInvert ?? false,
+                                  hasSleepTime: synced?.hasSleepTime ?? false,
+                                  lodOptions: synced?.lodOptions,
+                                  buttonDebounceOptions:
+                                      synced?.debounceOptions,
+                                  sleepTimeOptions: synced?.sleepOptions,
+                                  rippleOn: synced?.rippleOn,
+                                  rippleStaging: view.rippleControlStaging,
+                                  angleSnapOn: synced?.angleSnapOn,
+                                  angleSnapStaging: view.angleSnapStaging,
+                                  angleTuneOn:
+                                      view.angleTuneEnabledStaging ??
+                                      synced?.angleTuneOn ??
+                                      false,
+                                  // why: staged label when dirty, else live
+                                  // synced label (value always visible even
+                                  // when toggled off).
+                                  angleTuneLabel:
+                                      view.angleTuneLabelStaging ??
+                                      synced?.angleTuneLabel ??
+                                      '0°',
+                                  // why: staging paints ahead of synced so the
+                                  // radio follows the tap.
+                                  lodMm: view.lodStaging ?? synced?.lodMm,
+                                  performance:
+                                      view.performanceStaging ??
+                                      synced?.performance,
+                                  debounceMs:
+                                      view.debounceStaging ??
+                                      synced?.debounceMs,
+                                  sleepSeconds:
+                                      view.sleepStaging ?? synced?.sleepSeconds,
+                                  wheelInvert:
+                                      view.wheelInvertStaging ??
+                                      synced?.wheelInvert,
+                                  onDebounceChanged: (wire) {
+                                    bloc.add(
+                                      DeviceSettingsButtonDebounceRequested(
+                                        wire: wire,
+                                      ),
+                                    );
+                                  },
+                                  onSleepChanged: (wire) {
+                                    bloc.add(
+                                      DeviceSettingsSleepTimeRequested(
+                                        wire: wire,
+                                      ),
+                                    );
+                                  },
+                                  onWheelInvertChanged: (invert) {
+                                    bloc.add(
+                                      DeviceSettingsWheelInvertRequested(
+                                        invert: invert,
+                                      ),
+                                    );
+                                  },
+                                  onLodChanged: (wire) {
+                                    bloc.add(
+                                      DeviceSettingsLodRequested(wire: wire),
+                                    );
+                                  },
+                                  onPerformanceChanged: (wire) {
+                                    bloc.add(
+                                      DeviceSettingsPerformanceRequested(
+                                        wire: wire,
+                                      ),
+                                    );
+                                  },
+                                  onRippleChanged: (on) {
+                                    bloc.add(
+                                      DeviceSettingsRippleControlRequested(
+                                        enabled: on,
+                                      ),
+                                    );
+                                  },
+                                  onAngleSnapChanged: (on) {
+                                    bloc.add(
+                                      DeviceSettingsAngleSnapRequested(
+                                        enabled: on,
+                                      ),
+                                    );
+                                  },
+                                  onAngleTuneToggled: (on) {
+                                    bloc.add(
+                                      DeviceSettingsAngleTuneToggled(
+                                        enabled: on,
+                                      ),
+                                    );
+                                  },
+                                  onAngleTuneDecrement: () {
+                                    final currentWire =
+                                        view.angleTuneStaging ??
+                                        synced?.angleTune;
+                                    final options =
+                                        synced?.angleTuneOptions ??
+                                        const <AngleTuneOptionData>[];
+                                    var idx = options.indexWhere(
+                                      (o) => o.wire == currentWire,
+                                    );
+                                    if (idx < 0 && options.isNotEmpty) {
+                                      idx = options.indexWhere(
+                                        (o) =>
+                                            o.label == synced?.angleTuneLabel,
+                                      );
+                                      if (idx < 0)
+                                        idx = (options.length / 2).floor();
+                                    }
+                                    if (idx > 0) {
+                                      bloc.add(
+                                        DeviceSettingsAngleTuneValueChanged(
+                                          wireValue: options[idx - 1].wire,
+                                        ),
+                                      );
+                                    }
+                                  },
+                                  onAngleTuneIncrement: () {
+                                    final currentWire =
+                                        view.angleTuneStaging ??
+                                        synced?.angleTune;
+                                    final options =
+                                        synced?.angleTuneOptions ??
+                                        const <AngleTuneOptionData>[];
+                                    var idx = options.indexWhere(
+                                      (o) => o.wire == currentWire,
+                                    );
+                                    if (idx < 0 && options.isNotEmpty) {
+                                      idx = options.indexWhere(
+                                        (o) =>
+                                            o.label == synced?.angleTuneLabel,
+                                      );
+                                      if (idx < 0)
+                                        idx = (options.length / 2).floor();
+                                    }
+                                    if (idx >= 0 && idx < options.length - 1) {
+                                      bloc.add(
+                                        DeviceSettingsAngleTuneValueChanged(
+                                          wireValue: options[idx + 1].wire,
+                                        ),
+                                      );
+                                    }
+                                  },
                                 ),
                               ),
-                              onColorChanged: (c) => bloc.add(
-                                DeviceSettingsBacklightColorRequested(
-                                  r: (c.r * 255.0).round().clamp(0, 255),
-                                  g: (c.g * 255.0).round().clamp(0, 255),
-                                  b: (c.b * 255.0).round().clamp(0, 255),
+                              _ParameterActionBar(
+                                isDirty: view.isDirty,
+                                committing: view.committing,
+                                onSave: () {
+                                  if (view.rippleControlStaging != null ||
+                                      view.angleSnapStaging != null) {
+                                    bloc.add(
+                                      const DeviceSettingsSaveSensorTuningRequested(),
+                                    );
+                                  } else if (view.angleTuneStaging != null ||
+                                      view.angleTuneEnabledStaging != null) {
+                                    bloc.add(
+                                      const DeviceSettingsSaveAngleTuneRequested(),
+                                    );
+                                  } else if (view.lodStaging != null) {
+                                    bloc.add(
+                                      const DeviceSettingsSaveLodRequested(),
+                                    );
+                                  } else if (view.performanceStaging != null) {
+                                    bloc.add(
+                                      const DeviceSettingsSavePerformanceRequested(),
+                                    );
+                                  } else if (view.debounceStaging != null) {
+                                    bloc.add(
+                                      const DeviceSettingsSaveButtonDebounceRequested(),
+                                    );
+                                  } else if (view.sleepStaging != null) {
+                                    bloc.add(
+                                      const DeviceSettingsSaveSleepTimeRequested(),
+                                    );
+                                  } else if (view.wheelInvertStaging != null) {
+                                    bloc.add(
+                                      const DeviceSettingsSaveWheelInvertRequested(),
+                                    );
+                                  }
+                                },
+                                onCancel: () {
+                                  bloc.add(
+                                    const DeviceSettingsCancelRequested(),
+                                  );
+                                },
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                    )
+                  else if (_selectedIndex == _backlightIndex)
+                    Expanded(
+                      child: BlocBuilder<DeviceSettingsBloc, DeviceSettingsViewState>(
+                        buildWhen: (p, n) =>
+                            p.synced != n.synced ||
+                            p.isDirty != n.isDirty ||
+                            p.committing != n.committing ||
+                            p.rgbEnableStaging != n.rgbEnableStaging ||
+                            p.rgbModeIdStaging != n.rgbModeIdStaging ||
+                            p.rgbBrightnessStaging != n.rgbBrightnessStaging ||
+                            p.rgbSpeedStaging != n.rgbSpeedStaging ||
+                            p.rgbRStaging != n.rgbRStaging ||
+                            p.rgbGStaging != n.rgbGStaging ||
+                            p.rgbBStaging != n.rgbBStaging ||
+                            p.rgbSleepTimeStaging != n.rgbSleepTimeStaging,
+                        builder: (context, view) {
+                          final synced = view.synced;
+                          final bloc = context.read<DeviceSettingsBloc>();
+                          // why: sleep options live in L2 capability schema, not in
+                          // synced state — sourced from RgbBacklightCapabilities
+                          // (never hardcoded) per FR-RGB-004 / FR-ARC-001.
+                          final sleepOpts = DeviceCapabilityStore.forDevice(
+                            widget.card.devId,
+                          )?.rgbBacklight?.sleepTimeOptions;
+                          return Column(
+                            children: [
+                              Expanded(
+                                child: HubBacklightPanel(
+                                  rgbModes: synced?.rgbModes,
+                                  // why: dropdown shows the human label (L5-owned),
+                                  // not the raw localization key.
+                                  rgbModeLabels: [
+                                    for (final m
+                                        in synced?.rgbModes ??
+                                            const <RgbModeData>[])
+                                      m.label ?? m.nameKey,
+                                  ],
+                                  rgbEnable: view.displayRgbEnable,
+                                  rgbModeId: view.displayRgbModeId,
+                                  rgbBrightnessLevels:
+                                      synced?.rgbBrightnessLevels,
+                                  rgbBrightness: view.displayRgbBrightness,
+                                  rgbSpeedLevels: synced?.rgbSpeedLevels,
+                                  rgbSpeed: view.displayRgbSpeed,
+                                  rgbR: view.displayRgbR,
+                                  rgbG: view.displayRgbG,
+                                  rgbB: view.displayRgbB,
+                                  rgbSleepTime: view.displayRgbSleepTime,
+                                  rgbSleepOptions: sleepOpts,
+                                  onEnableChanged: (v) => bloc.add(
+                                    DeviceSettingsBacklightEnableRequested(
+                                      enable: v,
+                                    ),
+                                  ),
+                                  onModeChanged: (id) => bloc.add(
+                                    DeviceSettingsBacklightModeRequested(
+                                      modeId: id,
+                                    ),
+                                  ),
+                                  onColorChanged: (c) => bloc.add(
+                                    DeviceSettingsBacklightColorRequested(
+                                      r: (c.r * 255.0).round().clamp(0, 255),
+                                      g: (c.g * 255.0).round().clamp(0, 255),
+                                      b: (c.b * 255.0).round().clamp(0, 255),
+                                    ),
+                                  ),
+                                  onBrightnessChanged: (lvl) => bloc.add(
+                                    DeviceSettingsBacklightBrightnessRequested(
+                                      level: lvl,
+                                    ),
+                                  ),
+                                  onSpeedChanged: (lvl) => bloc.add(
+                                    DeviceSettingsBacklightSpeedRequested(
+                                      level: lvl,
+                                    ),
+                                  ),
+                                  onSleepChanged: (idx) => bloc.add(
+                                    DeviceSettingsBacklightSleepRequested(
+                                      wire: idx,
+                                    ),
+                                  ),
                                 ),
                               ),
-                              onBrightnessChanged: (lvl) => bloc.add(
-                                DeviceSettingsBacklightBrightnessRequested(
-                                  level: lvl,
-                                ),
+                              _BacklightActionBar(
+                                isDirty: view.isDirty,
+                                committing: view.committing,
+                                onSave: () {
+                                  bloc.add(
+                                    const DeviceSettingsSaveBacklightRequested(),
+                                  );
+                                },
+                                onCancel: () {
+                                  bloc.add(
+                                    const DeviceSettingsCancelRequested(),
+                                  );
+                                },
                               ),
-                              onSpeedChanged: (lvl) => bloc.add(
-                                DeviceSettingsBacklightSpeedRequested(
-                                  level: lvl,
-                                ),
-                              ),
-                              onSleepChanged: (idx) => bloc.add(
-                                DeviceSettingsBacklightSleepRequested(
-                                  wire: idx,
-                                ),
-                              ),
-                            ),
-                          ),
-                          _BacklightActionBar(
-                            isDirty: view.isDirty,
-                            committing: view.committing,
-                            onSave: () {
-                              bloc.add(
-                                const DeviceSettingsSaveBacklightRequested(),
-                              );
-                            },
-                            onCancel: () {
-                              bloc.add(const DeviceSettingsCancelRequested());
-                            },
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                )
-              else if (_selectedIndex == _deviceSettingIndex)
-                Expanded(child: HubDeviceSettingPanel(card: selected))
-              else if (_selectedIndex == _appSettingsIndex)
-                Expanded(
-                  child: AppSettingsPanel(
-                    lowBatteryThreshold: widget.scope.batteryLowThreshold,
-                    onLowBatteryThresholdChanged: (threshold) {
-                      widget.scope.setLowBatteryThreshold(threshold);
-                    },
-                  ),
-                )
-              else
-                const Expanded(child: Center(child: Text(''))),
+                            ],
+                          );
+                        },
+                      ),
+                    )
+                  else if (_selectedIndex == _deviceSettingIndex)
+                    Expanded(child: HubDeviceSettingPanel(card: selected))
+                  else if (_selectedIndex == _appSettingsIndex)
+                    Expanded(
+                      child: AppSettingsPanel(
+                        lowBatteryThreshold: widget.scope.batteryLowThreshold,
+                        onLowBatteryThresholdChanged: (threshold) {
+                          widget.scope.setLowBatteryThreshold(threshold);
+                        },
+                      ),
+                    )
+                  else
+                    const Expanded(child: Center(child: Text(''))),
+                ],
+              ),
+              BlocBuilder<DeviceSettingsBloc, DeviceSettingsViewState>(
+                buildWhen: (p, n) =>
+                    p.committing != n.committing ||
+                    p.consecutiveFailures != n.consecutiveFailures,
+                builder: (context, view) {
+                  return CommitOverlay(
+                    committing: view.committing,
+                    consecutiveFailures: view.consecutiveFailures,
+                  );
+                },
+              ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Overlay displaying save / retry status with threshold & minimum duration.
+///
+/// why: fast device writes (<200ms) finish before threshold timer fires,
+/// preventing a 1-frame flash/jitter. Writes taking longer than 200ms (or retries)
+/// fade in smoothly with [AnimatedOpacity] and hold for at least 350ms.
+@visibleForTesting
+class CommitOverlay extends StatefulWidget {
+  const CommitOverlay({
+    super.key,
+    required this.committing,
+    required this.consecutiveFailures,
+    this.threshold = const Duration(milliseconds: 200),
+    this.minDuration = const Duration(milliseconds: 350),
+  });
+
+  final bool committing;
+  final int consecutiveFailures;
+  final Duration threshold;
+  final Duration minDuration;
+
+  @override
+  State<CommitOverlay> createState() => _CommitOverlayState();
+}
+
+class _CommitOverlayState extends State<CommitOverlay> {
+  Timer? _thresholdTimer;
+  Timer? _minDisplayTimer;
+  bool _showOverlay = false;
+  DateTime? _shownAt;
+
+  @override
+  void initState() {
+    super.initState();
+    _syncState();
+  }
+
+  @override
+  void didUpdateWidget(CommitOverlay oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.committing != widget.committing ||
+        oldWidget.consecutiveFailures != widget.consecutiveFailures) {
+      _syncState();
+    }
+  }
+
+  void _syncState() {
+    if (widget.committing) {
+      _minDisplayTimer?.cancel();
+      _minDisplayTimer = null;
+
+      // If retry in progress, show overlay immediately.
+      if (widget.consecutiveFailures > 0) {
+        _thresholdTimer?.cancel();
+        _thresholdTimer = null;
+        if (!_showOverlay) {
+          setState(() {
+            _showOverlay = true;
+            _shownAt = DateTime.now();
+          });
+        }
+      } else if (!_showOverlay && _thresholdTimer == null) {
+        _thresholdTimer = Timer(widget.threshold, () {
+          if (mounted && widget.committing) {
+            setState(() {
+              _showOverlay = true;
+              _shownAt = DateTime.now();
+            });
+          }
+        });
+      }
+    } else {
+      _thresholdTimer?.cancel();
+      _thresholdTimer = null;
+
+      if (_showOverlay) {
+        final elapsed = _shownAt != null
+            ? DateTime.now().difference(_shownAt!)
+            : widget.minDuration;
+        final remaining = widget.minDuration - elapsed;
+
+        if (remaining > Duration.zero) {
+          _minDisplayTimer?.cancel();
+          _minDisplayTimer = Timer(remaining, () {
+            if (mounted && !widget.committing) {
+              setState(() {
+                _showOverlay = false;
+                _shownAt = null;
+              });
+            }
+          });
+        } else {
+          setState(() {
+            _showOverlay = false;
+            _shownAt = null;
+          });
+        }
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _thresholdTimer?.cancel();
+    _minDisplayTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_showOverlay) {
+      return const SizedBox.shrink();
+    }
+
+    final theme = Theme.of(context);
+    final retryCount = widget.consecutiveFailures;
+    final text = retryCount > 0
+        ? 'Re-attempting device write (Retry $retryCount of 3)...'
+        : 'Saving settings to device...';
+
+    return Container(
+      color: theme.scaffoldBackgroundColor.withValues(alpha: 0.92),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const CircularProgressIndicator(),
+            const SizedBox(height: 20),
+            Text(
+              text,
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
         ),
       ),
     );

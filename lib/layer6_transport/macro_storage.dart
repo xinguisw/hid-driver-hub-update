@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:driver_hub/layer4_domain/macro_repository.dart';
 import 'package:driver_hub/layer4_domain/models/macro.dart';
 
@@ -47,6 +48,9 @@ class PersistentMacroRepository implements MacroRepository {
     current[deviceId] = macros.map((macro) => macro.toJson()).toList();
     await _backend.write(
       jsonEncode({'schemaVersion': schemaVersion, 'devices': current}),
+    );
+    debugPrint(
+      '[storage] saved updated macro store for device $deviceId (${macros.length} macro(s))',
     );
   }
 

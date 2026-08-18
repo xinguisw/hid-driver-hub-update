@@ -410,7 +410,8 @@ class DeviceSession implements DeviceSettingsGateway {
       if (performance != null && !_performancePushes.isClosed) {
         debugPrint(
           '[session] OSD performance: rateWire=${performance.reportRateWire} '
-          'dpiLevel=${performance.dpiLevel} raw=${_hex(raw)}',
+          'dpiLevel=${performance.dpiLevel} dpiValue=${performance.dpiValue} '
+          'raw=${_hex(raw)}',
         );
         _performancePushes.add(performance);
       }

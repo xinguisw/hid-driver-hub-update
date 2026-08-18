@@ -18,6 +18,7 @@ class DeviceSettingsViewState {
     this.reportRateStaging,
     this.dpiCurrentLevelStaging,
     this.dpiValueStaging,
+    this.dpiRgbStaging,
     this.dpiStageAddStaging = false,
     this.dpiStageRemoveLevelStaging,
     this.dpiStageLevelsStaging,
@@ -55,6 +56,9 @@ class DeviceSettingsViewState {
 
   /// Staged DPI value per level (1-based level → value); null = no change.
   final Map<int, int>? dpiValueStaging;
+
+  /// Staged DPI RGB hex color per level (1-based level → #RRGGBB); null = no change.
+  final Map<int, String>? dpiRgbStaging;
 
   /// True when a `+` add-stage is staged, pending Save.
   final bool dpiStageAddStaging;
@@ -130,6 +134,7 @@ class DeviceSettingsViewState {
       reportRateStaging != null ||
       dpiCurrentLevelStaging != null ||
       (dpiValueStaging != null && dpiValueStaging!.isNotEmpty) ||
+      (dpiRgbStaging != null && dpiRgbStaging!.isNotEmpty) ||
       dpiStageAddStaging ||
       dpiStageRemoveLevelStaging != null ||
       dpiStageLevelsStaging != null ||
@@ -158,6 +163,7 @@ class DeviceSettingsViewState {
     int? reportRateStaging,
     int? dpiCurrentLevelStaging,
     Map<int, int>? dpiValueStaging,
+    Map<int, String>? dpiRgbStaging,
     bool? dpiStageAddStaging,
     int? dpiStageRemoveLevelStaging,
     List<DpiStageData>? dpiStageLevelsStaging,
@@ -190,6 +196,7 @@ class DeviceSettingsViewState {
     bool clearReportRateStaging = false,
     bool clearDpiCurrentLevelStaging = false,
     bool clearDpiValueStaging = false,
+    bool clearDpiRgbStaging = false,
     bool clearDpiStageStaging = false,
     bool clearError = false,
   }) {
@@ -207,6 +214,9 @@ class DeviceSettingsViewState {
       dpiValueStaging: clearStaging || clearDpiValueStaging
           ? null
           : (dpiValueStaging ?? this.dpiValueStaging),
+      dpiRgbStaging: clearStaging || clearDpiRgbStaging
+          ? null
+          : (dpiRgbStaging ?? this.dpiRgbStaging),
       dpiStageAddStaging: clearStaging || clearDpiStageStaging
           ? false
           : (dpiStageAddStaging ?? this.dpiStageAddStaging),

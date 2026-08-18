@@ -380,6 +380,8 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
   }
   if (message == WM_DESTROY) {
     RemoveTrayIcon();
+    PostQuitMessage(0);
+    return 0;
   }
   if (taskbar_created_message_ != 0 && message == taskbar_created_message_) {
     AddTrayIcon();
@@ -387,7 +389,9 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
   }
   if (message == kTrayCallbackMessage) {
     switch (LOWORD(lparam)) {
+      case WM_LBUTTONUP:
       case WM_LBUTTONDBLCLK:
+      case NIN_SELECT:
         RestoreFromTray();
         return 0;
       case WM_RBUTTONUP:
@@ -430,7 +434,7 @@ void FlutterWindow::AddTrayIcon() {
   icon.uCallbackMessage = kTrayCallbackMessage;
   icon.hIcon = LoadIconW(GetModuleHandle(nullptr),
                          MAKEINTRESOURCEW(IDI_APP_ICON));
-  wcscpy_s(icon.szTip, L"driver_hub");
+  wcscpy_s(icon.szTip, L"HID Driver Hub");
   if (!Shell_NotifyIconW(NIM_ADD, &icon)) {
     tray_icon_added_ = false;
     return;
@@ -458,8 +462,13 @@ void FlutterWindow::RestoreFromTray() {
   if (hwnd == nullptr) {
     return;
   }
-  ShowWindow(hwnd, IsIconic(hwnd) ? SW_RESTORE : SW_SHOW);
+  if (IsIconic(hwnd)) {
+    ShowWindow(hwnd, SW_RESTORE);
+  } else {
+    ShowWindow(hwnd, SW_SHOW);
+  }
   SetForegroundWindow(hwnd);
+  BringWindowToTop(hwnd);
 }
 
 void FlutterWindow::ShowTrayMenu() {
@@ -472,7 +481,7 @@ void FlutterWindow::ShowTrayMenu() {
   if (menu == nullptr) {
     return;
   }
-  AppendMenuW(menu, MF_STRING, kTrayRestoreCommand, L"Restore");
+  AppendMenuW(menu, MF_STRING, kTrayRestoreCommand, L"Open HID Driver Hub");
   AppendMenuW(menu, MF_STRING, kTrayExitCommand, L"Exit");
 
   POINT cursor{};

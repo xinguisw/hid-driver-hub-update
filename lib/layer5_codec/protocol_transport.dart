@@ -10,6 +10,6 @@ abstract interface class ProtocolTransport {
     required int reportId,
     required int reportLength,
     required bool Function(Uint8List raw) match,
-    Duration timeout = const Duration(milliseconds: 1000),
+    Duration timeout = const Duration(seconds: 3),
   });
 }

@@ -1,17 +1,54 @@
-# driver_hub
+# HID Driver Hub
 
-A new Flutter project.
+A cross-platform (Web & Windows Desktop) HID device configuration driver app built with Flutter.
 
-## Getting Started
+---
 
-This project is a starting point for a Flutter application.
+## 1. Build and Deploy Web App (GitHub Pages)
 
-A few resources to get you started if this is your first Flutter project:
+### Step 1: Build the Web release bundle
+Run the Flutter web build command with Git Hash and Build Timestamp tracking:
+```powershell
+powershell -Command "$hash = git rev-parse --short HEAD; $time = Get-Date -Format 'yyyy-MM-dd HH:mm'; flutter build web --release --dart-define=GIT_HASH=$hash --dart-define=BUILD_TIME=$time"
+```
+This injects the exact Git commit SHA and timestamp into your Web release and updates `build/web/`.
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+### Step 2: Commit changes in `build/web`
+Stage and commit the updated web assets in `build/web`:
+```bash
+git -C build/web add -A
+git -C build/web commit -m "Update web build"
+```
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+### Step 3: Push `build/web` to GitHub Pages repository
+Push `build/web` to `https://github.com/xinguisw/xinguisw.github.io.git`:
+```bash
+git -C build/web push https://<YOUR_PERSONAL_ACCESS_TOKEN>@github.com/xinguisw/xinguisw.github.io.git main --force
+```
+*(Replace `<YOUR_PERSONAL_ACCESS_TOKEN>` with your GitHub Personal Access Token).*
+
+---
+
+## 2. Build and Package Windows Installer (Inno Setup)
+
+### Prerequisites
+- Install **Inno Setup** (e.g., Inno Setup 7 installed at `C:\Program Files\Inno Setup 7\ISCC.exe`).
+
+### Step 1: Build the Windows Release executable
+Run the Flutter Windows release build:
+```bash
+flutter build windows --release
+```
+This generates the native Windows executable at `build/windows/x64/runner/Release/driver_hub.exe`.
+
+### Step 2: Package the Installer with Inno Setup
+Run the packaging script:
+```bash
+dart run tool/package.dart
+```
+
+### Output Location
+Upon completion, the installer executable will be generated at:
+```
+build/installer/hid_driver_hub_installer.exe
+```

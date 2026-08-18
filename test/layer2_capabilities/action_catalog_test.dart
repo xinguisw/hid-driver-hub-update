@@ -42,7 +42,7 @@ void main() {
       expect(tab.sections[0].items.first.label, 'A');
       expect(tab.sections[1].title, 'Numeric Keypad Keys');
       expect(tab.sections[2].title, 'Modifier Key');
-      expect(tab.sections[2].items.first.label, 'CapsLk');
+      expect(tab.sections[2].items.first.label, 'Caps Lock');
     });
 
     test('loads special combination layout', () async {

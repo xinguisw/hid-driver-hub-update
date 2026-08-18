@@ -43,7 +43,7 @@ class HubPerformancePanel extends StatelessWidget {
   final int? dpiActiveLevelCount;
   final int? dpiMaxLevels;
   final VoidCallback? onDpiStageAdd;
-  final VoidCallback? onDpiStageRemove;
+  final ValueChanged<int>? onDpiStageRemove;
   final bool dpiRemoveEnabled;
   final bool dpiRgbPerStage;
   final ValueChanged<({int level, Color color})>? onDpiColorChanged;
@@ -74,8 +74,7 @@ class HubPerformancePanel extends StatelessWidget {
             activeCount: dpiActiveLevelCount ?? 0,
             maxLevels: dpiMaxLevels ?? 8,
             onAddStage: () => onDpiStageAdd?.call(),
-            onRemoveStage: () => onDpiStageRemove?.call(),
-            removeEnabled: dpiRemoveEnabled,
+            onDpiStageRemove: onDpiStageRemove,
             rgbPerStage: dpiRgbPerStage,
             onColorChanged: onDpiColorChanged,
           ),
@@ -111,8 +110,7 @@ class _DpiSettingsGroup extends StatelessWidget {
     required this.activeCount,
     required this.maxLevels,
     required this.onAddStage,
-    required this.onRemoveStage,
-    this.removeEnabled = false,
+    this.onDpiStageRemove,
     this.rgbPerStage = false,
     this.onColorChanged,
   });
@@ -123,19 +121,12 @@ class _DpiSettingsGroup extends StatelessWidget {
   final int dpiMin;
   final int dpiMax;
   final int? dpiStep;
-
-  /// Staged per-level DPI values (level → value).
   final Map<int, int> valueStaging;
-
   final ValueChanged<({int level, int value})> onValueChanged;
   final int activeCount;
   final int maxLevels;
   final VoidCallback onAddStage;
-  final VoidCallback onRemoveStage;
-
-  /// True only when the user has selected a level (so `x` removes the
-  /// selection, not the device's default active level).
-  final bool removeEnabled;
+  final ValueChanged<int>? onDpiStageRemove;
   final bool rgbPerStage;
   final ValueChanged<({int level, Color color})>? onColorChanged;
 
@@ -174,20 +165,6 @@ class _DpiSettingsGroup extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
-              // Remove stage: disabled when only one remains or no selection.
-              InkWell(
-                onTap: activeCount <= 1 || !removeEnabled
-                    ? null
-                    : onRemoveStage,
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 6),
-                  child: Text(
-                    'x',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                  ),
-                ),
-              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -216,6 +193,9 @@ class _DpiSettingsGroup extends StatelessWidget {
                           onValueChanged((level: stage.level, value: value)),
                       rgbPerStage: rgbPerStage,
                       onColorChanged: onColorChanged,
+                      onRemoveStage: activeCount <= 1 || onDpiStageRemove == null
+                          ? null
+                          : () => onDpiStageRemove?.call(stage.level),
                     ),
                 ],
               );
@@ -287,6 +267,7 @@ class _DpiSliderRow extends StatelessWidget {
     required this.onValueChanged,
     this.rgbPerStage = false,
     this.onColorChanged,
+    this.onRemoveStage,
   });
 
   final DpiStageData stage;
@@ -303,6 +284,7 @@ class _DpiSliderRow extends StatelessWidget {
   final ValueChanged<int> onValueChanged;
   final bool rgbPerStage;
   final ValueChanged<({int level, Color color})>? onColorChanged;
+  final VoidCallback? onRemoveStage;
 
   @override
   Widget build(BuildContext context) {
@@ -340,6 +322,26 @@ class _DpiSliderRow extends StatelessWidget {
               Text('DPI ${stage.level}'),
               const Spacer(),
               Text('$stagedValue'),
+              if (onRemoveStage != null) ...[
+                const SizedBox(width: 8),
+                Tooltip(
+                  message: 'Delete DPI stage ${stage.level}',
+                  child: InkWell(
+                    onTap: onRemoveStage,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 4,
+                        vertical: 2,
+                      ),
+                      child: Icon(
+                        Icons.close,
+                        size: 14,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
           const SizedBox(height: 4),

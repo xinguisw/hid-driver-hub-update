@@ -46,5 +46,8 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
-# Firmware protocol reference docs (Telink B80 CSVs) — reference-only, not app code
+# Reference docs 
 /Documentation/
+/.agent/
+/docs/
+/review/

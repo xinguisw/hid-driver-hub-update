@@ -20,7 +20,7 @@ void main() {
         remappable: true,
         action: 0x14,
         param1: 1,
-        actionLabel: 'Macro play (#1)',
+        actionLabel: 'M1',
       ),
       ButtonData(
         id: 2,
@@ -502,8 +502,8 @@ void main() {
       bloc.add(const DeviceSettingsSaveRequested());
       await pumpEventQueue();
 
-      expect(bloc.state.isDirty, true);
-      expect(bloc.state.buttonMappingStaging, isNotNull);
+      expect(bloc.state.isDirty, false);
+      expect(bloc.state.buttonMappingStaging, isNull);
       expect(bloc.state.consecutiveFailures, 1);
       expect(bloc.state.lastError, contains('nak'));
       expect(bloc.state.committing, false);
@@ -833,15 +833,16 @@ void main() {
           reportRateOptions: const [500, 250, 125],
           rgbPerStage: true,
         );
-        List<DpiStageData>? writtenLevels;
+        Map<int, String>? writtenRgbColors;
         final bloc = DeviceSettingsBloc(
           commitButtonMapping: (_) async {},
           commitReportRate: (_) async {},
           commitDpiLevel: (_) async {},
           commitDpiValues: (_) async {},
-          commitDpiStages: (levels, _) async {
-            writtenLevels = levels;
+          commitDpiRgb: (colors) async {
+            writtenRgbColors = colors;
           },
+          commitDpiStages: (_, _) async {},
           commitSensorTuning: (_, _) async {},
           commitAngleTune: (_) async {},
           commitLod: (_) async {},
@@ -871,15 +872,15 @@ void main() {
         );
         await pumpEventQueue();
 
-        expect(bloc.state.dpiStageLevelsStaging, hasLength(2));
-        expect(bloc.state.dpiStageLevelsStaging!.first.color, '#12ABEF');
+        expect(bloc.state.dpiRgbStaging, containsPair(1, '#12ABEF'));
         expect(bloc.state.isDirty, true);
 
         bloc.add(const DeviceSettingsSaveDpiConfigurationRequested());
         await pumpEventQueue();
 
-        expect(writtenLevels!.first.color, '#12ABEF');
-        expect(bloc.state.dpiStageLevelsStaging, isNull);
+        expect(writtenRgbColors, containsPair(1, '#12ABEF'));
+        expect(bloc.state.synced?.dpiLevels?.first.color, '#12ABEF');
+        expect(bloc.state.dpiRgbStaging, isNull);
         expect(bloc.state.isDirty, false);
         await bloc.close();
       },
@@ -1146,6 +1147,94 @@ void main() {
       expect(committed!.map((s) => s.level), [1, 2, 3, 4, 5]);
       await bloc.close();
     });
+
+    test('deleting current active level resets current level to 1', () async {
+      final caps8 = DeviceCapabilities(
+        devId: 'test_dev',
+        displayNameKey: 'device.test',
+        reportRate: const ReportRateCapabilities(
+          options: [125, 250, 500, 1000],
+          defaultValue: 1000,
+        ),
+        dpi: const DpiCapabilities(
+          maxLevels: 8,
+          activeLevelCount: 5,
+          defaultLevel: 2,
+          wireProfileKey: 'telink_b80_dpi16',
+          range: DpiRange(
+            minDpi: 50,
+            maxDpi: 24000,
+            stepMode: 'fixed',
+            step: 50,
+          ),
+          independentXY: false,
+          rgbPerStage: false,
+          levels: [
+            DpiLevel(level: 1, value: 800, color: '#FF0000'),
+            DpiLevel(level: 2, value: 1600, color: '#0000FF'),
+            DpiLevel(level: 3, value: 2400, color: '#00FF00'),
+            DpiLevel(level: 4, value: 3200, color: '#FFFF00'),
+            DpiLevel(level: 5, value: 5000, color: '#800080'),
+            DpiLevel(level: 6, value: 6000, color: '#00FFFF'),
+            DpiLevel(level: 7, value: 7000, color: '#FF00FF'),
+            DpiLevel(level: 8, value: 8000, color: '#FFFFFF'),
+          ],
+        ),
+      );
+      final bloc = DeviceSettingsBloc(
+        commitButtonMapping: (_) async {},
+        commitReportRate: (_) async {},
+        commitDpiLevel: (_) async {},
+        commitDpiValues: (_) async {},
+        commitDpiStages: (_, _) async {},
+        commitSensorTuning: (_, _) async {},
+        commitAngleTune: (_) async {},
+        commitLod: (_) async {},
+        commitPerformance: (_) async {},
+        commitDebounce: (_) async {},
+        commitSleep: (_) async {},
+        commitWheelInvert: (_) async {},
+        commitRgbBacklight: (_) async {},
+        capabilitiesLookup: () => caps8,
+      );
+      bloc.add(
+        DeviceSettingsHydrated(
+          baseSettings().copyWith(
+            dpiActiveLevelCount: 5,
+            dpiActiveIndex: 5,
+            dpiMaxLevels: 8,
+            dpiLevels: const [
+              DpiStageData(level: 1, value: 800),
+              DpiStageData(level: 2, value: 1600),
+              DpiStageData(level: 3, value: 2400),
+              DpiStageData(level: 4, value: 3200),
+              DpiStageData(level: 5, value: 5000),
+            ],
+          ),
+        ),
+      );
+      await pumpEventQueue();
+
+      // Add level 6, set level 6 active, and save.
+      bloc.add(const DeviceSettingsDpiStageAddRequested());
+      bloc.add(const DeviceSettingsDpiLevelRequested(level: 6));
+      bloc.add(const DeviceSettingsSaveDpiConfigurationRequested());
+      await pumpEventQueue();
+      expect(bloc.state.synced?.dpiActiveIndex, 6);
+      expect(bloc.state.synced?.dpiActiveLevelCount, 6);
+
+      // Now delete level 6 (the active level).
+      bloc.add(const DeviceSettingsDpiStageRemoveRequested(level: 6));
+      await pumpEventQueue();
+      expect(bloc.state.dpiCurrentLevelStaging, 1);
+
+      // Save configuration.
+      bloc.add(const DeviceSettingsSaveDpiConfigurationRequested());
+      await pumpEventQueue();
+      expect(bloc.state.synced?.dpiActiveIndex, 1);
+      expect(bloc.state.synced?.dpiActiveLevelCount, 5);
+      await bloc.close();
+    });
   });
 
   group('DeviceSettingsBloc decode-error guard', () {
@@ -1368,8 +1457,8 @@ void main() {
       bloc.add(const DeviceSettingsSaveSensorTuningRequested());
       await pumpEventQueue();
 
-      expect(bloc.state.angleSnapStaging, true);
-      expect(bloc.state.isDirty, true);
+      expect(bloc.state.angleSnapStaging, isNull);
+      expect(bloc.state.isDirty, false);
       expect(bloc.state.synced?.angleSnapOn, false);
       expect(bloc.state.consecutiveFailures, 1);
       expect(bloc.state.lastError, contains('nak'));
@@ -1566,8 +1655,8 @@ void main() {
       bloc.add(const DeviceSettingsSaveAngleTuneRequested());
       await pumpEventQueue();
 
-      expect(bloc.state.angleTuneStaging, 3);
-      expect(bloc.state.isDirty, true);
+      expect(bloc.state.angleTuneStaging, isNull);
+      expect(bloc.state.isDirty, false);
       expect(bloc.state.consecutiveFailures, 1);
       expect(bloc.state.lastError, contains('nak'));
       expect(bloc.state.committing, false);
@@ -1766,8 +1855,8 @@ void main() {
       bloc.add(const DeviceSettingsSaveLodRequested());
       await pumpEventQueue();
 
-      expect(bloc.state.lodStaging, 2);
-      expect(bloc.state.isDirty, true);
+      expect(bloc.state.lodStaging, isNull);
+      expect(bloc.state.isDirty, false);
       expect(bloc.state.consecutiveFailures, 1);
       expect(bloc.state.lastError, contains('nak'));
       expect(bloc.state.committing, false);
@@ -1869,8 +1958,8 @@ void main() {
       bloc.add(const DeviceSettingsSavePerformanceRequested());
       await pumpEventQueue();
 
-      expect(bloc.state.performanceStaging, 2);
-      expect(bloc.state.isDirty, true);
+      expect(bloc.state.performanceStaging, isNull);
+      expect(bloc.state.isDirty, false);
       expect(bloc.state.consecutiveFailures, 1);
       expect(bloc.state.lastError, contains('nak'));
       expect(bloc.state.committing, false);
@@ -2132,8 +2221,8 @@ void main() {
       bloc.add(const DeviceSettingsSaveButtonDebounceRequested());
       await pumpEventQueue();
 
-      expect(bloc.state.debounceStaging, 4);
-      expect(bloc.state.isDirty, true);
+      expect(bloc.state.debounceStaging, isNull);
+      expect(bloc.state.isDirty, false);
       expect(bloc.state.consecutiveFailures, 1);
       expect(bloc.state.lastError, contains('nak'));
       await bloc.close();
@@ -2332,8 +2421,8 @@ void main() {
       bloc.add(const DeviceSettingsSaveBacklightRequested());
       await pumpEventQueue();
 
-      expect(bloc.state.rgbModeIdStaging, 1);
-      expect(bloc.state.isDirty, true);
+      expect(bloc.state.rgbModeIdStaging, isNull);
+      expect(bloc.state.isDirty, false);
       expect(bloc.state.consecutiveFailures, 1);
       expect(bloc.state.lastError, contains('nak'));
       await bloc.close();

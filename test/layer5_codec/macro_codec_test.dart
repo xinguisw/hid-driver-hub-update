@@ -11,7 +11,7 @@ void main() {
     loopTimes: 2,
     actions: [
       MacroTransferAction(keyCode: 0x04, isBreak: false, delay: 5),
-      MacroTransferAction(keyCode: 0xF1, isBreak: true, delay: 7),
+      MacroTransferAction(keyCode: 0xC1, isBreak: true, delay: 7),
     ],
   );
 
@@ -19,7 +19,7 @@ void main() {
     final packet = MacroTransferCodec.encodePacket(macro);
     expect(packet, hasLength(67));
     expect(packet.sublist(0, 7), [3, 2, 0, 0, 0, 2, 2]);
-    expect(packet.sublist(7, 11), [5, 0x04, 0x87, 0xF1]);
+    expect(packet.sublist(7, 11), [5, 0x04, 0x87, 0xC1]);
 
     final transfer = MacroTransferCodec.encodeTransfer(macro);
     final crc = const Crc16().bytes(packet);

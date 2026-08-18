@@ -29,7 +29,8 @@ class HubButtonMappingPanel extends StatefulWidget {
   final ValueChanged<String>? onActionSelected;
 
   /// Called when user completes a special combo (modifiers + key).
-  final void Function(List<String> modifierIds, String keyChar)? onComboSelected;
+  final void Function(List<String> modifierIds, String keyChar)?
+  onComboSelected;
   final List<MacroDefinition> macroSlots;
   final ValueChanged<int>? onMacroSelected;
 
@@ -57,6 +58,19 @@ class _HubButtonMappingPanelState extends State<HubButtonMappingPanel> {
   final FocusNode _anyKeyFocus = FocusNode();
 
   @override
+  void didUpdateWidget(HubButtonMappingPanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.selectedButtonId != widget.selectedButtonId) {
+      setState(() {
+        _specialModOrder.clear();
+        _anyKeyListening = false;
+        _anyKeyChar = null;
+        _selectedCatalogId = null;
+      });
+    }
+  }
+
+  @override
   void dispose() {
     _anyKeyFocus.dispose();
     super.dispose();
@@ -75,13 +89,20 @@ class _HubButtonMappingPanelState extends State<HubButtonMappingPanel> {
     setState(() {
       if (_specialModOrder.contains(id)) {
         _specialModOrder.remove(id);
-        return;
+      } else {
+        // At max: drop oldest so the new pick can light; always ≤ 2 selected.
+        if (_specialModOrder.length >=
+            HubButtonMappingPanel.maxSpecialModifiers) {
+          _specialModOrder.removeAt(0);
+        }
+        _specialModOrder.add(id);
       }
-      // At max: drop oldest so the new pick can light; always ≤ 2 selected.
-      if (_specialModOrder.length >= HubButtonMappingPanel.maxSpecialModifiers) {
-        _specialModOrder.removeAt(0);
+      if (_anyKeyChar != null) {
+        widget.onComboSelected?.call(
+          List<String>.from(_specialModOrder),
+          _anyKeyChar!,
+        );
       }
-      _specialModOrder.add(id);
     });
   }
 
@@ -97,15 +118,14 @@ class _HubButtonMappingPanelState extends State<HubButtonMappingPanel> {
     if (!_anyKeyListening) return KeyEventResult.ignored;
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
 
-    String? ch;
-
-    // Try character first (printable keys: letters, digits, symbols)
-    final raw = event.character;
-    if (raw != null && raw.isNotEmpty && raw.characters.first.codeUnitAt(0) >= 0x20) {
-      ch = raw.characters.first;
-    } else {
-      // Map logical keys to their character representations
-      ch = _logicalKeyToChar[event.logicalKey];
+    String? ch = _logicalKeyToChar[event.logicalKey];
+    if (ch == null) {
+      final raw = event.character;
+      if (raw != null &&
+          raw.isNotEmpty &&
+          raw.characters.first.codeUnitAt(0) > 0x20) {
+        ch = raw.characters.first;
+      }
     }
 
     if (ch == null) return KeyEventResult.ignored;
@@ -115,13 +135,8 @@ class _HubButtonMappingPanelState extends State<HubButtonMappingPanel> {
       _anyKeyListening = false;
     });
 
-    // Dispatch combo if modifiers are selected
-    if (_specialModOrder.isNotEmpty) {
-      widget.onComboSelected?.call(
-        List<String>.from(_specialModOrder),
-        ch,
-      );
-    }
+    // Dispatch key combo / single key choice flexibly (modifiers optional)
+    widget.onComboSelected?.call(List<String>.from(_specialModOrder), ch);
 
     return KeyEventResult.handled;
   }
@@ -132,7 +147,7 @@ class _HubButtonMappingPanelState extends State<HubButtonMappingPanel> {
     LogicalKeyboardKey.enter: 'Enter',
     LogicalKeyboardKey.tab: 'Tab',
     LogicalKeyboardKey.backspace: 'Backspace',
-    LogicalKeyboardKey.space: ' ',
+    LogicalKeyboardKey.space: 'Space',
     LogicalKeyboardKey.arrowUp: '↑',
     LogicalKeyboardKey.arrowDown: '↓',
     LogicalKeyboardKey.arrowLeft: '←',
@@ -179,55 +194,54 @@ class _HubButtonMappingPanelState extends State<HubButtonMappingPanel> {
           ),
           Expanded(
             child: ColoredBox(
-              color: theme.colorScheme.surfaceContainerHighest
-                  .withValues(alpha: 0.35),
+              color: theme.colorScheme.surfaceContainerHighest.withValues(
+                alpha: 0.35,
+              ),
               child: switch (_tabIndex) {
                 0 => _SectionCatalogList(
-                    sections: widget.mouseActionCatalog ?? const [],
-                    selectedId: _selectedCatalogId,
-                    onSelect: (id) {
-                      setState(() => _selectedCatalogId = id);
-                      widget.onActionSelected?.call(id);
-                    },
-                  ),
+                  sections: widget.mouseActionCatalog ?? const [],
+                  selectedId: _selectedCatalogId,
+                  onSelect: (id) {
+                    setState(() => _selectedCatalogId = id);
+                    widget.onActionSelected?.call(id);
+                  },
+                ),
                 1 => _SectionCatalogList(
-                    sections: widget.keyboardActionCatalog ?? const [],
-                    selectedId: _selectedCatalogId,
-                    onSelect: (id) {
-                      setState(() => _selectedCatalogId = id);
-                      widget.onActionSelected?.call(id);
-                    },
-                  ),
+                  sections: widget.keyboardActionCatalog ?? const [],
+                  selectedId: _selectedCatalogId,
+                  onSelect: (id) {
+                    setState(() => _selectedCatalogId = id);
+                    widget.onActionSelected?.call(id);
+                  },
+                ),
                 2 => _SpecialCombinationBody(
-                    sections: widget.specialActionCatalog ?? const [],
-                    selectedMods: _specialModOrder.toSet(),
-                    onToggleMod: _toggleSpecialMod,
-                    anyKeyChar: _anyKeyChar,
-                    anyKeyListening: _anyKeyListening,
-                    anyKeyFocus: _anyKeyFocus,
-                    onAnyKeyTap: _onAnyKeyFieldTap,
-                    onAnyKeyEvent: _onAnyKeyEvent,
-                    onComboComplete: (keyChar) {
-                      if (_specialModOrder.isNotEmpty) {
-                        widget.onComboSelected?.call(
-                          List<String>.from(_specialModOrder),
-                          keyChar,
-                        );
-                      }
-                    },
-                  ),
+                  sections: widget.specialActionCatalog ?? const [],
+                  selectedMods: _specialModOrder.toSet(),
+                  onToggleMod: _toggleSpecialMod,
+                  anyKeyChar: _anyKeyChar,
+                  anyKeyListening: _anyKeyListening,
+                  anyKeyFocus: _anyKeyFocus,
+                  onAnyKeyTap: _onAnyKeyFieldTap,
+                  onAnyKeyEvent: _onAnyKeyEvent,
+                  onComboComplete: (keyChar) {
+                    widget.onComboSelected?.call(
+                      List<String>.from(_specialModOrder),
+                      keyChar,
+                    );
+                  },
+                ),
                 _ => _MacroCatalogBody(
-                    macros: widget.macroSlots,
-                    selectedSlot: _selectedCatalogId == null
-                        ? null
-                        : int.tryParse(
-                            _selectedCatalogId!.replaceFirst('macro.', ''),
-                          ),
-                    onSelect: (slot) {
-                      setState(() => _selectedCatalogId = 'macro.$slot');
-                      widget.onMacroSelected?.call(slot);
-                    },
-                  ),
+                  macros: widget.macroSlots,
+                  selectedSlot: _selectedCatalogId == null
+                      ? null
+                      : int.tryParse(
+                          _selectedCatalogId!.replaceFirst('macro.', ''),
+                        ),
+                  onSelect: (slot) {
+                    setState(() => _selectedCatalogId = 'macro.$slot');
+                    widget.onMacroSelected?.call(slot);
+                  },
+                ),
               },
             ),
           ),
@@ -324,8 +338,10 @@ class _SectionCatalogList extends StatelessWidget {
               child: InkWell(
                 onTap: () => onSelect(item.id),
                 child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
                   child: Text(
                     item.label,
                     style: theme.textTheme.bodyMedium?.copyWith(
@@ -377,13 +393,11 @@ class _SpecialCombinationBody extends StatelessWidget {
         if (i.role == 'modifier') i,
     ];
     final anyKey = section.items.cast<ActionCatalogItemData?>().firstWhere(
-          (i) => i?.role == 'any_key',
-          orElse: () => null,
-        );
+      (i) => i?.role == 'any_key',
+      orElse: () => null,
+    );
 
-    final anyLabel = anyKeyListening
-        ? '…'
-        : (anyKeyChar ?? '');
+    final anyLabel = anyKeyListening ? '…' : (anyKeyChar ?? '');
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 16),

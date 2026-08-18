@@ -89,7 +89,14 @@ class TelinkB80ConfigBlockCodec {
     }
     final block = Uint8List.fromList(current);
     const translate = TranslationCodec();
-    if (enabled != null) block[0] = translate.triStateBoolToWire(enabled);
+    if (enabled != null) {
+      block[0] = translate.triStateBoolToWire(enabled);
+    } else {
+      final b0 = block[0] & 0xFF;
+      if (b0 != 0xFF && b0 != 0x0F && b0 != 0x00) {
+        block[0] = 0xFF;
+      }
+    }
     if (modeId != null) block[1] = _byte(modeId, 'modeId');
     if (brightness != null) block[2] = _byte(brightness, 'brightness');
     if (speed != null) block[3] = _byte(speed, 'speed');

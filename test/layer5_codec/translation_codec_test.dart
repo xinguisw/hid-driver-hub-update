@@ -127,28 +127,31 @@ void main() {
 
   group('TranslationCodec.buttonIdToLabel', () {
     test('slot names for ids 1–6', () {
-      expect(t.buttonIdToLabel(1), 'Left');
-      expect(t.buttonIdToLabel(2), 'Right');
-      expect(t.buttonIdToLabel(3), 'Middle');
-      expect(t.buttonIdToLabel(4), 'Forward');
-      expect(t.buttonIdToLabel(5), 'Backward');
-      expect(t.buttonIdToLabel(6), 'DPI cycle');
+      expect(t.buttonIdToLabel(1), 'Left Button');
+      expect(t.buttonIdToLabel(2), 'Right Button');
+      expect(t.buttonIdToLabel(3), 'Middle Button');
+      expect(t.buttonIdToLabel(4), 'Forward Button');
+      expect(t.buttonIdToLabel(5), 'Backward Button');
+      expect(t.buttonIdToLabel(6), 'DPI Cycle');
     });
   });
 
   group('TranslationCodec.buttonActionToLabel', () {
     test('standard mouse actions', () {
-      expect(t.buttonActionToLabel(action: 0x00), 'Disable / No action');
-      expect(t.buttonActionToLabel(action: 0x02), 'Left click');
-      expect(t.buttonActionToLabel(action: 0x03), 'Right click');
-      expect(t.buttonActionToLabel(action: 0x04), 'Middle click');
-      expect(t.buttonActionToLabel(action: 0x05), 'Forward');
-      expect(t.buttonActionToLabel(action: 0x06), 'Backward');
-      expect(t.buttonActionToLabel(action: 0x09), 'Swing left');
-      expect(t.buttonActionToLabel(action: 0x0A), 'Swing right');
-      expect(t.buttonActionToLabel(action: 0x0B), 'DPI increase');
-      expect(t.buttonActionToLabel(action: 0x0D), 'DPI decrease');
-      expect(t.buttonActionToLabel(action: 0x0E), 'DPI cycle');
+      expect(t.buttonActionToLabel(action: 0x00), 'Disable');
+      expect(t.buttonActionToLabel(action: 0x02), 'Left Button');
+      expect(t.buttonActionToLabel(action: 0x03), 'Right Button');
+      expect(t.buttonActionToLabel(action: 0x04), 'Middle Button');
+      expect(t.buttonActionToLabel(action: 0x05), 'Forward Button');
+      expect(t.buttonActionToLabel(action: 0x06), 'Backward Button');
+      expect(t.buttonActionToLabel(action: 0x07), 'Wheel Up');
+      expect(t.buttonActionToLabel(action: 0x08), 'Wheel Down');
+      expect(t.buttonActionToLabel(action: 0x09), 'Tilt Left');
+      expect(t.buttonActionToLabel(action: 0x0A), 'Tilt Right');
+      expect(t.buttonActionToLabel(action: 0x0B), 'DPI +');
+      expect(t.buttonActionToLabel(action: 0x0D), 'DPI -');
+      expect(t.buttonActionToLabel(action: 0x0E), 'DPI Cycle');
+      expect(t.buttonActionToLabel(action: 0x0F), 'Report Rate Cycle');
     });
 
     test('shortcut names the key, never raw bytes', () {
@@ -192,7 +195,7 @@ void main() {
       expect(t.buttonActionToLabel(action: 0x12, param1: 0x02), 'Key 0x02');
     });
     test('macro and unknown', () {
-      expect(t.buttonActionToLabel(action: 0x14, param1: 3), 'Macro play (#3)');
+      expect(t.buttonActionToLabel(action: 0x14, param1: 3), 'M3');
       expect(
         t.buttonActionToLabel(action: 0x99, param1: 1, param2: 2, param3: 3),
         'Unknown action 0x99 (p=1,2,3)',
@@ -212,7 +215,7 @@ void main() {
       expect(t.keyValueToLabel(0x62), 'Numpad 0');
       expect(t.keyValueToLabel(0xA1), 'System power');
       expect(t.keyValueToLabel(0xBE), 'Terminal lock');
-      expect(t.keyValueToLabel(0xC6), 'Wheel up');
+      expect(t.keyValueToLabel(0xC6), 'Wheel Up');
       expect(t.keyValueToLabel(0xCF), 'Copy');
       expect(t.keyValueToLabel(0xE7), 'Right Win');
       expect(t.keyValueToLabel(0xF0), 'Gamepad A');

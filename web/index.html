@@ -41,6 +41,19 @@
     For more details:
     * https://docs.flutter.dev/platform-integration/web/initialization
   -->
+  <script>
+    // Prevent browser back/forward page navigation when clicking mouse buttons 4 & 5 (Back/Forward)
+    function preventMouseNav(e) {
+      if (e.button === 3 || e.button === 4 || e.which === 4 || e.which === 5) {
+        e.preventDefault();
+      }
+    }
+
+    ['auxclick', 'pointerdown', 'pointerup', 'mousedown', 'mouseup', 'click'].forEach(function(type) {
+      window.addEventListener(type, preventMouseNav, true);
+      document.addEventListener(type, preventMouseNav, true);
+    });
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

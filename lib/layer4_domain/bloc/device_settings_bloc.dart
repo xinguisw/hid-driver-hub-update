@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:driver_hub/layer2_capabilities/capabilities.dart';
 import 'package:driver_hub/layer4_domain/bloc/device_settings_event.dart';
 import 'package:driver_hub/layer4_domain/bloc/device_settings_state_view.dart';
@@ -18,6 +20,8 @@ typedef ReportRateCommit = Future<void> Function(int reportRateHz);
 typedef DpiLevelCommit = Future<void> Function(int dpiLevel);
 
 typedef DpiValuesCommit = Future<void> Function(Map<int, int> levelValues);
+
+typedef DpiRgbCommit = Future<void> Function(Map<int, String> levelColors);
 
 typedef DpiStagesCommit =
     Future<void> Function(List<DpiStageData> stagedLevels, int activeCount);
@@ -144,6 +148,7 @@ class DeviceSettingsBloc
     required this.commitReportRate,
     required this.commitDpiLevel,
     required this.commitDpiValues,
+    this.commitDpiRgb,
     required this.commitDpiStages,
     this.commitDpiConfigurationDefaults,
     required this.commitSensorTuning,
@@ -223,6 +228,7 @@ class DeviceSettingsBloc
   final ReportRateCommit commitReportRate;
   final DpiLevelCommit commitDpiLevel;
   final DpiValuesCommit commitDpiValues;
+  final DpiRgbCommit? commitDpiRgb;
   final DpiStagesCommit commitDpiStages;
   final DpiConfigurationDefaultsCommit? commitDpiConfigurationDefaults;
   final SensorTuningCommit commitSensorTuning;
@@ -331,9 +337,10 @@ class DeviceSettingsBloc
           consecutiveFailures: failures,
         ),
       );
-      if (failures >= failureEscalateThreshold) {
+      final isTimeout = e is TimeoutException || e.toString().contains('TimeoutException');
+      if (failures >= failureEscalateThreshold || isTimeout) {
         onEscalationRequested?.call(
-          'reset buttonMapping failed $failures consecutive times',
+          'reset buttonMapping failed: $e',
         );
       }
       return;
@@ -546,15 +553,17 @@ class DeviceSettingsBloc
           committing: false,
           lastError: 'button mapping save failed: $e',
           consecutiveFailures: failures,
+          clearStaging: true,
         ),
       );
-      if (failures >= failureEscalateThreshold) {
+      final isTimeout = e is TimeoutException || e.toString().contains('TimeoutException');
+      if (failures >= failureEscalateThreshold || isTimeout) {
         debugPrint(
-          '[bloc] consecutiveFailures=$failures >= $failureEscalateThreshold '
+          '[bloc] consecutiveFailures=$failures >= $failureEscalateThreshold or timeout '
           '— escalating to L1 watcher',
         );
         onEscalationRequested?.call(
-          'button mapping save failed $failures consecutive times',
+          'button mapping save failed: $e',
         );
       }
       return;
@@ -586,7 +595,7 @@ class DeviceSettingsBloc
     DeviceSettingsCancelRequested event,
     Emitter<DeviceSettingsViewState> emit,
   ) {
-    if (!state.isDirty && state.buttonMappingStaging == null) return;
+    if (!state.isDirty && !state.hasAnyStaging) return;
     emit(
       state.copyWith(clearStaging: true, clearError: true, committing: false),
     );
@@ -601,7 +610,7 @@ class DeviceSettingsBloc
     DeviceSettingsNavigationRequested event,
     Emitter<DeviceSettingsViewState> emit,
   ) {
-    if (!state.isDirty && state.buttonMappingStaging == null) return;
+    if (!state.isDirty && !state.hasAnyStaging) return;
     emit(
       state.copyWith(clearStaging: true, clearError: true, committing: false),
     );
@@ -873,15 +882,17 @@ class DeviceSettingsBloc
           committing: false,
           lastError: 'report rate save failed: $e',
           consecutiveFailures: failures,
+          clearStaging: true,
         ),
       );
-      if (failures >= failureEscalateThreshold) {
+      final isTimeout = e is TimeoutException || e.toString().contains('TimeoutException');
+      if (failures >= failureEscalateThreshold || isTimeout) {
         debugPrint(
-          '[bloc] consecutiveFailures=$failures >= $failureEscalateThreshold '
+          '[bloc] consecutiveFailures=$failures >= $failureEscalateThreshold or timeout '
           '— escalating to L1 watcher',
         );
         onEscalationRequested?.call(
-          'report rate save failed $failures consecutive times',
+          'report rate save failed: $e',
         );
       }
       return;
@@ -931,6 +942,9 @@ class DeviceSettingsBloc
     final dpiValues = state.dpiValueStaging == null
         ? null
         : Map<int, int>.from(state.dpiValueStaging!);
+    final dpiRgbColors = state.dpiRgbStaging == null
+        ? null
+        : Map<int, String>.from(state.dpiRgbStaging!);
     final hasStageStaging =
         state.dpiStageLevelsStaging != null ||
         state.dpiStageAddStaging ||
@@ -942,6 +956,7 @@ class DeviceSettingsBloc
     if (reportRate == null &&
         dpiLevel == null &&
         (dpiValues == null || dpiValues.isEmpty) &&
+        (dpiRgbColors == null || dpiRgbColors.isEmpty) &&
         !hasStageStaging) {
       debugPrint('[bloc] save DPI configuration: nothing dirty');
       return;
@@ -962,6 +977,7 @@ class DeviceSettingsBloc
     final dpiSaveRequested =
         dpiLevel != null ||
         (dpiValues != null && dpiValues.isNotEmpty) ||
+        (dpiRgbColors != null && dpiRgbColors.isNotEmpty) ||
         hasStageStaging;
     if (dpiSaveRequested && synced.decodeErrors.contains('reportRateDpi')) {
       emit(state.copyWith(lastError: 'DPI unavailable: decode error'));
@@ -998,6 +1014,9 @@ class DeviceSettingsBloc
       if (dpiValues != null && dpiValues.isNotEmpty) {
         await commitDpiValues(dpiValues);
       }
+      if (dpiRgbColors != null && dpiRgbColors.isNotEmpty && commitDpiRgb != null) {
+        await commitDpiRgb!(dpiRgbColors);
+      }
       if (dpiLevel != null) {
         await commitDpiLevel(dpiLevel);
       }
@@ -1009,11 +1028,13 @@ class DeviceSettingsBloc
           committing: false,
           lastError: 'DPI configuration save failed: $e',
           consecutiveFailures: failures,
+          clearStaging: true,
         ),
       );
-      if (failures >= failureEscalateThreshold) {
+      final isTimeout = e is TimeoutException || e.toString().contains('TimeoutException');
+      if (failures >= failureEscalateThreshold || isTimeout) {
         onEscalationRequested?.call(
-          'DPI configuration save failed $failures consecutive times',
+          'DPI configuration save failed: $e',
         );
       }
       return;
@@ -1024,9 +1045,15 @@ class DeviceSettingsBloc
       nextSynced = nextSynced.copyWith(reportRateHz: reportRate);
     }
     if (hasStageStaging) {
+      final count = stagedLevels!.length;
+      var activeIndex = nextSynced.dpiActiveIndex;
+      if (activeIndex != null && activeIndex > count) {
+        activeIndex = 1;
+      }
       nextSynced = nextSynced.copyWith(
-        dpiActiveLevelCount: stagedLevels!.length,
+        dpiActiveLevelCount: count,
         dpiLevels: stagedLevels,
+        dpiActiveIndex: activeIndex,
       );
     }
     if (dpiValues != null && dpiValues.isNotEmpty) {
@@ -1038,6 +1065,21 @@ class DeviceSettingsBloc
             level: entry.key,
             value: entry.value,
             color: levels[index].color,
+          );
+        }
+      }
+      nextSynced = nextSynced.copyWith(dpiLevels: levels);
+    }
+    if (dpiRgbColors != null && dpiRgbColors.isNotEmpty) {
+      final levels = [...?nextSynced.dpiLevels];
+      for (final entry in dpiRgbColors.entries) {
+        final index = levels.indexWhere((level) => level.level == entry.key);
+        if (index >= 0) {
+          levels[index] = DpiStageData(
+            level: entry.key,
+            value: levels[index].value,
+            y: levels[index].y,
+            color: entry.value,
           );
         }
       }
@@ -1055,6 +1097,7 @@ class DeviceSettingsBloc
       clearReportRateStaging: reportRate != null,
       clearDpiCurrentLevelStaging: dpiLevel != null,
       clearDpiValueStaging: dpiValues != null && dpiValues.isNotEmpty,
+      clearDpiRgbStaging: dpiRgbColors != null && dpiRgbColors.isNotEmpty,
       clearDpiStageStaging: hasStageStaging,
     );
     emit(nextState.copyWith(isDirty: nextState.hasAnyStaging));
@@ -1156,15 +1199,17 @@ class DeviceSettingsBloc
           committing: false,
           lastError: 'DPI level save failed: $e',
           consecutiveFailures: failures,
+          clearStaging: true,
         ),
       );
-      if (failures >= failureEscalateThreshold) {
+      final isTimeout = e is TimeoutException || e.toString().contains('TimeoutException');
+      if (failures >= failureEscalateThreshold || isTimeout) {
         debugPrint(
-          '[bloc] consecutiveFailures=$failures >= $failureEscalateThreshold '
+          '[bloc] consecutiveFailures=$failures >= $failureEscalateThreshold or timeout '
           '— escalating to L1 watcher',
         );
         onEscalationRequested?.call(
-          'DPI level save failed $failures consecutive times',
+          'DPI level save failed: $e',
         );
       }
       return;
@@ -1264,27 +1309,11 @@ class DeviceSettingsBloc
       return;
     }
 
-    final List<DpiStageData> levels = [
-      ...(state.dpiStageLevelsStaging ?? synced.dpiLevels ?? const []),
-    ];
-    final index = levels.indexWhere((level) => level.level == event.level);
-    if (index < 0) {
-      emit(
-        state.copyWith(lastError: 'DPI RGB level ${event.level} unavailable'),
-      );
-      return;
-    }
-
-    final current = levels[index];
-    levels[index] = DpiStageData(
-      level: current.level,
-      value: current.value,
-      y: current.y,
-      color: event.color.toUpperCase(),
-    );
+    final next = {...?state.dpiRgbStaging};
+    next[event.level] = event.color.toUpperCase();
     emit(
       state.copyWith(
-        dpiStageLevelsStaging: levels,
+        dpiRgbStaging: next,
         isDirty: true,
         clearError: true,
       ),
@@ -1324,11 +1353,13 @@ class DeviceSettingsBloc
           committing: false,
           lastError: 'DPI values save failed: $e',
           consecutiveFailures: failures,
+          clearStaging: true,
         ),
       );
-      if (failures >= failureEscalateThreshold) {
+      final isTimeout = e is TimeoutException || e.toString().contains('TimeoutException');
+      if (failures >= failureEscalateThreshold || isTimeout) {
         onEscalationRequested?.call(
-          'DPI values save failed $failures consecutive times',
+          'DPI values save failed: $e',
         );
       }
       return;
@@ -1438,15 +1469,20 @@ class DeviceSettingsBloc
         ),
       );
     }
+    final currentLevel = state.dpiCurrentLevelStaging ?? synced.dpiActiveIndex;
+    final needsLevelReset = currentLevel == null ||
+        currentLevel == event.level ||
+        currentLevel > reindexed.length;
     emit(
       state.copyWith(
         dpiStageRemoveLevelStaging: event.level,
         dpiStageLevelsStaging: reindexed,
+        dpiCurrentLevelStaging: needsLevelReset ? 1 : state.dpiCurrentLevelStaging,
         isDirty: true,
         clearError: true,
       ),
     );
-    debugPrint('[bloc] DPI stage remove staged: level=${event.level}');
+    debugPrint('[bloc] DPI stage remove staged: level=${event.level} (levelReset=$needsLevelReset)');
   }
 
   /// Save the staged DPI add/remove to device.
@@ -1495,11 +1531,13 @@ class DeviceSettingsBloc
           dpiStageSaveInFlight: false,
           lastError: 'DPI stages save failed: $e',
           consecutiveFailures: failures,
+          clearStaging: true,
         ),
       );
-      if (failures >= failureEscalateThreshold) {
+      final isTimeout = e is TimeoutException || e.toString().contains('TimeoutException');
+      if (failures >= failureEscalateThreshold || isTimeout) {
         onEscalationRequested?.call(
-          'DPI stages save failed $failures consecutive times',
+          'DPI stages save failed: $e',
         );
       }
       return;
@@ -1508,9 +1546,14 @@ class DeviceSettingsBloc
     // why: the staged list IS the post-add/remove result; its length is the
     // authoritative new count (handles multiple adds, single/multi removes).
     final count = stagedLevels.length;
+    var activeIndex = state.dpiCurrentLevelStaging ?? synced.dpiActiveIndex;
+    if (activeIndex == null || activeIndex > count) {
+      activeIndex = 1;
+    }
     final nextSynced = synced.copyWith(
       dpiActiveLevelCount: count,
       dpiLevels: stagedLevels,
+      dpiActiveIndex: activeIndex,
       clearError: true,
     );
     emit(
@@ -1652,15 +1695,17 @@ class DeviceSettingsBloc
           committing: false,
           lastError: 'sensor tuning save failed: $e',
           consecutiveFailures: failures,
+          clearStaging: true,
         ),
       );
-      if (failures >= failureEscalateThreshold) {
+      final isTimeout = e is TimeoutException || e.toString().contains('TimeoutException');
+      if (failures >= failureEscalateThreshold || isTimeout) {
         debugPrint(
-          '[bloc] consecutiveFailures=$failures >= $failureEscalateThreshold '
+          '[bloc] consecutiveFailures=$failures >= $failureEscalateThreshold or timeout '
           '— escalating to L1 watcher',
         );
         onEscalationRequested?.call(
-          'sensor tuning save failed $failures consecutive times',
+          'sensor tuning save failed: $e',
         );
       }
       return;
@@ -1808,24 +1853,33 @@ class DeviceSettingsBloc
           committing: false,
           lastError: 'angle tune save failed: $e',
           consecutiveFailures: failures,
+          clearStaging: true,
         ),
       );
-      if (failures >= failureEscalateThreshold) {
+      final isTimeout = e is TimeoutException || e.toString().contains('TimeoutException');
+      if (failures >= failureEscalateThreshold || isTimeout) {
         debugPrint(
-          '[bloc] consecutiveFailures=$failures >= $failureEscalateThreshold '
+          '[bloc] consecutiveFailures=$failures >= $failureEscalateThreshold or timeout '
           '— escalating to L1 watcher',
         );
         onEscalationRequested?.call(
-          'angle tune save failed $failures consecutive times',
+          'angle tune save failed: $e',
         );
       }
       return;
     }
 
+    const translate = TranslationCodec();
+    final label = translate.angleTuneWireToLabel(wireValue, [
+      for (final option
+          in synced.angleTuneOptions ?? const <AngleTuneOptionData>[])
+        AngleTuneOption(wire: option.wire, label: option.label),
+    ]);
+
     final nextSynced = synced.copyWith(
       angleTuneOn: enabled,
       angleTune: wireValue,
-      angleTuneLabel: null, // will be recomputed from wire value on next GET
+      angleTuneLabel: label,
       clearError: true,
     );
     emit(
@@ -1901,15 +1955,17 @@ class DeviceSettingsBloc
           committing: false,
           lastError: 'LOD save failed: $e',
           consecutiveFailures: failures,
+          clearStaging: true,
         ),
       );
-      if (failures >= failureEscalateThreshold) {
+      final isTimeout = e is TimeoutException || e.toString().contains('TimeoutException');
+      if (failures >= failureEscalateThreshold || isTimeout) {
         debugPrint(
-          '[bloc] consecutiveFailures=$failures >= $failureEscalateThreshold '
+          '[bloc] consecutiveFailures=$failures >= $failureEscalateThreshold or timeout '
           '— escalating to L1 watcher',
         );
         onEscalationRequested?.call(
-          'LOD save failed $failures consecutive times',
+          'LOD save failed: $e',
         );
       }
       return;
@@ -1996,15 +2052,17 @@ class DeviceSettingsBloc
           committing: false,
           lastError: 'performance save failed: $e',
           consecutiveFailures: failures,
+          clearStaging: true,
         ),
       );
-      if (failures >= failureEscalateThreshold) {
+      final isTimeout = e is TimeoutException || e.toString().contains('TimeoutException');
+      if (failures >= failureEscalateThreshold || isTimeout) {
         debugPrint(
-          '[bloc] consecutiveFailures=$failures >= $failureEscalateThreshold '
+          '[bloc] consecutiveFailures=$failures >= $failureEscalateThreshold or timeout '
           '— escalating to L1 watcher',
         );
         onEscalationRequested?.call(
-          'performance save failed $failures consecutive times',
+          'performance save failed: $e',
         );
       }
       return;
@@ -2089,11 +2147,13 @@ class DeviceSettingsBloc
           committing: false,
           lastError: 'debounce save failed: $e',
           consecutiveFailures: failures,
+          clearStaging: true,
         ),
       );
-      if (failures >= failureEscalateThreshold) {
+      final isTimeout = e is TimeoutException || e.toString().contains('TimeoutException');
+      if (failures >= failureEscalateThreshold || isTimeout) {
         onEscalationRequested?.call(
-          'debounce save failed $failures consecutive times',
+          'debounce save failed: $e',
         );
       }
       return;
@@ -2173,11 +2233,13 @@ class DeviceSettingsBloc
           committing: false,
           lastError: 'sleep time save failed: $e',
           consecutiveFailures: failures,
+          clearStaging: true,
         ),
       );
-      if (failures >= failureEscalateThreshold) {
+      final isTimeout = e is TimeoutException || e.toString().contains('TimeoutException');
+      if (failures >= failureEscalateThreshold || isTimeout) {
         onEscalationRequested?.call(
-          'sleep time save failed $failures consecutive times',
+          'sleep time save failed: $e',
         );
       }
       return;
@@ -2265,11 +2327,13 @@ class DeviceSettingsBloc
           committing: false,
           lastError: 'wheel direction save failed: $e',
           consecutiveFailures: failures,
+          clearStaging: true,
         ),
       );
-      if (failures >= failureEscalateThreshold) {
+      final isTimeout = e is TimeoutException || e.toString().contains('TimeoutException');
+      if (failures >= failureEscalateThreshold || isTimeout) {
         onEscalationRequested?.call(
-          'wheel direction save failed $failures consecutive times',
+          'wheel direction save failed: $e',
         );
       }
       return;
@@ -2338,11 +2402,13 @@ class DeviceSettingsBloc
           committing: false,
           lastError: 'parameter save failed: $e',
           consecutiveFailures: failures,
+          clearStaging: true,
         ),
       );
-      if (failures >= failureEscalateThreshold) {
+      final isTimeout = e is TimeoutException || e.toString().contains('TimeoutException');
+      if (failures >= failureEscalateThreshold || isTimeout) {
         onEscalationRequested?.call(
-          'parameter save failed $failures consecutive times',
+          'parameter settings save failed: $e',
         );
       }
       return;
@@ -2643,11 +2709,13 @@ class DeviceSettingsBloc
           committing: false,
           lastError: 'backlight save failed: $e',
           consecutiveFailures: failures,
+          clearStaging: true,
         ),
       );
-      if (failures >= failureEscalateThreshold) {
+      final isTimeout = e is TimeoutException || e.toString().contains('TimeoutException');
+      if (failures >= failureEscalateThreshold || isTimeout) {
         onEscalationRequested?.call(
-          'backlight save failed $failures consecutive times',
+          'backlight save failed: $e',
         );
       }
       return;

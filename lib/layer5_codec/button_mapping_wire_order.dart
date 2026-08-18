@@ -3,11 +3,9 @@
 /// The app keeps the six physical buttons in logical UI order:
 /// Left, Right, Middle, Forward, Backward, DPI cycle.
 ///
-/// The B2 firmware block used by these mice stores the two side-button
-/// entries in the opposite wire positions. Keep this permutation in the
-/// protocol layer so every model using this six-slot structure follows the
-/// same read/write boundary; no product-name special case is needed.
-const List<int> _uiToWireIndex = [0, 1, 2, 4, 3, 5];
+/// Hardware B2 wire order matches logical UI slot order directly:
+/// Slot 0 = Left, Slot 1 = Right, Slot 2 = Middle, Slot 3 = Forward, Slot 4 = Backward, Slot 5 = DPI.
+const List<int> _uiToWireIndex = [0, 1, 2, 3, 4, 5];
 
 /// Reorder logical UI entries into the device's B2 wire-slot order.
 List<T> buttonMappingUiToWire<T>(List<T> uiEntries) {
@@ -17,8 +15,6 @@ List<T> buttonMappingUiToWire<T>(List<T> uiEntries) {
 
 /// Reorder device B2 wire entries into logical UI order.
 List<T> buttonMappingWireToUi<T>(List<T> wireEntries) {
-  // This permutation is its own inverse: swapping slots 4 and 5 twice
-  // restores the original order.
   return buttonMappingUiToWire(wireEntries);
 }
 

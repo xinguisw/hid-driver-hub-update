@@ -56,6 +56,28 @@ class MacroAction {
          label: label,
        );
 
+  const MacroAction.tiltLeft({
+    required bool isBreak,
+    required int delay,
+    String? label,
+  }) : this(
+         keyCode: MacroWireActions.tiltLeft,
+         isBreak: isBreak,
+         delay: delay,
+         label: label,
+       );
+
+  const MacroAction.tiltRight({
+    required bool isBreak,
+    required int delay,
+    String? label,
+  }) : this(
+         keyCode: MacroWireActions.tiltRight,
+         isBreak: isBreak,
+         delay: delay,
+         label: label,
+       );
+
   /// Keyboard, mouse, or timing-special code from the protocol reference.
   final int keyCode;
 
@@ -225,9 +247,8 @@ List<String> validateMacro(MacroDefinition macro) {
     final isKeyboard =
         (action.keyCode >= 0x04 && action.keyCode <= 0xA4) ||
         (action.keyCode >= 0xE0 && action.keyCode <= 0xE7);
-    // Existing macro mouse-button values remain F1-F5. Layer 2 owns the
-    // device conversion parameters for the C6/C7 wheel actions.
-    final isMouseButton = action.keyCode >= 0xF1 && action.keyCode <= 0xF5;
+    // Macro mouse-button key codes are 0xC1 (Left) to 0xC5 (Backward).
+    final isMouseButton = action.keyCode >= 0xC1 && action.keyCode <= 0xC5;
     final isMouseWheel =
         action.keyCode == MacroWireActions.wheelUp ||
         action.keyCode == MacroWireActions.wheelDown;

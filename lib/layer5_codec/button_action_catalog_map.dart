@@ -108,6 +108,7 @@ class ButtonActionCatalogMap {
     'Enter': 0x28,
     'Tab': 0x2B,
     'Backspace': 0x2A,
+    'Space': 0x2C,
     '↑': 0x52,
     '↓': 0x51,
     '←': 0x50,

@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:io';
 import 'package:driver_hub/desktop_shell/window_bootstrap_stub.dart'
     if (dart.library.io) 'package:driver_hub/desktop_shell/window_bootstrap.dart'
     as window_bootstrap;
@@ -9,6 +11,7 @@ import 'package:driver_hub/layer6_transport/app_settings_storage.dart';
 import 'package:driver_hub/layer6_transport/macro_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_single_instance/flutter_single_instance.dart';
 
 Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -27,10 +30,22 @@ Future<void> main(List<String> args) async {
       return;
     }
 
-    // why: native handle may be null until the first frame attaches the window.
-    window_bootstrap.configureDesktopWindow();
+    await windowManager.ensureInitialized();
+
+    FlutterSingleInstance.debugMode = false;
+    if (!await FlutterSingleInstance().isFirstInstance()) {
+      await FlutterSingleInstance().focus();
+      exit(0);
+    }
+
+    FlutterSingleInstance.onFocus = (_) async {
+      await window_bootstrap.showAndFocusMainWindow();
+    };
+
+    await window_bootstrap.setupDesktopWindowAndTray();
+    await window_bootstrap.configureDesktopWindow();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      window_bootstrap.configureDesktopWindow();
+      unawaited(window_bootstrap.configureDesktopWindow());
     });
   }
   runApp(DriverHubApp(scope: _createDeviceScope()));

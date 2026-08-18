@@ -10,15 +10,17 @@ import '../device_protocol.dart';
 class OsdPerformanceResult {
   final int reportRateWire;
   final int dpiLevel;
+  final int? dpiValue;
 
   const OsdPerformanceResult({
     required this.reportRateWire,
     required this.dpiLevel,
+    this.dpiValue,
   });
 
   @override
   String toString() =>
-      'OsdPerformanceResult(rate=$reportRateWire, dpiLevel=$dpiLevel)';
+      'OsdPerformanceResult(rate=$reportRateWire, dpiLevel=$dpiLevel, dpiValue=$dpiValue)';
 }
 
 /// Telink OSD (usage 0xFF02, report id 9, 8 bytes).
@@ -36,52 +38,81 @@ class OsdCodec {
 
   /// Parse a report-rate/DPI change push (opcode 1).
   ///
-  /// Structure: `report id | opcode | reserved | DPI stage wire | report-rate wire | ...`.
-  /// The parser deliberately preserves the two wire bytes for L4 translation.
+  /// New format: `[report_id] | opcode | report-rate wire | DPI stage wire | DPI High | DPI Low | ...`.
+  /// Legacy format: `[report_id] | opcode | reserved (0x00) | DPI stage wire | report-rate wire | ...`.
   OsdPerformanceResult? parsePerformance(Uint8List raw) {
-    if (!_looksLikeOsd(raw)) return null;
-    final body = _body(raw);
-    if (body.length < 4 || body[0] != opcodeDpiRate) return null;
-    return OsdPerformanceResult(reportRateWire: body[3], dpiLevel: body[2]);
+    final body = _extractBody(raw);
+    if (body == null || body.length < 4 || body[0] != opcodeDpiRate) return null;
+
+    int reportRateWire;
+    int dpiLevel;
+    int? dpiValue;
+
+    if (body[1] == 0x00) {
+      // Legacy format: [opcode (1), reserved (0), dpiLevel, reportRateWire, ...]
+      dpiLevel = body[2];
+      reportRateWire = body[3];
+    } else {
+      // New format: [opcode (1), reportRateWire, dpiLevel, dpiHigh, dpiLow, ...]
+      reportRateWire = body[1];
+      dpiLevel = body[2];
+      if (body.length >= 5) {
+        final high = body[3];
+        final low = body[4];
+        final rawDpi = (high << 8) | low;
+        if (rawDpi > 0) {
+          dpiValue = rawDpi;
+        }
+      }
+    }
+
+    return OsdPerformanceResult(
+      reportRateWire: reportRateWire,
+      dpiLevel: dpiLevel,
+      dpiValue: dpiValue,
+    );
   }
 
   /// Parse battery push (opcode 2). Null if not a battery OSD frame.
   ///
-  /// Captured desktop frame: `09 02 00 64 01 00 00 00`
-  /// after strip report id:   `   02 00 64 01 00 00 00`
+  /// Captured frame: `[09] 02 00 64 01 00 00 00`
   ///   [0]=opcode 2, [1]=reserved 0, [2]=percent (0x64=100), [3]=charging.
   BatteryResult? parseBattery(Uint8List raw) {
-    if (!_looksLikeOsd(raw)) return null;
-    final body = _body(raw);
-    if (body.isEmpty || body[0] != opcodeBattery) return null;
-    if (body.length < 4) return null;
+    final body = _extractBody(raw);
+    if (body == null || body.length < 4 || body[0] != opcodeBattery) return null;
+    // Battery opcode has reserved 0x00 at body[1]
+    if (body[1] != 0x00) return null;
     final percentByte = body[2];
-    // A4 uses 0..100; reject garbage that is not a plausible battery byte.
     if (percentByte > 100) return null;
     final charging = body[3] != 0;
     return BatteryResult(percent: percentByte, isCharging: charging);
   }
 
-  /// True if [raw] is report-id 9, or a short web-style OSD body.
-  bool isOsdFrame(Uint8List raw) => _looksLikeOsd(raw);
+  /// True if [raw] is a recognized OSD frame (desktop or WebHID format).
+  bool isOsdFrame(Uint8List raw) => _extractBody(raw) != null;
 
-  bool _looksLikeOsd(Uint8List raw) {
-    if (raw.isEmpty) return false;
-    // Desktop (and any path that prefixes report id).
-    if (raw[0] == reportId && raw.length >= 3) return true;
-    // Web: no report-id prefix. Only 8-byte frames starting with known OSD
-    // opcodes — never treat random 0x01/0x02 button reports of other sizes.
-    if (raw.length == 8 &&
-        (raw[0] == opcodeDpiRate || raw[0] == opcodeBattery)) {
-      return true;
-    }
-    return false;
-  }
+  /// Unified OSD body extractor for Desktop (report ID 9 or 1) and WebHID (opcode-direct or report-ID prefixed).
+  Uint8List? _extractBody(Uint8List raw) {
+    if (raw.length < 4) return null;
 
-  Uint8List _body(Uint8List raw) {
-    if (raw.isNotEmpty && raw[0] == reportId) {
-      return Uint8List.fromList(raw.sublist(1));
+    // Pattern 1a: Report ID 0x09 prepended before opcode (0x01 or 0x02)
+    if (raw[0] == reportId &&
+        (raw[1] == opcodeDpiRate || raw[1] == opcodeBattery)) {
+      return Uint8List.sublistView(raw, 1);
     }
-    return raw;
+
+    // Pattern 1b: Report ID 0x01 prepended before opcode (0x01 or 0x02) AND reserved byte 0x00
+    if (raw[0] == 0x01 &&
+        (raw[1] == opcodeDpiRate || raw[1] == opcodeBattery) &&
+        raw[2] == 0x00) {
+      return Uint8List.sublistView(raw, 1);
+    }
+
+    // Pattern 2: Opcode directly at byte 0 (0x01 for performance, 0x02 for battery)
+    if (raw[0] == opcodeDpiRate || raw[0] == opcodeBattery) {
+      return raw;
+    }
+
+    return null;
   }
 }

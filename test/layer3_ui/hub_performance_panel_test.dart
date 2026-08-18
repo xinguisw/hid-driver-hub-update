@@ -24,7 +24,7 @@ void main() {
           onDpiLevelSelected: (_) {},
           onDpiValueChanged: (_) {},
           onDpiStageAdd: () {},
-          onDpiStageRemove: () {},
+          onDpiStageRemove: (_) {},
         ),
       ),
     );
@@ -51,5 +51,37 @@ void main() {
     expect(find.text('DPI stage color'), findsOneWidget);
     expect(find.text('Cancel'), findsOneWidget);
     expect(find.text('Done'), findsOneWidget);
+  });
+
+  testWidgets('each DPI slider block shows a delete button when multiple stages exist', (
+    tester,
+  ) async {
+    int? removedLevel;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: HubPerformancePanel(
+            dpiStages: stages,
+            dpiCurrentLevel: 1,
+            dpiMin: 50,
+            dpiMax: 3200,
+            dpiStep: 50,
+            dpiActiveLevelCount: 2,
+            dpiMaxLevels: 8,
+            onDpiLevelSelected: (_) {},
+            onDpiValueChanged: (_) {},
+            onDpiStageAdd: () {},
+            onDpiStageRemove: (lvl) => removedLevel = lvl,
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byTooltip('Delete DPI stage 1'), findsOneWidget);
+    expect(find.byTooltip('Delete DPI stage 2'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Delete DPI stage 2'));
+    await tester.pump();
+    expect(removedLevel, 2);
   });
 }

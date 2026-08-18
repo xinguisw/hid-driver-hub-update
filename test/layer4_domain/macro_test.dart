@@ -69,4 +69,50 @@ void main() {
       expect((await repo.load('03aa')).single.slot, 2);
     },
   );
+
+  test('deleting a macro updates persistence and frees the slot', () async {
+    final repo = InMemoryMacroRepository();
+    final m1 = macro.copyWith(slot: 1, name: 'M1');
+    final m2 = macro.copyWith(slot: 2, name: 'M2');
+    final m3 = macro.copyWith(slot: 3, name: 'M3');
+
+    await repo.save('01aa', [m1, m2, m3]);
+    var stored = await repo.load('01aa');
+    expect(stored.map((m) => m.slot), [1, 2, 3]);
+
+    // Delete slot 2
+    final updated = stored.where((m) => m.slot != 2).toList();
+    await repo.save('01aa', updated);
+
+    stored = await repo.load('01aa');
+    expect(stored.map((m) => m.slot), [1, 3]);
+
+    // Verify first unused slot is now slot 2
+    final usedSlots = stored.map((m) => m.slot).toSet();
+    int? nextSlot;
+    for (var slot = 1; slot <= 16; slot++) {
+      if (!usedSlots.contains(slot)) {
+        nextSlot = slot;
+        break;
+      }
+    }
+    expect(nextSlot, 2);
+  });
+
+  test(
+    'custom macro name is preserved in JSON serialization and storage',
+    () async {
+      final custom = macro.copyWith(slot: 1, name: 'Sniper Combo');
+      final json = custom.toJson();
+      expect(json['name'], 'Sniper Combo');
+
+      final restored = MacroDefinition.fromJson(json);
+      expect(restored.name, 'Sniper Combo');
+
+      final repo = InMemoryMacroRepository();
+      await repo.save('01aa', [custom]);
+      final loaded = await repo.load('01aa');
+      expect(loaded.single.name, 'Sniper Combo');
+    },
+  );
 }

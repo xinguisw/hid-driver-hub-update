@@ -111,7 +111,7 @@ class _CaptureTransport implements ProtocolTransport {
     required int reportId,
     required int reportLength,
     required bool Function(Uint8List raw) match,
-    Duration timeout = const Duration(milliseconds: 1000),
+    Duration timeout = const Duration(seconds: 3),
   }) async {
     sent = Uint8List.fromList(data);
     this.reportId = reportId;
@@ -119,8 +119,12 @@ class _CaptureTransport implements ProtocolTransport {
     final ack = Uint8List(31);
     ack[0] = 0x08;
     ack[3] = address;
-    ack[4] = this.data.length;
-    ack.setRange(5, 5 + this.data.length, this.data);
+    final payloadLength = this.data.length;
+    ack[4] = payloadLength;
+    final payloadData = data.length >= 5 + payloadLength
+        ? data.sublist(5, 5 + payloadLength)
+        : Uint8List.fromList(this.data);
+    ack.setRange(5, 5 + payloadData.length, payloadData);
     final payload = Uint8List.sublistView(ack, 5, 29);
     final crc = const Crc16().bytes(payload);
     ack[29] = crc[0];

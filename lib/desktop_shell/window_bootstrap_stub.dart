@@ -2,7 +2,7 @@ import 'package:flutter/services.dart';
 
 /// Web / non-desktop stub — browser and mobile have no OS window min size.
 
-void configureDesktopWindow() {}
+Future<void> configureDesktopWindow() async {}
 
 bool isOsdWindow(List<String> args) => false;
 
@@ -16,3 +16,8 @@ Future<bool> prepareOsdWindow({
 Future<void> showOsdWindow() async {}
 
 Future<void> hideOsdWindow() async {}
+
+Future<void> showAndFocusMainWindow() async {}
+
+Future<void> setupDesktopWindowAndTray() async {}
+

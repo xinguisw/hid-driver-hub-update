@@ -292,6 +292,7 @@ class DeviceScope {
   DeviceSettingsBloc createSettingsBloc(
     DiscoveredCardState card, {
     SaveCompletedCallback? onSaveCompleted,
+    EscalationCallback? onEscalationRequested,
   }) {
     const translate = TranslationCodec();
     return DeviceSettingsBloc(
@@ -299,6 +300,7 @@ class DeviceScope {
       commitReportRate: (hz) => commitReportRate(card, hz),
       commitDpiLevel: (level) => commitDpiLevel(card, level),
       commitDpiValues: (values) => commitDpiValues(card, values),
+      commitDpiRgb: (colors) => commitDpiRgb(card, colors),
       commitDpiStages: (staged, count) => commitDpiStages(card, staged, count),
       commitDpiConfigurationDefaults: (reportRate, dpiLevel, levels, count) =>
           commitDpiConfigurationDefaults(
@@ -330,6 +332,7 @@ class DeviceScope {
       // why: caps load during loadOnboardSettings, after this bloc is built.
       capabilitiesLookup: () => DeviceCapabilityStore.forDevice(card.devId),
       onSaveCompleted: onSaveCompleted,
+      onEscalationRequested: onEscalationRequested,
       onPerformanceSettingsSaved: _emitSavedPerformanceOsd,
     );
   }
@@ -393,6 +396,18 @@ class DeviceScope {
     current.sort((a, b) => a.slot.compareTo(b.slot));
     await _macroRepository.save(card.devId, current);
     _macros[card.devId] = List.unmodifiable(current);
+  }
+
+  /// Delete a macro definition from local persistent storage.
+  Future<void> deleteMacro(DiscoveredCardState card, int slot) async {
+    debugPrint('[scope] ${card.displayName}: deleting macro slot M$slot');
+    final current = [...(_macros[card.devId] ?? const <MacroDefinition>[])];
+    current.removeWhere((m) => m.slot == slot);
+    await _macroRepository.save(card.devId, current);
+    _macros[card.devId] = List.unmodifiable(current);
+    debugPrint(
+      '[scope] ${card.displayName}: deleted macro slot M$slot from storage successfully',
+    );
   }
 
   Future<void> commitButtonMapping(
@@ -568,6 +583,36 @@ class DeviceScope {
     _updateRawBlocks(card, raw.copyWith(dpiTable: dataBlock));
   }
 
+  /// Commits staged DPI RGB color changes into the 0xC6 block.
+  Future<void> commitDpiRgb(
+    DiscoveredCardState card,
+    Map<int, String> levelColors,
+  ) async {
+    final session = _sessionForCard(card);
+    if (session == null || !session.isAlive) {
+      throw StateError('commitDpiRgb: no session');
+    }
+
+    final raw = _requireRawBlocks(card, 'commitDpiRgb');
+    final current = raw.dpiRgb;
+    if (current == null || current.length != 24) {
+      throw StateError('commitDpiRgb: C6 raw block is unavailable');
+    }
+
+    final dataBlock = Uint8List.fromList(current);
+    for (final e in levelColors.entries) {
+      final idx = e.key - 1; // 1-based level -> 0-based slot
+      if (idx < 0 || idx >= 8) continue;
+      final rgb = _hexToRgb(e.value);
+      dataBlock[idx * 3] = rgb[0];
+      dataBlock[idx * 3 + 1] = rgb[1];
+      dataBlock[idx * 3 + 2] = rgb[2];
+    }
+
+    await session.setDpiRgb(dataBlock);
+    _updateRawBlocks(card, raw.copyWith(dpiRgb: dataBlock));
+  }
+
   /// Commits the whole rearranged DPI stage list per FR-DPI-003.
   ///
   /// [stagedLevels] is the post-add/remove active list (1..N, already
@@ -602,8 +647,29 @@ class DeviceScope {
         'commitDpiStages: no catalog DPI levels for ${card.devId}',
       );
     }
-    final defaultDpi = capLevels.last.value;
     const translate = TranslationCodec();
+    final c2Raw = raw.reportRateDpi;
+    final initialCount = (c2Raw != null && c2Raw.length == 3)
+        ? translate.dpiActiveMaskToCount(c2Raw[2])
+        : null;
+
+    // Rule 1: User adds new DPI level -> app ONLY sends C2 data!
+    final isAddOnly = initialCount != null && stagedLevels.length > initialCount;
+    if (isAddOnly) {
+      final latestRaw = _requireRawBlocks(card, 'commitDpiStages');
+      final c2 = latestRaw.reportRateDpi;
+      if (c2 == null || c2.length != 3) {
+        throw StateError('commitDpiStages: C2 raw block is unavailable');
+      }
+      final infoBlock = Uint8List.fromList(c2);
+      infoBlock[2] = (1 << activeCount) - 1;
+      await session.setReportRate(infoBlock);
+      _updateRawBlocks(card, latestRaw.copyWith(reportRateDpi: infoBlock));
+      return;
+    }
+
+    // Rule 2: User deletes DPI level -> app sends C2 & C4!
+    final defaultDpi = capLevels.last.value;
     final defaultWire = translate.dpiDisplayToWireUnit(
       defaultDpi,
       profile: enc,
@@ -631,28 +697,6 @@ class DeviceScope {
     await session.setDpiTable(dataBlock);
     _updateRawBlocks(card, raw.copyWith(dpiTable: dataBlock));
 
-    // 0xC6 DPI RGB only for per-stage devices (M7X/PRO); M7XSE NAKs the SET.
-    if (caps?.dpi?.rgbPerStage ?? false) {
-      final defaultColor = _defaultDpiColorHex(card);
-      final defaultRgb = _hexToRgb(defaultColor);
-      final rgbBlock = Uint8List(24);
-      for (var i = 0; i < 8; i++) {
-        final stage = i < stagedLevels.length ? stagedLevels[i] : null;
-        final colorHex = stage?.color;
-        final isDefault = colorHex == null || colorHex.isEmpty;
-        final c = isDefault ? defaultRgb : _hexToRgb(colorHex);
-        rgbBlock[i * 3] = c[0];
-        rgbBlock[i * 3 + 1] = c[1];
-        rgbBlock[i * 3 + 2] = c[2];
-      }
-      final rgbRaw = raw.dpiRgb;
-      if (rgbRaw == null || rgbRaw.length != 24) {
-        throw StateError('commitDpiStages: C6 raw block is unavailable');
-      }
-      await session.setDpiRgb(rgbBlock);
-      final latestRaw = _requireRawBlocks(card, 'commitDpiStages');
-      _updateRawBlocks(card, latestRaw.copyWith(dpiRgb: rgbBlock));
-    }
     // 0xC2 active mask: first activeCount bits set.
     final latestRaw = _requireRawBlocks(card, 'commitDpiStages');
     final c2 = latestRaw.reportRateDpi;
@@ -1012,7 +1056,11 @@ class DeviceScope {
         settingsVersion.value++;
       }
 
-      final dpiLabel = _dpiOsdLabel(dpiLevel, settings);
+      final dpiLabel = _dpiOsdLabel(
+        dpiLevel,
+        settings,
+        pushDpiValue: event.dpiValue,
+      );
       final osdEvent = OsdPerformanceEvent(
         deviceId: session.info.devId,
         reportRateLabel: reportRateLabel,
@@ -1051,12 +1099,19 @@ class DeviceScope {
     }
   }
 
-  String _dpiOsdLabel(int level, DeviceSettingsState? settings) {
+  String _dpiOsdLabel(
+    int level,
+    DeviceSettingsState? settings, {
+    int? pushDpiValue,
+  }) {
     final levels = settings?.dpiLevels;
     if (levels != null) {
       for (final stage in levels) {
         if (stage.level == level) return '${stage.value} DPI';
       }
+    }
+    if (pushDpiValue != null && pushDpiValue > 0) {
+      return '$pushDpiValue DPI';
     }
     return 'Level $level';
   }
@@ -1095,22 +1150,30 @@ class DeviceScope {
   // }
 
   void _patchBattery(
-    String path,
-    BatteryResult battery, {
+    String deviceKey,
+    BatteryResult b, {
     required String source,
   }) {
-    final prev = _cards[path];
-    if (prev == null) return;
+    final list = List<DiscoveredCardState>.from(cards.value);
+    final i = list.indexWhere(
+      (c) =>
+          c.deviceKey.toLowerCase() == deviceKey.toLowerCase() ||
+          c.devId.toLowerCase() == deviceKey.toLowerCase(),
+    );
+    if (i < 0) return;
+    final old = list[i];
+    final updated = old.copyWith(
+      batteryPercentage: b.percent,
+      isCharging: b.isCharging,
+    );
+    list[i] = updated;
+    _cards[deviceKey] = updated;
+    cards.value = List.unmodifiable(list);
     debugPrint(
-      '[scope] live battery ($source) ${prev.displayName}: '
-      '${battery.percent}% charging=${battery.isCharging}',
+      '[scope] patched card battery ($source) ${updated.displayName}: '
+      '${b.percent}% charging=${b.isCharging}',
     );
-    _cards[path] = prev.copyWith(
-      batteryPercentage: battery.percent,
-      isCharging: battery.isCharging,
-    );
-    cards.value = List.unmodifiable(_cards.values);
-    _evaluateLowBattery(path, battery);
+    _evaluateLowBattery(deviceKey, b);
   }
 
   void _reevaluateKnownBatteryLevels() {

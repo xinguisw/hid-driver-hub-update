@@ -56,7 +56,10 @@ class _DevicesScreenState extends State<DevicesScreen> {
   }
 
   Future<void> _showPerformanceOsd(OsdPerformanceEvent event) {
-    final lines = <String>['DPI: Level ${event.dpiLevel} · ${event.dpiLabel}'];
+    final dpiText = event.dpiLabel.startsWith('Level ')
+        ? event.dpiLabel
+        : 'Level ${event.dpiLevel} · ${event.dpiLabel}';
+    final lines = <String>['DPI: $dpiText'];
     final reportRate = event.reportRateLabel;
     if (reportRate != null) {
       lines.add('Report Rate: $reportRate');

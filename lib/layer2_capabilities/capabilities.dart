@@ -13,6 +13,8 @@ class MacroWireActions {
 
   static const wheelUp = 0xC6;
   static const wheelDown = 0xC7;
+  static const tiltLeft = 0xB9;
+  static const tiltRight = 0xB8;
 }
 
 /// Capabilities of a supported device.
@@ -650,19 +652,29 @@ class DeviceCapabilityStore {
   /// Asset path for a catalog model name (e.g. `M7XSE` → `.../m7xse.json`,
   /// `M7X PRO` → `.../m7x_pro.json`). Lowercased; spaces become underscores
   /// so a space in a display name maps to the snake_case asset file.
-  static String assetPathForModel(String model) =>
-      '$_dir/${model.toLowerCase().replaceAll(' ', '_')}.json';
+  static String assetPathForModel(String model) {
+    final lower = model.toLowerCase().replaceAll(' ', '_');
+    if (lower == 'm7x_se' || lower == 'm7xse') {
+      return '$_dir/m7xse.json';
+    }
+    return '$_dir/$lower.json';
+  }
 
   /// Loads one mouse capabilities file. Cached per model slug.
   /// Call when entering mouse settings, not at app start.
   static Future<void> load(String model) async {
-    final slug = model.toLowerCase();
-    if (_loadedSlugs.contains(slug)) return;
+    final slug = model.toLowerCase().replaceAll(' ', '_');
+    if (_loadedSlugs.contains(slug) ||
+        (slug == 'm7x_se' && _loadedSlugs.contains('m7xse'))) {
+      return;
+    }
     final raw = await rootBundle.loadString(assetPathForModel(model));
     final json = jsonDecode(raw) as Map<String, dynamic>;
     final caps = DeviceCapabilities.fromJson(json);
     _byDevId[caps.devId] = caps;
     _loadedSlugs.add(slug);
+    _loadedSlugs.add('m7xse');
+    _loadedSlugs.add('m7x_se');
   }
 
   /// Returns the device capabilities for [devId], or null if unsupported / not loaded.

@@ -337,10 +337,6 @@
         {
           "id": "key.num.lock",
           "label": "Num Lock"
-        },
-        {
-          "id": "key.num.eq",
-          "label": "="
         }
       ]
     },
@@ -349,23 +345,23 @@
       "items": [
         {
           "id": "key.mod.capslk",
-          "label": "CapsLk"
+          "label": "Caps Lock"
         },
         {
           "id": "key.mod.shift",
-          "label": "Shift"
+          "label": "Left Shift"
         },
         {
           "id": "key.mod.ctrl",
-          "label": "Ctrl"
+          "label": "Left Ctrl"
         },
         {
           "id": "key.mod.alt",
-          "label": "Alt"
+          "label": "Left Alt"
         },
         {
           "id": "key.mod.win",
-          "label": "Win"
+          "label": "Left Win"
         },
         {
           "id": "key.mod.rshift",

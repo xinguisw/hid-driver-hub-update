@@ -102,16 +102,16 @@ class KeyvalueTable {
     0xAF: 'Previous track', 0xB0: 'Stop', 0xB1: 'Play / pause',
     0xB2: 'Mute', 0xB3: 'Volume up', 0xB4: 'Volume down',
     0xB5: 'Vendor key', 0xB6: 'Zoom in', 0xB7: 'Zoom out',
-    0xB8: 'Pan left', 0xB9: 'Pan right', 0xBA: 'Brightness up',
+    0xB8: 'Tilt Right', 0xB9: 'Tilt Left', 0xBA: 'Brightness up',
     0xBB: 'Brightness down', 0xBC: 'Reject call', 0xBD: 'Media power',
     0xBE: 'Terminal lock',
 
     // Mouse
-    0xC0: 'DPI', 0xC1: 'Left click', 0xC2: 'Right click',
-    0xC3: 'Middle click', 0xC4: 'Mouse button 4',
-    0xC5: 'Mouse button 5',
-    MacroWireActions.wheelUp: 'Wheel up',
-    MacroWireActions.wheelDown: 'Wheel down',
+    0xC0: 'DPI', 0xC1: 'Left Button', 0xC2: 'Right Button',
+    0xC3: 'Middle Button', 0xC4: 'Forward Button',
+    0xC5: 'Backward Button',
+    MacroWireActions.wheelUp: 'Wheel Up',
+    MacroWireActions.wheelDown: 'Wheel Down',
 
     // Tool
     0xC8: 'Device power', 0xC9: 'Bind', 0xCA: 'Keyboard', 0xCB: 'Lock',

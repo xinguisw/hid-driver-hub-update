@@ -4,6 +4,7 @@ import 'package:driver_hub/desktop_shell/window_bootstrap_stub.dart'
     if (dart.library.io) 'package:driver_hub/desktop_shell/window_bootstrap.dart'
     as window_bootstrap;
 import 'package:driver_hub/layer3_ui/screens/devices_screen.dart';
+import 'package:driver_hub/layer3_ui/theme/theme_controller.dart';
 import 'package:driver_hub/layer3_ui/widgets/osd_overlay_window.dart';
 import 'package:driver_hub/layer1_discovery/device_runtime.dart';
 import 'package:driver_hub/layer4_domain/device_scope.dart';
@@ -18,6 +19,9 @@ import 'package:window_manager/window_manager.dart';
 
 Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize theme storage before running the app
+  await ThemeController.instance.init();
 
   // Set slang locale to device locale
   LocaleSettings.useDeviceLocale();
@@ -92,15 +96,21 @@ class DriverHubApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'driver_hub',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-      ),
-      locale: TranslationProvider.of(context).locale.flutterLocale,
-      supportedLocales: AppLocaleUtils.supportedLocales,
-      localizationsDelegates: GlobalMaterialLocalizations.delegates,
-      home: DevicesScreen(scope: scope),
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: ThemeController.instance,
+      builder: (context, themeMode, child) {
+        return MaterialApp(
+          title: 'driver_hub',
+          // Set active mode and define theme variants
+          themeMode: themeMode,
+          theme: ThemeData.light(useMaterial3: true),
+          darkTheme: ThemeData.dark(useMaterial3: true),
+          locale: TranslationProvider.of(context).locale.flutterLocale,
+          supportedLocales: AppLocaleUtils.supportedLocales,
+          localizationsDelegates: GlobalMaterialLocalizations.delegates,
+          home: DevicesScreen(scope: scope),
+        );
+      },
     );
   }
 }

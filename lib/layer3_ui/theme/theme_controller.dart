@@ -1,43 +1,61 @@
 import 'package:flutter/material.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 
-/// Simple controller for managing app theme (light/dark mode).
-/// Exposes a [ValueNotifier<ThemeMode>] that can be listened to by the app's
-/// MaterialApp to rebuild with the new theme.
-class ThemeController {
-  // Private constructor for singleton
-  ThemeController._internal();
+/// Controller for application theme state management (Layer 3 UI).
+///
+/// why: Manages active [ThemeMode] (light vs dark) across the application,
+/// notifying listeners when the theme changes and persisting user preference via Hive.
+class ThemeController extends ValueNotifier<ThemeMode> {
+  ThemeController._() : super(ThemeMode.light);
 
-  static final ThemeController _instance = ThemeController._internal();
+  /// Global singleton instance for access across the app.
+  static final ThemeController instance = ThemeController._();
 
-  /// Singleton instance
-  static ThemeController get instance => _instance;
+  static const String _boxName = 'theme_settings';
+  static const String _keyThemeMode = 'theme_mode';
+  Box<int>? _box;
 
-  /// Notifier that holds the current [ThemeMode].
-  /// Listen to this to rebuild the app when theme changes.
-  final ValueNotifier<ThemeMode> themeModeNotifier = ValueNotifier<ThemeMode>(
-    ThemeMode.system,
-  );
+  /// Initializes persistence box and loads saved theme selection.
+  /// why: Ensures user's dark/light mode preference is restored on app startup.
+  Future<void> init() async {
+    try {
+      await Hive.initFlutter();
+      _box = await Hive.openBox<int>(_boxName);
+      final savedIndex = _box?.get(_keyThemeMode);
+      if (savedIndex != null &&
+          savedIndex >= 0 &&
+          savedIndex < ThemeMode.values.length) {
+        value = ThemeMode.values[savedIndex];
+      }
+    } catch (e) {
+      debugPrint('[ThemeController] Hive storage initialization error: $e');
+    }
+  }
 
-  /// Toggle between light and dark themes.
-  /// If currently light, switches to dark; if dark, switches to light.
-  /// If system, defaults to light on first toggle.
+  /// Toggles between Light and Dark mode.
+  /// why: Provides a one-tap action for users to switch themes from UI header icons.
   void toggleTheme() {
-    final current = themeModeNotifier.value;
-    final newMode = switch (current) {
-      ThemeMode.light => ThemeMode.dark,
-      ThemeMode.dark => ThemeMode.light,
-      ThemeMode.system => ThemeMode.light, // first toggle → light
-    };
-    themeModeNotifier.value = newMode;
+    if (value == ThemeMode.dark) {
+      setThemeMode(ThemeMode.light);
+    } else {
+      setThemeMode(ThemeMode.dark);
+    }
   }
 
-  /// Explicitly set a theme mode.
-  void setTheme(ThemeMode mode) {
-    themeModeNotifier.value = mode;
+  /// Sets specific ThemeMode and persists choice to storage.
+  /// why: Updates runtime theme state and syncs to Hive disk storage.
+  void setThemeMode(ThemeMode mode) {
+    if (value == mode) return;
+    value = mode;
+    _box?.put(_keyThemeMode, mode.index);
   }
 
-  /// Dispose resources when no longer needed.
-  void dispose() {
-    themeModeNotifier.dispose();
+  /// Helper to check if dark mode is currently active given context brightness or state.
+  /// why: Enables custom painter or icon rendering code to check active theme state easily.
+  bool isDarkMode(BuildContext context) {
+    if (value == ThemeMode.system) {
+      return MediaQuery.platformBrightnessOf(context) == Brightness.dark;
+    }
+    return value == ThemeMode.dark;
   }
 }

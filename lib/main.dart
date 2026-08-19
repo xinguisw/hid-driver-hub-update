@@ -3,11 +3,12 @@ import 'dart:io';
 import 'package:driver_hub/desktop_shell/window_bootstrap_stub.dart'
     if (dart.library.io) 'package:driver_hub/desktop_shell/window_bootstrap.dart'
     as window_bootstrap;
-import 'package:driver_hub/layer3_ui/screens/devices_screen.dart';
+import 'package:driver_hub/layer3_ui/theme/app_theme.dart';
 import 'package:driver_hub/layer3_ui/theme/theme_controller.dart';
 import 'package:driver_hub/layer3_ui/widgets/osd_overlay_window.dart';
 import 'package:driver_hub/layer1_discovery/device_runtime.dart';
 import 'package:driver_hub/layer4_domain/device_scope.dart';
+import 'package:driver_hub/layer3_ui/widgets/main_shell.dart';
 import 'package:driver_hub/layer6_transport/app_settings_storage.dart';
 import 'package:driver_hub/layer6_transport/macro_storage.dart';
 import 'package:driver_hub/i18n/strings.g.dart';
@@ -101,14 +102,13 @@ class DriverHubApp extends StatelessWidget {
       builder: (context, themeMode, child) {
         return MaterialApp(
           title: 'driver_hub',
-          // Set active mode and define theme variants
           themeMode: themeMode,
-          theme: ThemeData.light(useMaterial3: true),
-          darkTheme: ThemeData.dark(useMaterial3: true),
+          theme: AppTheme.lightTheme,
+          darkTheme: AppTheme.darkTheme,
           locale: TranslationProvider.of(context).locale.flutterLocale,
           supportedLocales: AppLocaleUtils.supportedLocales,
           localizationsDelegates: GlobalMaterialLocalizations.delegates,
-          home: DevicesScreen(scope: scope),
+          home: MainShell(scope: scope),
         );
       },
     );

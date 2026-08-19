@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:driver_hub/desktop_shell/osd_overlay_service.dart';
 import 'package:driver_hub/layer3_ui/screens/hub_landing_screen.dart';
-import 'package:driver_hub/layer3_ui/widgets/app_top_bar.dart';
 import 'package:driver_hub/layer3_ui/widgets/device_card_grid.dart';
 import 'package:driver_hub/layer3_ui/widgets/empty_device_state.dart';
 import 'package:driver_hub/layer4_domain/device_scope.dart';
@@ -86,7 +85,6 @@ class _DevicesScreenState extends State<DevicesScreen> {
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: const AppTopBar(),
       body: ValueListenableBuilder<List<DiscoveredCardState>>(
         valueListenable: _scope.cards,
         builder: (context, cards, _) {

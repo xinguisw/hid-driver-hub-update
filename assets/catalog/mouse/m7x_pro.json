@@ -8,42 +8,71 @@
         "id": 1,
         "labelKey": "button.left_click",
         "remappable": true,
-        "hotspot": { "x": 0.40, "y": 0.30, "r": 0.03 }
+        "hotspot": {
+          "x": 0.39,
+          "y": 0.21,
+          "r": 0.025
+        }
       },
       {
         "id": 2,
         "labelKey": "button.right_click",
         "remappable": true,
-        "hotspot": { "x": 0.61, "y": 0.30, "r": 0.03 }
+        "hotspot": {
+          "x": 0.60,
+          "y": 0.21,
+          "r": 0.025
+        }
       },
       {
         "id": 3,
         "labelKey": "button.middle_click",
         "remappable": true,
-        "hotspot": { "x": 0.51, "y": 0.24, "r": 0.03 }
+        "hotspot": {
+          "x": 0.52,
+          "y": 0.25,
+          "r": 0.025
+        }
       },
       {
         "id": 4,
         "labelKey": "button.forward",
         "remappable": true,
-        "hotspot": { "x": 0.33, "y": 0.45, "r": 0.03 }
+        "hotspot": {
+          "x": 0.31,
+          "y": 0.44,
+          "r": 0.025
+        }
       },
       {
         "id": 5,
         "labelKey": "button.back",
         "remappable": true,
-        "hotspot": { "x": 0.33, "y": 0.55, "r": 0.03 }
+        "hotspot": {
+          "x": 0.32,
+          "y": 0.55,
+          "r": 0.025
+        }
       },
       {
         "id": 6,
         "labelKey": "button.dpi_cycle",
         "remappable": true,
-        "hotspot": { "x": 0.61, "y": 0.60, "r": 0.03 }
+        "hotspot": {
+          "x": 0.65,
+          "y": 0.50,
+          "r": 0.025
+        }
       }
     ]
   },
   "reportRate": {
-    "options": [1000, 500, 250, 125],
+    "options": [
+      1000,
+      500,
+      250,
+      125
+    ],
     "defaultValue": 1000
   },
   "dpi": {
@@ -60,14 +89,46 @@
     "independentXY": false,
     "rgbPerStage": true,
     "levels": [
-      { "level": 1, "value": 800, "color": "#FF0000" },
-      { "level": 2, "value": 1600, "color": "#0000FF" },
-      { "level": 3, "value": 2400, "color": "#00FF00" },
-      { "level": 4, "value": 3200, "color": "#FFFF00" },
-      { "level": 5, "value": 5000, "color": "#800080" },
-      { "level": 6, "value": 1600, "color": "#00FFFF" },
-      { "level": 7, "value": 1600, "color": "#FFA500" },
-      { "level": 8, "value": 1600, "color": "#FFFFFF" }
+      {
+        "level": 1,
+        "value": 800,
+        "color": "#FF0000"
+      },
+      {
+        "level": 2,
+        "value": 1600,
+        "color": "#0000FF"
+      },
+      {
+        "level": 3,
+        "value": 2400,
+        "color": "#00FF00"
+      },
+      {
+        "level": 4,
+        "value": 3200,
+        "color": "#FFFF00"
+      },
+      {
+        "level": 5,
+        "value": 5000,
+        "color": "#800080"
+      },
+      {
+        "level": 6,
+        "value": 1600,
+        "color": "#00FFFF"
+      },
+      {
+        "level": 7,
+        "value": 1600,
+        "color": "#FFA500"
+      },
+      {
+        "level": 8,
+        "value": 1600,
+        "color": "#FFFFFF"
+      }
     ]
   },
   "sensor": {
@@ -79,22 +140,47 @@
       "present": true,
       "default": 2,
       "options": [
-        {"wire": 0, "label": "-30°"},
-        {"wire": 1, "label": "-10°"},
-        {"wire": 2, "label": "0°"},
-        {"wire": 3, "label": "10°"},
-        {"wire": 4, "label": "30°"}
+        {
+          "wire": 0,
+          "label": "-30°"
+        },
+        {
+          "wire": 1,
+          "label": "-10°"
+        },
+        {
+          "wire": 2,
+          "label": "0°"
+        },
+        {
+          "wire": 3,
+          "label": "10°"
+        },
+        {
+          "wire": 4,
+          "label": "30°"
+        }
       ]
     },
     "performance": {
       "present": false,
-      "options": [0, 1, 2]
+      "options": [
+        0,
+        1,
+        2
+      ]
     },
     "liftOffDistance": {
       "present": true,
       "options": [
-        {"wire": 0, "mm": 1.0},
-        {"wire": 1, "mm": 2.0}
+        {
+          "wire": 0,
+          "mm": 1.0
+        },
+        {
+          "wire": 1,
+          "mm": 2.0
+        }
       ]
     }
   },
@@ -103,25 +189,64 @@
     "buttonDebounce": {
       "present": false,
       "options": [
-        {"wire": 0, "label": "2ms"},
-        {"wire": 2, "label": "4ms"},
-        {"wire": 3, "label": "6ms"},
-        {"wire": 4, "label": "8ms"},
-        {"wire": 5, "label": "10ms"},
-        {"wire": 6, "label": "12ms"}
+        {
+          "wire": 0,
+          "label": "2ms"
+        },
+        {
+          "wire": 2,
+          "label": "4ms"
+        },
+        {
+          "wire": 3,
+          "label": "6ms"
+        },
+        {
+          "wire": 4,
+          "label": "8ms"
+        },
+        {
+          "wire": 5,
+          "label": "10ms"
+        },
+        {
+          "wire": 6,
+          "label": "12ms"
+        }
       ]
     },
     "sleepTime": {
       "present": true,
       "defaultWire": 4,
       "options": [
-        {"wire": 0, "label": "30 sec"},
-        {"wire": 1, "label": "1 min"},
-        {"wire": 2, "label": "2 min"},
-        {"wire": 3, "label": "5 min"},
-        {"wire": 4, "label": "10 min"},
-        {"wire": 5, "label": "15 min"},
-        {"wire": 6, "label": "30 min"}
+        {
+          "wire": 0,
+          "label": "30 sec"
+        },
+        {
+          "wire": 1,
+          "label": "1 min"
+        },
+        {
+          "wire": 2,
+          "label": "2 min"
+        },
+        {
+          "wire": 3,
+          "label": "5 min"
+        },
+        {
+          "wire": 4,
+          "label": "10 min"
+        },
+        {
+          "wire": 5,
+          "label": "15 min"
+        },
+        {
+          "wire": 6,
+          "label": "30 min"
+        }
       ]
     },
     "wheelDirectionInvert": false
@@ -172,7 +297,15 @@
     ],
     "brightnessLevels": 5,
     "speedLevels": 5,
-    "sleepTimeOptions": [30, 60, 120, 300, 600, 900, 1800]
+    "sleepTimeOptions": [
+      30,
+      60,
+      120,
+      300,
+      600,
+      900,
+      1800
+    ]
   },
   "macro": {
     "slots": 16,

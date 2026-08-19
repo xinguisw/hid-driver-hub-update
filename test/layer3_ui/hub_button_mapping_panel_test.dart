@@ -22,7 +22,9 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
-          body: HubButtonMappingPanel(macroSlots: const [savedMacro]),
+          body: HubButtonMappingPanel(
+            macroSlots: [MacroSlot(id: '1', name: savedMacro.name)],
+          ),
         ),
       ),
     );
@@ -74,9 +76,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // Tap Any key input box (last InkWell in _SpecialCombinationBody)
-    await tester.tap(
-      find.byType(InkWell).last,
-    );
+    await tester.tap(find.byType(InkWell).last);
     await tester.pumpAndSettle();
 
     // Simulate key press 'A'
@@ -128,9 +128,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Tap Any key input box and press 'b'
-      await tester.tap(
-        find.byType(InkWell).last,
-      );
+      await tester.tap(find.byType(InkWell).last);
       await tester.pumpAndSettle();
       await tester.sendKeyEvent(LogicalKeyboardKey.keyB, character: 'b');
       await tester.pumpAndSettle();
@@ -147,4 +145,3 @@ void main() {
     },
   );
 }
-

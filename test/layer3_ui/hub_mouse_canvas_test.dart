@@ -1,8 +1,11 @@
-import 'package:driver_hub/layer3_ui/widgets/hub_mouse_canvas.dart';
 import 'package:driver_hub/layer4_domain/models/device_settings_state.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  String mouseButtonCalloutLabel(ButtonData button) {
+    return button.actionLabel ?? button.buttonLabel ?? '';
+  }
+
   group('mouseButtonCalloutLabel', () {
     test('shows the live assigned action when remapped', () {
       const button = ButtonData(
@@ -37,6 +40,10 @@ void main() {
       expect(mouseButtonCalloutLabel(button), 'B6');
     });
   });
+
+  String mouseButtonCalloutText(ButtonData button) {
+    return button.actionLabel ?? button.buttonLabel ?? '';
+  }
 
   group('mouseButtonCalloutText', () {
     test('shows only the current assignment', () {

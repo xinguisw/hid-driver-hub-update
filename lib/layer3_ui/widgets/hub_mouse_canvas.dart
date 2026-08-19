@@ -1,6 +1,8 @@
 import 'package:driver_hub/layer4_domain/models/device_settings_state.dart';
 import 'package:driver_hub/i18n/strings.g.dart';
 import 'package:flutter/material.dart';
+import 'package:driver_hub/layer3_ui/widgets/hub_button_mapping_panel.dart'
+    show hubButtonMappingTapRegionId;
 
 /// Center hub pane — large mouse image + hotspot callouts (skeleton).
 ///
@@ -125,43 +127,46 @@ class _HubMouseCanvasState extends State<HubMouseCanvas> {
                     setState(() => _hoveredButtonId = null);
                   }
                 },
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTapUp: (details) {
-                    final id = _hitButtonId(targets, details.localPosition);
-                    if (id != null) {
-                      widget.onButtonSelected?.call(id);
-                    } else {
-                      widget.onBackgroundTap?.call();
-                    }
-                  },
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      Positioned.fromRect(
-                        rect: imageRect,
-                        child: Image.asset(
-                          widget.imageLarge,
-                          fit: BoxFit.fill,
-                          errorBuilder: (_, _, _) => Image.asset(
-                            'assets/images/m7xse/large.png',
+                child: TapRegion(
+                  groupId: hubButtonMappingTapRegionId,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTapUp: (details) {
+                      final id = _hitButtonId(targets, details.localPosition);
+                      if (id != null) {
+                        widget.onButtonSelected?.call(id);
+                      } else {
+                        widget.onBackgroundTap?.call();
+                      }
+                    },
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        Positioned.fromRect(
+                          rect: imageRect,
+                          child: Image.asset(
+                            widget.imageLarge,
                             fit: BoxFit.fill,
-                            errorBuilder: (_, _, _) =>
-                                Text(t.mouseCanvas.imageMissing),
+                            errorBuilder: (_, _, _) => Image.asset(
+                              'assets/images/m7xse/large.png',
+                              fit: BoxFit.fill,
+                              errorBuilder: (_, _, _) =>
+                                  Text(t.mouseCanvas.imageMissing),
+                            ),
                           ),
                         ),
-                      ),
-                      CustomPaint(
-                        size: paneSize,
-                        painter: _HotspotPainter(
-                          targets: targets,
-                          selectedButtonId: widget.selectedButtonId,
-                          hoveredButtonId: _hoveredButtonId,
-                          isDark: isDark,
-                          theme: theme,
+                        CustomPaint(
+                          size: paneSize,
+                          painter: _HotspotPainter(
+                            targets: targets,
+                            selectedButtonId: widget.selectedButtonId,
+                            hoveredButtonId: _hoveredButtonId,
+                            isDark: isDark,
+                            theme: theme,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),

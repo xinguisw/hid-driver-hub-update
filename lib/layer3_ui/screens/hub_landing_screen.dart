@@ -301,6 +301,9 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                                   onButtonSelected: (id) {
                                     setState(() => _selectedButtonId = id);
                                   },
+                                  onBackgroundTap: () {
+                                    setState(() => _selectedButtonId = null);
+                                  },
                                   onResetToDefault: () {
                                     final t = context.t;
                                     showDialog(
@@ -357,6 +360,7 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                                 const VerticalDivider(thickness: 1, width: 1),
                                 HubButtonMappingPanel(
                                   selectedButtonId: _selectedButtonId,
+                                  buttons: buttons,
                                   mouseActionCatalog:
                                       display?.mouseActionCatalog,
                                   keyboardActionCatalog:

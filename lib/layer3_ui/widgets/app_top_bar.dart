@@ -67,10 +67,10 @@ class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
             height: 30,
             fit: BoxFit.contain,
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 12),
           Image.asset(
             'assets/images/newmen_transparent_logo.png',
-            height: 20,
+            height: 14,
             fit: BoxFit.contain,
           ),
         ],

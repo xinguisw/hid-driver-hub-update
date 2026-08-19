@@ -4,10 +4,18 @@ import 'package:driver_hub/layer4_domain/models/discovered_card_state.dart';
 /// Modern grid‑style device card with hover effects, keyboard detection,
 /// and full information (name, firmware, battery percentage + icon).
 class DeviceCard extends StatefulWidget {
-  const DeviceCard({super.key, required this.state, this.onTap});
+  const DeviceCard({
+    super.key,
+    required this.state,
+    this.onTap,
+    this.width,
+    this.height,
+  });
 
   final DiscoveredCardState state;
   final VoidCallback? onTap;
+  final double? width;
+  final double? height;
 
   @override
   State<DeviceCard> createState() => _DeviceCardState();
@@ -27,8 +35,10 @@ class _DeviceCardState extends State<DeviceCard> {
   @override
   Widget build(BuildContext context) {
     final isKb = _isKeyboard;
-    final cardWidth = isKb ? 540.0 : 250.0;
-    const cardHeight = 350.0;
+
+    // Use passed dimensions, or fall back to default larger sizes
+    final cardWidth = widget.width ?? (isKb ? 650.0 : 300.0);
+    final cardHeight = widget.height ?? 450.0;
 
     final theme = Theme.of(context);
     final borderColor = _isHovered
@@ -71,30 +81,34 @@ class _DeviceCardState extends State<DeviceCard> {
                   // ---- Device image (centered) ----
                   Expanded(
                     child: Center(
-                      child: Image.asset(
-                        widget.state.imageSmall,
-                        fit: BoxFit.contain,
-                        errorBuilder: (context, error, stackTrace) {
-                          if (!isKb) {
-                            return Image.asset(
-                              'assets/images/m7xse/small.png',
-                              fit: BoxFit.contain,
-                              errorBuilder: (_, _, _) => Icon(
-                                Icons.mouse_outlined,
-                                size: 90,
-                                color: iconColor.withValues(alpha: 0.5),
-                              ),
+                      child: Transform.scale(
+                        scale: isKb ? 1.0 : 1.25,
+                        child: Image.asset(
+                          widget.state.imageSmall,
+                          fit: BoxFit.contain,
+                          errorBuilder: (context, error, stackTrace) {
+                            if (!isKb) {
+                              return Image.asset(
+                                'assets/images/m7xse/small.png',
+                                fit: BoxFit.contain,
+                                errorBuilder: (_, _, _) => Icon(
+                                  Icons.mouse_outlined,
+                                  size: 90,
+                                  color: iconColor.withValues(alpha: 0.5),
+                                ),
+                              );
+                            }
+                            return Icon(
+                              Icons.keyboard_outlined,
+                              size: 110,
+                              color: iconColor.withValues(alpha: 0.5),
                             );
-                          }
-                          return Icon(
-                            Icons.keyboard_outlined,
-                            size: 110,
-                            color: iconColor.withValues(alpha: 0.5),
-                          );
-                        },
+                          },
+                        ),
                       ),
                     ),
                   ),
+
                   const SizedBox(height: 20),
 
                   // ---- Device Model Name ----
@@ -109,15 +123,6 @@ class _DeviceCardState extends State<DeviceCard> {
                     ),
                   ),
                   const SizedBox(height: 6),
-
-                  // ---- Firmware version (from Version 1) ----
-                  Text(
-                    widget.state.firmwareVersion.isEmpty
-                        ? 'Firmware —'
-                        : 'Firmware ${widget.state.firmwareVersion}',
-                    style: TextStyle(color: iconColor, fontSize: 13),
-                  ),
-                  const SizedBox(height: 10),
 
                   // ---- Status row: Mode icon + Battery icon + Battery text ----
                   Row(

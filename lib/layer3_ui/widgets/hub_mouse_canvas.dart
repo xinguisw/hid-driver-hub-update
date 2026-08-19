@@ -1,4 +1,3 @@
-import 'package:driver_hub/layer3_ui/widgets/hub_button_mapping_panel.dart';
 import 'package:driver_hub/layer4_domain/models/device_settings_state.dart';
 import 'package:driver_hub/i18n/strings.g.dart';
 import 'package:flutter/material.dart';
@@ -107,177 +106,127 @@ class _HubMouseCanvasState extends State<HubMouseCanvas> {
 
         return Column(
           children: [
+            // -----------------------------------------------------------------
+            // 1. MOUSE CANVAS AREA
+            // -----------------------------------------------------------------
             Expanded(
-              child: TapRegion(
-                groupId: hubButtonMappingTapRegionId,
-                child: MouseRegion(
-                  cursor: _hoveredButtonId != null
-                      ? SystemMouseCursors.click
-                      : SystemMouseCursors.basic,
-                  onHover: (event) {
-                    final id = _hitButtonId(targets, event.localPosition);
-                    if (id != _hoveredButtonId) {
-                      setState(() => _hoveredButtonId = id);
+              child: MouseRegion(
+                cursor: _hoveredButtonId != null
+                    ? SystemMouseCursors.click
+                    : SystemMouseCursors.basic,
+                onHover: (event) {
+                  final id = _hitButtonId(targets, event.localPosition);
+                  if (id != _hoveredButtonId) {
+                    setState(() => _hoveredButtonId = id);
+                  }
+                },
+                onExit: (_) {
+                  if (_hoveredButtonId != null) {
+                    setState(() => _hoveredButtonId = null);
+                  }
+                },
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTapUp: (details) {
+                    final id = _hitButtonId(targets, details.localPosition);
+                    if (id != null) {
+                      widget.onButtonSelected?.call(id);
+                    } else {
+                      widget.onBackgroundTap?.call();
                     }
                   },
-                  onExit: (_) {
-                    if (_hoveredButtonId != null) {
-                      setState(() => _hoveredButtonId = null);
-                    }
-                  },
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTapUp: (details) {
-                      final id = _hitButtonId(targets, details.localPosition);
-                      if (id != null) {
-                        widget.onButtonSelected?.call(id);
-                      } else {
-                        widget.onBackgroundTap?.call();
-                      }
-                    },
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        Positioned.fromRect(
-                          rect: imageRect,
-                          child: Image.asset(
-                            widget.imageLarge,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Positioned.fromRect(
+                        rect: imageRect,
+                        child: Image.asset(
+                          widget.imageLarge,
+                          fit: BoxFit.fill,
+                          errorBuilder: (_, _, _) => Image.asset(
+                            'assets/images/m7xse/large.png',
                             fit: BoxFit.fill,
-                            errorBuilder: (_, _, _) => Image.asset(
-                              'assets/images/m7xse/large.png',
-                              fit: BoxFit.fill,
-                              errorBuilder: (_, _, _) =>
-                                  Text(t.mouseCanvas.imageMissing),
-                            ),
+                            errorBuilder: (_, _, _) =>
+                                Text(t.mouseCanvas.imageMissing),
                           ),
                         ),
-                        CustomPaint(
-                          size: paneSize,
-                          painter: _HotspotPainter(
-                            targets: targets,
-                            selectedButtonId: widget.selectedButtonId,
-                            hoveredButtonId: _hoveredButtonId,
-                            isDark: isDark,
-                            theme: theme,
-                          ),
+                      ),
+                      CustomPaint(
+                        size: paneSize,
+                        painter: _HotspotPainter(
+                          targets: targets,
+                          selectedButtonId: widget.selectedButtonId,
+                          hoveredButtonId: _hoveredButtonId,
+                          isDark: isDark,
+                          theme: theme,
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
               ),
             ),
-            // why: centered under mouse — Reset always; Save/Cancel only if dirty
-            SizedBox(
-              height: actionBand,
-              width: double.infinity,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // why: OutlinedButton styles adapt dynamically to active theme (Theme.of(context))
-                    OutlinedButton(
-                      onPressed: widget.committing
-                          ? null
-                          : () => _onResetPressed(context),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: theme.colorScheme.onSurface,
-                        disabledForegroundColor: theme.colorScheme.onSurface
-                            .withValues(alpha: 0.38),
-                        side: BorderSide(
-                          color: theme.colorScheme.onSurface.withValues(
-                            alpha: 0.6,
-                          ),
-                        ),
-                        shape: const StadiumBorder(),
-                        visualDensity: VisualDensity.compact,
+
+            // -----------------------------------------------------------------
+            // 2. BOTTOM ACTIONS BAR
+            // -----------------------------------------------------------------
+            Padding(
+              padding: const EdgeInsets.only(bottom: 24, top: 12),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // RESET TO DEFAULT (ALWAYS VISIBLE)
+                  OutlinedButton(
+                    onPressed: widget.onResetToDefault,
+                    style: OutlinedButton.styleFrom(
+                      shape: const StadiumBorder(),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 12,
                       ),
-                      child: Text(t.common.resetToDefault),
                     ),
-                    // why: Save/Cancel when sidebar open OR dirty (after reset); Save disabled when clean
-                    SizedBox(
-                      height: 36,
-                      child: (widget.selectedButtonId != null || widget.isDirty)
-                          ? Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                OutlinedButton(
-                                  onPressed:
-                                      (!widget.isDirty || widget.committing)
-                                      ? null
-                                      : widget.onSave,
-                                  style: OutlinedButton.styleFrom(
-                                    foregroundColor:
-                                        theme.colorScheme.onSurface,
-                                    disabledForegroundColor: theme
-                                        .colorScheme
-                                        .onSurface
-                                        .withValues(alpha: 0.38),
-                                    side: BorderSide(
-                                      color: theme.colorScheme.onSurface
-                                          .withValues(alpha: 0.6),
-                                    ),
-                                    shape: const StadiumBorder(),
-                                    visualDensity: VisualDensity.compact,
-                                  ),
-                                  child: Text(t.common.save),
-                                ),
-                                const SizedBox(width: 12),
-                                OutlinedButton(
-                                  onPressed: widget.committing
-                                      ? null
-                                      : widget.onCancel,
-                                  style: OutlinedButton.styleFrom(
-                                    foregroundColor:
-                                        theme.colorScheme.onSurface,
-                                    disabledForegroundColor: theme
-                                        .colorScheme
-                                        .onSurface
-                                        .withValues(alpha: 0.38),
-                                    side: BorderSide(
-                                      color: theme.colorScheme.onSurface
-                                          .withValues(alpha: 0.6),
-                                    ),
-                                    shape: const StadiumBorder(),
-                                    visualDensity: VisualDensity.compact,
-                                  ),
-                                  child: Text(t.common.cancel),
-                                ),
-                              ],
-                            )
-                          : null,
+                    child: Text(t.common.resetToDefault),
+                  ),
+
+                  // SAVE & CANCEL (VISIBLE ONLY WHEN A BUTTON IS SELECTED)
+                  if (widget.selectedButtonId != null) ...[
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        FilledButton(
+                          onPressed: widget.onSave,
+                          style: FilledButton.styleFrom(
+                            shape: const StadiumBorder(),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 24,
+                              vertical: 10,
+                            ),
+                          ),
+                          child: Text(t.common.save),
+                        ),
+                        const SizedBox(width: 12),
+                        OutlinedButton(
+                          onPressed: () => widget.onBackgroundTap?.call(),
+                          style: OutlinedButton.styleFrom(
+                            shape: const StadiumBorder(),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 24,
+                              vertical: 10,
+                            ),
+                          ),
+                          child: Text(t.common.cancel),
+                        ),
+                      ],
                     ),
                   ],
-                ),
+                ],
               ),
             ),
           ],
         );
       },
     );
-  }
-
-  /// Skeleton tip: restore default keys — Cancel / Confirm only.
-  Future<void> _onResetPressed(BuildContext context) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(t.common.tip),
-        content: Text(t.mouseCanvas.restoreDefaultKeysTip),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text(t.common.cancel),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: Text(t.common.confirm),
-          ),
-        ],
-      ),
-    );
-    if (confirmed == true) widget.onResetToDefault?.call();
   }
 
   static int? _hitButtonId(List<_CalloutTarget> targets, Offset local) {

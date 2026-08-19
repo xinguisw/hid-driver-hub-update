@@ -19,6 +19,7 @@ import 'package:driver_hub/layer4_domain/models/discovered_card_state.dart';
 import 'package:driver_hub/layer4_domain/models/osd_event.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:driver_hub/i18n/strings.g.dart';
 
 String _dpiColorHex(Color color) {
   int channel(double value) => (value * 255).round().clamp(0, 255);
@@ -301,12 +302,34 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                                     setState(() => _selectedButtonId = id);
                                   },
                                   onResetToDefault: () {
-                                    debugPrint(
-                                      '[hub] ${widget.card.displayName}: '
-                                      'dispatch reset',
-                                    );
-                                    bloc.add(
-                                      const DeviceSettingsResetButtonMappingRequested(),
+                                    final t = context.t;
+                                    showDialog(
+                                      context: context,
+                                      builder: (ctx) => AlertDialog(
+                                        title: Text(t.common.tip),
+                                        content: Text(
+                                          t.mouseCanvas.restoreDefaultKeysTip,
+                                        ),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () =>
+                                                Navigator.of(ctx).pop(false),
+                                            child: Text(t.common.cancel),
+                                          ),
+                                          TextButton(
+                                            onPressed: () {
+                                              Navigator.of(ctx).pop(true);
+                                              debugPrint(
+                                                '[hub] ${widget.card.displayName}: dispatch reset',
+                                              );
+                                              bloc.add(
+                                                const DeviceSettingsResetButtonMappingRequested(),
+                                              );
+                                            },
+                                            child: Text(t.common.confirm),
+                                          ),
+                                        ],
+                                      ),
                                     );
                                   },
                                   onSave: () {
@@ -374,6 +397,11 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                                         macroSlot: int.tryParse(macroSlot) ?? 0,
                                       ),
                                     );
+                                  },
+                                  onCollapse: () {
+                                    setState(() {
+                                      _selectedButtonId = null;
+                                    });
                                   },
                                 ),
                               ],

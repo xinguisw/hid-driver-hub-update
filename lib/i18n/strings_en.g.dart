@@ -1,496 +1,568 @@
 ///
+/// Generated file. Do not edit.
+///
 // coverage:ignore-file
 // ignore_for_file: type=lint, unused_import
+// dart format off
 
 part of 'strings.g.dart';
 
 // Path: <root>
 typedef TranslationsEn = Translations; // ignore: unused_element
+class Translations with BaseTranslations<AppLocale, Translations> {
+	/// Returns the current translations of the given [context].
+	///
+	/// Usage:
+	/// final t = Translations.of(context);
+	static Translations of(BuildContext context) => InheritedLocaleData.of<AppLocale, Translations>(context).translations;
 
-class Translations implements BaseTranslations<AppLocale, Translations> {
-  /// Returns the current translations of the given [context].
-  ///
-  /// Usage:
-  /// final t = Translations.of(context);
-  static Translations of(BuildContext context) =>
-      InheritedLocaleData.of<AppLocale, Translations>(context).translations;
+	/// You can call this constructor and build your own translation instance of this locale.
+	/// Constructing via the enum [AppLocale.build] is preferred.
+	Translations({Map<String, Node>? overrides, PluralResolver? cardinalResolver, PluralResolver? ordinalResolver, TranslationMetadata<AppLocale, Translations>? meta})
+		: assert(overrides == null, 'Set "translation_overrides: true" in order to enable this feature.'),
+		  $meta = meta ?? TranslationMetadata(
+		    locale: AppLocale.en,
+		    overrides: overrides ?? {},
+		    cardinalResolver: cardinalResolver,
+		    ordinalResolver: ordinalResolver,
+		  ) {
+		$meta.setFlatMapFunction(_flatMapFunction);
+	}
 
-  /// You can call this constructor and build your own translation instance of this locale.
-  /// Constructing via the enum [AppLocale.build] is preferred.
-  Translations({
-    Map<String, Node>? overrides,
-    PluralResolver? cardinalResolver,
-    PluralResolver? ordinalResolver,
-  }) : assert(
-         overrides == null,
-         'Set "translation_overrides: true" in order to enable this feature.',
-       ),
-       $meta = TranslationMetadata(
-         locale: AppLocale.en,
-         overrides: overrides ?? {},
-         cardinalResolver: cardinalResolver,
-         ordinalResolver: ordinalResolver,
-       ) {
-    $meta.setFlatMapFunction(_flatMapFunction);
-  }
+	/// Metadata for the translations of <en>.
+	@override final TranslationMetadata<AppLocale, Translations> $meta;
 
-  /// Metadata for the translations of <en>.
-  @override
-  final TranslationMetadata<AppLocale, Translations> $meta;
+	/// Access flat map
+	dynamic operator[](String key) => $meta.getTranslation(key);
 
-  /// Access flat map
-  dynamic operator [](String key) => $meta.getTranslation(key);
+	late final Translations _root = this; // ignore: unused_field
 
-  late final Translations _root = this; // ignore: unused_field
+	Translations $copyWith({TranslationMetadata<AppLocale, Translations>? meta}) => Translations(meta: meta ?? this.$meta);
 
-  // Translations
-  late final TranslationsViewsEn views = TranslationsViewsEn.internal(_root);
-  late final TranslationsDevicesEn devices = TranslationsDevicesEn.internal(
-    _root,
-  );
-  late final TranslationsSidebarEn sidebar = TranslationsSidebarEn.internal(
-    _root,
-  );
-  late final TranslationsMappingEn mapping = TranslationsMappingEn.internal(
-    _root,
-  );
-  late final TranslationsCommonEn common = TranslationsCommonEn.internal(_root);
-  late final TranslationsMouseCanvasEn mouseCanvas =
-      TranslationsMouseCanvasEn.internal(_root);
-  late final TranslationsPerformanceEn performance =
-      TranslationsPerformanceEn.internal(_root);
-  late final TranslationsParameterEn parameter =
-      TranslationsParameterEn.internal(_root);
-  late final TranslationsBacklightEn backlight =
-      TranslationsBacklightEn.internal(_root);
-  late final TranslationsActionsEn actions = TranslationsActionsEn.internal(
-    _root,
-  );
-  late final TranslationsDeviceSettingEn deviceSetting =
-      TranslationsDeviceSettingEn.internal(_root);
-  late final TranslationsMacroEn macro = TranslationsMacroEn.internal(_root);
+	// Translations
+	late final Translations$views$en views = Translations$views$en.internal(_root);
+	late final Translations$devices$en devices = Translations$devices$en.internal(_root);
+	late final Translations$sidebar$en sidebar = Translations$sidebar$en.internal(_root);
+	late final Translations$mapping$en mapping = Translations$mapping$en.internal(_root);
+	late final Translations$common$en common = Translations$common$en.internal(_root);
+	late final Translations$mouseCanvas$en mouseCanvas = Translations$mouseCanvas$en.internal(_root);
+	late final Translations$performance$en performance = Translations$performance$en.internal(_root);
+	late final Translations$parameter$en parameter = Translations$parameter$en.internal(_root);
+	late final Translations$backlight$en backlight = Translations$backlight$en.internal(_root);
+	late final Translations$actions$en actions = Translations$actions$en.internal(_root);
+	late final Translations$deviceSetting$en deviceSetting = Translations$deviceSetting$en.internal(_root);
+	late final Translations$macro$en macro = Translations$macro$en.internal(_root);
 }
 
 // Path: views
-class TranslationsViewsEn {
-  TranslationsViewsEn.internal(this._root);
+class Translations$views$en {
+	Translations$views$en.internal(this._root);
 
-  final Translations _root; // ignore: unused_field
+	final Translations _root; // ignore: unused_field
 
-  // Translations
-  late final TranslationsViewsLoginEn login = TranslationsViewsLoginEn.internal(
-    _root,
-  );
-  late final TranslationsViewsHomeEn home = TranslationsViewsHomeEn.internal(
-    _root,
-  );
+	// Translations
+	late final Translations$views$login$en login = Translations$views$login$en.internal(_root);
+	late final Translations$views$home$en home = Translations$views$home$en.internal(_root);
 }
 
 // Path: devices
-class TranslationsDevicesEn {
-  TranslationsDevicesEn.internal(this._root);
+class Translations$devices$en {
+	Translations$devices$en.internal(this._root);
 
-  final Translations _root; // ignore: unused_field
+	final Translations _root; // ignore: unused_field
 
-  // Translations
-  String get addDevice => 'Add device';
-  String get working => 'Working...';
-  String get bluetoothWarning =>
-      'The driver cannot recognize Bluetooth connection. Please use a 2.4G receiver or a cable connection';
-  String get noDevices => 'No devices';
+	// Translations
+
+	/// en: 'Add device'
+	String get addDevice => 'Add device';
+
+	/// en: 'Working...'
+	String get working => 'Working...';
+
+	/// en: 'The driver cannot recognize Bluetooth connection. Please use a 2.4G receiver or a cable connection'
+	String get bluetoothWarning => 'The driver cannot recognize Bluetooth connection. Please use a 2.4G receiver or a cable connection';
+
+	/// en: 'No devices'
+	String get noDevices => 'No devices';
 }
 
 // Path: sidebar
-class TranslationsSidebarEn {
-  TranslationsSidebarEn.internal(this._root);
+class Translations$sidebar$en {
+	Translations$sidebar$en.internal(this._root);
 
-  final Translations _root; // ignore: unused_field
+	final Translations _root; // ignore: unused_field
 
-  // Translations
-  String get buttonMapping => 'Button Mapping';
-  String get macroSetting => 'Macro Setting';
-  String get performanceSetting => 'Performance Setting';
-  String get parameterSetting => 'Parameter Setting';
-  String get backlightSetting => 'Backlight Setting';
-  String get profileManagement => 'Profile Management';
-  String get deviceSetting => 'Device Setting';
-  String get mouse => 'mouse';
-  String batteryLabel({required Object pct}) => 'Battery ${pct}%';
-  String batteryCharging({required Object pct}) => 'Battery ${pct}% charging';
-  String get batteryEmpty => 'Battery —';
+	// Translations
+
+	/// en: 'Button Mapping'
+	String get buttonMapping => 'Button Mapping';
+
+	/// en: 'Macro Setting'
+	String get macroSetting => 'Macro Setting';
+
+	/// en: 'Performance Setting'
+	String get performanceSetting => 'Performance Setting';
+
+	/// en: 'Parameter Setting'
+	String get parameterSetting => 'Parameter Setting';
+
+	/// en: 'Backlight Setting'
+	String get backlightSetting => 'Backlight Setting';
+
+	/// en: 'Profile Management'
+	String get profileManagement => 'Profile Management';
+
+	/// en: 'Device Setting'
+	String get deviceSetting => 'Device Setting';
+
+	/// en: 'mouse'
+	String get mouse => 'mouse';
+
+	/// en: 'Battery {pct}%'
+	String batteryLabel({required Object pct}) => 'Battery ${pct}%';
+
+	/// en: 'Battery {pct}% charging'
+	String batteryCharging({required Object pct}) => 'Battery ${pct}% charging';
+
+	/// en: 'Battery —'
+	String get batteryEmpty => 'Battery —';
 }
 
 // Path: mapping
-class TranslationsMappingEn {
-  TranslationsMappingEn.internal(this._root);
+class Translations$mapping$en {
+	Translations$mapping$en.internal(this._root);
 
-  final Translations _root; // ignore: unused_field
+	final Translations _root; // ignore: unused_field
 
-  // Translations
-  String get mouse => 'Mouse';
-  String get keyboard => 'Keyboard';
-  String get special => 'Special';
-  String get macro => 'Macro';
-  String get modifierKey => 'Modifier key';
+	// Translations
+
+	/// en: 'Mouse'
+	String get mouse => 'Mouse';
+
+	/// en: 'Keyboard'
+	String get keyboard => 'Keyboard';
+
+	/// en: 'Special'
+	String get special => 'Special';
+
+	/// en: 'Macro'
+	String get macro => 'Macro';
+
+	/// en: 'Modifier key'
+	String get modifierKey => 'Modifier key';
 }
 
 // Path: common
-class TranslationsCommonEn {
-  TranslationsCommonEn.internal(this._root);
+class Translations$common$en {
+	Translations$common$en.internal(this._root);
 
-  final Translations _root; // ignore: unused_field
+	final Translations _root; // ignore: unused_field
 
-  // Translations
-  String get save => 'Save';
-  String get cancel => 'Cancel';
-  String get confirm => 'Confirm';
-  String get resetToDefault => 'Reset to Default';
-  String get tip => 'Tip';
-  String get settings => 'Settings';
-  String get language => 'Language';
-  String get lightMode => 'Light Mode';
-  String get darkMode => 'Dark Mode';
-  String get switchToLightMode => 'Switch to Light Mode';
-  String get switchToDarkMode => 'Switch to Dark Mode';
-  String get forward => 'Forward';
-  String get reverse => 'Reverse';
-  String secondsUnit({required Object seconds}) => '${seconds} sec';
-  String get done => 'Done';
+	// Translations
+
+	/// en: 'Save'
+	String get save => 'Save';
+
+	/// en: 'Cancel'
+	String get cancel => 'Cancel';
+
+	/// en: 'Confirm'
+	String get confirm => 'Confirm';
+
+	/// en: 'Reset to Default'
+	String get resetToDefault => 'Reset to Default';
+
+	/// en: 'Tip'
+	String get tip => 'Tip';
+
+	/// en: 'Settings'
+	String get settings => 'Settings';
+
+	/// en: 'Language'
+	String get language => 'Language';
+
+	/// en: 'Light Mode'
+	String get lightMode => 'Light Mode';
+
+	/// en: 'Dark Mode'
+	String get darkMode => 'Dark Mode';
+
+	/// en: 'Switch to Light Mode'
+	String get switchToLightMode => 'Switch to Light Mode';
+
+	/// en: 'Switch to Dark Mode'
+	String get switchToDarkMode => 'Switch to Dark Mode';
+
+	/// en: 'Forward'
+	String get forward => 'Forward';
+
+	/// en: 'Reverse'
+	String get reverse => 'Reverse';
+
+	/// en: '{seconds} sec'
+	String secondsUnit({required Object seconds}) => '${seconds} sec';
+
+	/// en: 'Done'
+	String get done => 'Done';
 }
 
 // Path: mouseCanvas
-class TranslationsMouseCanvasEn {
-  TranslationsMouseCanvasEn.internal(this._root);
+class Translations$mouseCanvas$en {
+	Translations$mouseCanvas$en.internal(this._root);
 
-  final Translations _root; // ignore: unused_field
+	final Translations _root; // ignore: unused_field
 
-  // Translations
-  String get imageMissing => 'Mouse image missing';
-  String get restoreDefaultKeysTip =>
-      'Are you sure you want to restore default keys?';
+	// Translations
+
+	/// en: 'Mouse image missing'
+	String get imageMissing => 'Mouse image missing';
+
+	/// en: 'Are you sure you want to restore default keys?'
+	String get restoreDefaultKeysTip => 'Are you sure you want to restore default keys?';
 }
 
 // Path: performance
-class TranslationsPerformanceEn {
-  TranslationsPerformanceEn.internal(this._root);
+class Translations$performance$en {
+	Translations$performance$en.internal(this._root);
 
-  final Translations _root; // ignore: unused_field
+	final Translations _root; // ignore: unused_field
 
-  // Translations
-  String get dpiSettings => 'DPI settings';
-  String get reportRate => 'Report rate';
-  String get levels => 'Levels';
-  String dpiLevel({required Object level}) => 'DPI ${level}';
-  String get dpiStageColor => 'DPI stage color';
+	// Translations
+
+	/// en: 'DPI settings'
+	String get dpiSettings => 'DPI settings';
+
+	/// en: 'Report rate'
+	String get reportRate => 'Report rate';
+
+	/// en: 'Levels'
+	String get levels => 'Levels';
+
+	/// en: 'DPI {level}'
+	String dpiLevel({required Object level}) => 'DPI ${level}';
+
+	/// en: 'DPI stage color'
+	String get dpiStageColor => 'DPI stage color';
 }
 
 // Path: parameter
-class TranslationsParameterEn {
-  TranslationsParameterEn.internal(this._root);
+class Translations$parameter$en {
+	Translations$parameter$en.internal(this._root);
 
-  final Translations _root; // ignore: unused_field
+	final Translations _root; // ignore: unused_field
 
-  // Translations
-  String get sensorFeature => 'Sensor feature';
-  String get otherFeature => 'Other feature';
-  String get rippleControl => 'Ripple Control';
-  String get angleSnap => 'Angle Snap';
-  String get lod => 'LOD';
-  String get angleTune => 'Angle Tune';
-  String get performance => 'Performance';
-  String get wheelDirection => 'Wheel direction';
+	// Translations
+
+	/// en: 'Sensor feature'
+	String get sensorFeature => 'Sensor feature';
+
+	/// en: 'Other feature'
+	String get otherFeature => 'Other feature';
+
+	/// en: 'Ripple Control'
+	String get rippleControl => 'Ripple Control';
+
+	/// en: 'Angle Snap'
+	String get angleSnap => 'Angle Snap';
+
+	/// en: 'LOD'
+	String get lod => 'LOD';
+
+	/// en: 'Angle Tune'
+	String get angleTune => 'Angle Tune';
+
+	/// en: 'Performance'
+	String get performance => 'Performance';
+
+	/// en: 'Wheel direction'
+	String get wheelDirection => 'Wheel direction';
 }
 
 // Path: backlight
-class TranslationsBacklightEn {
-  TranslationsBacklightEn.internal(this._root);
+class Translations$backlight$en {
+	Translations$backlight$en.internal(this._root);
 
-  final Translations _root; // ignore: unused_field
+	final Translations _root; // ignore: unused_field
 
-  // Translations
-  String get title => 'Backlight';
-  String get mode => 'Mode';
-  String get color => 'Color';
-  String get powerSaving => 'Power saving';
+	// Translations
+
+	/// en: 'Backlight'
+	String get title => 'Backlight';
+
+	/// en: 'Mode'
+	String get mode => 'Mode';
+
+	/// en: 'Color'
+	String get color => 'Color';
+
+	/// en: 'Power saving'
+	String get powerSaving => 'Power saving';
 }
 
 // Path: actions
-class TranslationsActionsEn {
-  TranslationsActionsEn.internal(this._root);
+class Translations$actions$en {
+	Translations$actions$en.internal(this._root);
 
-  final Translations _root; // ignore: unused_field
+	final Translations _root; // ignore: unused_field
 
-  // Translations
-  String get left => 'Left';
-  String get right => 'Right';
-  String get middle => 'Middle';
-  String get forward => 'Forward';
-  String get backward => 'Backward';
-  String get dpiCycle => 'DPI cycle';
-  String button({required Object id}) => 'Button ${id}';
-  String get disable => 'Disable / No action';
-  String get buttonOff => 'Button off';
-  String get leftClick => 'Left click';
-  String get rightClick => 'Right click';
-  String get middleClick => 'Middle click';
-  String get scrollUp => 'Scroll up';
-  String get scrollDown => 'Scroll down';
-  String get swingLeft => 'Swing left';
-  String get swingRight => 'Swing right';
-  String get dpiIncrease => 'DPI increase';
-  String get dpiDecrease => 'DPI decrease';
-  String get reportRate => 'Report rate';
-  String get profileCycle => 'Profile cycle';
-  String get sniper => 'Sniper';
-  String macroPlay({required Object id}) => 'Macro play (#${id})';
+	// Translations
+
+	/// en: 'Left'
+	String get left => 'Left';
+
+	/// en: 'Right'
+	String get right => 'Right';
+
+	/// en: 'Middle'
+	String get middle => 'Middle';
+
+	/// en: 'Forward'
+	String get forward => 'Forward';
+
+	/// en: 'Backward'
+	String get backward => 'Backward';
+
+	/// en: 'DPI cycle'
+	String get dpiCycle => 'DPI cycle';
+
+	/// en: 'Button {id}'
+	String button({required Object id}) => 'Button ${id}';
+
+	/// en: 'Disable / No action'
+	String get disable => 'Disable / No action';
+
+	/// en: 'Button off'
+	String get buttonOff => 'Button off';
+
+	/// en: 'Left click'
+	String get leftClick => 'Left click';
+
+	/// en: 'Right click'
+	String get rightClick => 'Right click';
+
+	/// en: 'Middle click'
+	String get middleClick => 'Middle click';
+
+	/// en: 'Scroll up'
+	String get scrollUp => 'Scroll up';
+
+	/// en: 'Scroll down'
+	String get scrollDown => 'Scroll down';
+
+	/// en: 'Swing left'
+	String get swingLeft => 'Swing left';
+
+	/// en: 'Swing right'
+	String get swingRight => 'Swing right';
+
+	/// en: 'DPI increase'
+	String get dpiIncrease => 'DPI increase';
+
+	/// en: 'DPI decrease'
+	String get dpiDecrease => 'DPI decrease';
+
+	/// en: 'Report rate'
+	String get reportRate => 'Report rate';
+
+	/// en: 'Profile cycle'
+	String get profileCycle => 'Profile cycle';
+
+	/// en: 'Sniper'
+	String get sniper => 'Sniper';
+
+	/// en: 'Macro play (#{id})'
+	String macroPlay({required Object id}) => 'Macro play (#${id})';
 }
 
 // Path: deviceSetting
-class TranslationsDeviceSettingEn {
-  TranslationsDeviceSettingEn.internal(this._root);
+class Translations$deviceSetting$en {
+	Translations$deviceSetting$en.internal(this._root);
 
-  final Translations _root; // ignore: unused_field
+	final Translations _root; // ignore: unused_field
 
-  // Translations
-  String get mouseFirmwareVersion => 'Mouse Firmware Version';
-  String get dongleFirmwareVersion => 'Dongle Firmware Version';
-  String get latestVersion => 'Latest version';
-  String get checkUpdates => 'Check updates';
-  String get newVersionUpdate => 'New version & update';
+	// Translations
+
+	/// en: 'Mouse Firmware Version'
+	String get mouseFirmwareVersion => 'Mouse Firmware Version';
+
+	/// en: 'Dongle Firmware Version'
+	String get dongleFirmwareVersion => 'Dongle Firmware Version';
+
+	/// en: 'Latest version'
+	String get latestVersion => 'Latest version';
+
+	/// en: 'Check updates'
+	String get checkUpdates => 'Check updates';
+
+	/// en: 'New version & update'
+	String get newVersionUpdate => 'New version & update';
 }
 
 // Path: macro
-class TranslationsMacroEn {
-  TranslationsMacroEn.internal(this._root);
+class Translations$macro$en {
+	Translations$macro$en.internal(this._root);
 
-  final Translations _root; // ignore: unused_field
+	final Translations _root; // ignore: unused_field
 
-  // Translations
-  String get startRecording => 'Start Recording';
-  String get stopRecording => 'Stop Recording';
-  String get record => 'Record';
-  String get reset => 'Reset';
-  String get noMacrosConfigured => 'No macros configured';
-  String get createMacro => 'Create Macro';
-  String get selectShortcutEdit => 'Please select a shortcut to edit';
-  String get newMacro => 'New Macro';
+	// Translations
+
+	/// en: 'Start Recording'
+	String get startRecording => 'Start Recording';
+
+	/// en: 'Stop Recording'
+	String get stopRecording => 'Stop Recording';
+
+	/// en: 'Record'
+	String get record => 'Record';
+
+	/// en: 'Reset'
+	String get reset => 'Reset';
+
+	/// en: 'No macros configured'
+	String get noMacrosConfigured => 'No macros configured';
+
+	/// en: 'Create Macro'
+	String get createMacro => 'Create Macro';
+
+	/// en: 'Please select a shortcut to edit'
+	String get selectShortcutEdit => 'Please select a shortcut to edit';
+
+	/// en: 'New Macro'
+	String get newMacro => 'New Macro';
 }
 
 // Path: views.login
-class TranslationsViewsLoginEn {
-  TranslationsViewsLoginEn.internal(this._root);
+class Translations$views$login$en {
+	Translations$views$login$en.internal(this._root);
 
-  final Translations _root; // ignore: unused_field
+	final Translations _root; // ignore: unused_field
 
-  // Translations
-  String get welcome => 'Welcome';
-  String get userName => 'Username';
-  String get loginButton => 'Login';
+	// Translations
+
+	/// en: 'Welcome'
+	String get welcome => 'Welcome';
+
+	/// en: 'Username'
+	String get userName => 'Username';
+
+	/// en: 'Login'
+	String get loginButton => 'Login';
 }
 
 // Path: views.home
-class TranslationsViewsHomeEn {
-  TranslationsViewsHomeEn.internal(this._root);
+class Translations$views$home$en {
+	Translations$views$home$en.internal(this._root);
 
-  final Translations _root; // ignore: unused_field
+	final Translations _root; // ignore: unused_field
 
-  // Translations
-  String greeting({required Object userName}) => 'Hello, ${userName}!';
+	// Translations
+
+	/// en: 'Hello, {userName}!'
+	String greeting({required Object userName}) => 'Hello, ${userName}!';
 }
 
-/// Flat map(s) containing all translations.
+/// The flat map containing all translations for locale <en>.
 /// Only for edge cases! For simple maps, use the map function of this library.
+///
+/// The Dart AOT compiler has issues with very large switch statements,
+/// so the map is split into smaller functions (512 entries each).
 extension on Translations {
-  dynamic _flatMapFunction(String path) {
-    switch (path) {
-      case 'views.login.welcome':
-        return 'Welcome';
-      case 'views.login.userName':
-        return 'Username';
-      case 'views.login.loginButton':
-        return 'Login';
-      case 'views.home.greeting':
-        return ({required Object userName}) => 'Hello, ${userName}!';
-      case 'devices.addDevice':
-        return 'Add device';
-      case 'devices.working':
-        return 'Working...';
-      case 'devices.bluetoothWarning':
-        return 'The driver cannot recognize Bluetooth connection. Please use a 2.4G receiver or a cable connection';
-      case 'devices.noDevices':
-        return 'No devices';
-      case 'sidebar.buttonMapping':
-        return 'Button Mapping';
-      case 'sidebar.macroSetting':
-        return 'Macro Setting';
-      case 'sidebar.performanceSetting':
-        return 'Performance Setting';
-      case 'sidebar.parameterSetting':
-        return 'Parameter Setting';
-      case 'sidebar.backlightSetting':
-        return 'Backlight Setting';
-      case 'sidebar.profileManagement':
-        return 'Profile Management';
-      case 'sidebar.deviceSetting':
-        return 'Device Setting';
-      case 'sidebar.mouse':
-        return 'mouse';
-      case 'sidebar.batteryLabel':
-        return ({required Object pct}) => 'Battery ${pct}%';
-      case 'sidebar.batteryCharging':
-        return ({required Object pct}) => 'Battery ${pct}% charging';
-      case 'sidebar.batteryEmpty':
-        return 'Battery —';
-      case 'mapping.mouse':
-        return 'Mouse';
-      case 'mapping.keyboard':
-        return 'Keyboard';
-      case 'mapping.special':
-        return 'Special';
-      case 'mapping.macro':
-        return 'Macro';
-      case 'mapping.modifierKey':
-        return 'Modifier key';
-      case 'common.save':
-        return 'Save';
-      case 'common.cancel':
-        return 'Cancel';
-      case 'common.confirm':
-        return 'Confirm';
-      case 'common.resetToDefault':
-        return 'Reset to Default';
-      case 'common.tip':
-        return 'Tip';
-      case 'common.settings':
-        return 'Settings';
-      case 'common.language':
-        return 'Language';
-      case 'common.lightMode':
-        return 'Light Mode';
-      case 'common.darkMode':
-        return 'Dark Mode';
-      case 'common.switchToLightMode':
-        return 'Switch to Light Mode';
-      case 'common.switchToDarkMode':
-        return 'Switch to Dark Mode';
-      case 'common.forward':
-        return 'Forward';
-      case 'common.reverse':
-        return 'Reverse';
-      case 'common.secondsUnit':
-        return ({required Object seconds}) => '${seconds} sec';
-      case 'common.done':
-        return 'Done';
-      case 'mouseCanvas.imageMissing':
-        return 'Mouse image missing';
-      case 'mouseCanvas.restoreDefaultKeysTip':
-        return 'Are you sure you want to restore default keys?';
-      case 'performance.dpiSettings':
-        return 'DPI settings';
-      case 'performance.reportRate':
-        return 'Report rate';
-      case 'performance.levels':
-        return 'Levels';
-      case 'performance.dpiLevel':
-        return ({required Object level}) => 'DPI ${level}';
-      case 'performance.dpiStageColor':
-        return 'DPI stage color';
-      case 'parameter.sensorFeature':
-        return 'Sensor feature';
-      case 'parameter.otherFeature':
-        return 'Other feature';
-      case 'parameter.rippleControl':
-        return 'Ripple Control';
-      case 'parameter.angleSnap':
-        return 'Angle Snap';
-      case 'parameter.lod':
-        return 'LOD';
-      case 'parameter.angleTune':
-        return 'Angle Tune';
-      case 'parameter.performance':
-        return 'Performance';
-      case 'parameter.wheelDirection':
-        return 'Wheel direction';
-      case 'backlight.title':
-        return 'Backlight';
-      case 'backlight.mode':
-        return 'Mode';
-      case 'backlight.color':
-        return 'Color';
-      case 'backlight.powerSaving':
-        return 'Power saving';
-      case 'actions.left':
-        return 'Left';
-      case 'actions.right':
-        return 'Right';
-      case 'actions.middle':
-        return 'Middle';
-      case 'actions.forward':
-        return 'Forward';
-      case 'actions.backward':
-        return 'Backward';
-      case 'actions.dpiCycle':
-        return 'DPI cycle';
-      case 'actions.button':
-        return ({required Object id}) => 'Button ${id}';
-      case 'actions.disable':
-        return 'Disable / No action';
-      case 'actions.buttonOff':
-        return 'Button off';
-      case 'actions.leftClick':
-        return 'Left click';
-      case 'actions.rightClick':
-        return 'Right click';
-      case 'actions.middleClick':
-        return 'Middle click';
-      case 'actions.scrollUp':
-        return 'Scroll up';
-      case 'actions.scrollDown':
-        return 'Scroll down';
-      case 'actions.swingLeft':
-        return 'Swing left';
-      case 'actions.swingRight':
-        return 'Swing right';
-      case 'actions.dpiIncrease':
-        return 'DPI increase';
-      case 'actions.dpiDecrease':
-        return 'DPI decrease';
-      case 'actions.reportRate':
-        return 'Report rate';
-      case 'actions.profileCycle':
-        return 'Profile cycle';
-      case 'actions.sniper':
-        return 'Sniper';
-      case 'actions.macroPlay':
-        return ({required Object id}) => 'Macro play (#${id})';
-      case 'deviceSetting.mouseFirmwareVersion':
-        return 'Mouse Firmware Version';
-      case 'deviceSetting.dongleFirmwareVersion':
-        return 'Dongle Firmware Version';
-      case 'deviceSetting.latestVersion':
-        return 'Latest version';
-      case 'deviceSetting.checkUpdates':
-        return 'Check updates';
-      case 'deviceSetting.newVersionUpdate':
-        return 'New version & update';
-      case 'macro.startRecording':
-        return 'Start Recording';
-      case 'macro.stopRecording':
-        return 'Stop Recording';
-      case 'macro.record':
-        return 'Record';
-      case 'macro.reset':
-        return 'Reset';
-      case 'macro.noMacrosConfigured':
-        return 'No macros configured';
-      case 'macro.createMacro':
-        return 'Create Macro';
-      case 'macro.selectShortcutEdit':
-        return 'Please select a shortcut to edit';
-      case 'macro.newMacro':
-        return 'New Macro';
-      default:
-        return null;
-    }
-  }
+	dynamic _flatMapFunction(String path) {
+		return switch (path) {
+			'views.login.welcome' => 'Welcome',
+			'views.login.userName' => 'Username',
+			'views.login.loginButton' => 'Login',
+			'views.home.greeting' => ({required Object userName}) => 'Hello, ${userName}!',
+			'devices.addDevice' => 'Add device',
+			'devices.working' => 'Working...',
+			'devices.bluetoothWarning' => 'The driver cannot recognize Bluetooth connection. Please use a 2.4G receiver or a cable connection',
+			'devices.noDevices' => 'No devices',
+			'sidebar.buttonMapping' => 'Button Mapping',
+			'sidebar.macroSetting' => 'Macro Setting',
+			'sidebar.performanceSetting' => 'Performance Setting',
+			'sidebar.parameterSetting' => 'Parameter Setting',
+			'sidebar.backlightSetting' => 'Backlight Setting',
+			'sidebar.profileManagement' => 'Profile Management',
+			'sidebar.deviceSetting' => 'Device Setting',
+			'sidebar.mouse' => 'mouse',
+			'sidebar.batteryLabel' => ({required Object pct}) => 'Battery ${pct}%',
+			'sidebar.batteryCharging' => ({required Object pct}) => 'Battery ${pct}% charging',
+			'sidebar.batteryEmpty' => 'Battery —',
+			'mapping.mouse' => 'Mouse',
+			'mapping.keyboard' => 'Keyboard',
+			'mapping.special' => 'Special',
+			'mapping.macro' => 'Macro',
+			'mapping.modifierKey' => 'Modifier key',
+			'common.save' => 'Save',
+			'common.cancel' => 'Cancel',
+			'common.confirm' => 'Confirm',
+			'common.resetToDefault' => 'Reset to Default',
+			'common.tip' => 'Tip',
+			'common.settings' => 'Settings',
+			'common.language' => 'Language',
+			'common.lightMode' => 'Light Mode',
+			'common.darkMode' => 'Dark Mode',
+			'common.switchToLightMode' => 'Switch to Light Mode',
+			'common.switchToDarkMode' => 'Switch to Dark Mode',
+			'common.forward' => 'Forward',
+			'common.reverse' => 'Reverse',
+			'common.secondsUnit' => ({required Object seconds}) => '${seconds} sec',
+			'common.done' => 'Done',
+			'mouseCanvas.imageMissing' => 'Mouse image missing',
+			'mouseCanvas.restoreDefaultKeysTip' => 'Are you sure you want to restore default keys?',
+			'performance.dpiSettings' => 'DPI settings',
+			'performance.reportRate' => 'Report rate',
+			'performance.levels' => 'Levels',
+			'performance.dpiLevel' => ({required Object level}) => 'DPI ${level}',
+			'performance.dpiStageColor' => 'DPI stage color',
+			'parameter.sensorFeature' => 'Sensor feature',
+			'parameter.otherFeature' => 'Other feature',
+			'parameter.rippleControl' => 'Ripple Control',
+			'parameter.angleSnap' => 'Angle Snap',
+			'parameter.lod' => 'LOD',
+			'parameter.angleTune' => 'Angle Tune',
+			'parameter.performance' => 'Performance',
+			'parameter.wheelDirection' => 'Wheel direction',
+			'backlight.title' => 'Backlight',
+			'backlight.mode' => 'Mode',
+			'backlight.color' => 'Color',
+			'backlight.powerSaving' => 'Power saving',
+			'actions.left' => 'Left',
+			'actions.right' => 'Right',
+			'actions.middle' => 'Middle',
+			'actions.forward' => 'Forward',
+			'actions.backward' => 'Backward',
+			'actions.dpiCycle' => 'DPI cycle',
+			'actions.button' => ({required Object id}) => 'Button ${id}',
+			'actions.disable' => 'Disable / No action',
+			'actions.buttonOff' => 'Button off',
+			'actions.leftClick' => 'Left click',
+			'actions.rightClick' => 'Right click',
+			'actions.middleClick' => 'Middle click',
+			'actions.scrollUp' => 'Scroll up',
+			'actions.scrollDown' => 'Scroll down',
+			'actions.swingLeft' => 'Swing left',
+			'actions.swingRight' => 'Swing right',
+			'actions.dpiIncrease' => 'DPI increase',
+			'actions.dpiDecrease' => 'DPI decrease',
+			'actions.reportRate' => 'Report rate',
+			'actions.profileCycle' => 'Profile cycle',
+			'actions.sniper' => 'Sniper',
+			'actions.macroPlay' => ({required Object id}) => 'Macro play (#${id})',
+			'deviceSetting.mouseFirmwareVersion' => 'Mouse Firmware Version',
+			'deviceSetting.dongleFirmwareVersion' => 'Dongle Firmware Version',
+			'deviceSetting.latestVersion' => 'Latest version',
+			'deviceSetting.checkUpdates' => 'Check updates',
+			'deviceSetting.newVersionUpdate' => 'New version & update',
+			'macro.startRecording' => 'Start Recording',
+			'macro.stopRecording' => 'Stop Recording',
+			'macro.record' => 'Record',
+			'macro.reset' => 'Reset',
+			'macro.noMacrosConfigured' => 'No macros configured',
+			'macro.createMacro' => 'Create Macro',
+			'macro.selectShortcutEdit' => 'Please select a shortcut to edit',
+			'macro.newMacro' => 'New Macro',
+			_ => null,
+		};
+	}
 }

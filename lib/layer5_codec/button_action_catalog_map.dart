@@ -63,14 +63,17 @@ class ButtonActionCatalogMap {
         // Determine tab index based on the catalog ID prefix
         final id = entry.key;
         int tabIndex;
-        if (id.startsWith('mouse.'))
+
+        // ✅ FIXED: Proper 'if' syntax
+        if (id.startsWith('mouse.')) {
           tabIndex = 0;
-        else if (id.startsWith('key.'))
+        } else if (id.startsWith('key.')) {
           tabIndex = 1;
-        else if (id.startsWith('special.'))
+        } else if (id.startsWith('special.')) {
           tabIndex = 2;
-        else
+        } else {
           tabIndex = 0; // fallback
+        }
 
         // For Special entries, handle modifiers and combos
         if (tabIndex == 2) {
@@ -95,9 +98,13 @@ class ButtonActionCatalogMap {
           }
           final modIds = <String>[];
           for (final entryMod in _modifierIdToByte.entries) {
-            if (entryMod.value == param2) modIds.add(entryMod.key);
-            if (entryMod.value == param3 && param3 != 0)
+            if (entryMod.value == param2) {
               modIds.add(entryMod.key);
+            }
+            // ✅ FIXED: Added braces to satisfy linter rule
+            if (entryMod.value == param3 && param3 != 0) {
+              modIds.add(entryMod.key);
+            }
           }
           return SlotInfo(
             tabIndex: tabIndex,

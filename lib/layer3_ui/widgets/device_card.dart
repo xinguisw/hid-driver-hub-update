@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:driver_hub/layer4_domain/models/discovered_card_state.dart';
 
 /// Modern grid‑style device card with hover effects, keyboard detection,
@@ -41,6 +42,11 @@ class _DeviceCardState extends State<DeviceCard> {
     final cardHeight = widget.height ?? 450.0;
 
     final theme = Theme.of(context);
+
+    // 🎨 Determine light/dark mode variant suffix for assets
+    final isDark = theme.brightness == Brightness.dark;
+    final suffix = isDark ? 'white' : 'black';
+
     final borderColor = _isHovered
         ? theme.colorScheme.primary
         : theme.colorScheme.outline;
@@ -91,17 +97,17 @@ class _DeviceCardState extends State<DeviceCard> {
                               return Image.asset(
                                 'assets/images/m7xse/small.png',
                                 fit: BoxFit.contain,
-                                errorBuilder: (_, _, _) => Icon(
-                                  Icons.mouse_outlined,
-                                  size: 90,
-                                  color: iconColor.withValues(alpha: 0.5),
+                                errorBuilder: (_, _, _) => SvgPicture.asset(
+                                  'assets/images/mouse_$suffix.svg',
+                                  width: 90,
+                                  height: 90,
                                 ),
                               );
                             }
-                            return Icon(
-                              Icons.keyboard_outlined,
-                              size: 110,
-                              color: iconColor.withValues(alpha: 0.5),
+                            return SvgPicture.asset(
+                              'assets/images/mouse_$suffix.svg',
+                              width: 110,
+                              height: 110,
                             );
                           },
                         ),
@@ -124,25 +130,29 @@ class _DeviceCardState extends State<DeviceCard> {
                   ),
                   const SizedBox(height: 6),
 
-                  // ---- Status row: Mode icon + Battery icon + Battery text ----
+                  // ---- Status row: Mode SVG + Battery SVG + Battery text ----
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // Connection mode
-                      Icon(
+                      // Connection mode icon (USB or 2.4G)
+                      SvgPicture.asset(
                         widget.state.connectionMode == 0
-                            ? Icons.cable
-                            : Icons.wifi,
-                        size: 22,
-                        color: iconColor,
+                            ? 'assets/images/usb_$suffix.svg'
+                            : 'assets/images/2p4g_$suffix.svg',
+                        width: 22,
+                        height: 22,
                       ),
                       const SizedBox(width: 16),
 
-                      // Battery icon
-                      Icon(_batteryIcon, size: 22, color: iconColor),
+                      // Battery status icon SVG
+                      SvgPicture.asset(
+                        _getBatterySvgPath(suffix),
+                        width: 22,
+                        height: 22,
+                      ),
                       const SizedBox(width: 6),
 
-                      // Battery percentage text (with charging indicator)
+                      // Battery percentage text
                       Text(
                         _batteryLabel,
                         style: TextStyle(
@@ -162,22 +172,21 @@ class _DeviceCardState extends State<DeviceCard> {
     );
   }
 
-  /// Battery icon logic (unchanged from Version 2)
-  IconData get _batteryIcon {
+  /// Maps battery state and theme to the corresponding SVG path
+  String _getBatterySvgPath(String suffix) {
     if (widget.state.isCharging) {
-      return Icons.battery_charging_full;
+      return 'assets/images/battery_charging_$suffix.svg';
     }
     final pct = widget.state.batteryPercentage;
-    if (pct < 0) return Icons.battery_unknown;
-    if (pct >= 90) return Icons.battery_full;
-    if (pct >= 70) return Icons.battery_5_bar;
-    if (pct >= 50) return Icons.battery_4_bar;
-    if (pct >= 30) return Icons.battery_2_bar;
-    if (pct >= 10) return Icons.battery_1_bar;
-    return Icons.battery_alert;
+    if (pct < 0) return 'assets/images/battery_alert_$suffix.svg';
+    if (pct >= 85) return 'assets/images/battery_100_$suffix.svg';
+    if (pct >= 60) return 'assets/images/battery_75_$suffix.svg';
+    if (pct >= 35) return 'assets/images/battery_50_$suffix.svg';
+    if (pct >= 15) return 'assets/images/battery_25_$suffix.svg';
+    return 'assets/images/battery_alert_$suffix.svg';
   }
 
-  /// Battery label (from Version 1, adapted)
+  /// Battery percentage text label
   String get _batteryLabel {
     if (widget.state.batteryPercentage < 0) return '—';
     final pct = '${widget.state.batteryPercentage}%';

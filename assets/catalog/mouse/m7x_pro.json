@@ -19,7 +19,7 @@
         "labelKey": "button.right_click",
         "remappable": true,
         "hotspot": {
-          "x": 0.60,
+          "x": 0.64,
           "y": 0.21,
           "r": 0.025
         }
@@ -29,7 +29,7 @@
         "labelKey": "button.middle_click",
         "remappable": true,
         "hotspot": {
-          "x": 0.52,
+          "x": 0.51,
           "y": 0.25,
           "r": 0.025
         }

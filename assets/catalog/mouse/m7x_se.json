@@ -19,7 +19,7 @@
         "labelKey": "button.right_click",
         "remappable": true,
         "hotspot": {
-          "x": 0.60,
+          "x": 0.64,
           "y": 0.21,
           "r": 0.025
         }

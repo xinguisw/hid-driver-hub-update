@@ -64,7 +64,7 @@ class _HubLeftSidebarState extends State<HubLeftSidebar> {
             // ---- Device Header ----
             Padding(
               padding: const EdgeInsets.fromLTRB(8, 12, 8, 8),
-              child: _deviceHeader(theme, suffix),
+              child: _deviceHeader(theme),
             ),
 
             // ---- Destination List ----
@@ -131,7 +131,7 @@ class _HubLeftSidebarState extends State<HubLeftSidebar> {
   }
 
   /// Animated device header transition
-  Widget _deviceHeader(ThemeData theme, String suffix) {
+  Widget _deviceHeader(ThemeData theme) {
     return InkWell(
       borderRadius: BorderRadius.circular(12),
       onTap: widget.onDeviceTap,
@@ -144,15 +144,15 @@ class _HubLeftSidebarState extends State<HubLeftSidebar> {
           crossFadeState: _extended
               ? CrossFadeState.showFirst
               : CrossFadeState.showSecond,
-          firstChild: _expandedHeaderContent(theme, suffix),
-          secondChild: _collapsedHeaderContent(theme, suffix),
+          firstChild: _expandedHeaderContent(theme),
+          secondChild: _collapsedHeaderContent(theme),
         ),
       ),
     );
   }
 
   /// Expanded Header View
-  Widget _expandedHeaderContent(ThemeData theme, String suffix) {
+  Widget _expandedHeaderContent(ThemeData theme) {
     final subStyle = theme.textTheme.bodySmall?.copyWith(
       color: theme.colorScheme.onSurfaceVariant,
     );
@@ -162,17 +162,19 @@ class _HubLeftSidebarState extends State<HubLeftSidebar> {
       children: [
         Row(
           children: [
-            SvgPicture.asset(
-              widget.card.connectionMode == 0
-                  ? 'assets/images/usb_$suffix.svg'
-                  : 'assets/images/2p4g_$suffix.svg',
-              width: 16,
-              height: 16,
+            Icon(
+              widget.card.connectionMode == 0 ? Icons.cable : Icons.wifi,
+              size: 16,
+              color: theme.colorScheme.onSurfaceVariant,
             ),
             const SizedBox(width: 4),
             Text(_modeLabel, style: subStyle),
             const SizedBox(width: 12),
-            SvgPicture.asset(_getBatterySvgPath(suffix), width: 16, height: 16),
+            Icon(
+              _batteryIcon,
+              size: 16,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
             const SizedBox(width: 4),
             Text(_batteryLabel, style: subStyle),
           ],
@@ -191,15 +193,15 @@ class _HubLeftSidebarState extends State<HubLeftSidebar> {
   }
 
   /// Collapsed Header View
-  Widget _collapsedHeaderContent(ThemeData theme, String suffix) {
+  Widget _collapsedHeaderContent(ThemeData theme) {
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          SvgPicture.asset(
-            'assets/images/mouse_$suffix.svg',
-            width: 22,
-            height: 22,
+          Icon(
+            Icons.mouse,
+            size: 22,
+            color: theme.colorScheme.onSurfaceVariant,
           ),
           const SizedBox(height: 4),
           Text(
@@ -237,27 +239,28 @@ class _HubLeftSidebarState extends State<HubLeftSidebar> {
     return t.sidebar.batteryLabel(pct: pct.toString());
   }
 
-  String _getBatterySvgPath(String suffix) {
+  /// Maps battery state to the corresponding Material icon.
+  IconData get _batteryIcon {
     if (widget.card.isCharging) {
-      return 'assets/images/battery_charging_$suffix.svg';
+      return Icons.battery_charging_full;
     }
     final pct = widget.card.batteryPercentage;
     if (pct < 0) {
-      return 'assets/images/battery_alert_$suffix.svg';
+      return Icons.battery_alert;
     }
     if (pct >= 85) {
-      return 'assets/images/battery_100_$suffix.svg';
+      return Icons.battery_full;
     }
     if (pct >= 60) {
-      return 'assets/images/battery_75_$suffix.svg';
+      return Icons.battery_5_bar;
     }
     if (pct >= 35) {
-      return 'assets/images/battery_50_$suffix.svg';
+      return Icons.battery_3_bar;
     }
     if (pct >= 15) {
-      return 'assets/images/battery_25_$suffix.svg';
+      return Icons.battery_1_bar;
     }
-    return 'assets/images/battery_alert_$suffix.svg';
+    return Icons.battery_alert;
   }
 
   /// Destination row with fixed icon slot and fading label

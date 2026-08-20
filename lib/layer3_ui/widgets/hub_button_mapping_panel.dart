@@ -178,7 +178,8 @@ class _HubButtonMappingPanelState extends State<HubButtonMappingPanel> {
     final raw = event.character;
     if (raw != null &&
         raw.isNotEmpty &&
-        raw.characters.first.codeUnitAt(0) >= 0x20) {
+        raw.characters.first.codeUnitAt(0) > 0x20 &&
+        event.logicalKey != LogicalKeyboardKey.space) {
       ch = raw.characters.first;
     } else {
       // Map logical keys to their character representations
@@ -206,7 +207,7 @@ class _HubButtonMappingPanelState extends State<HubButtonMappingPanel> {
     LogicalKeyboardKey.enter: 'Enter',
     LogicalKeyboardKey.tab: 'Tab',
     LogicalKeyboardKey.backspace: 'Backspace',
-    LogicalKeyboardKey.space: ' ',
+    LogicalKeyboardKey.space: 'Space',
     LogicalKeyboardKey.arrowUp: '↑',
     LogicalKeyboardKey.arrowDown: '↓',
     LogicalKeyboardKey.arrowLeft: '←',
@@ -650,6 +651,7 @@ class _SpecialCombinationBody extends StatelessWidget {
                     borderRadius: BorderRadius.circular(6),
                     child: InkWell(
                       onTap: onAnyKeyTap,
+                      canRequestFocus: false,
                       borderRadius: BorderRadius.circular(6),
                       child: SizedBox(
                         height: 32,

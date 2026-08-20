@@ -44,7 +44,7 @@ Future<void> main(List<String> args) async {
 
     await windowManager.ensureInitialized();
 
-    // 👇 NEW: Hide the default title bar and make window frameless
+    //  Hide the default title bar and make window frameless
     await windowManager.setTitleBarStyle(
       TitleBarStyle.hidden,
       windowButtonVisibility: false, // hides native min/max/close

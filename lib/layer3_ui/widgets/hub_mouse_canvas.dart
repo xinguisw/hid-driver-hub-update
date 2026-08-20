@@ -106,29 +106,29 @@ class _HubMouseCanvasState extends State<HubMouseCanvas> {
           paneSize,
         );
 
-        return Column(
-          children: [
-            // -----------------------------------------------------------------
-            // 1. MOUSE CANVAS AREA
-            // -----------------------------------------------------------------
-            Expanded(
-              child: MouseRegion(
-                cursor: _hoveredButtonId != null
-                    ? SystemMouseCursors.click
-                    : SystemMouseCursors.basic,
-                onHover: (event) {
-                  final id = _hitButtonId(targets, event.localPosition);
-                  if (id != _hoveredButtonId) {
-                    setState(() => _hoveredButtonId = id);
-                  }
-                },
-                onExit: (_) {
-                  if (_hoveredButtonId != null) {
-                    setState(() => _hoveredButtonId = null);
-                  }
-                },
-                child: TapRegion(
-                  groupId: hubButtonMappingTapRegionId,
+        return TapRegion(
+          groupId: hubButtonMappingTapRegionId,
+          child: Column(
+            children: [
+              // -----------------------------------------------------------------
+              // 1. MOUSE CANVAS AREA
+              // -----------------------------------------------------------------
+              Expanded(
+                child: MouseRegion(
+                  cursor: _hoveredButtonId != null
+                      ? SystemMouseCursors.click
+                      : SystemMouseCursors.basic,
+                  onHover: (event) {
+                    final id = _hitButtonId(targets, event.localPosition);
+                    if (id != _hoveredButtonId) {
+                      setState(() => _hoveredButtonId = id);
+                    }
+                  },
+                  onExit: (_) {
+                    if (_hoveredButtonId != null) {
+                      setState(() => _hoveredButtonId = null);
+                    }
+                  },
                   child: GestureDetector(
                     behavior: HitTestBehavior.opaque,
                     onTapUp: (details) {
@@ -170,65 +170,62 @@ class _HubMouseCanvasState extends State<HubMouseCanvas> {
                   ),
                 ),
               ),
-            ),
 
-            // -----------------------------------------------------------------
-            // 2. BOTTOM ACTIONS BAR
-            // -----------------------------------------------------------------
-            Padding(
-              padding: const EdgeInsets.only(bottom: 24, top: 12),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // RESET TO DEFAULT (ALWAYS VISIBLE)
-                  OutlinedButton(
-                    onPressed: widget.onResetToDefault,
-                    style: OutlinedButton.styleFrom(
-                      shape: const StadiumBorder(),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 12,
+              // -----------------------------------------------------------------
+              // 2. BOTTOM ACTIONS BAR
+              // -----------------------------------------------------------------
+              Padding(
+                padding: const EdgeInsets.only(bottom: 24, top: 12),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    OutlinedButton(
+                      onPressed: widget.onResetToDefault,
+                      style: OutlinedButton.styleFrom(
+                        shape: const StadiumBorder(),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 12,
+                        ),
                       ),
+                      child: Text(t.common.resetToDefault),
                     ),
-                    child: Text(t.common.resetToDefault),
-                  ),
-
-                  // SAVE & CANCEL (VISIBLE ONLY WHEN A BUTTON IS SELECTED)
-                  if (widget.selectedButtonId != null) ...[
-                    const SizedBox(height: 12),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        FilledButton(
-                          onPressed: widget.onSave,
-                          style: FilledButton.styleFrom(
-                            shape: const StadiumBorder(),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 24,
-                              vertical: 10,
+                    if (widget.isDirty) ...[
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          FilledButton(
+                            onPressed: widget.onSave,
+                            style: FilledButton.styleFrom(
+                              shape: const StadiumBorder(),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 24,
+                                vertical: 10,
+                              ),
                             ),
+                            child: Text(t.common.save),
                           ),
-                          child: Text(t.common.save),
-                        ),
-                        const SizedBox(width: 12),
-                        OutlinedButton(
-                          onPressed: () => widget.onBackgroundTap?.call(),
-                          style: OutlinedButton.styleFrom(
-                            shape: const StadiumBorder(),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 24,
-                              vertical: 10,
+                          const SizedBox(width: 12),
+                          OutlinedButton(
+                            onPressed: widget.onCancel,
+                            style: OutlinedButton.styleFrom(
+                              shape: const StadiumBorder(),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 24,
+                                vertical: 10,
+                              ),
                             ),
+                            child: Text(t.common.cancel),
                           ),
-                          child: Text(t.common.cancel),
-                        ),
-                      ],
-                    ),
+                        ],
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         );
       },
     );

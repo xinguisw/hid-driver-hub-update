@@ -43,7 +43,7 @@ class _DeviceCardState extends State<DeviceCard> {
 
     final theme = Theme.of(context);
 
-    // 🎨 Determine light/dark mode variant suffix for assets
+    //  Determine light/dark mode variant suffix for assets
     final isDark = theme.brightness == Brightness.dark;
     final suffix = isDark ? 'white' : 'black';
 

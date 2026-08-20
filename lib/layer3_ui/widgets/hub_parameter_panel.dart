@@ -6,6 +6,10 @@ import 'package:flutter/material.dart';
 /// L3 only. Dispatches events to BLoC.
 /// Structure: outer group container → rows inside.
 /// All rows are data-driven for future L2 capability filtering.
+///
+/// NOTE: this file only restyles presentation (spacing, typography, shapes,
+/// chip/stepper look). Public API, gating logic, and callback wiring are
+/// unchanged from the previous version.
 class HubParameterPanel extends StatelessWidget {
   const HubParameterPanel({
     super.key,
@@ -86,13 +90,13 @@ class HubParameterPanel extends StatelessWidget {
     final hasOtherContent = hasButtonDebounce || hasWheelInvert || hasSleepTime;
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (hasSensorContent) ...[
-            const Text('Sensor feature'),
-            const SizedBox(height: 8),
+            const _SectionHeader(title: 'Sensor feature'),
+            const SizedBox(height: 10),
             _SensorFeatureGroup(
               lodOptions: lodOptions ?? const [],
               performanceOptions: performanceOptions ?? const [],
@@ -119,8 +123,8 @@ class HubParameterPanel extends StatelessWidget {
             const SizedBox(height: 24),
           ],
           if (hasOtherContent) ...[
-            const Text('Other feature'),
-            const SizedBox(height: 8),
+            const _SectionHeader(title: 'Other feature'),
+            const SizedBox(height: 10),
             _OtherFeatureGroup(
               buttonDebounceOptions: buttonDebounceOptions ?? const [],
               sleepTimeOptions: sleepTimeOptions ?? const [],
@@ -137,6 +141,91 @@ class HubParameterPanel extends StatelessWidget {
           ],
         ],
       ),
+    );
+  }
+}
+
+/// Section label with a small accent bar, used above each feature group.
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader({required this.title});
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Row(
+      children: [
+        Container(
+          width: 3,
+          height: 14,
+          decoration: BoxDecoration(
+            color: theme.colorScheme.primary,
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          title,
+          style: theme.textTheme.titleSmall?.copyWith(
+            fontWeight: FontWeight.w700,
+            color: theme.colorScheme.onSurface,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Title + optional icon + optional one-line hint text, stacked. Shared
+/// across the sensor and other-feature boxes so every control gets the
+/// same label styling.
+class _FieldTitle extends StatelessWidget {
+  const _FieldTitle({required this.title, this.description, this.icon});
+
+  final String title;
+  final String? description;
+
+  /// Small leading glyph shown before the title, matching the icon-per-row
+  /// style of the reference design.
+  final IconData? icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (icon != null) ...[
+              Icon(icon, size: 18, color: theme.colorScheme.onSurface),
+              const SizedBox(width: 8),
+            ],
+            Flexible(
+              child: Text(
+                title,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: theme.colorScheme.onSurface,
+                ),
+              ),
+            ),
+          ],
+        ),
+        if (description != null) ...[
+          const SizedBox(height: 4),
+          Text(
+            description!,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              height: 1.3,
+            ),
+          ),
+        ],
+      ],
     );
   }
 }
@@ -189,10 +278,10 @@ class _SensorFeatureGroup extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: theme.colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -210,7 +299,7 @@ class _SensorFeatureGroup extends StatelessWidget {
                     onAngleSnapChanged: onAngleSnapChanged,
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 12),
               ],
               if (hasLod) ...[
                 Expanded(
@@ -220,7 +309,7 @@ class _SensorFeatureGroup extends StatelessWidget {
                     onLodChanged: onLodChanged,
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 12),
               ],
               if (hasAngleTune) ...[
                 Expanded(
@@ -236,7 +325,7 @@ class _SensorFeatureGroup extends StatelessWidget {
             ],
           ),
           if (hasPerformance) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             _PerformanceRow(
               options: performanceOptions,
               performance: performance,
@@ -266,22 +355,44 @@ class _SensorTuningBox extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Container(
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              const Expanded(child: Text('Ripple Control')),
+              const Expanded(
+                child: _FieldTitle(
+                  title: 'Ripple Control',
+                  description:
+                      'Smooths out micro-movements to reduce cursor jitter at high sensitivity.',
+                  icon: Icons.waves,
+                ),
+              ),
               Switch(value: rippleOn, onChanged: onRippleChanged),
             ],
           ),
+          const SizedBox(height: 12),
+          Divider(
+            height: 1,
+            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
+          ),
+          const SizedBox(height: 12),
           Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              const Expanded(child: Text('Angle Snap')),
+              const Expanded(
+                child: _FieldTitle(
+                  title: 'Angle Snap',
+                  description:
+                      'Forces horizontal or vertical movement to follow a perfect straight line.',
+                  icon: Icons.straighten,
+                ),
+              ),
               Switch(value: angleSnapOn, onChanged: onAngleSnapChanged),
             ],
           ),
@@ -306,35 +417,52 @@ class _LodBox extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Container(
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(12),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('LOD'),
-          const SizedBox(width: 8),
-          Expanded(
-            child: RadioGroup<int>(
-              groupValue: lodMm,
-              // why: RadioGroup always fires with a value; null only means
-              // deselected, which a radio group cannot reach on its own.
-              onChanged: (value) {
-                if (value != null) onLodChanged?.call(value);
-              },
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  for (final opt in options)
-                    Row(
+          const _FieldTitle(
+            title: 'LOD',
+            description:
+                'The height at which the sensor stops tracking when you lift the mouse.',
+            icon: Icons.arrow_upward,
+          ),
+          const SizedBox(height: 12),
+          RadioGroup<int>(
+            groupValue: lodMm,
+            // why: RadioGroup always fires with a value; null only means
+            // deselected, which a radio group cannot reach on its own.
+            onChanged: (value) {
+              if (value != null) onLodChanged?.call(value);
+            },
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (final opt in options)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 2),
+                    child: Row(
                       children: [
-                        Radio<int>(value: opt.wire),
-                        Text('${opt.mm}mm'),
+                        SizedBox(
+                          height: 24,
+                          width: 24,
+                          child: Radio<int>(
+                            value: opt.wire,
+                            visualDensity: VisualDensity.compact,
+                            materialTapTargetSize:
+                                MaterialTapTargetSize.shrinkWrap,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text('${opt.mm}mm', style: theme.textTheme.bodyMedium),
                       ],
                     ),
-                ],
-              ),
+                  ),
+              ],
             ),
           ),
         ],
@@ -362,42 +490,80 @@ class _AngleTuneBox extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Container(
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              const Expanded(child: Text('Angle Tune')),
+              const Expanded(
+                child: _FieldTitle(
+                  title: 'Angle Tune',
+                  description:
+                      'Rotates the tracking axis to match your natural hand grip angle.',
+                  icon: Icons.rotate_right,
+                ),
+              ),
               Switch(value: angleTuneOn, onChanged: onAngleTuneToggled),
             ],
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 10),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              InkWell(
+              _StepperButton(
+                icon: Icons.chevron_left,
                 onTap: onAngleTuneDecrement,
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 8),
-                  child: Text('<'),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Text(
+                  angleTuneLabel,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: theme.colorScheme.onSurface,
+                  ),
                 ),
               ),
-              Text(angleTuneLabel),
-              InkWell(
+              _StepperButton(
+                icon: Icons.chevron_right,
                 onTap: onAngleTuneIncrement,
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 8),
-                  child: Text('>'),
-                ),
               ),
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Small circular icon button used for the angle-tune stepper controls.
+class _StepperButton extends StatelessWidget {
+  const _StepperButton({required this.icon, this.onTap});
+
+  final IconData icon;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return InkWell(
+      onTap: onTap,
+      customBorder: const CircleBorder(),
+      child: Container(
+        width: 28,
+        height: 28,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surfaceContainerHighest,
+          shape: BoxShape.circle,
+        ),
+        child: Icon(icon, size: 16, color: theme.colorScheme.onSurface),
       ),
     );
   }
@@ -418,30 +584,34 @@ class _PerformanceRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Container(
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(12),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Performance'),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (final wire in options)
-                  _SelectableChip(
-                    label: _performanceLabel(wire),
-                    selected: performance == wire,
-                    onTap: onPerformanceChanged == null
-                        ? null
-                        : () => onPerformanceChanged!(wire),
-                  ),
-              ],
-            ),
+          const _FieldTitle(
+            title: 'Performance',
+            description:
+                'Optimizes the sensor between maximum speed and power efficiency.',
+            icon: Icons.speed,
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              for (final wire in options)
+                _SelectableChip(
+                  label: _performanceLabel(wire),
+                  selected: performance == wire,
+                  onTap: onPerformanceChanged == null
+                      ? null
+                      : () => onPerformanceChanged!(wire),
+                ),
+            ],
           ),
         ],
       ),
@@ -493,10 +663,10 @@ class _OtherFeatureGroup extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: theme.colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -509,12 +679,15 @@ class _OtherFeatureGroup extends StatelessWidget {
                   flex: 2,
                   child: _OptionsBox(
                     title: 'Button debounce',
+                    description:
+                        'Filters out unintended double-clicks caused by mechanical switch bounce.',
+                    icon: Icons.timer,
                     options: buttonDebounceOptions,
                     selectedWire: debounceMs,
                     onSelected: onDebounceChanged,
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 12),
               ],
               if (hasWheelInvert) ...[
                 Expanded(
@@ -527,7 +700,7 @@ class _OtherFeatureGroup extends StatelessWidget {
             ],
           ),
           if (hasSleepTime) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -535,12 +708,15 @@ class _OtherFeatureGroup extends StatelessWidget {
                   flex: 2,
                   child: _OptionsBox(
                     title: 'Sleep time',
+                    description:
+                        'How long the mouse waits before entering low-power sleep mode.',
+                    icon: Icons.bedtime,
                     options: sleepTimeOptions,
                     selectedWire: sleepSeconds,
                     onSelected: onSleepChanged,
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 12),
                 const Expanded(child: SizedBox()),
               ],
             ),
@@ -554,12 +730,20 @@ class _OtherFeatureGroup extends StatelessWidget {
 class _OptionsBox extends StatelessWidget {
   const _OptionsBox({
     required this.title,
+    this.description,
+    this.icon,
     required this.options,
     this.selectedWire,
     this.onSelected,
   });
 
   final String title;
+
+  /// One-line hint shown under the title, explaining what the setting does.
+  final String? description;
+
+  /// Small leading glyph shown before the title.
+  final IconData? icon;
   final List<SettingsOptionData> options;
 
   /// Wire value of the currently selected option (if any).
@@ -571,19 +755,19 @@ class _OptionsBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title),
-          const SizedBox(height: 8),
+          _FieldTitle(title: title, description: description, icon: icon),
+          const SizedBox(height: 12),
           Wrap(
-            spacing: 8,
-            runSpacing: 8,
+            spacing: 10,
+            runSpacing: 10,
             children: [
               for (final opt in options)
                 _SelectableChip(
@@ -614,19 +798,24 @@ class _WheelBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Wheel direction'),
-          const SizedBox(height: 8),
+          const _FieldTitle(
+            title: 'Wheel direction',
+            description:
+                'Reverses the physical scroll wheel direction to your preferred workflow.',
+            icon: Icons.sync_alt,
+          ),
+          const SizedBox(height: 12),
           Wrap(
-            spacing: 8,
-            runSpacing: 8,
+            spacing: 10,
+            runSpacing: 10,
             children: [
               _SelectableChip(
                 label: 'Forward',
@@ -652,7 +841,8 @@ class _WheelBox extends StatelessWidget {
   }
 }
 
-/// Tappable chip that highlights when [selected].
+/// Tappable pill that highlights when [selected] — used for every chip-style
+/// option group (performance, debounce, sleep time, wheel direction).
 class _SelectableChip extends StatelessWidget {
   const _SelectableChip({
     required this.label,
@@ -669,25 +859,24 @@ class _SelectableChip extends StatelessWidget {
     final theme = Theme.of(context);
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(4),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      borderRadius: BorderRadius.circular(10),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
           color: selected
               ? theme.colorScheme.secondaryContainer
-              : Colors.transparent,
-          border: Border.all(
-            color: selected
-                ? theme.colorScheme.secondary
-                : theme.colorScheme.outline,
-          ),
-          borderRadius: BorderRadius.circular(4),
+              : theme.colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(10),
         ),
         child: Text(
           label,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+          style: theme.textTheme.bodySmall?.copyWith(
+            fontSize: 13,
+            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+            color: selected
+                ? theme.colorScheme.onSecondaryContainer
+                : theme.colorScheme.onSurfaceVariant,
           ),
         ),
       ),

@@ -1,6 +1,7 @@
 import 'package:driver_hub/layer4_domain/models/device_settings_state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 /// Backlight Setting page — RGB backlight controls.
 ///
@@ -334,7 +335,7 @@ class _ColorBoxState extends State<_ColorBox> {
                       vertical: 8,
                     ),
                   ),
-                  style: const TextStyle(fontSize: 13, fontFamily: 'monospace'),
+                  style: GoogleFonts.poppins(fontSize: 14),
                   onSubmitted: _onHexSubmitted,
                 ),
               ),

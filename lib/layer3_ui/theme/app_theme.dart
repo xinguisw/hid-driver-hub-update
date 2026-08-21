@@ -122,24 +122,35 @@ abstract class AppTheme {
       ),
       titleSmall: poppinsTheme.titleSmall?.copyWith(
         fontWeight: FontWeight.w500,
+        fontSize: 14.0,
       ),
 
-      // Body text stays regular (w400) for maximum readability
-      bodyLarge: poppinsTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w400),
+      // Body text stays regular (w400) for maximum readability and default size of 14.0
+      bodyLarge: poppinsTheme.bodyLarge?.copyWith(
+        fontWeight: FontWeight.w400,
+        fontSize: 14.0,
+      ),
       bodyMedium: poppinsTheme.bodyMedium?.copyWith(
         fontWeight: FontWeight.w400,
+        fontSize: 14.0,
       ),
-      bodySmall: poppinsTheme.bodySmall?.copyWith(fontWeight: FontWeight.w400),
+      bodySmall: poppinsTheme.bodySmall?.copyWith(
+        fontWeight: FontWeight.w400,
+        fontSize: 14.0,
+      ),
 
-      // UI Labels & Buttons use medium
+      // UI Labels & Buttons use medium and default size of 14.0
       labelLarge: poppinsTheme.labelLarge?.copyWith(
         fontWeight: FontWeight.w500,
+        fontSize: 14.0,
       ),
       labelMedium: poppinsTheme.labelMedium?.copyWith(
         fontWeight: FontWeight.w500,
+        fontSize: 14.0,
       ),
       labelSmall: poppinsTheme.labelSmall?.copyWith(
         fontWeight: FontWeight.w500,
+        fontSize: 14.0,
       ),
     );
   }

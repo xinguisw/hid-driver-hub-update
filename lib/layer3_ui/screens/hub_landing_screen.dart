@@ -1202,8 +1202,11 @@ class _PerformanceActionBar extends StatelessWidget {
             onPressed: committing ? null : onReset,
             style: OutlinedButton.styleFrom(
               foregroundColor: theme.colorScheme.onSurface,
-              side: BorderSide(color: theme.colorScheme.outline),
+              side: BorderSide(color: theme.colorScheme.outline, width: 2.0),
               shape: const StadiumBorder(),
+              textStyle: theme.textTheme.labelLarge?.copyWith(
+                fontWeight: FontWeight.w500,
+              ),
             ),
             child: const Text('Reset to Default'),
           ),

@@ -182,15 +182,18 @@ class _HubMouseCanvasState extends State<HubMouseCanvas> {
                     OutlinedButton(
                       onPressed: widget.onResetToDefault,
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: isDark ? Colors.white : Colors.black,
+                        foregroundColor: theme.colorScheme.onSurface,
                         side: BorderSide(
-                          color: isDark ? Colors.white : Colors.black,
+                          color: theme.colorScheme.outline,
                           width: 2.0,
                         ),
                         shape: const StadiumBorder(),
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 24,
-                          vertical: 12,
+                          horizontal: 20,
+                          vertical: 10,
+                        ),
+                        textStyle: theme.textTheme.labelLarge?.copyWith(
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                       child: Text(t.common.resetToDefault),

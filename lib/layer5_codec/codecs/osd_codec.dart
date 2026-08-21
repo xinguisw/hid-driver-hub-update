@@ -95,10 +95,13 @@ class OsdCodec {
   Uint8List? _extractBody(Uint8List raw) {
     if (raw.length < 4) return null;
 
-    // Pattern 1a: Report ID 0x09 prepended before opcode (0x01 or 0x02)
-    if (raw[0] == reportId &&
-        (raw[1] == opcodeDpiRate || raw[1] == opcodeBattery)) {
-      return Uint8List.sublistView(raw, 1);
+    // Pattern 1a: Scan for Report ID 0x09 prepended before opcode (0x01 or 0x02) anywhere in the buffer.
+    final idx9 = raw.indexOf(reportId);
+    if (idx9 >= 0 && idx9 + 4 <= raw.length) {
+      final next = raw[idx9 + 1];
+      if (next == opcodeDpiRate || next == opcodeBattery) {
+        return Uint8List.sublistView(raw, idx9 + 1);
+      }
     }
 
     // Pattern 1b: Report ID 0x01 prepended before opcode (0x01 or 0x02) AND reserved byte 0x00

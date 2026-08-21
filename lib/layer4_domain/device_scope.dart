@@ -163,10 +163,9 @@ class DeviceScope {
     busy.value = true;
     try {
       final devices = await _runtime.discoverAuthorized();
-      for (final d in devices) {
-        await _startAndRegister(d);
-      }
-    } catch (_) {
+      await Future.wait(devices.map((d) => _startAndRegister(d)));
+    } catch (e) {
+      debugPrint('[scope] probeExisting error: $e');
     } finally {
       busy.value = false;
     }
@@ -179,45 +178,62 @@ class DeviceScope {
     busy.value = true;
     try {
       final devices = await _runtime.discover();
-      for (final d in devices) {
-        await _startAndRegister(d);
-      }
-    } catch (_) {
+      await Future.wait(devices.map((d) => _startAndRegister(d)));
+    } catch (e) {
+      debugPrint('[scope] addDevice error: $e');
     } finally {
       busy.value = false;
     }
   }
 
   Future<void> _startAndRegister(DiscoveredDevice d) async {
-    final session = await _runtime.openAndRegister(d);
-    if (session == null) return;
-    await _publishCard(session);
+    try {
+      final session = await _runtime.openAndRegister(d);
+      if (session == null) return;
+      await _publishCard(session);
+    } catch (e) {
+      debugPrint(
+        '[scope] failed to start and register device ${d.entry.model}: $e',
+      );
+    }
   }
 
-  /// Queries battery (A4) and firmware (A8) before publishing. Called from
-  /// [_startAndRegister] (launch/scan) and watcher [onConnect] (hot-plug).
-  ///
-  /// Guards on the gateway's liveness after the awaits: if the device
-  /// disconnected mid-query the watcher already removed its card, so don't
-  /// re-add a stale one.
+  /// Mounts card immediately upon verification, then asynchronously hydrates
+  /// battery (A4) and firmware (A8) telemetry. Called from [_startAndRegister]
+  /// (launch/scan) and watcher [onConnect] (hot-plug).
   Future<void> _publishCard(DeviceSettingsGateway session) async {
-    final battery = await _queryBattery(session);
-    final firmware = await _queryFirmware(session);
     if (!session.isAlive) {
       debugPrint(
-        '[scope] ${session.info.displayName} gone mid-query, '
-        'skipping publish',
+        '[scope] ${session.info.displayName} not alive, skipping publish',
       );
       return;
     }
-    // Soft battery: always show card after verify; unknown battery is "—".
-    // Live updates after connect: OSD push only (no A4 poll).
-    // Onboard config GETs (B2/C2/…) only when user opens settings (card tap).
-    _upsert(session, battery, firmware);
-    if (battery != null) {
-      _evaluateLowBattery(session.info.deviceKey, battery);
-    }
+
+    // Step 1: Immediately publish card shell so UI card mounts instantly.
+    _upsert(session, null, null);
     _startLiveBattery(session);
+
+    // Step 2: Hydrate telemetry (battery & firmware) in background.
+    try {
+      final battery = await _queryBattery(session);
+      final firmware = await _queryFirmware(session);
+      if (!session.isAlive) {
+        debugPrint(
+          '[scope] ${session.info.displayName} gone mid-query, skipping update',
+        );
+        return;
+      }
+      if (battery != null || firmware != null) {
+        _upsert(session, battery, firmware);
+        if (battery != null) {
+          _evaluateLowBattery(session.info.deviceKey, battery);
+        }
+      }
+    } catch (e) {
+      debugPrint(
+        '[scope] telemetry query failed for ${session.info.displayName}: $e',
+      );
+    }
   }
 
   /// Whether this card still has a live session (for L3 disconnect / load guards).
@@ -648,27 +664,7 @@ class DeviceScope {
       );
     }
     const translate = TranslationCodec();
-    final c2Raw = raw.reportRateDpi;
-    final initialCount = (c2Raw != null && c2Raw.length == 3)
-        ? translate.dpiActiveMaskToCount(c2Raw[2])
-        : null;
 
-    // Rule 1: User adds new DPI level -> app ONLY sends C2 data!
-    final isAddOnly = initialCount != null && stagedLevels.length > initialCount;
-    if (isAddOnly) {
-      final latestRaw = _requireRawBlocks(card, 'commitDpiStages');
-      final c2 = latestRaw.reportRateDpi;
-      if (c2 == null || c2.length != 3) {
-        throw StateError('commitDpiStages: C2 raw block is unavailable');
-      }
-      final infoBlock = Uint8List.fromList(c2);
-      infoBlock[2] = (1 << activeCount) - 1;
-      await session.setReportRate(infoBlock);
-      _updateRawBlocks(card, latestRaw.copyWith(reportRateDpi: infoBlock));
-      return;
-    }
-
-    // Rule 2: User deletes DPI level -> app sends C2 & C4!
     final defaultDpi = capLevels.last.value;
     final defaultWire = translate.dpiDisplayToWireUnit(
       defaultDpi,
@@ -678,7 +674,7 @@ class DeviceScope {
       throw StateError('commitDpiStages: default DPI not encodable');
     }
 
-    // Build the full 8-slot wire table: active stages first, then default-fill.
+    // 1. Build the full 8-slot 0xC4 DPI values wire table: active stages first, then default-fill.
     final dataBlock = Uint8List(16);
     for (var i = 0; i < 8; i++) {
       final stage = i < stagedLevels.length ? stagedLevels[i] : null;
@@ -695,9 +691,20 @@ class DeviceScope {
       dataBlock[i * 2 + 1] = wire & 0xFF;
     }
     await session.setDpiTable(dataBlock);
-    _updateRawBlocks(card, raw.copyWith(dpiTable: dataBlock));
 
-    // 0xC2 active mask: first activeCount bits set.
+    // 2. Build the full 8-slot 0xC6 DPI RGB colors wire table: active stage colors first, then default-fill.
+    final rgbBlock = Uint8List(24);
+    for (var i = 0; i < 8; i++) {
+      final stage = i < stagedLevels.length ? stagedLevels[i] : null;
+      final colorHex = stage?.color ?? _defaultColorForSlot(capLevels, i);
+      final rgb = _hexToRgb(colorHex);
+      rgbBlock[i * 3] = rgb[0];
+      rgbBlock[i * 3 + 1] = rgb[1];
+      rgbBlock[i * 3 + 2] = rgb[2];
+    }
+    await session.setDpiRgb(rgbBlock);
+
+    // 3. 0xC2 active mask: first activeCount bits set.
     final latestRaw = _requireRawBlocks(card, 'commitDpiStages');
     final c2 = latestRaw.reportRateDpi;
     if (c2 == null || c2.length != 3) {
@@ -706,7 +713,26 @@ class DeviceScope {
     final infoBlock = Uint8List.fromList(c2);
     infoBlock[2] = (1 << activeCount) - 1;
     await session.setReportRate(infoBlock);
-    _updateRawBlocks(card, latestRaw.copyWith(reportRateDpi: infoBlock));
+
+    _updateRawBlocks(
+      card,
+      latestRaw.copyWith(
+        dpiTable: dataBlock,
+        dpiRgb: rgbBlock,
+        reportRateDpi: infoBlock,
+      ),
+    );
+  }
+
+  static String _defaultColorForSlot(
+    List<DpiLevel> capLevels,
+    int index,
+  ) {
+    if (index < capLevels.length) {
+      final c = capLevels[index].color;
+      if (c != null && c.isNotEmpty) return c;
+    }
+    return '#FFFFFF';
   }
 
   /// Commits the complete catalog default for the Performance page.
@@ -983,7 +1009,6 @@ class DeviceScope {
     }
     final dataBlock = await session.setRgbBacklightPatch(
       e2,
-      enabled: patch.enabled,
       modeId: patch.modeId,
       brightness: patch.brightness,
       speed: patch.speed,
@@ -999,7 +1024,10 @@ class DeviceScope {
   void putSettings(DiscoveredCardState card, DeviceSettingsState settings) {
     final path = _pathForCard(card);
     if (path == null) return;
-    _settings[path] = settings;
+    final current = _settings[path];
+    _settings[path] = current?.rawBlocks != null
+        ? settings.copyWith(rawBlocks: current!.rawBlocks)
+        : settings;
     settingsVersion.value++;
   }
 

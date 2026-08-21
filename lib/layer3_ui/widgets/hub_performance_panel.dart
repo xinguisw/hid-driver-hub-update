@@ -1,5 +1,6 @@
 import 'package:driver_hub/layer4_domain/models/device_settings_state.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 /// Performance Setting page — DPI levels + Report Rate.
 ///
@@ -293,7 +294,7 @@ class _DpiSliderRow extends StatelessWidget {
         ? null
         : ((max - min) ~/ step!).clamp(1, 1000);
     return Container(
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(6),
@@ -321,7 +322,13 @@ class _DpiSliderRow extends StatelessWidget {
               ],
               Text('DPI ${stage.level}'),
               const Spacer(),
-              Text('$stagedValue'),
+              _DpiStepperInput(
+                value: stagedValue,
+                min: min,
+                max: max,
+                step: step,
+                onChanged: onValueChanged,
+              ),
               if (onRemoveStage != null) ...[
                 const SizedBox(width: 8),
                 Tooltip(
@@ -640,6 +647,185 @@ class _ReportRateGroup extends StatelessWidget {
                     ),
                 ],
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Quantizes [rawValue] to the nearest valid step [step] above [min], clamped to [min..max].
+int snapToStep(int rawValue, {required int min, required int max, int? step}) {
+  final clamped = rawValue.clamp(min, max);
+  if (step == null || step <= 1) return clamped;
+  final stepsFromMin = ((clamped - min) / step).round();
+  final snapped = min + (stepsFromMin * step);
+  return snapped.clamp(min, max);
+}
+
+class _DpiStepperInput extends StatefulWidget {
+  const _DpiStepperInput({
+    required this.value,
+    required this.min,
+    required this.max,
+    this.step,
+    required this.onChanged,
+  });
+
+  final int value;
+  final int min;
+  final int max;
+  final int? step;
+  final ValueChanged<int> onChanged;
+
+  @override
+  State<_DpiStepperInput> createState() => _DpiStepperInputState();
+}
+
+class _DpiStepperInputState extends State<_DpiStepperInput> {
+  late TextEditingController _controller;
+  final FocusNode _focusNode = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: '${widget.value}');
+    _focusNode.addListener(_onFocusChange);
+  }
+
+  @override
+  void didUpdateWidget(_DpiStepperInput oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.value != widget.value && !_focusNode.hasFocus) {
+      _controller.text = '${widget.value}';
+    }
+  }
+
+  @override
+  void dispose() {
+    _focusNode.removeListener(_onFocusChange);
+    _focusNode.dispose();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _onFocusChange() {
+    if (!_focusNode.hasFocus) {
+      _submitCurrentText();
+    }
+  }
+
+  void _submitCurrentText() {
+    final parsed = int.tryParse(_controller.text) ?? widget.value;
+    final snapped = snapToStep(
+      parsed,
+      min: widget.min,
+      max: widget.max,
+      step: widget.step,
+    );
+    _controller.text = '$snapped';
+    if (snapped != widget.value) {
+      widget.onChanged(snapped);
+    }
+  }
+
+  void _stepBy(int delta) {
+    final stepSize = widget.step ?? 50;
+    final target = widget.value + (delta * stepSize);
+    final snapped = snapToStep(
+      target,
+      min: widget.min,
+      max: widget.max,
+      step: widget.step,
+    );
+    _controller.text = '$snapped';
+    if (snapped != widget.value) {
+      widget.onChanged(snapped);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      height: 26,
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: _focusNode.hasFocus
+              ? theme.colorScheme.primary
+              : theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 54,
+            child: TextField(
+              controller: _controller,
+              focusNode: _focusNode,
+              keyboardType: TextInputType.number,
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodySmall?.copyWith(
+                fontWeight: FontWeight.bold,
+                fontSize: 11,
+              ),
+              decoration: const InputDecoration(
+                isDense: true,
+                contentPadding: EdgeInsets.symmetric(horizontal: 2, vertical: 2),
+                border: InputBorder.none,
+              ),
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              onSubmitted: (_) => _submitCurrentText(),
+            ),
+          ),
+          Container(
+            width: 1,
+            height: 26,
+            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+          ),
+          SizedBox(
+            width: 22,
+            child: Column(
+              children: [
+                Expanded(
+                  child: InkWell(
+                    onTap: () => _stepBy(1),
+                    borderRadius: const BorderRadius.only(
+                      topRight: Radius.circular(6),
+                    ),
+                    child: Center(
+                      child: Icon(
+                        Icons.keyboard_arrow_up,
+                        size: 14,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                ),
+                Container(
+                  height: 1,
+                  color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
+                ),
+                Expanded(
+                  child: InkWell(
+                    onTap: () => _stepBy(-1),
+                    borderRadius: const BorderRadius.only(
+                      bottomRight: Radius.circular(6),
+                    ),
+                    child: Center(
+                      child: Icon(
+                        Icons.keyboard_arrow_down,
+                        size: 14,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],

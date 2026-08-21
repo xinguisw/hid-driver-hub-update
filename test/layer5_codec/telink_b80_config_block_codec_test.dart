@@ -44,7 +44,6 @@ void main() {
   test('encodes the complete documented E2 RGB-backlight block', () {
     expect(
       TelinkB80ConfigBlockCodec.encodeRgbBacklight(
-        enabled: true,
         modeId: 2,
         brightness: 3,
         speed: 4,
@@ -53,40 +52,19 @@ void main() {
         blue: 7,
         sleepWire: 8,
       ),
-      [0xFF, 2, 3, 4, 5, 6, 7, 8],
+      [2, 3, 4, 5, 6, 7, 8, 0x00],
     );
-  });
-
-  test('encodes a disabled backlight with the documented tri-state wire', () {
-    final block = TelinkB80ConfigBlockCodec.encodeRgbBacklight(
-      enabled: false,
-      modeId: 2,
-      brightness: 3,
-      speed: 4,
-      red: 5,
-      green: 6,
-      blue: 7,
-      sleepWire: 8,
-    );
-
-    expect(block.first, 0x0F);
-    expect(block.sublist(1), [2, 3, 4, 5, 6, 7, 8]);
   });
 
   test('patches only staged E2 fields and preserves unknown live bytes', () {
-    final current = <int>[0xFF, 0x02, 0x02, 0xFF, 0xFF, 0x00, 0x04, 0x00];
+    final current = <int>[0x02, 0x02, 0xFF, 0xFF, 0x00, 0x04, 0x00, 0x00];
 
     final brightnessOnly = TelinkB80ConfigBlockCodec.patchRgbBacklight(
       current,
       brightness: 4,
     );
-    final enableOnly = TelinkB80ConfigBlockCodec.patchRgbBacklight(
-      current,
-      enabled: true,
-    );
 
-    expect(brightnessOnly, [0xFF, 0x02, 0x04, 0xFF, 0xFF, 0x00, 0x04, 0x00]);
-    expect(enableOnly, [0xFF, 0x02, 0x02, 0xFF, 0xFF, 0x00, 0x04, 0x00]);
-    expect(current, [0xFF, 0x02, 0x02, 0xFF, 0xFF, 0x00, 0x04, 0x00]);
+    expect(brightnessOnly, [0x02, 0x04, 0xFF, 0xFF, 0x00, 0x04, 0x00, 0x00]);
+    expect(current, [0x02, 0x02, 0xFF, 0xFF, 0x00, 0x04, 0x00, 0x00]);
   });
 }

@@ -65,7 +65,7 @@ ButtonMappingSlot _slotEntry({
   return const ButtonMappingSlot(action: 0);
 }
 
-/// 1→0x02 … 6→0x0E (factory identity; params 0).
+/// 1→0x02, 2→0x03, 3→0x04, 4→0x05 (ACT_MOUSE_FORWARD), 5→0x06 (ACT_MOUSE_BACKWARD), 6→0x0E (factory identity; params 0).
 ButtonMappingSlot identityButtonMappingDefault(int buttonId) {
   final action = switch (buttonId) {
     1 => 0x02,

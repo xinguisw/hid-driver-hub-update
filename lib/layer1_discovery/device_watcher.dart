@@ -99,6 +99,9 @@ class DeviceWatcher {
     _sessions[session.device.hidDevice.path] = session;
   }
 
+  DeviceSession? getSession(String path) => _sessions[path];
+  bool hasSession(String path) => _sessions.containsKey(path);
+
   Future<void> _handleConnect(
     String path,
     int vid,

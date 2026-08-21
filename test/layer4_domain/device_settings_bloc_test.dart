@@ -882,6 +882,20 @@ void main() {
         expect(bloc.state.synced?.dpiLevels?.first.color, '#12ABEF');
         expect(bloc.state.dpiRgbStaging, isNull);
         expect(bloc.state.isDirty, false);
+
+        // Action 2: Change Level 2 color and save again sequentially
+        bloc.add(
+          const DeviceSettingsDpiColorRequested(level: 2, color: '#8C00FF'),
+        );
+        await pumpEventQueue();
+
+        bloc.add(const DeviceSettingsSaveDpiConfigurationRequested());
+        await pumpEventQueue();
+
+        expect(writtenRgbColors, containsPair(2, '#8C00FF'));
+        expect(bloc.state.synced?.dpiLevels?[0].color, '#12ABEF');
+        expect(bloc.state.synced?.dpiLevels?[1].color, '#8C00FF');
+        expect(bloc.state.isDirty, false);
         await bloc.close();
       },
     );
@@ -1226,12 +1240,12 @@ void main() {
       // Now delete level 6 (the active level).
       bloc.add(const DeviceSettingsDpiStageRemoveRequested(level: 6));
       await pumpEventQueue();
-      expect(bloc.state.dpiCurrentLevelStaging, 1);
+      expect(bloc.state.dpiCurrentLevelStaging, 5);
 
       // Save configuration.
       bloc.add(const DeviceSettingsSaveDpiConfigurationRequested());
       await pumpEventQueue();
-      expect(bloc.state.synced?.dpiActiveIndex, 1);
+      expect(bloc.state.synced?.dpiActiveIndex, 5);
       expect(bloc.state.synced?.dpiActiveLevelCount, 5);
       await bloc.close();
     });
@@ -2281,28 +2295,27 @@ void main() {
       },
     );
 
-    test('toggle off is retained in the single E2 save block', () async {
+    test('mode change is retained in the single E2 save block', () async {
       RgbBacklightPatch? written;
       final bloc = buildBloc(onCommit: (value) async => written = value);
       bloc.add(DeviceSettingsHydrated(backlightSettings()));
       await pumpEventQueue();
-      bloc.add(const DeviceSettingsBacklightEnableRequested(enable: false));
+      bloc.add(const DeviceSettingsBacklightModeRequested(modeId: 1));
       await pumpEventQueue();
       bloc.add(const DeviceSettingsSaveBacklightRequested());
       await pumpEventQueue();
 
       expect(written, isNotNull);
-      expect(written!.enabled, false);
-      expect(written!.modeId, isNull);
+      expect(written!.modeId, 1);
       expect(written!.brightness, isNull);
       expect(written!.speed, isNull);
-      expect(bloc.state.synced?.rgbEnable, false);
-      expect(bloc.state.rgbEnableStaging, isNull);
+      expect(bloc.state.synced?.rgbModeId, 1);
+      expect(bloc.state.rgbModeIdStaging, isNull);
       expect(bloc.state.isDirty, false);
       await bloc.close();
     });
 
-    test('enable-only save preserves an out-of-catalog device speed', () async {
+    test('mode-only save preserves an out-of-catalog device speed', () async {
       final caps = DeviceCapabilities(
         devId: '03AA',
         displayNameKey: 'device.m7x_pro',
@@ -2323,13 +2336,13 @@ void main() {
         DeviceSettingsHydrated(backlightSettings().copyWith(rgbSpeed: 0xFF)),
       );
       await pumpEventQueue();
-      bloc.add(const DeviceSettingsBacklightEnableRequested(enable: false));
+      bloc.add(const DeviceSettingsBacklightModeRequested(modeId: 3));
       await pumpEventQueue();
       bloc.add(const DeviceSettingsSaveBacklightRequested());
       await pumpEventQueue();
 
       expect(written, isNotNull);
-      expect(written!.enabled, false);
+      expect(written!.modeId, 3);
       expect(written!.speed, isNull);
       expect(bloc.state.lastError, isNull);
       expect(bloc.state.isDirty, false);
@@ -2353,7 +2366,6 @@ void main() {
       // Only the user's staged fields are handed to the E2 read/patch/write
       // boundary; it preserves all untouched device bytes.
       expect(written, isNotNull);
-      expect(written!.enabled, isNull);
       expect(written!.modeId, isNull);
       expect(written!.brightness, 4);
       expect(written!.speed, isNull);
@@ -2404,10 +2416,10 @@ void main() {
       // hasRgbBacklight defaults to false on baseSettings.
       bloc.add(DeviceSettingsHydrated(baseSettings()));
       await pumpEventQueue();
-      bloc.add(const DeviceSettingsBacklightEnableRequested(enable: true));
+      bloc.add(const DeviceSettingsBacklightModeRequested(modeId: 1));
       await pumpEventQueue();
 
-      expect(bloc.state.rgbEnableStaging, isNull);
+      expect(bloc.state.rgbModeIdStaging, isNull);
       expect(bloc.state.lastError, contains('unavailable'));
       await bloc.close();
     });

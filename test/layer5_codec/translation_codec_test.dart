@@ -157,7 +157,7 @@ void main() {
     test('shortcut names the key, never raw bytes', () {
       expect(
         t.buttonActionToLabel(action: 0x12, param1: 0xB3, param2: 0x00),
-        'Volume up',
+        'Volume Up',
       );
       expect(
         t.buttonActionToLabel(action: 0x12, param1: 0x01, param2: 0x06),
@@ -168,7 +168,7 @@ void main() {
     test('modifiers prefix the key whatever slot they occupy', () {
       expect(
         t.buttonActionToLabel(action: 0x12, param1: 0xE0, param2: 0x06),
-        'Ctrl + C',
+        'Left Ctrl + C',
       );
       expect(
         t.buttonActionToLabel(
@@ -177,7 +177,7 @@ void main() {
           param2: 0xE2,
           param3: 0x06,
         ),
-        'Ctrl + Alt + C',
+        'Left Ctrl + Left Alt + C',
       );
       expect(
         t.buttonActionToLabel(action: 0x12, param1: 0x00, param3: 0x06),
@@ -211,9 +211,9 @@ void main() {
       expect(t.keyValueToLabel(0x31), r'\');
       expect(t.keyValueToLabel(0x45), 'F12');
       expect(t.keyValueToLabel(0x73), 'F24');
-      expect(t.keyValueToLabel(0x52), 'Up');
+      expect(t.keyValueToLabel(0x52), 'Up Arrow');
       expect(t.keyValueToLabel(0x62), 'Numpad 0');
-      expect(t.keyValueToLabel(0xA1), 'System power');
+      expect(t.keyValueToLabel(0xA1), 'Web forward');
       expect(t.keyValueToLabel(0xBE), 'Terminal lock');
       expect(t.keyValueToLabel(0xC6), 'Wheel Up');
       expect(t.keyValueToLabel(0xCF), 'Copy');
@@ -225,9 +225,9 @@ void main() {
 
   group('KeyvalueTable', () {
     test('is the source of labels TranslationCodec consumes', () {
-      expect(keys.keyValueToLabel(0xB3), 'Volume up');
-      expect(keys.keyComboToLabel(0xE0, 0x06, 0), 'Ctrl + C');
-      expect(KeyvalueTable.labels[0xB3], 'Volume up');
+      expect(keys.keyValueToLabel(0xB3), 'Volume Up');
+      expect(keys.keyComboToLabel(0xE0, 0x06, 0), 'Left Ctrl + C');
+      expect(KeyvalueTable.labels[0xB3], 'Volume Up');
     });
   });
 

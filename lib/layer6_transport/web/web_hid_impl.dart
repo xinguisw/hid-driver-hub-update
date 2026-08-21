@@ -52,9 +52,14 @@ class WebHidScanner implements HidScanner {
 
     final jsMeta = await _jsDeviceMeta();
     final out = <HidDevice>[];
-    for (var i = 0; i < devices.length; i++) {
-      final d = devices[i];
-      final meta = i < jsMeta.length ? jsMeta[i] : null;
+    for (final d in devices) {
+      _JsHidMeta? meta;
+      for (final m in jsMeta) {
+        if (m.vendorId == d.vendorId && m.productId == d.productId) {
+          meta = m;
+          break;
+        }
+      }
       if (_matchesFilter(d, meta, filters)) {
         out.add(d);
       }

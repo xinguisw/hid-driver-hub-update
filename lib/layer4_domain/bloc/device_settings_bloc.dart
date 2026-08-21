@@ -97,7 +97,6 @@ typedef ParameterSettingsCommit =
 /// L5 owns the E2 byte positions and tri-state translation.
 class RgbBacklightPatch {
   const RgbBacklightPatch({
-    this.enabled,
     this.modeId,
     this.brightness,
     this.speed,
@@ -107,7 +106,6 @@ class RgbBacklightPatch {
     this.sleepWire,
   });
 
-  final bool? enabled;
   final int? modeId;
   final int? brightness;
   final int? speed;
@@ -1083,7 +1081,26 @@ class DeviceSettingsBloc
           );
         }
       }
-      nextSynced = nextSynced.copyWith(dpiLevels: levels);
+      final currentDpiRgb = nextSynced.rawBlocks?.dpiRgb;
+      Uint8List? updatedDpiRgb;
+      if (currentDpiRgb != null && currentDpiRgb.length == 24) {
+        updatedDpiRgb = Uint8List.fromList(currentDpiRgb);
+        for (final entry in dpiRgbColors.entries) {
+          final idx = entry.key - 1;
+          if (idx >= 0 && idx < 8) {
+            final rgb = _hexToRgb(entry.value);
+            updatedDpiRgb[idx * 3] = rgb[0];
+            updatedDpiRgb[idx * 3 + 1] = rgb[1];
+            updatedDpiRgb[idx * 3 + 2] = rgb[2];
+          }
+        }
+      }
+      nextSynced = nextSynced.copyWith(
+        dpiLevels: levels,
+        rawBlocks: updatedDpiRgb != null
+            ? nextSynced.rawBlocks?.copyWith(dpiRgb: updatedDpiRgb)
+            : nextSynced.rawBlocks,
+      );
     }
     if (dpiLevel != null) {
       nextSynced = nextSynced.copyWith(dpiActiveIndex: dpiLevel);
@@ -1469,20 +1486,25 @@ class DeviceSettingsBloc
         ),
       );
     }
-    final currentLevel = state.dpiCurrentLevelStaging ?? synced.dpiActiveIndex;
-    final needsLevelReset = currentLevel == null ||
-        currentLevel == event.level ||
-        currentLevel > reindexed.length;
+    final currentLevel = state.dpiCurrentLevelStaging ?? synced.dpiActiveIndex ?? 1;
+    int nextLevel;
+    if (currentLevel == event.level) {
+      nextLevel = currentLevel.clamp(1, reindexed.length);
+    } else if (currentLevel > event.level) {
+      nextLevel = currentLevel - 1;
+    } else {
+      nextLevel = currentLevel.clamp(1, reindexed.length);
+    }
     emit(
       state.copyWith(
         dpiStageRemoveLevelStaging: event.level,
         dpiStageLevelsStaging: reindexed,
-        dpiCurrentLevelStaging: needsLevelReset ? 1 : state.dpiCurrentLevelStaging,
+        dpiCurrentLevelStaging: nextLevel,
         isDirty: true,
         clearError: true,
       ),
     );
-    debugPrint('[bloc] DPI stage remove staged: level=${event.level} (levelReset=$needsLevelReset)');
+    debugPrint('[bloc] DPI stage remove staged: level=${event.level} (nextLevel=$nextLevel)');
   }
 
   /// Save the staged DPI add/remove to device.
@@ -1522,6 +1544,10 @@ class DeviceSettingsBloc
 
     try {
       await commitDpiStages(stagedLevels, stagedLevels.length);
+      final activeLevel = state.dpiCurrentLevelStaging ?? synced.dpiActiveIndex ?? 1;
+      if (activeLevel > 0 && activeLevel <= stagedLevels.length) {
+        await commitDpiLevel(activeLevel);
+      }
     } catch (e) {
       debugPrint('[bloc] save DPI stages failed: $e');
       final failures = state.consecutiveFailures + 1;
@@ -2687,7 +2713,6 @@ class DeviceSettingsBloc
     }
 
     final patch = RgbBacklightPatch(
-      enabled: state.rgbEnableStaging,
       modeId: state.rgbModeIdStaging,
       brightness: state.rgbBrightnessStaging,
       speed: state.rgbSpeedStaging,
@@ -2751,5 +2776,15 @@ class DeviceSettingsBloc
     );
     debugPrint('[bloc] save backlight: synced');
     onSaveCompleted?.call();
+  }
+
+  static List<int> _hexToRgb(String hex) {
+    final s = hex.replaceAll('#', '');
+    if (s.length != 6) return [255, 255, 255];
+    return [
+      int.parse(s.substring(0, 2), radix: 16),
+      int.parse(s.substring(2, 4), radix: 16),
+      int.parse(s.substring(4, 6), radix: 16),
+    ];
   }
 }

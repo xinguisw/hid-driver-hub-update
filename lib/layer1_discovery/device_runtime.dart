@@ -58,6 +58,10 @@ class LiveDeviceRuntime implements DeviceRuntime {
   Future<DeviceSettingsGateway?> openAndRegister(
     DiscoveredDevice device,
   ) async {
+    final existing = _watcher.getSession(device.hidDevice.path);
+    if (existing != null && existing.isAlive) {
+      return existing;
+    }
     final session = DeviceSession(
       device: device,
       session: HidSession(device.hidDevice),

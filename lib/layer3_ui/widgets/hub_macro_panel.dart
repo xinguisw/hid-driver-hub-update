@@ -216,7 +216,6 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
 
   void _stopRecording() {
     _closeOpenActions();
-    _normalizeSimpleKeyboardTaps();
     setState(() {
       _recording = false;
       _pressedKeyCodes.clear();
@@ -232,68 +231,6 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
     _lastRecordEventUs = null;
     _recordFocus.unfocus();
   }
-
-  void _normalizeSimpleKeyboardTaps() {
-    if (_events.isEmpty ||
-        _events.any((action) => !_isSimpleKeyboardCode(action.keyCode))) {
-      return;
-    }
-
-    final taps = <({int code, String? label, int downAt, int downDelay})>[];
-    final open =
-        <int, ({int code, String? label, int downAt, int downDelay})>{};
-    var elapsed = 0;
-    for (final action in _events) {
-      if (action.isBreak) {
-        if (open.remove(action.keyCode) == null) return;
-      } else {
-        if (open.containsKey(action.keyCode)) return;
-        final tap = (
-          code: action.keyCode,
-          label: action.label,
-          downAt: elapsed,
-          downDelay: action.delay,
-        );
-        open[action.keyCode] = tap;
-        taps.add(tap);
-      }
-      elapsed += action.delay;
-    }
-    if (open.isNotEmpty) return;
-
-    final normalized = <MacroAction>[];
-    for (var i = 0; i < taps.length; i++) {
-      final tap = taps[i];
-      final nextDownAt = i + 1 < taps.length ? taps[i + 1].downAt : tap.downAt;
-      final gap = (nextDownAt - tap.downAt - tap.downDelay).clamp(0, 0x7F);
-      normalized
-        ..add(
-          MacroAction(
-            keyCode: tap.code,
-            isBreak: false,
-            delay: tap.downDelay == 0 ? _minimumMakeDelay : tap.downDelay,
-            label: tap.label,
-          ),
-        )
-        ..add(
-          MacroAction(
-            keyCode: tap.code,
-            isBreak: true,
-            delay: gap,
-            label: tap.label,
-          ),
-        );
-    }
-    setState(() {
-      _events
-        ..clear()
-        ..addAll(normalized);
-      _syncDraftActions();
-    });
-  }
-
-  static bool _isSimpleKeyboardCode(int code) =>
-      (code >= 0x04 && code <= 0x9F) || (code >= 0xE0 && code <= 0xE7);
 
   void _closeOpenActions() {
     for (final code in _pressedKeyCodes.toList(growable: false)) {

@@ -845,7 +845,6 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                                             const <RgbModeData>[])
                                       m.label ?? m.nameKey,
                                   ],
-                                  rgbEnable: view.displayRgbEnable,
                                   rgbModeId: view.displayRgbModeId,
                                   rgbBrightnessLevels:
                                       synced?.rgbBrightnessLevels,
@@ -857,11 +856,6 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                                   rgbB: view.displayRgbB,
                                   rgbSleepTime: view.displayRgbSleepTime,
                                   rgbSleepOptions: sleepOpts,
-                                  onEnableChanged: (v) => bloc.add(
-                                    DeviceSettingsBacklightEnableRequested(
-                                      enable: v,
-                                    ),
-                                  ),
                                   onModeChanged: (id) => bloc.add(
                                     DeviceSettingsBacklightModeRequested(
                                       modeId: id,

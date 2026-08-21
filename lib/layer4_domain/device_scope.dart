@@ -647,7 +647,7 @@ class DeviceScope {
     if (session == null || !session.isAlive) {
       throw StateError('commitDpiStages: no session');
     }
-    final raw = _requireRawBlocks(card, 'commitDpiStages');
+    _requireRawBlocks(card, 'commitDpiStages');
 
     final caps = DeviceCapabilityStore.forDevice(card.devId);
     final dpi = caps?.dpi;
@@ -730,7 +730,7 @@ class DeviceScope {
   ) {
     if (index < capLevels.length) {
       final c = capLevels[index].color;
-      if (c != null && c.isNotEmpty) return c;
+      if (c.isNotEmpty) return c;
     }
     return '#FFFFFF';
   }

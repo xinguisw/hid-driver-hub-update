@@ -194,7 +194,8 @@ class _DpiSettingsGroup extends StatelessWidget {
                           onValueChanged((level: stage.level, value: value)),
                       rgbPerStage: rgbPerStage,
                       onColorChanged: onColorChanged,
-                      onRemoveStage: activeCount <= 1 || onDpiStageRemove == null
+                      onRemoveStage:
+                          activeCount <= 1 || onDpiStageRemove == null
                           ? null
                           : () => onDpiStageRemove?.call(stage.level),
                     ),
@@ -290,9 +291,6 @@ class _DpiSliderRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final divisions = step == null || step! < 1
-        ? null
-        : ((max - min) ~/ step!).clamp(1, 1000);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
@@ -356,8 +354,9 @@ class _DpiSliderRow extends StatelessWidget {
             value: stagedValue.toDouble().clamp(min.toDouble(), max.toDouble()),
             min: min.toDouble(),
             max: max.toDouble(),
-            divisions: divisions,
-            onChanged: (v) => onValueChanged(v.round()),
+            onChanged: (v) => onValueChanged(
+              snapToStep(v.round(), min: min, max: max, step: step),
+            ),
           ),
           // Min / max range labels under the slider (live from the catalog).
           Row(
@@ -775,7 +774,10 @@ class _DpiStepperInputState extends State<_DpiStepperInput> {
               ),
               decoration: const InputDecoration(
                 isDense: true,
-                contentPadding: EdgeInsets.symmetric(horizontal: 2, vertical: 2),
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 2,
+                  vertical: 2,
+                ),
                 border: InputBorder.none,
               ),
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
@@ -808,7 +810,9 @@ class _DpiStepperInputState extends State<_DpiStepperInput> {
                 ),
                 Container(
                   height: 1,
-                  color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
+                  color: theme.colorScheme.outlineVariant.withValues(
+                    alpha: 0.3,
+                  ),
                 ),
                 Expanded(
                   child: InkWell(

@@ -529,7 +529,7 @@ class _CatalogItemTileState extends State<_CatalogItemTile> {
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: widget.selected
                     ? theme.colorScheme.onPrimaryContainer
-                    : theme.colorScheme.onSurfaceVariant,
+                    : theme.colorScheme.onSurface,
                 fontWeight: widget.selected ? FontWeight.w600 : FontWeight.w400,
                 fontSize: 12,
               ),
@@ -811,7 +811,7 @@ class _MacroCatalogBody extends StatelessWidget {
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: slot.id == selectedId
                           ? theme.colorScheme.onPrimaryContainer
-                          : theme.colorScheme.onSurfaceVariant,
+                          : theme.colorScheme.onSurface,
                       fontWeight: slot.id == selectedId
                           ? FontWeight.w600
                           : FontWeight.w400,
@@ -869,7 +869,7 @@ class _TabChip extends StatelessWidget {
                     color: selected
                         ? selectedFg
                         : theme.colorScheme.onSurfaceVariant,
-                    fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                    fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
                     fontSize: 12,
                   ),
                 ),

@@ -1,3 +1,4 @@
+import 'package:driver_hub/layer3_ui/widgets/hub_button_mapping_panel.dart';
 import 'package:driver_hub/layer3_ui/theme/theme_controller.dart';
 import 'package:driver_hub/i18n/strings.g.dart';
 import 'package:flutter/foundation.dart';
@@ -84,71 +85,74 @@ class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
       child: leadingTitle,
     );
 
-    return AppBar(
-      backgroundColor: theme.scaffoldBackgroundColor,
-      elevation: 0,
-      scrolledUnderElevation: 0,
-      automaticallyImplyLeading: false,
-      leading: showBackButton && Navigator.of(context).canPop()
-          ? IconButton(
-              icon: Icon(Icons.arrow_back, color: iconColor),
-              onPressed: () => Navigator.of(context).maybePop(),
-              tooltip: MaterialLocalizations.of(context).backButtonTooltip,
-            )
-          : null,
-      title: titleWithDrag,
-      centerTitle: false,
-      actions: [
-        // Language switcher
-        PopupMenuButton<AppLocale>(
-          icon: Icon(Icons.translate, size: 20, color: iconColor),
-          tooltip: t.common.language,
-          initialValue: TranslationProvider.of(context).locale,
-          onSelected: (AppLocale locale) {
-            LocaleSettings.setLocale(locale);
-          },
-          itemBuilder: (BuildContext context) {
-            return AppLocale.values.map((AppLocale locale) {
-              final name =
-                  _localeNames[locale.languageTag] ??
-                  locale.languageTag.toUpperCase();
-              return PopupMenuItem<AppLocale>(value: locale, child: Text(name));
-            }).toList();
-          },
-        ),
-        // Theme toggle
-        IconButton(
-          icon: Icon(
-            isDark ? Icons.wb_sunny_outlined : Icons.dark_mode_outlined,
-            size: 20,
-            color: iconColor,
+    return TapRegion(
+      groupId: hubButtonMappingTapRegionId,
+      child: AppBar(
+        backgroundColor: theme.scaffoldBackgroundColor,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        automaticallyImplyLeading: false,
+        leading: showBackButton && Navigator.of(context).canPop()
+            ? IconButton(
+                icon: Icon(Icons.arrow_back, color: iconColor),
+                onPressed: () => Navigator.of(context).maybePop(),
+                tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+              )
+            : null,
+        title: titleWithDrag,
+        centerTitle: false,
+        actions: [
+          // Language switcher
+          PopupMenuButton<AppLocale>(
+            icon: Icon(Icons.translate, size: 20, color: iconColor),
+            tooltip: t.common.language,
+            initialValue: TranslationProvider.of(context).locale,
+            onSelected: (AppLocale locale) {
+              LocaleSettings.setLocale(locale);
+            },
+            itemBuilder: (BuildContext context) {
+              return AppLocale.values.map((AppLocale locale) {
+                final name =
+                    _localeNames[locale.languageTag] ??
+                    locale.languageTag.toUpperCase();
+                return PopupMenuItem<AppLocale>(value: locale, child: Text(name));
+              }).toList();
+            },
           ),
-          onPressed: () => ThemeController.instance.toggleTheme(),
-          tooltip: isDark
-              ? t.common.switchToLightMode
-              : t.common.switchToDarkMode,
-        ),
-        // Settings (only shown if a callback is provided)
-        if (onSettingsPressed != null)
+          // Theme toggle
           IconButton(
-            icon: Icon(Icons.settings_outlined, size: 20, color: iconColor),
-            onPressed: onSettingsPressed,
-            tooltip: t.common.settings,
+            icon: Icon(
+              isDark ? Icons.wb_sunny_outlined : Icons.dark_mode_outlined,
+              size: 20,
+              color: iconColor,
+            ),
+            onPressed: () => ThemeController.instance.toggleTheme(),
+            tooltip: isDark
+                ? t.common.switchToLightMode
+                : t.common.switchToDarkMode,
           ),
-        // Desktop window controls (with divider and spacing)
-        if (_isDesktop) ...[
-          const SizedBox(width: 8),
-          VerticalDivider(
-            width: 1,
-            thickness: 1,
-            indent: 16,
-            endIndent: 16,
-            color: theme.dividerColor,
-          ),
-          const SizedBox(width: 16),
-          ..._buildDesktopWindowControls(secondaryIconColor),
+          // Settings (only shown if a callback is provided)
+          if (onSettingsPressed != null)
+            IconButton(
+              icon: Icon(Icons.settings_outlined, size: 20, color: iconColor),
+              onPressed: onSettingsPressed,
+              tooltip: t.common.settings,
+            ),
+          // Desktop window controls (with divider and spacing)
+          if (_isDesktop) ...[
+            const SizedBox(width: 8),
+            VerticalDivider(
+              width: 1,
+              thickness: 1,
+              indent: 16,
+              endIndent: 16,
+              color: theme.dividerColor,
+            ),
+            const SizedBox(width: 16),
+            ..._buildDesktopWindowControls(secondaryIconColor),
+          ],
         ],
-      ],
+      ),
     );
   }
 

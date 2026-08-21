@@ -1,3 +1,4 @@
+import 'package:driver_hub/layer3_ui/widgets/hub_button_mapping_panel.dart';
 import 'package:driver_hub/layer4_domain/models/discovered_card_state.dart';
 import 'package:driver_hub/i18n/strings.g.dart';
 import 'package:flutter/material.dart';
@@ -53,10 +54,12 @@ class _HubLeftSidebarState extends State<HubLeftSidebar> {
     final isDark = theme.brightness == Brightness.dark;
     final suffix = isDark ? 'white' : 'black';
 
-    return AnimatedContainer(
-      duration: _animationDuration,
-      curve: _animationCurve,
-      width: width,
+    return TapRegion(
+      groupId: hubButtonMappingTapRegionId,
+      child: AnimatedContainer(
+        duration: _animationDuration,
+        curve: _animationCurve,
+        width: width,
       child: ClipRect(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -127,8 +130,9 @@ class _HubLeftSidebarState extends State<HubLeftSidebar> {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   /// Animated device header transition
   Widget _deviceHeader(ThemeData theme) {

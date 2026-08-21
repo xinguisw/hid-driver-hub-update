@@ -4,7 +4,7 @@ import 'button_mapping_slot.dart';
 ///
 /// Translates L2 catalog IDs (e.g. `"mouse.left"`) into the wire bytes
 /// that L5 encodes. L4 calls this to get wire slots; L4 never builds them directly.
-
+///
 /// L4 domain: catalog action ID → wire [ButtonMappingSlot].
 ///
 /// Translates L2 catalog IDs (e.g. `"mouse.left"`) into the wire bytes
@@ -29,6 +29,144 @@ class ButtonActionCatalogMap {
     );
   }
 
+  /// Reverse map: wire slot → catalog ID and related UI info.
+  ///
+  /// Returns [SlotInfo] with:
+  /// - [tabIndex]: 0=Mouse, 1=Keyboard, 2=Special
+  /// - [catalogId]: the catalog ID (if found)
+  /// - [modifierIds]: for Special combos, the modifier catalog IDs
+  /// - [keyChar]: for Special combos, the character or special key label
+  ///
+  /// If the slot does not match any known catalog item, returns `null`.
+  static SlotInfo? slotToCatalogInfo(
+    int action,
+    int param1,
+    int param2,
+    int param3,
+  ) {
+    // Build the slot representation for lookup
+    final slot = ButtonMappingSlot(
+      action: action,
+      param1: param1,
+      param2: param2,
+      param3: param3,
+    );
+
+    // 1) Try to find a direct match in the forward table
+    for (final entry in _table.entries) {
+      final slotFromTable = catalogIdToSlot(entry.key);
+      if (slotFromTable != null &&
+          slotFromTable.action == slot.action &&
+          slotFromTable.param1 == slot.param1 &&
+          slotFromTable.param2 == slot.param2 &&
+          slotFromTable.param3 == slot.param3) {
+        // Determine tab index based on the catalog ID prefix
+        final id = entry.key;
+        int tabIndex;
+
+        // ✅ FIXED: Proper 'if' syntax
+        if (id.startsWith('mouse.')) {
+          tabIndex = 0;
+        } else if (id.startsWith('key.')) {
+          tabIndex = 1;
+        } else if (id.startsWith('special.')) {
+          tabIndex = 2;
+        } else {
+          tabIndex = 0; // fallback
+        }
+
+        // For Special entries, handle modifiers and combos
+        if (tabIndex == 2) {
+          // Check if it's a pure modifier (no parameters)
+          if (param1 == 0 && param2 == 0 && param3 == 0) {
+            // Pure modifier: select the modifier chip, no key
+            return SlotInfo(
+              tabIndex: tabIndex,
+              catalogId: id,
+              modifierIds: [id], // highlight this modifier
+              keyChar: null,
+            );
+          }
+          // Otherwise, it's a combo (built via buildComboSlot)
+          // param1 = key byte, param2/3 = modifier bytes
+          String? keyChar;
+          for (final entryChar in _charToKeyByte.entries) {
+            if (entryChar.value == param1) {
+              keyChar = entryChar.key;
+              break;
+            }
+          }
+          final modIds = <String>[];
+          for (final entryMod in _modifierIdToByte.entries) {
+            if (entryMod.value == param2) {
+              modIds.add(entryMod.key);
+            }
+            // ✅ FIXED: Added braces to satisfy linter rule
+            if (entryMod.value == param3 && param3 != 0) {
+              modIds.add(entryMod.key);
+            }
+          }
+          return SlotInfo(
+            tabIndex: tabIndex,
+            catalogId: id,
+            modifierIds: modIds,
+            keyChar: keyChar,
+          );
+        }
+
+        // Mouse or Keyboard: no modifiers
+        return SlotInfo(tabIndex: tabIndex, catalogId: id);
+      }
+    }
+
+    // 2) If no direct match, try to detect a special combo (action 0x12 with modifiers)
+    if (action == 0x12 && param1 != 0) {
+      if (param2 != 0 || param3 != 0) {
+        // Combo with modifiers
+        String? keyChar;
+        for (final entryChar in _charToKeyByte.entries) {
+          if (entryChar.value == param1) {
+            keyChar = entryChar.key;
+            break;
+          }
+        }
+        final modIds = <String>[];
+        for (final entryMod in _modifierIdToByte.entries) {
+          if (entryMod.value == param2) modIds.add(entryMod.key);
+          if (entryMod.value == param3 && param3 != 0) modIds.add(entryMod.key);
+        }
+        return SlotInfo(
+          tabIndex: 2,
+          catalogId: 'special.combo', // dummy
+          modifierIds: modIds,
+          keyChar: keyChar,
+        );
+      } else {
+        // Single key without modifiers – try to find a keyboard entry
+        for (final entry in _table.entries) {
+          final slotFromTable = catalogIdToSlot(entry.key);
+          if (slotFromTable != null &&
+              slotFromTable.action == 0x12 &&
+              slotFromTable.param1 == param1 &&
+              slotFromTable.param2 == 0 &&
+              slotFromTable.param3 == 0) {
+            return SlotInfo(tabIndex: 1, catalogId: entry.key);
+          }
+        }
+        // Fallback: use reverse byte map
+        final keyChar = _byteToChar[param1] ?? '?';
+        return SlotInfo(
+          tabIndex: 1,
+          catalogId: 'key.unknown',
+          keyChar: keyChar,
+        );
+      }
+    }
+
+    // 3) Nothing matched
+    return null;
+  }
+
   /// Build a combo slot for the Special tab (modifiers + key).
   ///
   /// Returns `null` if:
@@ -37,26 +175,22 @@ class ButtonActionCatalogMap {
   /// - [modifierIds] length > 2
   ///
   /// Wire format: action=0x12 (shortcut), param1=key, param2=mod1, param3=mod2.
-  /// Modifier order doesn't matter — L5 classifies by byte value.
   static ButtonMappingSlot? buildComboSlot(
     List<String> modifierIds,
     String char,
   ) {
     if (modifierIds.length > 2) return null;
 
-    // Look up key byte from character
     final keyByte = _charToKeyByte[char];
-    if (keyByte == null) return null; // Not a keyboard key
+    if (keyByte == null) return null;
 
-    // Look up modifier bytes
     final modBytes = <int>[];
     for (final id in modifierIds) {
       final byte = _modifierIdToByte[id];
-      if (byte == null) return null; // Unknown modifier
+      if (byte == null) return null;
       modBytes.add(byte);
     }
 
-    // Build slot: action=0x12, param1=key, param2=mod1, param3=mod2
     return ButtonMappingSlot(
       action: 0x12,
       param1: keyByte,
@@ -78,31 +212,27 @@ class ButtonActionCatalogMap {
   };
 
   /// Character → HID keyboard usage code.
-  ///
-  /// Only keyboard keys (letters, digits, symbols, special keys).
-  /// Excludes multimedia/consumer/mouse/gamepad/Fn.
   static const Map<String, int> _charToKeyByte = {
-    // Letters (uppercase and lowercase map to the same key)
-    'A': 0x04, 'B': 0x05, 'C': 0x06, 'D': 0x07, 'E': 0x08, 'F': 0x09,
-    'G': 0x0A, 'H': 0x0B, 'I': 0x0C, 'J': 0x0D, 'K': 0x0E, 'L': 0x0F,
-    'M': 0x10, 'N': 0x11, 'O': 0x12, 'P': 0x13, 'Q': 0x14, 'R': 0x15,
-    'S': 0x16, 'T': 0x17, 'U': 0x18, 'V': 0x19, 'W': 0x1A, 'X': 0x1B,
-    'Y': 0x1C, 'Z': 0x1D,
-    'a': 0x04, 'b': 0x05, 'c': 0x06, 'd': 0x07, 'e': 0x08, 'f': 0x09,
-    'g': 0x0A, 'h': 0x0B, 'i': 0x0C, 'j': 0x0D, 'k': 0x0E, 'l': 0x0F,
-    'm': 0x10, 'n': 0x11, 'o': 0x12, 'p': 0x13, 'q': 0x14, 'r': 0x15,
-    's': 0x16, 't': 0x17, 'u': 0x18, 'v': 0x19, 'w': 0x1A, 'x': 0x1B,
-    'y': 0x1C, 'z': 0x1D,
-
+    // Letters
+    'A': 0x04, 'B': 0x05, 'C': 0x06, 'D': 0x07, 'E': 0x08,
+    'F': 0x09, 'G': 0x0A, 'H': 0x0B, 'I': 0x0C, 'J': 0x0D,
+    'K': 0x0E, 'L': 0x0F, 'M': 0x10, 'N': 0x11, 'O': 0x12,
+    'P': 0x13, 'Q': 0x14, 'R': 0x15, 'S': 0x16, 'T': 0x17,
+    'U': 0x18, 'V': 0x19, 'W': 0x1A, 'X': 0x1B, 'Y': 0x1C,
+    'Z': 0x1D,
+    'a': 0x04, 'b': 0x05, 'c': 0x06, 'd': 0x07, 'e': 0x08,
+    'f': 0x09, 'g': 0x0A, 'h': 0x0B, 'i': 0x0C, 'j': 0x0D,
+    'k': 0x0E, 'l': 0x0F, 'm': 0x10, 'n': 0x11, 'o': 0x12,
+    'p': 0x13, 'q': 0x14, 'r': 0x15, 's': 0x16, 't': 0x17,
+    'u': 0x18, 'v': 0x19, 'w': 0x1A, 'x': 0x1B, 'y': 0x1C,
+    'z': 0x1D,
     // Digits
     '1': 0x1E, '2': 0x1F, '3': 0x20, '4': 0x21, '5': 0x22,
     '6': 0x23, '7': 0x24, '8': 0x25, '9': 0x26, '0': 0x27,
-
     // Symbols
     '-': 0x2D, '=': 0x2E, '[': 0x2F, ']': 0x30, '\\': 0x31,
-    ';': 0x33, "'": 0x34, '`': 0x35, ',': 0x36, '.': 0x37, '/': 0x38,
-    ' ': 0x2C,
-
+    ';': 0x33, "'": 0x34, '`': 0x35, ',': 0x36, '.': 0x37,
+    '/': 0x38,
     // Special keys
     'Esc': 0x29,
     'Enter': 0x28,
@@ -142,13 +272,14 @@ class ButtonActionCatalogMap {
     'F12': 0x45,
   };
 
+  /// Reverse of _charToKeyByte: byte → character (or special label).
+  static final Map<int, String> _byteToChar = Map.fromEntries(
+    _charToKeyByte.entries.map((e) => MapEntry(e.value, e.key)),
+  );
+
   /// Wire table: [action, param1?, param2?, param3?].
-  ///
-  /// Mouse actions: action byte only (0x00–0x14 range).
-  /// Keyboard shortcuts: action 0x12, key byte in param1.
-  /// Special modifiers: action byte 0xE0–0xE7.
   static const Map<String, List<int>> _table = {
-    // --- Mouse tab ---
+    // --- Mouse ---
     'mouse.disable': [0x00],
     'mouse.left': [0x02],
     'mouse.right': [0x03],
@@ -163,8 +294,7 @@ class ButtonActionCatalogMap {
     'mouse.wheel_down': [0x08],
     'mouse.tilt_left': [0x09],
     'mouse.tilt_right': [0x0A],
-
-    // Multimedia / consumer keys: action 0x13, key byte in param1
+    // Multimedia (action 0x13, key in param1)
     'mouse.volume_up': [0x13, 0xB3],
     'mouse.volume_down': [0x13, 0xB4],
     'mouse.volume_mute': [0x13, 0xB2],
@@ -183,8 +313,7 @@ class ButtonActionCatalogMap {
     'mouse.prev_track': [0x13, 0xAF],
     'mouse.stop': [0x13, 0xB0],
     'mouse.play_pause': [0x13, 0xB1],
-
-    // --- Keyboard tab (action 0x12 = shortcut, key byte in param1) ---
+    // --- Keyboard (action 0x12, key in param1) ---
     'key.letter.a': [0x12, 0x04],
     'key.letter.b': [0x12, 0x05],
     'key.letter.c': [0x12, 0x06],
@@ -211,7 +340,6 @@ class ButtonActionCatalogMap {
     'key.letter.x': [0x12, 0x1B],
     'key.letter.y': [0x12, 0x1C],
     'key.letter.z': [0x12, 0x1D],
-
     'key.digit.1': [0x12, 0x1E],
     'key.digit.2': [0x12, 0x1F],
     'key.digit.3': [0x12, 0x20],
@@ -222,7 +350,6 @@ class ButtonActionCatalogMap {
     'key.digit.8': [0x12, 0x25],
     'key.digit.9': [0x12, 0x26],
     'key.digit.0': [0x12, 0x27],
-
     'key.sym.minus': [0x12, 0x2D],
     'key.sym.equals': [0x12, 0x2E],
     'key.sym.lbracket': [0x12, 0x2F],
@@ -239,7 +366,6 @@ class ButtonActionCatalogMap {
     'key.sym.esc': [0x12, 0x29],
     'key.sym.backspace': [0x12, 0x2A],
     'key.sym.tab': [0x12, 0x2B],
-
     'key.f1': [0x12, 0x3A],
     'key.f2': [0x12, 0x3B],
     'key.f3': [0x12, 0x3C],
@@ -252,7 +378,6 @@ class ButtonActionCatalogMap {
     'key.f10': [0x12, 0x43],
     'key.f11': [0x12, 0x44],
     'key.f12': [0x12, 0x45],
-
     'key.nav.insert': [0x12, 0x49],
     'key.nav.home': [0x12, 0x4A],
     'key.nav.pageup': [0x12, 0x4B],
@@ -266,7 +391,6 @@ class ButtonActionCatalogMap {
     'key.nav.print': [0x12, 0x46],
     'key.nav.scroll': [0x12, 0x47],
     'key.nav.pause': [0x12, 0x48],
-
     'key.num.0': [0x12, 0x62],
     'key.num.1': [0x12, 0x59],
     'key.num.2': [0x12, 0x5A],
@@ -285,7 +409,6 @@ class ButtonActionCatalogMap {
     'key.num.del': [0x12, 0x63],
     'key.num.lock': [0x12, 0x53],
     'key.num.eq': [0x12, 0x67],
-
     'key.mod.capslk': [0x12, 0x39],
     'key.mod.shift': [0x12, 0xE1],
     'key.mod.ctrl': [0x12, 0xE0],
@@ -295,11 +418,25 @@ class ButtonActionCatalogMap {
     'key.mod.rctrl': [0x12, 0xE4],
     'key.mod.ralt': [0x12, 0xE6],
     'key.mod.rwin': [0x12, 0xE7],
-
-    // --- Special tab (modifier bytes, action = the byte itself) ---
+    // --- Special (modifiers as standalone) ---
     'special.mod.alt': [0xE2],
     'special.mod.ctrl': [0xE0],
     'special.mod.win': [0xE3],
     'special.mod.shift': [0xE1],
   };
+}
+
+/// Result of reverse‑mapping a wire slot back to catalog information.
+class SlotInfo {
+  const SlotInfo({
+    required this.tabIndex,
+    required this.catalogId,
+    this.modifierIds = const [],
+    this.keyChar,
+  });
+
+  final int tabIndex;
+  final String catalogId;
+  final List<String> modifierIds;
+  final String? keyChar;
 }

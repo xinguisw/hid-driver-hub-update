@@ -1,9 +1,14 @@
 import 'package:driver_hub/layer4_domain/models/device_settings_state.dart';
-import 'package:driver_hub/layer4_domain/models/macro.dart';
+import 'package:driver_hub/layer5_codec/button_action_catalog_map.dart';
+import 'package:driver_hub/i18n/strings.g.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-/// Button Mapping right pane — action catalog (skeleton).
+/// TapRegion group ID shared across button mapping panel and canvas
+/// to allow collapsing when tapping outside the list.
+const String hubButtonMappingTapRegionId = 'hub_button_mapping_tap_region';
+
+/// Button Mapping right pane — action catalog.
 ///
 /// L3 only. Tabs paint L4-packed catalogs (assets via L2). No catalog
 /// ownership, no L5/HID. Row tap / Special combo = local UI only.
@@ -11,19 +16,25 @@ class HubButtonMappingPanel extends StatefulWidget {
   const HubButtonMappingPanel({
     super.key,
     this.selectedButtonId,
+    this.buttons,
     this.mouseActionCatalog,
     this.keyboardActionCatalog,
     this.specialActionCatalog,
+    this.macroSlots, // NEW: list of macros
     this.onActionSelected,
     this.onComboSelected,
-    this.macroSlots = const [],
-    this.onMacroSelected,
+    this.onCollapse,
+    this.onMacroSelected, // NEW: callback for macro selection
   });
 
   final int? selectedButtonId;
+  final List<ButtonData>? buttons;
   final List<ActionCatalogSectionData>? mouseActionCatalog;
   final List<ActionCatalogSectionData>? keyboardActionCatalog;
   final List<ActionCatalogSectionData>? specialActionCatalog;
+
+  /// List of available macros (each with an ID and display name).
+  final List<MacroSlot>? macroSlots;
 
   /// Called when user selects a catalog action (Mouse/Keyboard tabs).
   final ValueChanged<String>? onActionSelected;
@@ -31,10 +42,14 @@ class HubButtonMappingPanel extends StatefulWidget {
   /// Called when user completes a special combo (modifiers + key).
   final void Function(List<String> modifierIds, String keyChar)?
   onComboSelected;
-  final List<MacroDefinition> macroSlots;
-  final ValueChanged<int>? onMacroSelected;
 
-  static const double width = 280;
+  /// Called to collapse the panel.
+  final VoidCallback? onCollapse;
+
+  /// Called when a macro is selected.
+  final ValueChanged<String>? onMacroSelected;
+
+  static const double width = 320;
 
   /// Product: combination shortcut allows at most two modifiers.
   static const int maxSpecialModifiers = 2;
@@ -43,8 +58,20 @@ class HubButtonMappingPanel extends StatefulWidget {
   State<HubButtonMappingPanel> createState() => _HubButtonMappingPanelState();
 }
 
+/// Simple data class for a macro slot.
+class MacroSlot {
+  const MacroSlot({required this.id, required this.name});
+  final String id;
+  final String name;
+}
+
 class _HubButtonMappingPanelState extends State<HubButtonMappingPanel> {
-  static const _tabs = ['Mouse', 'Keyboard', 'Special', 'Macro'];
+  List<String> get _tabs => [
+    t.mapping.mouse,
+    t.mapping.keyboard,
+    t.mapping.special,
+    t.mapping.macro,
+  ];
 
   int _tabIndex = 0;
   String? _selectedCatalogId;
@@ -58,14 +85,47 @@ class _HubButtonMappingPanelState extends State<HubButtonMappingPanel> {
   final FocusNode _anyKeyFocus = FocusNode();
 
   @override
+  void initState() {
+    super.initState();
+    _syncWithSelectedButton();
+  }
+
+  @override
   void didUpdateWidget(HubButtonMappingPanel oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.selectedButtonId != widget.selectedButtonId) {
+    if (widget.selectedButtonId != oldWidget.selectedButtonId ||
+        widget.buttons != oldWidget.buttons) {
+      _syncWithSelectedButton();
+    }
+  }
+
+  void _syncWithSelectedButton() {
+    final btnId = widget.selectedButtonId;
+    if (btnId == null) return;
+
+    final buttonList = widget.buttons;
+    if (buttonList == null || buttonList.isEmpty) return;
+
+    final button = buttonList.firstWhere(
+      (b) => b.id == btnId,
+      orElse: () => buttonList.first,
+    );
+
+    final info = ButtonActionCatalogMap.slotToCatalogInfo(
+      button.action ?? 0,
+      button.param1 ?? 0,
+      button.param2 ?? 0,
+      button.param3 ?? 0,
+    );
+
+    if (info != null) {
       setState(() {
+        _tabIndex = info.tabIndex;
+        _selectedCatalogId = info.catalogId;
         _specialModOrder.clear();
+        _specialModOrder.addAll(info.modifierIds);
+        _anyKeyChar = info.keyChar;
         _anyKeyListening = false;
-        _anyKeyChar = null;
-        _selectedCatalogId = null;
       });
     }
   }
@@ -89,43 +149,41 @@ class _HubButtonMappingPanelState extends State<HubButtonMappingPanel> {
     setState(() {
       if (_specialModOrder.contains(id)) {
         _specialModOrder.remove(id);
-      } else {
-        // At max: drop oldest so the new pick can light; always ≤ 2 selected.
-        if (_specialModOrder.length >=
-            HubButtonMappingPanel.maxSpecialModifiers) {
-          _specialModOrder.removeAt(0);
-        }
-        _specialModOrder.add(id);
+        return;
       }
-      if (_anyKeyChar != null) {
-        widget.onComboSelected?.call(
-          List<String>.from(_specialModOrder),
-          _anyKeyChar!,
-        );
+      // At max: drop oldest so the new pick can light; always ≤ 2 selected.
+      if (_specialModOrder.length >=
+          HubButtonMappingPanel.maxSpecialModifiers) {
+        _specialModOrder.removeAt(0);
       }
+      _specialModOrder.add(id);
     });
   }
 
   void _onAnyKeyFieldTap() {
     setState(() {
       _anyKeyListening = true;
-      // why: click again to change — wait for a new key; keep old until captured
     });
     _anyKeyFocus.requestFocus();
+    // why: click again to change — wait for a new key; keep old until captured
   }
 
   KeyEventResult _onAnyKeyEvent(FocusNode node, KeyEvent event) {
     if (!_anyKeyListening) return KeyEventResult.ignored;
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
 
-    String? ch = _logicalKeyToChar[event.logicalKey];
-    if (ch == null) {
-      final raw = event.character;
-      if (raw != null &&
-          raw.isNotEmpty &&
-          raw.characters.first.codeUnitAt(0) > 0x20) {
-        ch = raw.characters.first;
-      }
+    String? ch;
+
+    // Try character first (printable keys: letters, digits, symbols)
+    final raw = event.character;
+    if (raw != null &&
+        raw.isNotEmpty &&
+        raw.characters.first.codeUnitAt(0) > 0x20 &&
+        event.logicalKey != LogicalKeyboardKey.space) {
+      ch = raw.characters.first;
+    } else {
+      // Map logical keys to their character representations
+      ch = _logicalKeyToChar[event.logicalKey];
     }
 
     if (ch == null) return KeyEventResult.ignored;
@@ -135,8 +193,10 @@ class _HubButtonMappingPanelState extends State<HubButtonMappingPanel> {
       _anyKeyListening = false;
     });
 
-    // Dispatch key combo / single key choice flexibly (modifiers optional)
-    widget.onComboSelected?.call(List<String>.from(_specialModOrder), ch);
+    // Dispatch combo if modifiers are selected
+    if (_specialModOrder.isNotEmpty) {
+      widget.onComboSelected?.call(List<String>.from(_specialModOrder), ch);
+    }
 
     return KeyEventResult.handled;
   }
@@ -197,129 +257,160 @@ class _HubButtonMappingPanelState extends State<HubButtonMappingPanel> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return SizedBox(
-      width: HubButtonMappingPanel.width,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              for (var i = 0; i < _tabs.length; i++)
+    return TapRegion(
+      groupId: hubButtonMappingTapRegionId,
+      onTapOutside: (_) => widget.onCollapse?.call(),
+      child: SizedBox(
+        width: HubButtonMappingPanel.width,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Segmented Pill Tab Bar (Reference UI style)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 12, 12, 6),
+                  child: Container(
+                    padding: const EdgeInsets.all(3),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surfaceContainerHighest
+                          .withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      children: [
+                        for (var i = 0; i < _tabs.length; i++)
+                          Expanded(
+                            child: _TabChip(
+                              label: _tabs[i],
+                              selected: i == _tabIndex,
+                              onTap: () => _setTab(i),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 4),
+
+                // Catalog List Body
                 Expanded(
-                  child: _TabChip(
-                    label: _tabs[i],
-                    selected: i == _tabIndex,
-                    onTap: () => _setTab(i),
-                  ),
-                ),
-            ],
-          ),
-          Expanded(
-            child: ColoredBox(
-              color: theme.colorScheme.surfaceContainerHighest.withValues(
-                alpha: 0.35,
-              ),
-              child: switch (_tabIndex) {
-                0 => _SectionCatalogList(
-                  sections: widget.mouseActionCatalog ?? const [],
-                  selectedId: _selectedCatalogId,
-                  onSelect: (id) {
-                    setState(() => _selectedCatalogId = id);
-                    widget.onActionSelected?.call(id);
-                  },
-                ),
-                1 => _SectionCatalogList(
-                  sections: widget.keyboardActionCatalog ?? const [],
-                  selectedId: _selectedCatalogId,
-                  onSelect: (id) {
-                    setState(() => _selectedCatalogId = id);
-                    widget.onActionSelected?.call(id);
-                  },
-                ),
-                2 => _SpecialCombinationBody(
-                  sections: widget.specialActionCatalog ?? const [],
-                  selectedMods: _specialModOrder.toSet(),
-                  onToggleMod: _toggleSpecialMod,
-                  anyKeyChar: _anyKeyChar,
-                  anyKeyListening: _anyKeyListening,
-                  anyKeyFocus: _anyKeyFocus,
-                  onAnyKeyTap: _onAnyKeyFieldTap,
-                  onAnyKeyEvent: _onAnyKeyEvent,
-                  onComboComplete: (keyChar) {
-                    widget.onComboSelected?.call(
-                      List<String>.from(_specialModOrder),
-                      keyChar,
-                    );
-                  },
-                ),
-                _ => _MacroCatalogBody(
-                  macros: widget.macroSlots,
-                  selectedSlot: _selectedCatalogId == null
-                      ? null
-                      : int.tryParse(
-                          _selectedCatalogId!.replaceFirst('macro.', ''),
+                  child: ColoredBox(
+                    color: theme.colorScheme.surfaceContainerHighest.withValues(
+                      alpha: 0.15,
+                    ),
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 200),
+                      switchInCurve: Curves.easeOut,
+                      switchOutCurve: Curves.easeIn,
+                      transitionBuilder:
+                          (Widget child, Animation<double> animation) {
+                            return FadeTransition(
+                              opacity: animation,
+                              child: SlideTransition(
+                                position: Tween<Offset>(
+                                  begin: const Offset(0.04, 0.0),
+                                  end: Offset.zero,
+                                ).animate(animation),
+                                child: child,
+                              ),
+                            );
+                          },
+                      child: KeyedSubtree(
+                        key: ValueKey<Object?>(
+                          '${_tabIndex}_${widget.selectedButtonId}',
                         ),
-                  onSelect: (slot) {
-                    setState(() => _selectedCatalogId = 'macro.$slot');
-                    widget.onMacroSelected?.call(slot);
-                  },
+                        child: switch (_tabIndex) {
+                          0 => _SectionCatalogList(
+                            sections: widget.mouseActionCatalog ?? const [],
+                            selectedId: _selectedCatalogId,
+                            onSelect: (id) {
+                              setState(() => _selectedCatalogId = id);
+                              widget.onActionSelected?.call(id);
+                            },
+                          ),
+                          1 => _SectionCatalogList(
+                            sections: widget.keyboardActionCatalog ?? const [],
+                            selectedId: _selectedCatalogId,
+                            onSelect: (id) {
+                              setState(() => _selectedCatalogId = id);
+                              widget.onActionSelected?.call(id);
+                            },
+                          ),
+                          2 => _SpecialCombinationBody(
+                            sections: widget.specialActionCatalog ?? const [],
+                            selectedMods: _specialModOrder.toSet(),
+                            onToggleMod: _toggleSpecialMod,
+                            anyKeyChar: _anyKeyChar,
+                            anyKeyListening: _anyKeyListening,
+                            anyKeyFocus: _anyKeyFocus,
+                            onAnyKeyTap: _onAnyKeyFieldTap,
+                            onAnyKeyEvent: _onAnyKeyEvent,
+                            onComboComplete: (keyChar) {
+                              if (_specialModOrder.isNotEmpty) {
+                                widget.onComboSelected?.call(
+                                  List<String>.from(_specialModOrder),
+                                  keyChar,
+                                );
+                              }
+                            },
+                          ),
+                          3 => _MacroCatalogBody(
+                            macroSlots: widget.macroSlots ?? const [],
+                            selectedId: _selectedCatalogId,
+                            onSelect: (id) {
+                              setState(() => _selectedCatalogId = id);
+                              widget.onMacroSelected?.call(id);
+                            },
+                          ),
+                          _ => const SizedBox.expand(),
+                        },
+                      ),
+                    ),
+                  ),
                 ),
-              },
+              ],
             ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
-class _MacroCatalogBody extends StatelessWidget {
-  const _MacroCatalogBody({
-    required this.macros,
-    required this.selectedSlot,
-    required this.onSelect,
-  });
-
-  final List<MacroDefinition> macros;
-  final int? selectedSlot;
-  final ValueChanged<int> onSelect;
-
-  @override
-  Widget build(BuildContext context) {
-    if (macros.isEmpty) {
-      return const Center(child: Text('No macros configured'));
-    }
-    return ListView(
-      padding: const EdgeInsets.only(bottom: 16),
-      children: [
-        const Padding(
-          padding: EdgeInsets.fromLTRB(12, 12, 12, 4),
-          child: Text('Macro'),
-        ),
-        for (final macro in macros)
-          Material(
-            color: macro.slot == selectedSlot
-                ? Theme.of(context).colorScheme.primary
-                : Colors.transparent,
-            child: InkWell(
-              onTap: () => onSelect(macro.slot),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 10,
-                ),
-                child: Text(
-                  macro.name.isEmpty ? 'M${macro.slot}' : macro.name,
-                  style: TextStyle(
-                    color: macro.slot == selectedSlot
-                        ? Theme.of(context).colorScheme.onPrimary
-                        : Theme.of(context).colorScheme.onSurface,
+            // Collapse handle on the left edge
+            if (widget.onCollapse != null)
+              Positioned(
+                left: 0,
+                top: 0,
+                bottom: 0,
+                child: Center(
+                  child: Material(
+                    elevation: 2,
+                    shadowColor: Colors.black26,
+                    color: theme.colorScheme.surface,
+                    borderRadius: const BorderRadius.only(
+                      topRight: Radius.circular(8),
+                      bottomRight: Radius.circular(8),
+                    ),
+                    child: InkWell(
+                      onTap: widget.onCollapse,
+                      borderRadius: const BorderRadius.only(
+                        topRight: Radius.circular(8),
+                        bottomRight: Radius.circular(8),
+                      ),
+                      child: Container(
+                        width: 18,
+                        height: 38,
+                        alignment: Alignment.center,
+                        child: Icon(
+                          Icons.chevron_right,
+                          size: 18,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),
-            ),
-          ),
-      ],
+          ],
+        ),
+      ),
     );
   }
 }
@@ -339,44 +430,113 @@ class _SectionCatalogList extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     if (sections.isEmpty) return const SizedBox.expand();
-    return ListView(
-      padding: const EdgeInsets.only(bottom: 16),
-      children: [
-        for (final section in sections) ...[
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
-            child: Text(
-              section.title,
-              style: theme.textTheme.labelMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ),
-          for (final item in section.items)
-            Material(
-              color: item.id == selectedId
-                  ? theme.colorScheme.primary
-                  : Colors.transparent,
-              child: InkWell(
-                onTap: () => onSelect(item.id),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 10,
-                  ),
-                  child: Text(
-                    item.label,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: item.id == selectedId
-                          ? theme.colorScheme.onPrimary
-                          : theme.colorScheme.onSurface,
-                    ),
-                  ),
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.only(bottom: 16, top: 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (final section in sections) ...[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
+              child: Text(
+                section.title,
+                style: theme.textTheme.labelMedium?.copyWith(
+                  color: theme.colorScheme.onSurface,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                  letterSpacing: 0.3,
                 ),
               ),
             ),
+            for (final item in section.items)
+              _CatalogItemTile(
+                key: ValueKey(item.id),
+                item: item,
+                selected: item.id == selectedId,
+                onSelect: () => onSelect(item.id),
+              ),
+          ],
         ],
-      ],
+      ),
+    );
+  }
+}
+
+class _CatalogItemTile extends StatefulWidget {
+  const _CatalogItemTile({
+    super.key,
+    required this.item,
+    required this.selected,
+    required this.onSelect,
+  });
+
+  final ActionCatalogItemData item;
+  final bool selected;
+  final VoidCallback onSelect;
+
+  @override
+  State<_CatalogItemTile> createState() => _CatalogItemTileState();
+}
+
+class _CatalogItemTileState extends State<_CatalogItemTile> {
+  @override
+  void initState() {
+    super.initState();
+    if (widget.selected) {
+      _scrollToSelf();
+    }
+  }
+
+  @override
+  void didUpdateWidget(_CatalogItemTile oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.selected && !oldWidget.selected) {
+      _scrollToSelf();
+    }
+  }
+
+  void _scrollToSelf() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        Scrollable.ensureVisible(
+          context,
+          alignment: 0.3,
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(32, 2, 12, 2),
+      child: Material(
+        color: widget.selected
+            ? theme.colorScheme.primaryContainer
+            : Colors.transparent,
+        borderRadius: BorderRadius.circular(6),
+        child: InkWell(
+          onTap: widget.onSelect,
+          borderRadius: BorderRadius.circular(6),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Text(
+              widget.item.label,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: widget.selected
+                    ? theme.colorScheme.onPrimaryContainer
+                    : theme.colorScheme.onSurfaceVariant,
+                fontWeight: widget.selected ? FontWeight.w600 : FontWeight.w400,
+                fontSize: 12,
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -422,91 +582,113 @@ class _SpecialCombinationBody extends StatelessWidget {
     final anyLabel = anyKeyListening ? '…' : (anyKeyChar ?? '');
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 16),
+      padding: const EdgeInsets.only(bottom: 16, top: 4),
       children: [
-        Text(
-          section.title,
-          style: theme.textTheme.labelMedium?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
+          child: Text(
+            section.title,
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: theme.colorScheme.onSurface,
+              fontWeight: FontWeight.bold,
+              fontSize: 12,
+              letterSpacing: 0.3,
+            ),
           ),
         ),
-        const SizedBox(height: 12),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(
-              width: 88,
-              child: Text('Modifier key', style: theme.textTheme.bodySmall),
-            ),
-            Expanded(
-              child: Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: [
-                  for (final m in mods)
-                    Material(
-                      color: selectedMods.contains(m.id)
-                          ? theme.colorScheme.primary
-                          : theme.colorScheme.surfaceContainerHigh,
-                      borderRadius: BorderRadius.circular(4),
-                      child: InkWell(
-                        onTap: () => onToggleMod(m.id),
-                        borderRadius: BorderRadius.circular(4),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 6,
-                          ),
-                          child: Text(
-                            m.label,
-                            style: theme.textTheme.labelMedium?.copyWith(
-                              color: selectedMods.contains(m.id)
-                                  ? theme.colorScheme.onPrimary
-                                  : theme.colorScheme.onSurface,
+        Padding(
+          padding: const EdgeInsets.fromLTRB(32, 6, 16, 8),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                width: 96,
+                child: Text(
+                  t.mapping.modifierKey,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    for (final m in mods)
+                      Material(
+                        color: selectedMods.contains(m.id)
+                            ? theme.colorScheme.primary
+                            : theme.colorScheme.surfaceContainerHigh,
+                        borderRadius: BorderRadius.circular(6),
+                        child: InkWell(
+                          onTap: () => onToggleMod(m.id),
+                          borderRadius: BorderRadius.circular(6),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 6,
+                            ),
+                            child: Text(
+                              m.label,
+                              style: theme.textTheme.labelMedium?.copyWith(
+                                color: selectedMods.contains(m.id)
+                                    ? theme.colorScheme.onPrimary
+                                    : theme.colorScheme.onSurface,
+                                fontSize: 12,
+                              ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            SizedBox(
-              width: 88,
-              child: Text(
-                anyKey?.label ?? 'Any key',
-                style: theme.textTheme.bodySmall,
+        Padding(
+          padding: const EdgeInsets.fromLTRB(32, 6, 16, 8),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 96,
+                child: Text(
+                  anyKey?.label ?? 'Any key',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    fontSize: 12,
+                  ),
+                ),
               ),
-            ),
-            Expanded(
-              child: Focus(
-                focusNode: anyKeyFocus,
-                onKeyEvent: onAnyKeyEvent,
-                child: Material(
-                  color: anyKeyListening
-                      ? theme.colorScheme.primaryContainer
-                      : theme.colorScheme.surfaceContainerHigh,
-                  borderRadius: BorderRadius.circular(4),
-                  child: InkWell(
-                    onTap: onAnyKeyTap,
-                    borderRadius: BorderRadius.circular(4),
-                    child: SizedBox(
-                      height: 28,
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 10),
-                          child: Text(
-                            anyLabel,
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: anyKeyListening
-                                  ? theme.colorScheme.onPrimaryContainer
-                                  : theme.colorScheme.onSurface,
+              Expanded(
+                child: Focus(
+                  focusNode: anyKeyFocus,
+                  onKeyEvent: onAnyKeyEvent,
+                  child: Material(
+                    color: anyKeyListening
+                        ? theme.colorScheme.primaryContainer
+                        : theme.colorScheme.surfaceContainerHigh,
+                    borderRadius: BorderRadius.circular(6),
+                    child: InkWell(
+                      onTap: onAnyKeyTap,
+                      canRequestFocus: false,
+                      borderRadius: BorderRadius.circular(6),
+                      child: SizedBox(
+                        height: 32,
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 10),
+                            child: Text(
+                              anyLabel,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: anyKeyListening
+                                    ? theme.colorScheme.onPrimaryContainer
+                                    : theme.colorScheme.onSurface,
+                                fontSize: 12,
+                              ),
                             ),
                           ),
                         ),
@@ -515,9 +697,131 @@ class _SpecialCombinationBody extends StatelessWidget {
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
+      ],
+    );
+  }
+}
+
+/// Macro tab — list of available macros with selection.
+class _MacroCatalogBody extends StatelessWidget {
+  const _MacroCatalogBody({
+    required this.macroSlots,
+    required this.selectedId,
+    required this.onSelect,
+  });
+
+  final List<MacroSlot> macroSlots;
+  final String? selectedId;
+  final ValueChanged<String> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    if (macroSlots.isEmpty) {
+      return ListView(
+        padding: const EdgeInsets.only(bottom: 16, top: 4),
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
+            child: Text(
+              'Macro Setting',
+              style: theme.textTheme.labelMedium?.copyWith(
+                color: theme.colorScheme.onSurface,
+                fontWeight: FontWeight.bold,
+                fontSize: 12,
+                letterSpacing: 0.3,
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(32, 20, 24, 16),
+            child: Column(
+              children: [
+                Icon(
+                  Icons.extension_outlined,
+                  size: 32,
+                  color: theme.colorScheme.onSurfaceVariant.withValues(
+                    alpha: 0.5,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'No Macros Configured',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Create and manage custom key macros for your device in Macro Settings.',
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant.withValues(
+                      alpha: 0.7,
+                    ),
+                    fontSize: 11,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+    }
+
+    return ListView(
+      padding: const EdgeInsets.only(bottom: 16, top: 4),
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
+          child: Text(
+            'Macro Setting',
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: theme.colorScheme.onSurface,
+              fontWeight: FontWeight.bold,
+              fontSize: 12,
+              letterSpacing: 0.3,
+            ),
+          ),
+        ),
+        for (final slot in macroSlots)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(32, 2, 12, 2),
+            child: Material(
+              color: slot.id == selectedId
+                  ? theme.colorScheme.primaryContainer
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(6),
+              child: InkWell(
+                onTap: () => onSelect(slot.id),
+                borderRadius: BorderRadius.circular(6),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  child: Text(
+                    slot.name,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: slot.id == selectedId
+                          ? theme.colorScheme.onPrimaryContainer
+                          : theme.colorScheme.onSurfaceVariant,
+                      fontWeight: slot.id == selectedId
+                          ? FontWeight.w600
+                          : FontWeight.w400,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
       ],
     );
   }
@@ -537,22 +841,37 @@ class _TabChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Material(
-      color: selected ? theme.colorScheme.primary : Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
-          child: Center(
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                label,
-                maxLines: 1,
-                style: theme.textTheme.labelLarge?.copyWith(
-                  color: selected
-                      ? theme.colorScheme.onPrimary
-                      : theme.colorScheme.onSurface,
+    final isDark = theme.brightness == Brightness.dark;
+
+    final selectedBg = isDark ? Colors.white : Colors.black;
+    final selectedFg = isDark ? Colors.black : Colors.white;
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 150),
+      decoration: BoxDecoration(
+        color: selected ? selectedBg : Colors.transparent,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(6),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            child: Center(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: selected
+                        ? selectedFg
+                        : theme.colorScheme.onSurfaceVariant,
+                    fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                    fontSize: 12,
+                  ),
                 ),
               ),
             ),

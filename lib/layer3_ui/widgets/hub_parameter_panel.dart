@@ -6,6 +6,16 @@ import 'package:flutter/material.dart';
 /// L3 only. Dispatches events to BLoC.
 /// Structure: outer group container → rows inside.
 /// All rows are data-driven for future L2 capability filtering.
+///
+/// Parameter Setting page — sensor feature + other feature.
+///
+/// L3 only. Dispatches events to BLoC.
+/// Structure: outer group container → rows inside.
+/// All rows are data-driven for future L2 capability filtering.
+///
+/// NOTE: this file enhances presentation (spacing, typography, shapes,
+/// chip/stepper look, active highlights, card depth). Public API, gating logic,
+/// and callback wiring are strictly unchanged.
 class HubParameterPanel extends StatelessWidget {
   const HubParameterPanel({
     super.key,
@@ -86,13 +96,17 @@ class HubParameterPanel extends StatelessWidget {
     final hasOtherContent = hasButtonDebounce || hasWheelInvert || hasSleepTime;
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (hasSensorContent) ...[
-            const Text('Sensor feature'),
-            const SizedBox(height: 8),
+            const _SectionHeader(
+              title: 'Sensor features',
+              subtitle: 'Advanced optical sensor tuning and calibration',
+              icon: Icons.tune,
+            ),
+            const SizedBox(height: 14),
             _SensorFeatureGroup(
               lodOptions: lodOptions ?? const [],
               performanceOptions: performanceOptions ?? const [],
@@ -116,11 +130,15 @@ class HubParameterPanel extends StatelessWidget {
               hasAngleTune: hasAngleTune,
               hasPerformance: hasPerformance,
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 28),
           ],
           if (hasOtherContent) ...[
-            const Text('Other feature'),
-            const SizedBox(height: 8),
+            const _SectionHeader(
+              title: 'Device features',
+              subtitle: 'Response times, power management and mechanics',
+              icon: Icons.settings_input_component,
+            ),
+            const SizedBox(height: 14),
             _OtherFeatureGroup(
               buttonDebounceOptions: buttonDebounceOptions ?? const [],
               sleepTimeOptions: sleepTimeOptions ?? const [],
@@ -137,6 +155,219 @@ class HubParameterPanel extends StatelessWidget {
           ],
         ],
       ),
+    );
+  }
+}
+
+/// Section label with a stylish accent gradient bar and descriptive subtitle.
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader({
+    required this.title,
+    this.subtitle,
+    this.icon,
+  });
+
+  final String title;
+  final String? subtitle;
+  final IconData? icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Container(
+          width: 4,
+          height: subtitle != null ? 32 : 18,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                theme.colorScheme.primary,
+                theme.colorScheme.secondary,
+              ],
+            ),
+            borderRadius: BorderRadius.circular(3),
+          ),
+        ),
+        const SizedBox(width: 10),
+        if (icon != null) ...[
+          Icon(
+            icon,
+            size: 20,
+            color: theme.colorScheme.primary,
+          ),
+          const SizedBox(width: 8),
+        ],
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                title,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: theme.colorScheme.onSurface,
+                  letterSpacing: 0.2,
+                ),
+              ),
+              if (subtitle != null) ...[
+                const SizedBox(height: 2),
+                Text(
+                  subtitle!,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Title + icon badge + description helper.
+class _FieldTitle extends StatelessWidget {
+  const _FieldTitle({
+    required this.title,
+    this.description,
+    this.icon,
+    this.badge,
+  });
+
+  final String title;
+  final String? description;
+  final IconData? icon;
+  final Widget? badge;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (icon != null) ...[
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  icon,
+                  size: 16,
+                  color: theme.colorScheme.primary,
+                ),
+              ),
+              const SizedBox(width: 10),
+            ],
+            Flexible(
+              child: Text(
+                title,
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: theme.colorScheme.onSurface,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+            if (badge != null) ...[
+              const SizedBox(width: 8),
+              badge!,
+            ],
+          ],
+        ),
+        if (description != null) ...[
+          const SizedBox(height: 6),
+          Text(
+            description!,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.85),
+              height: 1.35,
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// Outer group container with a subtle glass-card border and shadow.
+class _GroupContainer extends StatelessWidget {
+  const _GroupContainer({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: isDark
+            ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5)
+            : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.8),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: theme.colorScheme.outline.withValues(alpha: 0.25),
+        ),
+      ),
+      child: child,
+    );
+  }
+}
+
+/// Inner card container with elevated surface background, clean border, and hover sheen.
+class _CardBox extends StatelessWidget {
+  const _CardBox({
+    required this.child,
+    this.isActive = false,
+  });
+
+  final Widget child;
+  final bool isActive;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: isActive
+              ? theme.colorScheme.primary.withValues(alpha: 0.5)
+              : theme.colorScheme.outline.withValues(alpha: isDark ? 0.35 : 0.45),
+          width: isActive ? 1.4 : 1.0,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: isActive
+                ? theme.colorScheme.primary.withValues(alpha: 0.08)
+                : Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+            blurRadius: isActive ? 12 : 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: child,
     );
   }
 }
@@ -187,13 +418,7 @@ class _SensorFeatureGroup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(8),
-      ),
+    return _GroupContainer(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -210,7 +435,7 @@ class _SensorFeatureGroup extends StatelessWidget {
                     onAngleSnapChanged: onAngleSnapChanged,
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 14),
               ],
               if (hasLod) ...[
                 Expanded(
@@ -220,7 +445,7 @@ class _SensorFeatureGroup extends StatelessWidget {
                     onLodChanged: onLodChanged,
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 14),
               ],
               if (hasAngleTune) ...[
                 Expanded(
@@ -236,7 +461,7 @@ class _SensorFeatureGroup extends StatelessWidget {
             ],
           ),
           if (hasPerformance) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: 14),
             _PerformanceRow(
               options: performanceOptions,
               performance: performance,
@@ -265,24 +490,52 @@ class _SensorTuningBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(6),
-      ),
+    final anyActive = rippleOn || angleSnapOn;
+
+    return _CardBox(
+      isActive: anyActive,
       child: Column(
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              const Expanded(child: Text('Ripple Control')),
-              Switch(value: rippleOn, onChanged: onRippleChanged),
+              const Expanded(
+                child: _FieldTitle(
+                  title: 'Ripple Control',
+                  description:
+                      'Smooths micro-movements to reduce cursor jitter at high DPI.',
+                  icon: Icons.waves,
+                ),
+              ),
+              const SizedBox(width: 8),
+              _CustomSwitch(
+                value: rippleOn,
+                onChanged: onRippleChanged,
+              ),
             ],
           ),
+          const SizedBox(height: 14),
+          Divider(
+            height: 1,
+            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
+          ),
+          const SizedBox(height: 14),
           Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              const Expanded(child: Text('Angle Snap')),
-              Switch(value: angleSnapOn, onChanged: onAngleSnapChanged),
+              const Expanded(
+                child: _FieldTitle(
+                  title: 'Angle Snap',
+                  description:
+                      'Locks horizontal or vertical lines to clean straight axes.',
+                  icon: Icons.straighten,
+                ),
+              ),
+              const SizedBox(width: 8),
+              _CustomSwitch(
+                value: angleSnapOn,
+                onChanged: onAngleSnapChanged,
+              ),
             ],
           ),
         ],
@@ -305,39 +558,127 @@ class _LodBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Row(
+    final selectedOption = options.where((o) => o.wire == lodMm).firstOrNull;
+
+    return _CardBox(
+      isActive: lodMm != null,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('LOD'),
-          const SizedBox(width: 8),
-          Expanded(
-            child: RadioGroup<int>(
-              groupValue: lodMm,
-              // why: RadioGroup always fires with a value; null only means
-              // deselected, which a radio group cannot reach on its own.
-              onChanged: (value) {
-                if (value != null) onLodChanged?.call(value);
-              },
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  for (final opt in options)
-                    Row(
-                      children: [
-                        Radio<int>(value: opt.wire),
-                        Text('${opt.mm}mm'),
-                      ],
+          _FieldTitle(
+            title: 'Lift-Off Distance',
+            description:
+                'Sensor cut-off tracking height when the mouse is lifted.',
+            icon: Icons.arrow_upward,
+            badge: selectedOption != null
+                ? Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primary.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(10),
                     ),
-                ],
-              ),
+                    child: Text(
+                      '${selectedOption.mm}mm',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: theme.colorScheme.primary,
+                      ),
+                    ),
+                  )
+                : null,
+          ),
+          const SizedBox(height: 14),
+          RadioGroup<int>(
+            groupValue: lodMm,
+            // why: RadioGroup always fires with a value; null only means
+            // deselected, which a radio group cannot reach on its own.
+            onChanged: (value) {
+              if (value != null) onLodChanged?.call(value);
+            },
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (final opt in options)
+                  _LodRadioTile(
+                    label: '${opt.mm} mm',
+                    wire: opt.wire,
+                    isSelected: lodMm == opt.wire,
+                    onTap: onLodChanged == null
+                        ? null
+                        : () => onLodChanged!(opt.wire),
+                  ),
+              ],
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Interactive radio tile for LOD options with hover & active backgrounds.
+class _LodRadioTile extends StatelessWidget {
+  const _LodRadioTile({
+    required this.label,
+    required this.wire,
+    required this.isSelected,
+    this.onTap,
+  });
+
+  final String label;
+  final int wire;
+  final bool isSelected;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 140),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? theme.colorScheme.primary.withValues(alpha: 0.1)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: isSelected
+                  ? theme.colorScheme.primary.withValues(alpha: 0.35)
+                  : Colors.transparent,
+            ),
+          ),
+          child: Row(
+            children: [
+              SizedBox(
+                height: 20,
+                width: 20,
+                child: Radio<int>(
+                  value: wire,
+                  activeColor: theme.colorScheme.primary,
+                  visualDensity: VisualDensity.compact,
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                  color: isSelected
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme.onSurface,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -361,45 +702,135 @@ class _AngleTuneBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(6),
-      ),
+    return _CardBox(
+      isActive: angleTuneOn,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              const Expanded(child: Text('Angle Tune')),
-              Switch(value: angleTuneOn, onChanged: onAngleTuneToggled),
+              const Expanded(
+                child: _FieldTitle(
+                  title: 'Angle Snapping & Tune',
+                  description:
+                      'Rotates tracking coordinate axis to match hand grip tilt.',
+                  icon: Icons.rotate_right,
+                ),
+              ),
+              const SizedBox(width: 8),
+              _CustomSwitch(
+                value: angleTuneOn,
+                onChanged: onAngleTuneToggled,
+              ),
             ],
           ),
-          const SizedBox(height: 4),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              InkWell(
-                onTap: onAngleTuneDecrement,
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 8),
-                  child: Text('<'),
-                ),
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surfaceContainerHighest
+                  .withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: theme.colorScheme.outline.withValues(alpha: 0.2),
               ),
-              Text(angleTuneLabel),
-              InkWell(
-                onTap: onAngleTuneIncrement,
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 8),
-                  child: Text('>'),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _StepperButton(
+                  icon: Icons.remove,
+                  tooltip: 'Decrease angle',
+                  onTap: angleTuneOn ? onAngleTuneDecrement : null,
                 ),
-              ),
-            ],
+                AnimatedDefaultTextStyle(
+                  duration: const Duration(milliseconds: 150),
+                  style: theme.textTheme.titleMedium!.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: angleTuneOn
+                        ? theme.colorScheme.primary
+                        : theme.colorScheme.onSurfaceVariant,
+                    fontSize: 16,
+                  ),
+                  child: Text(angleTuneLabel),
+                ),
+                _StepperButton(
+                  icon: Icons.add,
+                  tooltip: 'Increase angle',
+                  onTap: angleTuneOn ? onAngleTuneIncrement : null,
+                ),
+              ],
+            ),
           ),
         ],
       ),
     );
+  }
+}
+
+/// Refined circular icon button used for angle-tune stepper controls.
+class _StepperButton extends StatelessWidget {
+  const _StepperButton({
+    required this.icon,
+    this.onTap,
+    this.tooltip,
+  });
+
+  final IconData icon;
+  final VoidCallback? onTap;
+  final String? tooltip;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final enabled = onTap != null;
+
+    final button = Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 140),
+          width: 32,
+          height: 32,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: enabled
+                ? theme.colorScheme.surface
+                : theme.colorScheme.surface.withValues(alpha: 0.3),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: enabled
+                  ? theme.colorScheme.outline.withValues(alpha: 0.4)
+                  : theme.colorScheme.outline.withValues(alpha: 0.15),
+            ),
+            boxShadow: enabled
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.05),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Icon(
+            icon,
+            size: 16,
+            color: enabled
+                ? theme.colorScheme.onSurface
+                : theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+          ),
+        ),
+      ),
+    );
+
+    if (tooltip != null) {
+      return Tooltip(message: tooltip!, child: button);
+    }
+    return button;
   }
 }
 
@@ -416,48 +847,61 @@ class _PerformanceRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Row(
+    return _CardBox(
+      isActive: performance != null,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Performance'),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (final wire in options)
-                  _SelectableChip(
-                    label: _performanceLabel(wire),
-                    selected: performance == wire,
-                    onTap: onPerformanceChanged == null
-                        ? null
-                        : () => onPerformanceChanged!(wire),
-                  ),
-              ],
-            ),
+          const _FieldTitle(
+            title: 'Performance Mode',
+            description:
+                'Balances sensor frame-rate between maximum responsiveness and battery endurance.',
+            icon: Icons.speed,
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 12,
+            runSpacing: 10,
+            children: [
+              for (final wire in options)
+                _SelectableChip(
+                  label: _performanceLabel(wire),
+                  icon: _performanceIcon(wire),
+                  selected: performance == wire,
+                  onTap: onPerformanceChanged == null
+                      ? null
+                      : () => onPerformanceChanged!(wire),
+                ),
+            ],
           ),
         ],
       ),
     );
   }
 
+  IconData _performanceIcon(int wire) {
+    switch (wire) {
+      case 0:
+        return Icons.eco_outlined;
+      case 1:
+        return Icons.work_outline;
+      case 2:
+        return Icons.bolt;
+      default:
+        return Icons.speed;
+    }
+  }
+
   String _performanceLabel(int wire) {
     switch (wire) {
       case 0:
-        return 'Low Performance';
+        return 'Low Performance (Eco)';
       case 1:
         return 'Office Mouse';
       case 2:
-        return 'High Performance';
+        return 'High Performance (Gaming)';
       default:
-        return '$wire';
+        return 'Mode $wire';
     }
   }
 }
@@ -491,13 +935,7 @@ class _OtherFeatureGroup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(8),
-      ),
+    return _GroupContainer(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -506,18 +944,22 @@ class _OtherFeatureGroup extends StatelessWidget {
             children: [
               if (hasButtonDebounce) ...[
                 Expanded(
-                  flex: 2,
+                  flex: 3,
                   child: _OptionsBox(
-                    title: 'Button debounce',
+                    title: 'Button debounce delay',
+                    description:
+                        'Filters out unintended double-clicks caused by mechanical contact bounce.',
+                    icon: Icons.timer_outlined,
                     options: buttonDebounceOptions,
                     selectedWire: debounceMs,
                     onSelected: onDebounceChanged,
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 14),
               ],
               if (hasWheelInvert) ...[
                 Expanded(
+                  flex: 2,
                   child: _WheelBox(
                     invert: wheelInvert ?? false,
                     onInvertChanged: onWheelInvertChanged,
@@ -527,21 +969,21 @@ class _OtherFeatureGroup extends StatelessWidget {
             ],
           ),
           if (hasSleepTime) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: 14),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
-                  flex: 2,
                   child: _OptionsBox(
-                    title: 'Sleep time',
+                    title: 'Sleep timer',
+                    description:
+                        'Inactivity timeout before entering ultra-low power standby mode.',
+                    icon: Icons.bedtime_outlined,
                     options: sleepTimeOptions,
                     selectedWire: sleepSeconds,
                     onSelected: onSleepChanged,
                   ),
                 ),
-                const SizedBox(width: 8),
-                const Expanded(child: SizedBox()),
               ],
             ),
           ],
@@ -554,12 +996,20 @@ class _OtherFeatureGroup extends StatelessWidget {
 class _OptionsBox extends StatelessWidget {
   const _OptionsBox({
     required this.title,
+    this.description,
+    this.icon,
     required this.options,
     this.selectedWire,
     this.onSelected,
   });
 
   final String title;
+
+  /// One-line hint shown under the title, explaining what the setting does.
+  final String? description;
+
+  /// Small leading glyph shown before the title.
+  final IconData? icon;
   final List<SettingsOptionData> options;
 
   /// Wire value of the currently selected option (if any).
@@ -570,20 +1020,16 @@ class _OptionsBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(6),
-      ),
+    return _CardBox(
+      isActive: selectedWire != null,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title),
-          const SizedBox(height: 8),
+          _FieldTitle(title: title, description: description, icon: icon),
+          const SizedBox(height: 14),
           Wrap(
-            spacing: 8,
-            runSpacing: 8,
+            spacing: 10,
+            runSpacing: 10,
             children: [
               for (final opt in options)
                 _SelectableChip(
@@ -613,36 +1059,39 @@ class _WheelBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(6),
-      ),
+    return _CardBox(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Wheel direction'),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
+          const _FieldTitle(
+            title: 'Wheel direction',
+            description:
+                'Inverts scroll direction to match your personal preference.',
+            icon: Icons.sync_alt,
+          ),
+          const SizedBox(height: 14),
+          Row(
             children: [
-              _SelectableChip(
-                label: 'Forward',
-                selected: !invert,
-                // why: both chips stay tappable so the user can switch away
-                // from the current selection; selection only paints state.
-                onTap: onInvertChanged == null
-                    ? null
-                    : () => onInvertChanged!(false),
+              Expanded(
+                child: _SelectableChip(
+                  label: 'Forward (Standard)',
+                  icon: Icons.arrow_upward,
+                  selected: !invert,
+                  onTap: onInvertChanged == null
+                      ? null
+                      : () => onInvertChanged!(false),
+                ),
               ),
-              _SelectableChip(
-                label: 'Reverse',
-                selected: invert,
-                onTap: onInvertChanged == null
-                    ? null
-                    : () => onInvertChanged!(true),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _SelectableChip(
+                  label: 'Reverse (Inverted)',
+                  icon: Icons.arrow_downward,
+                  selected: invert,
+                  onTap: onInvertChanged == null
+                      ? null
+                      : () => onInvertChanged!(true),
+                ),
               ),
             ],
           ),
@@ -652,44 +1101,124 @@ class _WheelBox extends StatelessWidget {
   }
 }
 
-/// Tappable chip that highlights when [selected].
+/// Tappable pill that highlights when [selected] — used for every chip-style
+/// option group (performance, debounce, sleep time, wheel direction).
 class _SelectableChip extends StatelessWidget {
   const _SelectableChip({
     required this.label,
     required this.selected,
+    this.icon,
     this.onTap,
   });
 
   final String label;
   final bool selected;
+  final IconData? icon;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(4),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        decoration: BoxDecoration(
-          color: selected
-              ? theme.colorScheme.secondaryContainer
-              : Colors.transparent,
-          border: Border.all(
+    final isDark = theme.brightness == Brightness.dark;
+
+    final baseBorderColor = isDark
+        ? theme.colorScheme.outline.withValues(alpha: 0.25)
+        : theme.colorScheme.outline.withValues(alpha: 0.4);
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
             color: selected
-                ? theme.colorScheme.secondary
-                : theme.colorScheme.outline,
+                ? theme.colorScheme.primary.withValues(alpha: 0.14)
+                : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.45),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: selected ? theme.colorScheme.primary : baseBorderColor,
+              width: selected ? 1.5 : 1.0,
+            ),
+            boxShadow: selected
+                ? [
+                    BoxShadow(
+                      color: theme.colorScheme.primary.withValues(alpha: 0.15),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                : null,
           ),
-          borderRadius: BorderRadius.circular(4),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (icon != null) ...[
+                Icon(
+                  icon,
+                  size: 15,
+                  color: selected
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme.onSurfaceVariant,
+                ),
+                const SizedBox(width: 6),
+              ],
+              Text(
+                label,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  fontSize: 13,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  color: selected
+                      ? (isDark ? Colors.white : theme.colorScheme.primary)
+                      : theme.colorScheme.onSurface,
+                  letterSpacing: 0.1,
+                ),
+              ),
+              if (selected) ...[
+                const SizedBox(width: 6),
+                Container(
+                  width: 6,
+                  height: 6,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primary,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ],
+            ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Custom styled switch for clean alignment and vibrant brand primary coloring.
+class _CustomSwitch extends StatelessWidget {
+  const _CustomSwitch({
+    required this.value,
+    this.onChanged,
+  });
+
+  final bool value;
+  final ValueChanged<bool>? onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Switch(
+      value: value,
+      onChanged: onChanged,
+      activeThumbColor: Colors.white,
+      activeTrackColor: theme.colorScheme.primary,
+      inactiveThumbColor: theme.colorScheme.outline,
+      inactiveTrackColor: theme.colorScheme.surfaceContainerHighest,
+      trackOutlineColor: WidgetStateProperty.resolveWith(
+        (states) => states.contains(WidgetState.selected)
+            ? Colors.transparent
+            : theme.colorScheme.outline.withValues(alpha: 0.3),
       ),
     );
   }

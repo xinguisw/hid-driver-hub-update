@@ -19,6 +19,7 @@ import 'package:driver_hub/layer4_domain/models/discovered_card_state.dart';
 import 'package:driver_hub/layer4_domain/models/osd_event.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:driver_hub/i18n/strings.g.dart';
 
 String _dpiColorHex(Color color) {
   int channel(double value) => (value * 255).round().clamp(0, 255);
@@ -300,13 +301,38 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                                   onButtonSelected: (id) {
                                     setState(() => _selectedButtonId = id);
                                   },
+                                  onBackgroundTap: () {
+                                    setState(() => _selectedButtonId = null);
+                                  },
                                   onResetToDefault: () {
-                                    debugPrint(
-                                      '[hub] ${widget.card.displayName}: '
-                                      'dispatch reset',
-                                    );
-                                    bloc.add(
-                                      const DeviceSettingsResetButtonMappingRequested(),
+                                    final t = context.t;
+                                    showDialog(
+                                      context: context,
+                                      builder: (ctx) => AlertDialog(
+                                        title: Text(t.common.tip),
+                                        content: Text(
+                                          t.mouseCanvas.restoreDefaultKeysTip,
+                                        ),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () =>
+                                                Navigator.of(ctx).pop(false),
+                                            child: Text(t.common.cancel),
+                                          ),
+                                          TextButton(
+                                            onPressed: () {
+                                              Navigator.of(ctx).pop(true);
+                                              debugPrint(
+                                                '[hub] ${widget.card.displayName}: dispatch reset',
+                                              );
+                                              bloc.add(
+                                                const DeviceSettingsResetButtonMappingRequested(),
+                                              );
+                                            },
+                                            child: Text(t.common.confirm),
+                                          ),
+                                        ],
+                                      ),
                                     );
                                   },
                                   onSave: () {
@@ -334,6 +360,7 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                                 const VerticalDivider(thickness: 1, width: 1),
                                 HubButtonMappingPanel(
                                   selectedButtonId: _selectedButtonId,
+                                  buttons: buttons,
                                   mouseActionCatalog:
                                       display?.mouseActionCatalog,
                                   keyboardActionCatalog:
@@ -357,16 +384,28 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                                       ),
                                     );
                                   },
-                                  macroSlots: widget.scope.macrosFor(
-                                    widget.card,
-                                  ),
+                                  macroSlots: widget.scope
+                                      .macrosFor(widget.card)
+                                      .indexed
+                                      .map(
+                                        (entry) => MacroSlot(
+                                          id: (entry.$1 + 1).toString(),
+                                          name: entry.$2.name,
+                                        ),
+                                      )
+                                      .toList(),
                                   onMacroSelected: (macroSlot) {
                                     _settingsBloc.add(
                                       DeviceSettingsMacroMappingRequested(
                                         buttonId: _selectedButtonId!,
-                                        macroSlot: macroSlot,
+                                        macroSlot: int.tryParse(macroSlot) ?? 0,
                                       ),
                                     );
+                                  },
+                                  onCollapse: () {
+                                    setState(() {
+                                      _selectedButtonId = null;
+                                    });
                                   },
                                 ),
                               ],
@@ -681,8 +720,9 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                                         (o) =>
                                             o.label == synced?.angleTuneLabel,
                                       );
-                                      if (idx < 0)
+                                      if (idx < 0) {
                                         idx = (options.length / 2).floor();
+                                      }
                                     }
                                     if (idx > 0) {
                                       bloc.add(
@@ -707,8 +747,9 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                                         (o) =>
                                             o.label == synced?.angleTuneLabel,
                                       );
-                                      if (idx < 0)
+                                      if (idx < 0) {
                                         idx = (options.length / 2).floor();
+                                      }
                                     }
                                     if (idx >= 0 && idx < options.length - 1) {
                                       bloc.add(

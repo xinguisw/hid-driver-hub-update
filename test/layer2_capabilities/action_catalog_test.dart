@@ -54,7 +54,7 @@ void main() {
           .where((i) => i.role == 'modifier')
           .map((i) => i.label)
           .toList();
-      expect(mods, ['Alt', 'Ctrl', 'Win', 'Shift']);
+      expect(mods, ['Left Alt', 'Left Ctrl', 'Left Win', 'Left Shift']);
       expect(
         tab.sections.single.items.where((i) => i.role == 'any_key').single.label,
         'Any key',

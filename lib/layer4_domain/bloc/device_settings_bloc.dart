@@ -1486,20 +1486,25 @@ class DeviceSettingsBloc
         ),
       );
     }
-    final currentLevel = state.dpiCurrentLevelStaging ?? synced.dpiActiveIndex;
-    final needsLevelReset = currentLevel == null ||
-        currentLevel == event.level ||
-        currentLevel > reindexed.length;
+    final currentLevel = state.dpiCurrentLevelStaging ?? synced.dpiActiveIndex ?? 1;
+    int nextLevel;
+    if (currentLevel == event.level) {
+      nextLevel = currentLevel.clamp(1, reindexed.length);
+    } else if (currentLevel > event.level) {
+      nextLevel = currentLevel - 1;
+    } else {
+      nextLevel = currentLevel.clamp(1, reindexed.length);
+    }
     emit(
       state.copyWith(
         dpiStageRemoveLevelStaging: event.level,
         dpiStageLevelsStaging: reindexed,
-        dpiCurrentLevelStaging: needsLevelReset ? 1 : state.dpiCurrentLevelStaging,
+        dpiCurrentLevelStaging: nextLevel,
         isDirty: true,
         clearError: true,
       ),
     );
-    debugPrint('[bloc] DPI stage remove staged: level=${event.level} (levelReset=$needsLevelReset)');
+    debugPrint('[bloc] DPI stage remove staged: level=${event.level} (nextLevel=$nextLevel)');
   }
 
   /// Save the staged DPI add/remove to device.
@@ -1539,6 +1544,10 @@ class DeviceSettingsBloc
 
     try {
       await commitDpiStages(stagedLevels, stagedLevels.length);
+      final activeLevel = state.dpiCurrentLevelStaging ?? synced.dpiActiveIndex ?? 1;
+      if (activeLevel > 0 && activeLevel <= stagedLevels.length) {
+        await commitDpiLevel(activeLevel);
+      }
     } catch (e) {
       debugPrint('[bloc] save DPI stages failed: $e');
       final failures = state.consecutiveFailures + 1;

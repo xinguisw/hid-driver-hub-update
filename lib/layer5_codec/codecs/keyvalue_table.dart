@@ -74,11 +74,12 @@ class KeyvalueTable {
     // Navigation and editing
     0x46: 'Print Screen', 0x47: 'Scroll Lock', 0x48: 'Pause',
     0x49: 'Insert', 0x4A: 'Home', 0x4B: 'Page Up', 0x4C: 'Delete',
-    0x4D: 'End', 0x4E: 'Page Down',
-    0x4F: 'Right', 0x50: 'Left', 0x51: 'Down', 0x52: 'Up',
+    0x4D: 'End', 0x4E: 'Page Down', 0x4F: 'Right Arrow',
+    0x50: 'Left Arrow', 0x51: 'Down Arrow', 0x52: 'Up Arrow',
+    0x53: 'Num Lock',
 
     // Numpad
-    0x53: 'Num Lock', 0x54: 'Numpad /', 0x55: 'Numpad *',
+    0x54: 'Numpad /', 0x55: 'Numpad *',
     0x56: 'Numpad -', 0x57: 'Numpad +', 0x58: 'Numpad Enter',
     0x59: 'Numpad 1', 0x5A: 'Numpad 2', 0x5B: 'Numpad 3',
     0x5C: 'Numpad 4', 0x5D: 'Numpad 5', 0x5E: 'Numpad 6',
@@ -91,16 +92,14 @@ class KeyvalueTable {
     0x8A: 'K132', 0x8B: 'K131', 0x90: 'K150', 0x91: 'K151',
     0xD6: 'Alt + NBSP', 0xD7: 'Shift + NBSP',
 
-    // System power
-    0xA0: 'Sleep', 0xA1: 'System power', 0xA2: 'Wake up',
-
-    // Consumer
-    0xA3: 'Web search', 0xA4: 'Web home', 0xA5: 'Web back',
-    0xA6: 'Web forward', 0xA7: 'Web stop', 0xA8: 'Web refresh',
+    // Consumer / Media
+    0xA0: 'Web back', 0xA1: 'Web forward', 0xA2: 'Web refresh',
+    0xA3: 'Web search', 0xA4: 'Web home', 0xA5: 'Web stop',
+    0xA6: 'Web forward', 0xA7: 'Web back', 0xA8: 'Web stop',
     0xA9: 'Web favourites', 0xAA: 'Media player', 0xAB: 'Email',
     0xAC: 'Calculator', 0xAD: 'My computer', 0xAE: 'Next track',
     0xAF: 'Previous track', 0xB0: 'Stop', 0xB1: 'Play / pause',
-    0xB2: 'Mute', 0xB3: 'Volume up', 0xB4: 'Volume down',
+    0xB2: 'Volume Mute', 0xB3: 'Volume Up', 0xB4: 'Volume Down',
     0xB5: 'Vendor key', 0xB6: 'Zoom in', 0xB7: 'Zoom out',
     0xB8: 'Tilt Right', 0xB9: 'Tilt Left', 0xBA: 'Brightness up',
     0xBB: 'Brightness down', 0xBC: 'Reject call', 0xBD: 'Media power',
@@ -120,7 +119,7 @@ class KeyvalueTable {
     0xD3: 'Print Screen', 0xD4: 'Backlight', 0xD5: 'Task manager',
 
     // Modifiers
-    0xE0: 'Ctrl', 0xE1: 'Shift', 0xE2: 'Alt', 0xE3: 'Win',
+    0xE0: 'Left Ctrl', 0xE1: 'Left Shift', 0xE2: 'Left Alt', 0xE3: 'Left Win',
     0xE4: 'Right Ctrl', 0xE5: 'Right Shift', 0xE6: 'Right Alt',
     0xE7: 'Right Win',
 

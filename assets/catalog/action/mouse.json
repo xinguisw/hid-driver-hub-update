@@ -34,8 +34,8 @@
     {
       "title": "Multimedia",
       "items": [
-        { "id": "mouse.volume_up", "label": "Volume +" },
-        { "id": "mouse.volume_down", "label": "Volume -" },
+        { "id": "mouse.volume_up", "label": "Volume Up" },
+        { "id": "mouse.volume_down", "label": "Volume Down" },
         { "id": "mouse.volume_mute", "label": "Volume Mute" },
         { "id": "mouse.next_track", "label": "Next Track" },
         { "id": "mouse.prev_track", "label": "Previous Track" },

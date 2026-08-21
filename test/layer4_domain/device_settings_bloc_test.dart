@@ -1240,12 +1240,12 @@ void main() {
       // Now delete level 6 (the active level).
       bloc.add(const DeviceSettingsDpiStageRemoveRequested(level: 6));
       await pumpEventQueue();
-      expect(bloc.state.dpiCurrentLevelStaging, 1);
+      expect(bloc.state.dpiCurrentLevelStaging, 5);
 
       // Save configuration.
       bloc.add(const DeviceSettingsSaveDpiConfigurationRequested());
       await pumpEventQueue();
-      expect(bloc.state.synced?.dpiActiveIndex, 1);
+      expect(bloc.state.synced?.dpiActiveIndex, 5);
       expect(bloc.state.synced?.dpiActiveLevelCount, 5);
       await bloc.close();
     });

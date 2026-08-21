@@ -664,27 +664,7 @@ class DeviceScope {
       );
     }
     const translate = TranslationCodec();
-    final c2Raw = raw.reportRateDpi;
-    final initialCount = (c2Raw != null && c2Raw.length == 3)
-        ? translate.dpiActiveMaskToCount(c2Raw[2])
-        : null;
 
-    // Rule 1: User adds new DPI level -> app ONLY sends C2 data!
-    final isAddOnly = initialCount != null && stagedLevels.length > initialCount;
-    if (isAddOnly) {
-      final latestRaw = _requireRawBlocks(card, 'commitDpiStages');
-      final c2 = latestRaw.reportRateDpi;
-      if (c2 == null || c2.length != 3) {
-        throw StateError('commitDpiStages: C2 raw block is unavailable');
-      }
-      final infoBlock = Uint8List.fromList(c2);
-      infoBlock[2] = (1 << activeCount) - 1;
-      await session.setReportRate(infoBlock);
-      _updateRawBlocks(card, latestRaw.copyWith(reportRateDpi: infoBlock));
-      return;
-    }
-
-    // Rule 2: User deletes DPI level -> app sends C2 & C4!
     final defaultDpi = capLevels.last.value;
     final defaultWire = translate.dpiDisplayToWireUnit(
       defaultDpi,
@@ -694,7 +674,7 @@ class DeviceScope {
       throw StateError('commitDpiStages: default DPI not encodable');
     }
 
-    // Build the full 8-slot wire table: active stages first, then default-fill.
+    // 1. Build the full 8-slot 0xC4 DPI values wire table: active stages first, then default-fill.
     final dataBlock = Uint8List(16);
     for (var i = 0; i < 8; i++) {
       final stage = i < stagedLevels.length ? stagedLevels[i] : null;
@@ -711,9 +691,20 @@ class DeviceScope {
       dataBlock[i * 2 + 1] = wire & 0xFF;
     }
     await session.setDpiTable(dataBlock);
-    _updateRawBlocks(card, raw.copyWith(dpiTable: dataBlock));
 
-    // 0xC2 active mask: first activeCount bits set.
+    // 2. Build the full 8-slot 0xC6 DPI RGB colors wire table: active stage colors first, then default-fill.
+    final rgbBlock = Uint8List(24);
+    for (var i = 0; i < 8; i++) {
+      final stage = i < stagedLevels.length ? stagedLevels[i] : null;
+      final colorHex = stage?.color ?? _defaultColorForSlot(capLevels, i);
+      final rgb = _hexToRgb(colorHex);
+      rgbBlock[i * 3] = rgb[0];
+      rgbBlock[i * 3 + 1] = rgb[1];
+      rgbBlock[i * 3 + 2] = rgb[2];
+    }
+    await session.setDpiRgb(rgbBlock);
+
+    // 3. 0xC2 active mask: first activeCount bits set.
     final latestRaw = _requireRawBlocks(card, 'commitDpiStages');
     final c2 = latestRaw.reportRateDpi;
     if (c2 == null || c2.length != 3) {
@@ -722,7 +713,26 @@ class DeviceScope {
     final infoBlock = Uint8List.fromList(c2);
     infoBlock[2] = (1 << activeCount) - 1;
     await session.setReportRate(infoBlock);
-    _updateRawBlocks(card, latestRaw.copyWith(reportRateDpi: infoBlock));
+
+    _updateRawBlocks(
+      card,
+      latestRaw.copyWith(
+        dpiTable: dataBlock,
+        dpiRgb: rgbBlock,
+        reportRateDpi: infoBlock,
+      ),
+    );
+  }
+
+  static String _defaultColorForSlot(
+    List<DpiLevel> capLevels,
+    int index,
+  ) {
+    if (index < capLevels.length) {
+      final c = capLevels[index].color;
+      if (c != null && c.isNotEmpty) return c;
+    }
+    return '#FFFFFF';
   }
 
   /// Commits the complete catalog default for the Performance page.

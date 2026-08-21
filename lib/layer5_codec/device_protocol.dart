@@ -353,7 +353,7 @@ class MouseProtocol implements DeviceProtocol {
   static const int _firmwareDongleOffset = 7;
   static const int _firmwareVersionLength = 2;
 
-  static const Duration _sendTimeout = Duration(seconds: 3);
+  static const Duration _sendTimeout = Duration(milliseconds: 600);
 
   @override
   Future<DeviceHandshake> handshake(
@@ -868,14 +868,14 @@ class MouseProtocol implements DeviceProtocol {
       throw FormatException('RgbBacklight data too short: ${data.length}');
     }
     return RgbBacklightResult(
-      enable: data[0],
-      mode: data[1],
-      brightness: data[2],
-      speed: data[3],
-      r: data[4],
-      g: data[5],
-      b: data[6],
-      sleepTime: data[7],
+      enable: 0xFF,
+      mode: data[0],
+      brightness: data[1],
+      speed: data[2],
+      r: data[3],
+      g: data[4],
+      b: data[5],
+      sleepTime: data[6],
       data: Uint8List.fromList(data),
       raw: raw,
     );

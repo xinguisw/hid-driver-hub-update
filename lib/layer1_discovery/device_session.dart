@@ -45,13 +45,13 @@ enum Status { connecting, verified, rejected, error }
 ///
 class DeviceSession implements DeviceSettingsGateway {
   /// Max transport open attempts per [start] (total tries).
-  static const int maxOpenAttempts = 2;
+  static const int maxOpenAttempts = 1;
 
   /// Delay between failed open attempts.
   static const Duration openRetryDelay = Duration(milliseconds: 120);
 
   /// Max handshake (identity read) attempts per [start] (total tries).
-  static const int maxHandshakeAttempts = 2;
+  static const int maxHandshakeAttempts = 1;
 
   /// Delay between failed handshake attempts.
   static const Duration handshakeRetryDelay = Duration(milliseconds: 120);
@@ -264,7 +264,6 @@ class DeviceSession implements DeviceSettingsGateway {
   @override
   Future<Uint8List> setRgbBacklightPatch(
     Uint8List currentBlock, {
-    bool? enabled,
     int? modeId,
     int? brightness,
     int? speed,
@@ -278,7 +277,6 @@ class DeviceSession implements DeviceSettingsGateway {
     }
     final dataBlock = TelinkB80ConfigBlockCodec.patchRgbBacklight(
       currentBlock,
-      enabled: enabled,
       modeId: modeId,
       brightness: brightness,
       speed: speed,

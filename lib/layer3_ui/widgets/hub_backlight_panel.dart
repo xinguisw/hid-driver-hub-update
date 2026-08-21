@@ -12,7 +12,6 @@ class HubBacklightPanel extends StatelessWidget {
     super.key,
     this.rgbModes,
     this.rgbModeLabels,
-    this.rgbEnable,
     this.rgbModeId,
     this.rgbBrightnessLevels,
     this.rgbBrightness,
@@ -23,7 +22,6 @@ class HubBacklightPanel extends StatelessWidget {
     this.rgbB,
     this.rgbSleepTime,
     this.rgbSleepOptions,
-    this.onEnableChanged,
     this.onModeChanged,
     this.onColorChanged,
     this.onBrightnessChanged,
@@ -36,7 +34,6 @@ class HubBacklightPanel extends StatelessWidget {
   /// Display labels parallel to [rgbModes] (human-readable, L5-owned). When
   /// null or mismatched, the mode dropdown falls back to `RgbModeData.nameKey`.
   final List<String>? rgbModeLabels;
-  final bool? rgbEnable;
   final int? rgbModeId;
   final int? rgbBrightnessLevels;
   final int? rgbBrightness;
@@ -52,7 +49,6 @@ class HubBacklightPanel extends StatelessWidget {
   /// RGB power-saving options from the device capability schema
   /// (`RgbBacklightCapabilities.sleepTimeOptions`, seconds). Not hardcoded.
   final List<int>? rgbSleepOptions;
-  final ValueChanged<bool>? onEnableChanged;
   final ValueChanged<int>? onModeChanged;
   final ValueChanged<Color>? onColorChanged;
 
@@ -72,11 +68,6 @@ class HubBacklightPanel extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _BacklightToggleBox(
-            enabled: rgbEnable ?? false,
-            onChanged: onEnableChanged,
-          ),
-          const SizedBox(height: 8),
           _ModeBox(
             rgbModes: rgbModes ?? const [],
             rgbModeLabels: rgbModeLabels,
@@ -146,32 +137,6 @@ class HubBacklightPanel extends StatelessWidget {
 }
 
 /// Backlight on/off — own container: label left, toggle right.
-class _BacklightToggleBox extends StatelessWidget {
-  const _BacklightToggleBox({required this.enabled, this.onChanged});
-
-  final bool enabled;
-  final ValueChanged<bool>? onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest,
-        border: Border.all(color: theme.colorScheme.outline),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: [
-          const Text('Backlight'),
-          const Spacer(),
-          Switch(value: enabled, onChanged: onChanged),
-        ],
-      ),
-    );
-  }
-}
 
 /// Mode — own container: label left, dropdown right.
 class _ModeBox extends StatelessWidget {

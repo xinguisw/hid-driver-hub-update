@@ -66,12 +66,10 @@ class TelinkB80ConfigBlockCodec {
 
   /// Applies a semantic patch to the live E2 RGB-backlight block.
   ///
-  /// Layout is from the Telink B80 reference: enable[0], mode[1], brightness[2],
-  /// speed[3], RGB[4..6], and sleep time[7]. Unspecified fields remain exactly
-  /// as read from the mouse.
+  /// New layout: mode[0], brightness[1], speed[2], RGB[3..5], sleep time[6], reserved[7] (0x00).
+  /// Unspecified fields remain exactly as read from the mouse.
   static Uint8List patchRgbBacklight(
     List<int> current, {
-    bool? enabled,
     int? modeId,
     int? brightness,
     int? speed,
@@ -88,28 +86,19 @@ class TelinkB80ConfigBlockCodec {
       );
     }
     final block = Uint8List.fromList(current);
-    const translate = TranslationCodec();
-    if (enabled != null) {
-      block[0] = translate.triStateBoolToWire(enabled);
-    } else {
-      final b0 = block[0] & 0xFF;
-      if (b0 != 0xFF && b0 != 0x0F && b0 != 0x00) {
-        block[0] = 0xFF;
-      }
-    }
-    if (modeId != null) block[1] = _byte(modeId, 'modeId');
-    if (brightness != null) block[2] = _byte(brightness, 'brightness');
-    if (speed != null) block[3] = _byte(speed, 'speed');
-    if (red != null) block[4] = _byte(red, 'red');
-    if (green != null) block[5] = _byte(green, 'green');
-    if (blue != null) block[6] = _byte(blue, 'blue');
-    if (sleepWire != null) block[7] = _byte(sleepWire, 'sleepWire');
+    if (modeId != null) block[0] = _byte(modeId, 'modeId');
+    if (brightness != null) block[1] = _byte(brightness, 'brightness');
+    if (speed != null) block[2] = _byte(speed, 'speed');
+    if (red != null) block[3] = _byte(red, 'red');
+    if (green != null) block[4] = _byte(green, 'green');
+    if (blue != null) block[5] = _byte(blue, 'blue');
+    if (sleepWire != null) block[6] = _byte(sleepWire, 'sleepWire');
+    block[7] = 0x00;
     return block;
   }
 
   /// Builds the complete E2 RGB-backlight data block from semantic values.
   static Uint8List encodeRgbBacklight({
-    required bool enabled,
     required int modeId,
     required int brightness,
     required int speed,
@@ -118,9 +107,7 @@ class TelinkB80ConfigBlockCodec {
     required int blue,
     required int sleepWire,
   }) {
-    const translate = TranslationCodec();
     return Uint8List.fromList([
-      translate.triStateBoolToWire(enabled),
       _byte(modeId, 'modeId'),
       _byte(brightness, 'brightness'),
       _byte(speed, 'speed'),
@@ -128,6 +115,7 @@ class TelinkB80ConfigBlockCodec {
       _byte(green, 'green'),
       _byte(blue, 'blue'),
       _byte(sleepWire, 'sleepWire'),
+      0x00,
     ]);
   }
 

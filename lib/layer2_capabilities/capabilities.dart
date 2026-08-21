@@ -649,22 +649,30 @@ class DeviceCapabilityStore {
   static final Map<String, DeviceCapabilities> _byDevId = {};
   static final Set<String> _loadedSlugs = {};
 
+  static String assetPathForSlug(String slug) => '$_dir/$slug.json';
+
   /// Asset path for a catalog model name (e.g. `M7X SE` → `.../m7x_se.json`,
   /// `M7X PRO` → `.../m7x_pro.json`). Lowercased; spaces become underscores
   /// so a space in a display name maps to the snake_case asset file.
   static String assetPathForModel(String model) {
-    final lower = model.toLowerCase().replaceAll(' ', '_');
-    return '$_dir/$lower.json';
+    var slug = model.toLowerCase().replaceAll(' ', '_');
+    if (slug.startsWith('mouse_')) {
+      slug = slug.substring(6);
+    }
+    return assetPathForSlug(slug);
   }
 
   /// Loads one mouse capabilities file. Cached per model slug.
   /// Call when entering mouse settings, not at app start.
-  static Future<void> load(String model) async {
-    final slug = model.toLowerCase().replaceAll(' ', '_');
+  static Future<void> load(String modelOrSlug) async {
+    var slug = modelOrSlug.toLowerCase().replaceAll(' ', '_');
+    if (slug.startsWith('mouse_')) {
+      slug = slug.substring(6);
+    }
     if (_loadedSlugs.contains(slug)) {
       return;
     }
-    final raw = await rootBundle.loadString(assetPathForModel(model));
+    final raw = await rootBundle.loadString(assetPathForSlug(slug));
     final json = jsonDecode(raw) as Map<String, dynamic>;
     final caps = DeviceCapabilities.fromJson(json);
     _byDevId[caps.devId] = caps;

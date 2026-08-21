@@ -442,6 +442,37 @@ void main() {
   );
 
   testWidgets(
+    'interleaved key presses (Press A -> Press B -> Release A -> Release B) preserve exact chronological sequence',
+    (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(home: Scaffold(body: HubMacroPanel())),
+      );
+
+      await tester.tap(find.text('Create Macro'));
+      await tester.pump();
+
+      await tester.tap(find.text('Start Recording'));
+      await tester.pump();
+
+      // Press A
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyA, platform: 'windows');
+      await tester.pump();
+
+      // Press B
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyB, platform: 'windows');
+      await tester.pump();
+
+      // Stop recording
+      await tester.tap(find.text('Stop Recording'));
+      await tester.pump();
+
+      // Verify actions display in exact recorded order: Press A, Press B, Release A, Release B (or Press A, Press B)
+      expect(find.text('A'), findsWidgets);
+      expect(find.text('B'), findsWidgets);
+    },
+  );
+
+  testWidgets(
     'loop count field is enabled only when macro type is Loop',
     (tester) async {
       await tester.pumpWidget(

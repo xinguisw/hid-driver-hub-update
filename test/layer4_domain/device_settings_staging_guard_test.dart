@@ -71,10 +71,10 @@ void main() {
         expect(bloc.state.reportRateStaging, null);
 
         // Stage RGB backlight change
-        bloc.add(const DeviceSettingsBacklightEnableRequested(enable: false));
+        bloc.add(const DeviceSettingsBacklightModeRequested(modeId: 1));
         await Future<void>.delayed(Duration.zero);
         expect(bloc.state.isDirty, isTrue);
-        expect(bloc.state.rgbEnableStaging, isFalse);
+        expect(bloc.state.rgbModeIdStaging, 1);
 
         // Trigger navigation requested
         bloc.add(const DeviceSettingsNavigationRequested());
@@ -149,18 +149,17 @@ void main() {
         bloc.add(DeviceSettingsHydrated(baseSettings()));
         await Future<void>.delayed(Duration.zero);
 
-        bloc.add(const DeviceSettingsBacklightEnableRequested(enable: false));
+        bloc.add(const DeviceSettingsBacklightModeRequested(modeId: 1));
         await Future<void>.delayed(Duration.zero);
 
-        expect(bloc.state.rgbEnableStaging, isFalse);
+        expect(bloc.state.rgbModeIdStaging, 1);
 
         bloc.add(const DeviceSettingsSaveBacklightRequested());
         await Future<void>.delayed(Duration.zero);
 
         expect(bloc.state.isDirty, isFalse);
-        expect(bloc.state.rgbEnableStaging, isNull);
+        expect(bloc.state.rgbModeIdStaging, isNull);
         expect(bloc.state.lastError, contains('backlight save failed'));
-        expect(bloc.state.synced?.rgbEnable, isTrue);
 
         await bloc.close();
       },

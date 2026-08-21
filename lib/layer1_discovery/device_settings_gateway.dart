@@ -88,7 +88,6 @@ abstract interface class DeviceSettingsGateway {
 
   Future<Uint8List> setRgbBacklightPatch(
     Uint8List currentBlock, {
-    bool? enabled,
     int? modeId,
     int? brightness,
     int? speed,

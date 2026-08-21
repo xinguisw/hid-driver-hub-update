@@ -19,8 +19,8 @@ void main() {
     expect(wire[0], same(ui[0]));
     expect(wire[1], same(ui[1]));
     expect(wire[2], same(ui[2]));
-    expect(wire[3], same(ui[3]));
-    expect(wire[4], same(ui[4]));
+    expect(wire[3], same(ui[4]));
+    expect(wire[4], same(ui[3]));
     expect(wire[5], same(ui[5]));
   });
 
@@ -60,11 +60,11 @@ void main() {
       0x00,
       0x00,
       0x00,
-      0x05,
-      0x00,
-      0x00,
-      0x00,
       0x06,
+      0x00,
+      0x00,
+      0x00,
+      0x05,
       0x00,
       0x00,
       0x00,

@@ -84,4 +84,21 @@ void main() {
     await tester.pump();
     expect(removedLevel, 2);
   });
+
+  test('snapToStep correctly rounds user inputs to the step size and clamps to min/max', () {
+    // Exact step match
+    expect(snapToStep(800, min: 50, max: 3200, step: 50), 800);
+
+    // Intermediate input snapped to nearest step
+    expect(snapToStep(835, min: 100, max: 26000, step: 50), 850);
+    expect(snapToStep(142, min: 100, max: 26000, step: 50), 150);
+    expect(snapToStep(120, min: 100, max: 26000, step: 50), 100);
+
+    // Out of bounds inputs clamped to min/max
+    expect(snapToStep(10, min: 50, max: 3200, step: 50), 50);
+    expect(snapToStep(4000, min: 50, max: 3200, step: 50), 3200);
+
+    // Step null or <= 1 (continuous mode)
+    expect(snapToStep(837, min: 50, max: 3200, step: null), 837);
+  });
 }

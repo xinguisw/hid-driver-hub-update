@@ -60,79 +60,79 @@ class _HubLeftSidebarState extends State<HubLeftSidebar> {
         duration: _animationDuration,
         curve: _animationCurve,
         width: width,
-      child: ClipRect(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // ---- Device Header ----
-            Padding(
-              padding: const EdgeInsets.fromLTRB(8, 12, 8, 8),
-              child: _deviceHeader(theme),
-            ),
+        child: ClipRect(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // ---- Device Header ----
+              Padding(
+                padding: const EdgeInsets.fromLTRB(8, 12, 8, 8),
+                child: _deviceHeader(theme),
+              ),
 
-            // ---- Destination List ----
-            Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                itemCount: _destinations.length,
-                itemBuilder: (context, index) {
-                  final destination = _destinations[index];
-                  final selected = destination.index == widget.selectedIndex;
-                  final label = destination.label;
+              // ---- Destination List ----
+              Expanded(
+                child: ListView.builder(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  itemCount: _destinations.length,
+                  itemBuilder: (context, index) {
+                    final destination = _destinations[index];
+                    final selected = destination.index == widget.selectedIndex;
+                    final label = destination.label;
 
-                  return InkWell(
-                    onTap: () =>
-                        widget.onDestinationSelected(destination.index),
-                    child: AnimatedContainer(
-                      duration: _animationDuration,
-                      color: selected
-                          ? theme.colorScheme.secondaryContainer.withValues(
-                              alpha: 0.5,
-                            )
-                          : Colors.transparent,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
-                        ),
-                        child: _destinationRow(
-                          label: label,
-                          iconName: destination.iconName,
-                          suffix: suffix,
+                    return InkWell(
+                      onTap: () =>
+                          widget.onDestinationSelected(destination.index),
+                      child: AnimatedContainer(
+                        duration: _animationDuration,
+                        color: selected
+                            ? theme.colorScheme.secondaryContainer.withValues(
+                                alpha: 0.5,
+                              )
+                            : Colors.transparent,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                          child: _destinationRow(
+                            label: label,
+                            iconName: destination.iconName,
+                            suffix: suffix,
+                          ),
                         ),
                       ),
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               ),
-            ),
 
-            // ---- Smooth Rotating Collapse Toggle ----
-            Align(
-              alignment: _extended ? Alignment.centerRight : Alignment.center,
-              child: InkWell(
-                borderRadius: BorderRadius.circular(20),
-                onTap: () => setState(() => _extended = !_extended),
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: AnimatedRotation(
-                    turns: _extended ? 0.0 : 0.5, // Rotates 180 degrees
-                    duration: _animationDuration,
-                    curve: _animationCurve,
-                    child: Icon(
-                      Icons.chevron_left,
-                      color: theme.colorScheme.onSurfaceVariant,
+              // ---- Smooth Rotating Collapse Toggle ----
+              Align(
+                alignment: _extended ? Alignment.centerRight : Alignment.center,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(20),
+                  onTap: () => setState(() => _extended = !_extended),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: AnimatedRotation(
+                      turns: _extended ? 0.0 : 0.5, // Rotates 180 degrees
+                      duration: _animationDuration,
+                      curve: _animationCurve,
+                      child: Icon(
+                        Icons.chevron_left,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   /// Animated device header transition
   Widget _deviceHeader(ThemeData theme) {
@@ -180,7 +180,14 @@ class _HubLeftSidebarState extends State<HubLeftSidebar> {
               color: theme.colorScheme.onSurfaceVariant,
             ),
             const SizedBox(width: 4),
-            Text(_batteryLabel, style: subStyle),
+            Expanded(
+              child: Text(
+                _batteryLabel,
+                style: subStyle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 6),

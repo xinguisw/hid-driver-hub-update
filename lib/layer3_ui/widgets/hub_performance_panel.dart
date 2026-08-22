@@ -561,6 +561,16 @@ class _DpiSliderRowState extends State<_DpiSliderRow> {
               SliderTheme(
                 data: SliderTheme.of(context).copyWith(
                   trackHeight: 3,
+                  activeTrackColor: theme.colorScheme.onSurfaceVariant.withValues(
+                    alpha: 0.75,
+                  ),
+                  inactiveTrackColor: theme.colorScheme.onSurfaceVariant.withValues(
+                    alpha: 0.2,
+                  ),
+                  thumbColor: theme.colorScheme.onSurfaceVariant,
+                  overlayColor: theme.colorScheme.onSurfaceVariant.withValues(
+                    alpha: 0.12,
+                  ),
                   thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
                   overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
                 ),

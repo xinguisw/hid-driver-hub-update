@@ -259,9 +259,7 @@ class _DpiSettingsGroup extends StatelessWidget {
                       vertical: 5,
                     ),
                     decoration: BoxDecoration(
-                      color: theme.colorScheme.primary.withValues(
-                        alpha: 0.1,
-                      ),
+                      color: theme.colorScheme.primary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(6),
                       border: Border.all(
                         color: theme.colorScheme.primary.withValues(
@@ -452,8 +450,8 @@ class _DpiSliderRowState extends State<_DpiSliderRow> {
     final borderColor = widget.isSelected
         ? theme.colorScheme.primary
         : _isHovered
-            ? theme.colorScheme.primary.withValues(alpha: 0.6)
-            : theme.colorScheme.outlineVariant.withValues(alpha: 0.4);
+        ? theme.colorScheme.primary.withValues(alpha: 0.6)
+        : theme.colorScheme.outlineVariant.withValues(alpha: 0.4);
 
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
@@ -468,15 +466,19 @@ class _DpiSliderRowState extends State<_DpiSliderRow> {
           decoration: BoxDecoration(
             color: isDark
                 ? (widget.isSelected
-                    ? theme.colorScheme.surface.withValues(alpha: 0.95)
-                    : _isHovered
-                        ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5)
-                        : theme.colorScheme.surface.withValues(alpha: 0.9))
+                      ? theme.colorScheme.surface.withValues(alpha: 0.95)
+                      : _isHovered
+                      ? theme.colorScheme.surfaceContainerHighest.withValues(
+                          alpha: 0.5,
+                        )
+                      : theme.colorScheme.surface.withValues(alpha: 0.9))
                 : (widget.isSelected
-                    ? theme.colorScheme.surface
-                    : _isHovered
-                        ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.7)
-                        : theme.colorScheme.surface),
+                      ? theme.colorScheme.surface
+                      : _isHovered
+                      ? theme.colorScheme.surfaceContainerHighest.withValues(
+                          alpha: 0.7,
+                        )
+                      : theme.colorScheme.surface),
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
               color: borderColor,
@@ -512,9 +514,10 @@ class _DpiSliderRowState extends State<_DpiSliderRow> {
                     _DpiColorButton(
                       color: _colorFromHex(widget.stage.color),
                       onColorChanged: (color) {
-                        widget.onColorChanged?.call(
-                          (level: widget.stage.level, color: color),
-                        );
+                        widget.onColorChanged?.call((
+                          level: widget.stage.level,
+                          color: color,
+                        ));
                       },
                     ),
                     const SizedBox(width: 8),
@@ -524,7 +527,9 @@ class _DpiSliderRowState extends State<_DpiSliderRow> {
                     style: theme.textTheme.labelMedium?.copyWith(
                       fontWeight: FontWeight.w700,
                       fontSize: 12,
-                      color: widget.isSelected ? theme.colorScheme.primary : null,
+                      color: widget.isSelected
+                          ? theme.colorScheme.primary
+                          : null,
                     ),
                   ),
                   const Spacer(),
@@ -547,9 +552,8 @@ class _DpiSliderRowState extends State<_DpiSliderRow> {
                           child: Icon(
                             Icons.close_rounded,
                             size: 14,
-                            color: theme.colorScheme.onSurfaceVariant.withValues(
-                              alpha: 0.7,
-                            ),
+                            color: theme.colorScheme.onSurfaceVariant
+                                .withValues(alpha: 0.7),
                           ),
                         ),
                       ),
@@ -560,19 +564,23 @@ class _DpiSliderRowState extends State<_DpiSliderRow> {
               const SizedBox(height: 2),
               SliderTheme(
                 data: SliderTheme.of(context).copyWith(
-                  trackHeight: 3,
-                  activeTrackColor: theme.colorScheme.onSurface.withValues(
-                    alpha: 0.8,
+                  trackHeight: 4,
+                  activeTrackColor: isDark ? Colors.white : Colors.black,
+                  inactiveTrackColor: (isDark ? Colors.white : Colors.black)
+                      .withValues(alpha: 0.15),
+                  thumbColor: isDark ? Colors.white : Colors.black,
+                  overlayColor: (isDark ? Colors.white : Colors.black)
+                      .withValues(alpha: 0.1),
+                  thumbShape: _RingSliderThumbShape(
+                    enabledThumbRadius: 6,
+                    thickness: 3,
+                    fillColor: isDark
+                        ? theme.colorScheme.surface.withValues(alpha: 0.95)
+                        : theme.colorScheme.surface,
                   ),
-                  inactiveTrackColor: theme.colorScheme.onSurface.withValues(
-                    alpha: 0.15,
+                  overlayShape: const RoundSliderOverlayShape(
+                    overlayRadius: 14,
                   ),
-                  thumbColor: theme.colorScheme.onSurface,
-                  overlayColor: theme.colorScheme.onSurface.withValues(
-                    alpha: 0.1,
-                  ),
-                  thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
-                  overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
                 ),
                 child: Slider(
                   value: widget.stagedValue.toDouble().clamp(
@@ -1404,5 +1412,53 @@ class _DpiStepperInputState extends State<_DpiStepperInput> {
         ],
       ),
     );
+  }
+}
+
+/// Custom slider thumb that draws a hollow ring, useful for precise DPI tuning.
+class _RingSliderThumbShape extends SliderComponentShape {
+  const _RingSliderThumbShape({
+    this.enabledThumbRadius = 6.0,
+    this.thickness = 2.5,
+    required this.fillColor,
+  });
+
+  final double enabledThumbRadius;
+  final double thickness;
+  final Color fillColor;
+
+  @override
+  Size getPreferredSize(bool isEnabled, bool isDiscrete) {
+    return Size.fromRadius(enabledThumbRadius);
+  }
+
+  @override
+  void paint(
+    PaintingContext context,
+    Offset center, {
+    required Animation<double> activationAnimation,
+    required Animation<double> enableAnimation,
+    required bool isDiscrete,
+    required TextPainter labelPainter,
+    required RenderBox parentBox,
+    required SliderThemeData sliderTheme,
+    required TextDirection textDirection,
+    required double value,
+    required double textScaleFactor,
+    required Size sizeWithOverflow,
+  }) {
+    final Canvas canvas = context.canvas;
+
+    final fillPaint = Paint()
+      ..color = fillColor
+      ..style = PaintingStyle.fill;
+
+    final strokePaint = Paint()
+      ..color = sliderTheme.thumbColor ?? Colors.black
+      ..strokeWidth = thickness
+      ..style = PaintingStyle.stroke;
+
+    canvas.drawCircle(center, enabledThumbRadius, fillPaint);
+    canvas.drawCircle(center, enabledThumbRadius, strokePaint);
   }
 }

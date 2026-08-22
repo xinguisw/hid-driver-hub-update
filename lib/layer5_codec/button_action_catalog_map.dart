@@ -163,7 +163,15 @@ class ButtonActionCatalogMap {
       }
     }
 
-    // 3) Nothing matched
+    // 3) Detect macro action (action 0x14)
+    if (action == 0x14) {
+      return SlotInfo(
+        tabIndex: 3,
+        catalogId: '$param1',
+      );
+    }
+
+    // 4) Nothing matched
     return null;
   }
 

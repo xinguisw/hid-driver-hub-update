@@ -3,6 +3,7 @@ import 'package:driver_hub/layer3_ui/theme/theme_controller.dart';
 import 'package:driver_hub/i18n/strings.g.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:window_manager/window_manager.dart';
 // Conditional import for desktop window controls
 import 'package:driver_hub/desktop_shell/window_controls_stub.dart'
     if (dart.library.io) 'package:driver_hub/desktop_shell/window_controls.dart'
@@ -13,7 +14,7 @@ import 'package:driver_hub/desktop_shell/window_controls_stub.dart'
 /// Contains localized actions (language selector, theme mode toggle, settings)
 /// and native desktop window controls (minimize, maximize/restore, close).
 /// Window controls are only rendered when running on a desktop platform.
-class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
+class AppTopBar extends StatefulWidget implements PreferredSizeWidget {
   const AppTopBar({
     super.key,
     this.title,
@@ -30,6 +31,17 @@ class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
   /// Optional callback when the settings button is pressed.
   final VoidCallback? onSettingsPressed;
 
+  @override
+  State<AppTopBar> createState() => _AppTopBarState();
+
+  @override
+  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
+}
+
+class _AppTopBarState extends State<AppTopBar> with WindowListener {
+  // Track whether the window is currently maximized to swap the maximize/restore icon
+  bool _isMaximized = false;
+
   bool get _isDesktop {
     if (kIsWeb) return false;
     switch (defaultTargetPlatform) {
@@ -39,6 +51,45 @@ class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
       default:
         return false;
     }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    // Register listener so that we can react to native window state transitions
+    if (_isDesktop) {
+      windowManager.addListener(this);
+      _checkMaximizedState();
+    }
+  }
+
+  @override
+  void dispose() {
+    // Unregister to prevent memory leaks or exceptions on disposed widgets
+    if (_isDesktop) {
+      windowManager.removeListener(this);
+    }
+    super.dispose();
+  }
+
+  // Eagerly check state on initialization since listeners only fire on state change transitions
+  Future<void> _checkMaximizedState() async {
+    final maximized = await windowManager.isMaximized();
+    if (mounted) {
+      setState(() {
+        _isMaximized = maximized;
+      });
+    }
+  }
+
+  @override
+  void onWindowMaximize() {
+    setState(() => _isMaximized = true);
+  }
+
+  @override
+  void onWindowUnmaximize() {
+    setState(() => _isMaximized = false);
   }
 
   // Locale display names (extend as needed)
@@ -56,8 +107,8 @@ class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
 
     // Build the leading/title part
     Widget leadingTitle;
-    if (title != null) {
-      leadingTitle = title!;
+    if (widget.title != null) {
+      leadingTitle = widget.title!;
     } else {
       leadingTitle = Row(
         mainAxisSize: MainAxisSize.min,
@@ -78,11 +129,22 @@ class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
       );
     }
 
-    // Wrap only the title area with GestureDetector to enable window dragging
-    // without interfering with buttons.
+    // Wrap the title and all empty middle space of the top bar with GestureDetector.
+    // By using width: double.infinity, height: kToolbarHeight, and HitTestBehavior.translucent,
+    // we make the entire empty bar area draggable and double-clickable to maximize/restore,
+    // while keeping interactive action buttons working properly.
     final titleWithDrag = GestureDetector(
       onPanStart: (_) => window_controls.startDragging(),
-      child: leadingTitle,
+      onDoubleTap: () => window_controls.toggleMaximizeWindow(),
+      behavior: HitTestBehavior.translucent,
+      child: SizedBox(
+        width: double.infinity,
+        height: kToolbarHeight,
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: leadingTitle,
+        ),
+      ),
     );
 
     return TapRegion(
@@ -92,7 +154,7 @@ class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
         elevation: 0,
         scrolledUnderElevation: 0,
         automaticallyImplyLeading: false,
-        leading: showBackButton && Navigator.of(context).canPop()
+        leading: widget.showBackButton && Navigator.of(context).canPop()
             ? IconButton(
                 icon: Icon(Icons.arrow_back, color: iconColor),
                 onPressed: () => Navigator.of(context).maybePop(),
@@ -115,7 +177,10 @@ class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
                 final name =
                     _localeNames[locale.languageTag] ??
                     locale.languageTag.toUpperCase();
-                return PopupMenuItem<AppLocale>(value: locale, child: Text(name));
+                return PopupMenuItem<AppLocale>(
+                  value: locale,
+                  child: Text(name),
+                );
               }).toList();
             },
           ),
@@ -132,10 +197,10 @@ class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
                 : t.common.switchToDarkMode,
           ),
           // Settings (only shown if a callback is provided)
-          if (onSettingsPressed != null)
+          if (widget.onSettingsPressed != null)
             IconButton(
               icon: Icon(Icons.settings_outlined, size: 20, color: iconColor),
-              onPressed: onSettingsPressed,
+              onPressed: widget.onSettingsPressed,
               tooltip: t.common.settings,
             ),
           // Desktop window controls (with divider and spacing)
@@ -176,11 +241,15 @@ class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
         width: controlSize,
         height: controlSize,
         child: IconButton(
-          icon: Icon(Icons.crop_square, size: 16, color: iconColor),
+          icon: Icon(
+            _isMaximized ? Icons.filter_none : Icons.crop_square,
+            size: _isMaximized ? 14 : 16,
+            color: iconColor,
+          ),
           onPressed: () => window_controls.toggleMaximizeWindow(),
           padding: EdgeInsets.zero,
           constraints: const BoxConstraints(),
-          tooltip: 'Maximize',
+          tooltip: _isMaximized ? 'Restore' : 'Maximize',
         ),
       ),
       const SizedBox(width: 8),
@@ -198,7 +267,4 @@ class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
       const SizedBox(width: 16),
     ];
   }
-
-  @override
-  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 }

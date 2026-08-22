@@ -5,9 +5,13 @@ import 'package:flutter/services.dart';
 import 'package:tray_manager/tray_manager.dart';
 import 'package:window_manager/window_manager.dart';
 
-/// Default and minimum outer window size (logical px).
+/// Default outer window size (logical px).
 const double kDesktopWindowWidth = 1256;
 const double kDesktopWindowHeight = 753;
+
+/// Minimum window dimensions to ensure layout usability while allowing resize.
+const double kMinDesktopWindowWidth = 1024;
+const double kMinDesktopWindowHeight = 614;
 
 const _osdWindowArgument = 'driver_hub.osd';
 
@@ -134,8 +138,10 @@ Future<void> setupDesktopWindowAndTray() async {
 
 /// Apply default + minimum size and center on the current desktop window.
 Future<void> configureDesktopWindow() async {
+  // Set minimum size to a smaller resolution (1024x614) so that the OS allows the window
+  // to be resized down or up, rather than locking it to a static size.
   await windowManager.setMinimumSize(
-    const Size(kDesktopWindowWidth, kDesktopWindowHeight),
+    const Size(kMinDesktopWindowWidth, kMinDesktopWindowHeight),
   );
   await windowManager.setSize(
     const Size(kDesktopWindowWidth, kDesktopWindowHeight),

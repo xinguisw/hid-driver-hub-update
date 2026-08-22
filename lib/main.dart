@@ -62,9 +62,8 @@ Future<void> main(List<String> args) async {
 
     await window_bootstrap.setupDesktopWindowAndTray();
     await window_bootstrap.configureDesktopWindow();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      unawaited(window_bootstrap.configureDesktopWindow());
-    });
+    // Removed the duplicate call to configureDesktopWindow() inside post-frame callback
+    // to avoid resetting window size and layout immediately after app launch.
   }
   runApp(TranslationProvider(child: DriverHubApp(scope: _createDeviceScope())));
 }

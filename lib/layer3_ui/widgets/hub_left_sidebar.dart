@@ -80,23 +80,36 @@ class _HubLeftSidebarState extends State<HubLeftSidebar> {
                     final selected = destination.index == widget.selectedIndex;
                     final label = destination.label;
 
-                    return InkWell(
-                      onTap: () =>
-                          widget.onDestinationSelected(destination.index),
-                      child: AnimatedContainer(
-                        duration: _animationDuration,
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
+                      child: Material(
                         color: selected
                             ? theme.colorScheme.surfaceContainerHighest
                             : Colors.transparent,
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
-                          ),
-                          child: _destinationRow(
-                            label: label,
-                            iconName: destination.iconName,
-                            suffix: suffix,
+                        borderRadius: BorderRadius.circular(8),
+                        clipBehavior: Clip.antiAlias,
+                        child: InkWell(
+                          canRequestFocus: false,
+                          focusColor: Colors.transparent,
+                          highlightColor: Colors.transparent,
+                          hoverColor: theme.colorScheme.surfaceContainerHighest
+                              .withValues(alpha: 0.5),
+                          borderRadius: BorderRadius.circular(8),
+                          onTap: () =>
+                              widget.onDestinationSelected(destination.index),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 10,
+                            ),
+                            child: _destinationRow(
+                              label: label,
+                              iconName: destination.iconName,
+                              suffix: suffix,
+                            ),
                           ),
                         ),
                       ),
@@ -108,18 +121,21 @@ class _HubLeftSidebarState extends State<HubLeftSidebar> {
               // ---- Smooth Rotating Collapse Toggle ----
               Align(
                 alignment: _extended ? Alignment.centerRight : Alignment.center,
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(20),
-                  onTap: () => setState(() => _extended = !_extended),
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: AnimatedRotation(
-                      turns: _extended ? 0.0 : 0.5, // Rotates 180 degrees
-                      duration: _animationDuration,
-                      curve: _animationCurve,
-                      child: Icon(
-                        Icons.chevron_left,
-                        color: theme.colorScheme.onSurfaceVariant,
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(20),
+                    onTap: () => setState(() => _extended = !_extended),
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: AnimatedRotation(
+                        turns: _extended ? 0.0 : 0.5, // Rotates 180 degrees
+                        duration: _animationDuration,
+                        curve: _animationCurve,
+                        child: Icon(
+                          Icons.chevron_left,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
                       ),
                     ),
                   ),
@@ -134,11 +150,13 @@ class _HubLeftSidebarState extends State<HubLeftSidebar> {
 
   /// Animated device header transition
   Widget _deviceHeader(ThemeData theme) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(12),
-      onTap: widget.onDeviceTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: widget.onDeviceTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
         child: AnimatedCrossFade(
           duration: _animationDuration,
           firstCurve: _animationCurve,
@@ -150,8 +168,9 @@ class _HubLeftSidebarState extends State<HubLeftSidebar> {
           secondChild: _collapsedHeaderContent(theme),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   /// Expanded Header View
   Widget _expandedHeaderContent(ThemeData theme) {

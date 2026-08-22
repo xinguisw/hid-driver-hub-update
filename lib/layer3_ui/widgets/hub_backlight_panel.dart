@@ -6,8 +6,9 @@ import 'package:google_fonts/google_fonts.dart';
 /// Backlight Setting page — RGB backlight controls.
 ///
 /// L3 only. Dispatches events to BLoC.
-/// Structure: one container per section, left-aligned (same pattern as
-/// Parameter / Performance panels).
+/// Structure: one container per section in a clean vertical column.
+/// Features descriptions for each setting, compact level boxes,
+/// bounded color palette (no stretching), working hex code input, and quick presets.
 class HubBacklightPanel extends StatelessWidget {
   const HubBacklightPanel({
     super.key,
@@ -65,7 +66,7 @@ class HubBacklightPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -75,7 +76,7 @@ class HubBacklightPanel extends StatelessWidget {
             rgbModeId: rgbModeId,
             onModeChanged: onModeChanged,
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           // why: FR-RGB-003 — the color palette only applies to color modes
           // (constant / single breathing). For modes whose supportsColor is
           // false (off / multi / running / cycle) the device ignores R/G/B, so
@@ -87,9 +88,11 @@ class HubBacklightPanel extends StatelessWidget {
             enabled: _selectedModeSupportsColor(),
             onColorChanged: onColorChanged,
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           _LevelBox(
             title: 'Brightness',
+            description: 'Adjust the luminous intensity of the backlight LEDs.',
+            icon: Icons.brightness_6_outlined,
             levels: rgbBrightnessLevels ?? 0,
             selected: rgbBrightness,
             onChanged: onBrightnessChanged,
@@ -97,18 +100,24 @@ class HubBacklightPanel extends StatelessWidget {
             // the same table) — not the generic 0..100% percent-of-index.
             labels: const ['0%', '25%', '50%', '75%', '100%'],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           _LevelBox(
             title: 'Speed',
+            description:
+                'Adjust the animation cycle velocity for active dynamic effects.',
+            icon: Icons.speed_outlined,
             levels: rgbSpeedLevels ?? 0,
             selected: rgbSpeed,
             onChanged: onSpeedChanged,
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           // why: RGB power-saving is a chip row like brightness/speed (not a
           // dropdown) per request; options come from the capability schema.
           _LevelBox(
             title: 'Power saving',
+            description:
+                'Inactivity timeout before turning off lighting to preserve battery.',
+            icon: Icons.bedtime_outlined,
             levels: rgbSleepOptions?.length ?? 0,
             selected: rgbSleepTime,
             onChanged: onSleepChanged,
@@ -137,9 +146,52 @@ class HubBacklightPanel extends StatelessWidget {
   }
 }
 
-/// Backlight on/off — own container: label left, toggle right.
+// ---------------------------------------------------------------------------
+// Design System Card Container
+// ---------------------------------------------------------------------------
 
-/// Mode — own container: label left, dropdown right.
+class _CardBox extends StatelessWidget {
+  const _CardBox({
+    required this.child,
+    this.isActive = false,
+    this.padding = const EdgeInsets.all(12),
+  });
+
+  final Widget child;
+  final bool isActive;
+  final EdgeInsetsGeometry padding;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final bgColor = isDark
+        ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.28)
+        : theme.colorScheme.surfaceContainerLowest;
+
+    final borderColor = isActive
+        ? theme.colorScheme.primary.withValues(alpha: 0.45)
+        : isDark
+        ? theme.colorScheme.outline.withValues(alpha: 0.15)
+        : theme.colorScheme.outlineVariant.withValues(alpha: 0.6);
+
+    return Container(
+      padding: padding,
+      decoration: BoxDecoration(
+        color: bgColor,
+        border: Border.all(color: borderColor, width: 1),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: child,
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Mode Box with Description & Bounded Dropdown Menu
+// ---------------------------------------------------------------------------
+
 class _ModeBox extends StatelessWidget {
   const _ModeBox({
     required this.rgbModes,
@@ -162,42 +214,125 @@ class _ModeBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest,
-        border: Border.all(color: theme.colorScheme.outline),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: [
-          const Text('Mode'),
-          const Spacer(),
-          DropdownButton<int>(
-            value: rgbModeId != null && rgbModes.any((m) => m.id == rgbModeId)
-                ? rgbModeId
-                : null,
-            hint: const Text('Select'),
-            underline: const SizedBox.shrink(),
-            items: [
-              for (var i = 0; i < rgbModes.length; i++)
-                DropdownMenuItem<int>(
-                  value: rgbModes[i].id,
-                  child: Text(_labelAt(i)),
+
+    return _CardBox(
+      isActive: rgbModeId != null,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isWide = constraints.maxWidth > 500;
+
+          final titleSection = Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(6),
                 ),
+                child: Icon(
+                  Icons.lightbulb_outline,
+                  size: 16,
+                  color: theme.colorScheme.primary,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Mode',
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Select dynamic lighting pattern or static illumination effect',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant.withValues(
+                        alpha: 0.75,
+                      ),
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
             ],
-            onChanged: (value) {
-              if (value != null) onModeChanged?.call(value);
-            },
-          ),
-        ],
+          );
+
+          final dropdownWidget = Container(
+            height: 34,
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(
+                color: theme.colorScheme.outline.withValues(alpha: 0.3),
+              ),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<int>(
+                value:
+                    rgbModeId != null && rgbModes.any((m) => m.id == rgbModeId)
+                    ? rgbModeId
+                    : null,
+                hint: const Text(
+                  'Select Mode',
+                  style: TextStyle(fontSize: 12.5),
+                ),
+                menuMaxHeight: 240,
+                borderRadius: BorderRadius.circular(8),
+                dropdownColor: theme.colorScheme.surfaceContainerHigh,
+                elevation: 4,
+                icon: const Icon(Icons.keyboard_arrow_down, size: 18),
+                items: [
+                  for (var i = 0; i < rgbModes.length; i++)
+                    DropdownMenuItem<int>(
+                      value: rgbModes[i].id,
+                      child: Text(
+                        _labelAt(i),
+                        style: const TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                ],
+                onChanged: (value) {
+                  if (value != null) onModeChanged?.call(value);
+                },
+              ),
+            ),
+          );
+
+          if (isWide) {
+            return Row(
+              children: [titleSection, const Spacer(), dropdownWidget],
+            );
+          } else {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                titleSection,
+                const SizedBox(height: 10),
+                dropdownWidget,
+              ],
+            );
+          }
+        },
       ),
     );
   }
 }
 
-/// Color — own container: swatch + hex input on top, gradient SV picker and
-/// hue bar below (matches the reference layout).
+// ---------------------------------------------------------------------------
+// Color Box with Proportional SV/Hue Picker (Bounded Width), Presets & Hex Code
+// ---------------------------------------------------------------------------
+
 class _ColorBox extends StatefulWidget {
   const _ColorBox({
     this.r,
@@ -223,17 +358,34 @@ class _ColorBoxState extends State<_ColorBox> {
   late HSVColor _hsv;
   late TextEditingController _hexController;
 
+  static const List<Color> _presetColors = [
+    Color(0xFFFF0000), // Red
+    Color(0xFFFF7700), // Orange
+    Color(0xFFFFFF00), // Yellow
+    Color(0xFF00E676), // Green
+    Color(0xFF00E5FF), // Cyan
+    Color(0xFF2979FF), // Blue
+    Color(0xFF7C4DFF), // Purple
+    Color(0xFFFF4081), // Pink
+    Color(0xFFFFFFFF), // White
+  ];
+
   static Color _rgbToColor(int? r, int? g, int? b) => Color.fromARGB(
     255,
-    (r ?? 0).clamp(0, 255),
-    (g ?? 0).clamp(0, 255),
+    (r ?? 255).clamp(0, 255),
+    (g ?? 255).clamp(0, 255),
     (b ?? 0).clamp(0, 255),
   );
 
-  static String _hexOf(Color c) =>
-      '${(c.r * 255.0).round().clamp(0, 255).toRadixString(16).padLeft(2, '0')}'
-      '${(c.g * 255.0).round().clamp(0, 255).toRadixString(16).padLeft(2, '0')}'
-      '${(c.b * 255.0).round().clamp(0, 255).toRadixString(16).padLeft(2, '0')}';
+  static String _hexOf(Color c) {
+    final r = (c.r * 255.0).round().clamp(0, 255);
+    final g = (c.g * 255.0).round().clamp(0, 255);
+    final b = (c.b * 255.0).round().clamp(0, 255);
+    return '${r.toRadixString(16).padLeft(2, '0')}'
+            '${g.toRadixString(16).padLeft(2, '0')}'
+            '${b.toRadixString(16).padLeft(2, '0')}'
+        .toUpperCase();
+  }
 
   @override
   void initState() {
@@ -246,8 +398,15 @@ class _ColorBoxState extends State<_ColorBox> {
   void didUpdateWidget(_ColorBox old) {
     super.didUpdateWidget(old);
     if (old.r != widget.r || old.g != widget.g || old.b != widget.b) {
-      _hsv = HSVColor.fromColor(_rgbToColor(widget.r, widget.g, widget.b));
-      _hexController.text = _hexOf(_hsv.toColor());
+      final newColor = _rgbToColor(widget.r, widget.g, widget.b);
+      _hsv = HSVColor.fromColor(newColor);
+      final newHex = _hexOf(newColor);
+      if (_hexController.text.toUpperCase() != newHex) {
+        _hexController.value = TextEditingValue(
+          text: newHex,
+          selection: TextSelection.collapsed(offset: newHex.length),
+        );
+      }
     }
   }
 
@@ -257,10 +416,16 @@ class _ColorBoxState extends State<_ColorBox> {
     super.dispose();
   }
 
-  void _apply(HSVColor next) {
+  void _apply(HSVColor next, {bool updateText = true}) {
     setState(() {
       _hsv = next;
-      _hexController.text = _hexOf(next.toColor());
+      if (updateText) {
+        final hex = _hexOf(next.toColor());
+        _hexController.value = TextEditingValue(
+          text: hex,
+          selection: TextSelection.collapsed(offset: hex.length),
+        );
+      }
     });
     widget.onColorChanged?.call(next.toColor());
   }
@@ -278,47 +443,114 @@ class _ColorBoxState extends State<_ColorBox> {
     _apply(_hsv.withHue(hue));
   }
 
-  void _onHexSubmitted(String value) {
+  void _onHexChanged(String value) {
     if (!widget.enabled) return;
     final hex = value.replaceAll('#', '').trim();
-    if (hex.length != 6) return;
-    final parsed = int.tryParse(hex, radix: 16);
-    if (parsed == null) return;
-    _apply(HSVColor.fromColor(Color(0xFF000000 | parsed)));
+    if (hex.length == 6) {
+      final parsed = int.tryParse(hex, radix: 16);
+      if (parsed != null) {
+        final newColor = Color(0xFF000000 | parsed);
+        final next = HSVColor.fromColor(newColor);
+        setState(() {
+          _hsv = next;
+        });
+        widget.onColorChanged?.call(newColor);
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final color = _hsv.toColor();
-    final body = Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest,
-        border: Border.all(color: theme.colorScheme.outline),
-        borderRadius: BorderRadius.circular(8),
-      ),
+
+    final body = _CardBox(
+      isActive: widget.enabled,
+      padding: const EdgeInsets.all(14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Text('Color'),
-              const SizedBox(width: 16),
               Container(
-                width: 32,
-                height: 24,
+                padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
-                  color: color,
-                  border: Border.all(color: theme.colorScheme.outline),
-                  borderRadius: BorderRadius.circular(4),
+                  color: theme.colorScheme.primary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Icon(
+                  Icons.color_lens_outlined,
+                  size: 16,
+                  color: theme.colorScheme.primary,
                 ),
               ),
+              const SizedBox(width: 10),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Color',
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      // Live Color Swatch preview
+                      Container(
+                        width: 20,
+                        height: 20,
+                        decoration: BoxDecoration(
+                          color: color,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: theme.colorScheme.outline.withValues(
+                              alpha: 0.4,
+                            ),
+                            width: 1.5,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: color.withValues(alpha: 0.35),
+                              blurRadius: 4,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    widget.enabled
+                        ? 'Fine-tune static color saturation, hue, and brightness'
+                        : 'Selected mode manages colors automatically',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant.withValues(
+                        alpha: 0.75,
+                      ),
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
               const Spacer(),
-              const Text('Color code'),
+              Text(
+                'Color code',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: theme.colorScheme.onSurfaceVariant.withValues(
+                    alpha: 0.8,
+                  ),
+                ),
+              ),
               const SizedBox(width: 8),
               SizedBox(
                 width: 90,
+                height: 32,
                 child: TextField(
                   controller: _hexController,
                   enabled: widget.enabled,
@@ -326,134 +558,218 @@ class _ColorBoxState extends State<_ColorBox> {
                     LengthLimitingTextInputFormatter(6),
                     FilteringTextInputFormatter.allow(RegExp(r'[0-9a-fA-F]')),
                   ],
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     isDense: true,
-                    border: OutlineInputBorder(),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(6),
+                    ),
                     prefixText: '#',
-                    contentPadding: EdgeInsets.symmetric(
+                    contentPadding: const EdgeInsets.symmetric(
                       horizontal: 8,
-                      vertical: 8,
+                      vertical: 6,
                     ),
                   ),
-                  style: GoogleFonts.poppins(fontSize: 14),
-                  onSubmitted: _onHexSubmitted,
+                  style: GoogleFonts.firaCode(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  onChanged: _onHexChanged,
+                  onSubmitted: _onHexChanged,
                 ),
               ),
             ],
           ),
           const SizedBox(height: 12),
-          // Saturation/Value gradient picker
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final w = constraints.maxWidth;
-              const h = 140.0;
-              return GestureDetector(
-                onPanDown: (d) => _onSv(d.localPosition, w, h),
-                onPanUpdate: (d) => _onSv(d.localPosition, w, h),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(6),
-                  child: SizedBox(
-                    height: h,
-                    width: w,
-                    child: Stack(
-                      children: [
-                        Positioned.fill(
-                          child: ColoredBox(
-                            color: HSVColor.fromAHSV(
-                              1,
-                              _hsv.hue,
-                              1,
-                              1,
-                            ).toColor(),
-                          ),
-                        ),
-                        const Positioned.fill(
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [Colors.white, Colors.transparent],
-                              ),
-                            ),
-                          ),
-                        ),
-                        const Positioned.fill(
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                                colors: [Colors.transparent, Colors.black],
-                              ),
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          left: (_hsv.saturation * w - 9).clamp(0.0, w - 18),
-                          top: ((1 - _hsv.value) * h - 9).clamp(0.0, h - 18),
-                          child: Container(
-                            width: 18,
-                            height: 18,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white, width: 2),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+
+          // Preset Quick-Pick Color Row
+          Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Text(
+                'Presets:',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: theme.colorScheme.onSurfaceVariant.withValues(
+                    alpha: 0.7,
                   ),
                 ),
-              );
-            },
+              ),
+              for (final preset in _presetColors)
+                _PresetColorSwatch(
+                  color: preset,
+                  isSelected: _isSameColor(preset, color),
+                  enabled: widget.enabled,
+                  onTap: () => _apply(HSVColor.fromColor(preset)),
+                ),
+            ],
           ),
-          const SizedBox(height: 8),
-          // Hue bar
+          const SizedBox(height: 12),
+
+          // Proportional Saturation / Value Gradient Picker (Bounded Width & Centered)
           LayoutBuilder(
             builder: (context, constraints) {
-              final w = constraints.maxWidth;
-              const h = 16.0;
-              return GestureDetector(
-                onPanDown: (d) => _onHue(d.localPosition, w),
-                onPanUpdate: (d) => _onHue(d.localPosition, w),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(6),
-                  child: SizedBox(
-                    height: h,
-                    width: w,
-                    child: Stack(
-                      children: [
-                        Positioned.fill(
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [
-                                  for (var i = 0; i <= 6; i++)
-                                    HSVColor.fromAHSV(
+              final w = constraints.maxWidth.clamp(280.0, 480.0);
+              const h = 160.0;
+              return Align(
+                alignment: Alignment.center,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    GestureDetector(
+                      onPanDown: (d) => _onSv(d.localPosition, w, h),
+                      onPanUpdate: (d) => _onSv(d.localPosition, w, h),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(6),
+                        child: SizedBox(
+                          height: h,
+                          width: w,
+                          child: Stack(
+                            children: [
+                              Positioned.fill(
+                                child: ColoredBox(
+                                  color: HSVColor.fromAHSV(
+                                    1,
+                                    _hsv.hue,
+                                    1,
+                                    1,
+                                  ).toColor(),
+                                ),
+                              ),
+                              const Positioned.fill(
+                                child: DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        Colors.white,
+                                        Colors.transparent,
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const Positioned.fill(
+                                child: DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      begin: Alignment.topCenter,
+                                      end: Alignment.bottomCenter,
+                                      colors: [
+                                        Colors.transparent,
+                                        Colors.black,
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              Positioned(
+                                left: (_hsv.saturation * w - 8).clamp(
+                                  0.0,
+                                  w - 16,
+                                ),
+                                top: ((1 - _hsv.value) * h - 8).clamp(
+                                  0.0,
+                                  h - 16,
+                                ),
+                                child: Container(
+                                  width: 16,
+                                  height: 16,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: Colors.white,
+                                      width: 2,
+                                    ),
+                                    boxShadow: const [
+                                      BoxShadow(
+                                        color: Colors.black45,
+                                        blurRadius: 4,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+
+                    // Continuous Hue Spectrum Bar (Matching Bounded Width)
+                    GestureDetector(
+                      onPanDown: (d) => _onHue(d.localPosition, w),
+                      onPanUpdate: (d) => _onHue(d.localPosition, w),
+                      child: SizedBox(
+                        height: 24.0,
+                        width: w,
+                        child: Stack(
+                          alignment: Alignment.centerLeft,
+                          clipBehavior: Clip.none,
+                          children: [
+                            // Rainbow Gradient Bar
+                            Center(
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(6),
+                                child: SizedBox(
+                                  height: 14.0,
+                                  width: w,
+                                  child: DecoratedBox(
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: [
+                                          for (var i = 0; i <= 6; i++)
+                                            HSVColor.fromAHSV(
+                                              1,
+                                              i * 60.0,
+                                              1,
+                                              1,
+                                            ).toColor(),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            // Thumb Indicator (Not Clipped)
+                            Positioned(
+                              left: (_hsv.hue / 360 * (w - 20)).clamp(
+                                0.0,
+                                w - 20,
+                              ),
+                              child: Container(
+                                width: 20,
+                                height: 20,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Colors.white,
+                                  border: Border.all(
+                                    color: HSVColor.fromAHSV(
                                       1,
-                                      i * 60.0,
+                                      _hsv.hue,
                                       1,
                                       1,
                                     ).toColor(),
-                                ],
+                                    width: 3,
+                                  ),
+                                  boxShadow: const [
+                                    BoxShadow(
+                                      color: Colors.black38,
+                                      blurRadius: 4,
+                                      offset: Offset(0, 1),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
-                          ),
+                          ],
                         ),
-                        Positioned(
-                          left: (_hsv.hue / 360 * w - 9).clamp(0.0, w - 18),
-                          top: -1,
-                          child: Container(
-                            width: 18,
-                            height: 18,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white, width: 2),
-                            ),
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
-                  ),
+                  ],
                 ),
               );
             },
@@ -463,23 +779,89 @@ class _ColorBoxState extends State<_ColorBox> {
     );
 
     if (widget.enabled) return body;
-    // why: signal "color not used by this mode" — dim and swallow all touches.
     return Opacity(opacity: 0.45, child: IgnorePointer(child: body));
+  }
+
+  bool _isSameColor(Color a, Color b) {
+    return (a.r * 255).round() == (b.r * 255).round() &&
+        (a.g * 255).round() == (b.g * 255).round() &&
+        (a.b * 255).round() == (b.b * 255).round();
   }
 }
 
-/// Brightness / Speed — own container: title top-left, equal-width level
-/// buttons in a row (selected highlighted). Skeleton: inert.
+class _PresetColorSwatch extends StatelessWidget {
+  const _PresetColorSwatch({
+    required this.color,
+    required this.isSelected,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  final Color color;
+  final bool isSelected;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: enabled ? onTap : null,
+        borderRadius: BorderRadius.circular(4),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 140),
+          width: 22,
+          height: 22,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(
+              color: isSelected ? Colors.white : Colors.black26,
+              width: isSelected ? 2 : 1,
+            ),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: color.withValues(alpha: 0.6),
+                      blurRadius: 4,
+                    ),
+                  ]
+                : null,
+          ),
+          child: isSelected
+              ? Icon(
+                  Icons.check,
+                  size: 12,
+                  color: color.computeLuminance() > 0.5
+                      ? Colors.black
+                      : Colors.white,
+                )
+              : null,
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Compact Level Box with Description (Brightness, Speed, Power Saving)
+// ---------------------------------------------------------------------------
+
 class _LevelBox extends StatelessWidget {
   const _LevelBox({
     required this.title,
+    this.description,
     required this.levels,
     required this.selected,
+    this.icon,
     this.onChanged,
     this.labels,
   });
 
   final String title;
+  final String? description;
+  final IconData? icon;
   final int levels;
   final int? selected;
 
@@ -495,53 +877,137 @@ class _LevelBox extends StatelessWidget {
     final theme = Theme.of(context);
     final pctDenom = levels > 1 ? (levels - 1) : 1;
     final useLabels = labels != null && labels!.length == levels;
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest,
-        border: Border.all(color: theme.colorScheme.outline),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(title),
-          const SizedBox(height: 8),
-          Row(
+
+    return _CardBox(
+      isActive: selected != null,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isWide = constraints.maxWidth > 580;
+
+          final titleWidget = Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              for (var i = 0; i < levels; i++) ...[
-                if (i > 0) const SizedBox(width: 6),
-                Expanded(
-                  child: InkWell(
-                    onTap: onChanged == null ? null : () => onChanged!(i),
-                    borderRadius: BorderRadius.circular(4),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: i == selected
-                            ? theme.colorScheme.secondaryContainer
-                            : theme.colorScheme.surface,
-                        border: Border.all(
-                          color: i == selected
-                              ? theme.colorScheme.secondary
-                              : theme.colorScheme.outline,
-                        ),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        useLabels
-                            ? labels![i]
-                            : '${(100 * i / pctDenom).round()}',
-                        style: const TextStyle(fontSize: 12),
-                      ),
+              if (icon != null) ...[
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Icon(icon, size: 16, color: theme.colorScheme.primary),
+                ),
+                const SizedBox(width: 10),
+              ],
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    title,
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
                     ),
                   ),
-                ),
-              ],
+                  if (description != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      description!,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant.withValues(
+                          alpha: 0.75,
+                        ),
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
             ],
+          );
+
+          final pillsWidget = Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              for (var i = 0; i < levels; i++)
+                _SelectablePill(
+                  label: useLabels
+                      ? labels![i]
+                      : '${(100 * i / pctDenom).round()}',
+                  selected: i == selected,
+                  onTap: onChanged == null ? null : () => onChanged!(i),
+                ),
+            ],
+          );
+
+          if (isWide) {
+            return Row(children: [titleWidget, const Spacer(), pillsWidget]);
+          } else {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [titleWidget, const SizedBox(height: 10), pillsWidget],
+            );
+          }
+        },
+      ),
+    );
+  }
+}
+
+class _SelectablePill extends StatelessWidget {
+  const _SelectablePill({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final selectedBg = theme.colorScheme.primaryContainer;
+    final selectedFg = theme.colorScheme.onPrimaryContainer;
+    final unselectedBg = isDark
+        ? theme.colorScheme.surfaceContainerHigh.withValues(alpha: 0.5)
+        : theme.colorScheme.surface;
+    final unselectedFg = theme.colorScheme.onSurface;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(6),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 140),
+          constraints: const BoxConstraints(minWidth: 46),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: selected ? selectedBg : unselectedBg,
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(
+              color: selected
+                  ? theme.colorScheme.primary
+                  : theme.colorScheme.outline.withValues(alpha: 0.3),
+              width: selected ? 1.5 : 1,
+            ),
           ),
-        ],
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+              color: selected ? selectedFg : unselectedFg,
+            ),
+          ),
+        ),
       ),
     );
   }

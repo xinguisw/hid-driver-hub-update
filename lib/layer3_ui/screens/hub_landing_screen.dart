@@ -766,37 +766,9 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                                 isDirty: view.isDirty,
                                 committing: view.committing,
                                 onSave: () {
-                                  if (view.rippleControlStaging != null ||
-                                      view.angleSnapStaging != null) {
-                                    bloc.add(
-                                      const DeviceSettingsSaveSensorTuningRequested(),
-                                    );
-                                  } else if (view.angleTuneStaging != null ||
-                                      view.angleTuneEnabledStaging != null) {
-                                    bloc.add(
-                                      const DeviceSettingsSaveAngleTuneRequested(),
-                                    );
-                                  } else if (view.lodStaging != null) {
-                                    bloc.add(
-                                      const DeviceSettingsSaveLodRequested(),
-                                    );
-                                  } else if (view.performanceStaging != null) {
-                                    bloc.add(
-                                      const DeviceSettingsSavePerformanceRequested(),
-                                    );
-                                  } else if (view.debounceStaging != null) {
-                                    bloc.add(
-                                      const DeviceSettingsSaveButtonDebounceRequested(),
-                                    );
-                                  } else if (view.sleepStaging != null) {
-                                    bloc.add(
-                                      const DeviceSettingsSaveSleepTimeRequested(),
-                                    );
-                                  } else if (view.wheelInvertStaging != null) {
-                                    bloc.add(
-                                      const DeviceSettingsSaveWheelInvertRequested(),
-                                    );
-                                  }
+                                  bloc.add(
+                                    const DeviceSettingsSaveParameterSettingsRequested(),
+                                  );
                                 },
                                 onCancel: () {
                                   bloc.add(

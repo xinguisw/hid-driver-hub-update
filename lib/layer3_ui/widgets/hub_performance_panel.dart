@@ -56,13 +56,18 @@ class HubPerformancePanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // DPI Settings
-          const Text('DPI settings'),
-          const SizedBox(height: 8),
+          // DPI Settings Header
+          const _SectionHeader(
+            icon: Icons.speed_rounded,
+            title: 'DPI Settings',
+            subtitle:
+                'Configure sensitivity stages, color identifiers, and active levels',
+          ),
+          const SizedBox(height: 12),
           _DpiSettingsGroup(
             stages: dpiStages ?? const [],
             selectedLevel: dpiCurrentLevelStaging ?? dpiCurrentLevel,
@@ -79,10 +84,15 @@ class HubPerformancePanel extends StatelessWidget {
             rgbPerStage: dpiRgbPerStage,
             onColorChanged: onDpiColorChanged,
           ),
-          const SizedBox(height: 24),
-          // Report Rate
-          const Text('Report rate'),
-          const SizedBox(height: 8),
+          const SizedBox(height: 28),
+          // Report Rate Header
+          const _SectionHeader(
+            icon: Icons.timer_outlined,
+            title: 'Polling Rate',
+            subtitle:
+                'Choose how frequently the mouse reports data to your computer',
+          ),
+          const SizedBox(height: 12),
           _ReportRateGroup(
             options: reportRateOptions ?? const [125, 250, 500, 1000],
             selectedHz: reportRateStaging ?? reportRateHz ?? 250,
@@ -90,6 +100,67 @@ class HubPerformancePanel extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader({
+    required this.icon,
+    required this.title,
+    this.subtitle,
+  });
+
+  final IconData icon;
+  final String title;
+  final String? subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(7),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primary.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: theme.colorScheme.primary.withValues(alpha: 0.3),
+                  width: 1,
+                ),
+              ),
+              child: Icon(icon, size: 16, color: theme.colorScheme.primary),
+            ),
+            const SizedBox(width: 10),
+            Text(
+              title,
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.2,
+              ),
+            ),
+          ],
+        ),
+        if (subtitle != null) ...[
+          const SizedBox(height: 4),
+          Padding(
+            padding: const EdgeInsets.only(left: 33),
+            child: Text(
+              subtitle!,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant.withValues(
+                  alpha: 0.8,
+                ),
+                fontSize: 12,
+              ),
+            ),
+          ),
+        ],
+      ],
     );
   }
 }
@@ -134,59 +205,116 @@ class _DpiSettingsGroup extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(8),
+        color: isDark
+            ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.45)
+            : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.65),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
+          width: 1,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Levels row — each level in its own container
+          // Levels row with modern chips and add stage trigger on the far right
           Row(
             children: [
-              const Text('Levels'),
-              const SizedBox(width: 16),
-              for (final stage in stages)
-                _LevelChip(
-                  index: stage.level,
-                  isSelected: stage.level == selectedLevel,
-                  onTap: () => onLevelSelected(stage.level),
-                ),
-              const Spacer(),
-              // Add stage: disabled at max levels.
-              InkWell(
-                onTap: activeCount >= maxLevels ? null : onAddStage,
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 6),
-                  child: Text(
-                    '+',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                  ),
+              Text(
+                'Levels',
+                style: theme.textTheme.labelLarge?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    for (final stage in stages)
+                      _LevelChip(
+                        index: stage.level,
+                        isSelected: stage.level == selectedLevel,
+                        onTap: () => onLevelSelected(stage.level),
+                      ),
+                  ],
+                ),
+              ),
+              if (activeCount < maxLevels) ...[
+                const SizedBox(width: 12),
+                InkWell(
+                  onTap: onAddStage,
+                  borderRadius: BorderRadius.circular(6),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primary.withValues(
+                        alpha: 0.1,
+                      ),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: theme.colorScheme.primary.withValues(
+                          alpha: 0.35,
+                        ),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.add_rounded,
+                          size: 14,
+                          color: theme.colorScheme.primary,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Add',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: theme.colorScheme.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
-          const SizedBox(height: 12),
-          // DPI slider rows — each row in its own container
+          const SizedBox(height: 16),
+          // DPI slider cards
           LayoutBuilder(
             builder: (context, constraints) {
-              final crossAxisCount = constraints.maxWidth > 500 ? 2 : 1;
+              final crossAxisCount = constraints.maxWidth > 580 ? 2 : 1;
               return GridView(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: crossAxisCount,
-                  mainAxisSpacing: 8,
-                  crossAxisSpacing: 8,
-                  mainAxisExtent: 110,
+                  mainAxisSpacing: 10,
+                  crossAxisSpacing: 10,
+                  mainAxisExtent: 114,
                 ),
                 children: [
                   for (final stage in stages)
                     _DpiSliderRow(
                       stage: stage,
                       stagedValue: valueStaging[stage.level] ?? stage.value,
+                      isSelected: stage.level == selectedLevel,
+                      onSelect: () => onLevelSelected(stage.level),
                       min: dpiMin,
                       max: dpiMax,
                       step: dpiStep,
@@ -227,19 +355,36 @@ class _LevelChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return InkWell(
       onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        margin: const EdgeInsets.only(right: 4),
+      borderRadius: BorderRadius.circular(6),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
         decoration: BoxDecoration(
-          color: isSelected ? theme.colorScheme.primary : Colors.transparent,
+          color: isSelected
+              ? theme.colorScheme.primary
+              : isDark
+              ? theme.colorScheme.surface.withValues(alpha: 0.8)
+              : theme.colorScheme.surface,
+          borderRadius: BorderRadius.circular(6),
           border: Border.all(
             color: isSelected
                 ? theme.colorScheme.primary
-                : theme.colorScheme.outline,
+                : theme.colorScheme.outlineVariant.withValues(alpha: 0.6),
+            width: isSelected ? 1.5 : 1.0,
           ),
-          borderRadius: BorderRadius.circular(4),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.35),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
         ),
         child: Text(
           '$index',
@@ -248,6 +393,7 @@ class _LevelChip extends StatelessWidget {
                 ? theme.colorScheme.onPrimary
                 : theme.colorScheme.onSurface,
             fontSize: 12,
+            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
           ),
         ),
       ),
@@ -259,15 +405,17 @@ class _LevelChip extends StatelessWidget {
 ///
 /// Later this row will be conditionally rendered based on
 /// L2 capabilities (e.g. device may only have 4 DPI levels).
-class _DpiSliderRow extends StatelessWidget {
+class _DpiSliderRow extends StatefulWidget {
   const _DpiSliderRow({
     required this.stage,
     required this.stagedValue,
+    this.isSelected = false,
+    this.onSelect,
     required this.min,
     required this.max,
     this.step,
     required this.onValueChanged,
-    this.rgbPerStage = false,
+    required this.rgbPerStage,
     this.onColorChanged,
     this.onRemoveStage,
   });
@@ -277,96 +425,193 @@ class _DpiSliderRow extends StatelessWidget {
   /// Staged value (staging ?? synced); drives the slider position + label.
   final int stagedValue;
 
+  final bool isSelected;
+  final VoidCallback? onSelect;
   final int min;
   final int max;
 
   /// Slider step; null = continuous (stepMode 'any').
   final int? step;
-
   final ValueChanged<int> onValueChanged;
   final bool rgbPerStage;
   final ValueChanged<({int level, Color color})>? onColorChanged;
   final VoidCallback? onRemoveStage;
 
   @override
+  State<_DpiSliderRow> createState() => _DpiSliderRowState();
+}
+
+class _DpiSliderRowState extends State<_DpiSliderRow> {
+  bool _isHovered = false;
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              if (rgbPerStage) ...[
-                _DpiColorButton(
-                  color: _colorFromHex(stage.color),
-                  onTap: () async {
-                    final color = await showDialog<Color>(
-                      context: context,
-                      builder: (_) =>
-                          _DpiColorDialog(initial: _colorFromHex(stage.color)),
-                    );
-                    if (color != null) {
-                      onColorChanged?.call((level: stage.level, color: color));
-                    }
-                  },
+    final isDark = theme.brightness == Brightness.dark;
+
+    final borderColor = widget.isSelected
+        ? theme.colorScheme.primary
+        : _isHovered
+            ? theme.colorScheme.primary.withValues(alpha: 0.6)
+            : theme.colorScheme.outlineVariant.withValues(alpha: 0.4);
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: widget.onSelect,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          decoration: BoxDecoration(
+            color: isDark
+                ? (widget.isSelected
+                    ? theme.colorScheme.surface.withValues(alpha: 0.95)
+                    : _isHovered
+                        ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5)
+                        : theme.colorScheme.surface.withValues(alpha: 0.9))
+                : (widget.isSelected
+                    ? theme.colorScheme.surface
+                    : _isHovered
+                        ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.7)
+                        : theme.colorScheme.surface),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: borderColor,
+              width: widget.isSelected ? 1.8 : (_isHovered ? 1.4 : 1.0),
+            ),
+            boxShadow: [
+              if (widget.isSelected)
+                BoxShadow(
+                  color: theme.colorScheme.primary.withValues(alpha: 0.25),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                )
+              else if (_isHovered)
+                BoxShadow(
+                  color: theme.colorScheme.primary.withValues(alpha: 0.12),
+                  blurRadius: 6,
+                  offset: const Offset(0, 1),
+                )
+              else
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
+                  blurRadius: 4,
+                  offset: const Offset(0, 1),
                 ),
-                const SizedBox(width: 6),
-              ],
-              Text('DPI ${stage.level}'),
-              const Spacer(),
-              _DpiStepperInput(
-                value: stagedValue,
-                min: min,
-                max: max,
-                step: step,
-                onChanged: onValueChanged,
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  if (widget.rgbPerStage) ...[
+                    _DpiColorButton(
+                      color: _colorFromHex(widget.stage.color),
+                      onColorChanged: (color) {
+                        widget.onColorChanged?.call(
+                          (level: widget.stage.level, color: color),
+                        );
+                      },
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                  Text(
+                    'DPI ${widget.stage.level}',
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
+                      color: widget.isSelected ? theme.colorScheme.primary : null,
+                    ),
+                  ),
+                  const Spacer(),
+                  _DpiStepperInput(
+                    value: widget.stagedValue,
+                    min: widget.min,
+                    max: widget.max,
+                    step: widget.step,
+                    onChanged: widget.onValueChanged,
+                  ),
+                  if (widget.onRemoveStage != null) ...[
+                    const SizedBox(width: 6),
+                    Tooltip(
+                      message: 'Delete DPI stage ${widget.stage.level}',
+                      child: InkWell(
+                        onTap: widget.onRemoveStage,
+                        borderRadius: BorderRadius.circular(4),
+                        child: Padding(
+                          padding: const EdgeInsets.all(3),
+                          child: Icon(
+                            Icons.close_rounded,
+                            size: 14,
+                            color: theme.colorScheme.onSurfaceVariant.withValues(
+                              alpha: 0.7,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
               ),
-              if (onRemoveStage != null) ...[
-                const SizedBox(width: 8),
-                Tooltip(
-                  message: 'Delete DPI stage ${stage.level}',
-                  child: InkWell(
-                    onTap: onRemoveStage,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 4,
-                        vertical: 2,
-                      ),
-                      child: Icon(
-                        Icons.close,
-                        size: 14,
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
+              const SizedBox(height: 2),
+              SliderTheme(
+                data: SliderTheme.of(context).copyWith(
+                  trackHeight: 3,
+                  thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+                  overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
+                ),
+                child: Slider(
+                  value: widget.stagedValue.toDouble().clamp(
+                    widget.min.toDouble(),
+                    widget.max.toDouble(),
+                  ),
+                  min: widget.min.toDouble(),
+                  max: widget.max.toDouble(),
+                  onChanged: (v) => widget.onValueChanged(
+                    snapToStep(
+                      v.round(),
+                      min: widget.min,
+                      max: widget.max,
+                      step: widget.step,
                     ),
                   ),
                 ),
-              ],
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      '${widget.min}',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: theme.colorScheme.onSurfaceVariant.withValues(
+                          alpha: 0.85,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      '${widget.max}',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: theme.colorScheme.onSurfaceVariant.withValues(
+                          alpha: 0.85,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
-          const SizedBox(height: 4),
-          Slider(
-            value: stagedValue.toDouble().clamp(min.toDouble(), max.toDouble()),
-            min: min.toDouble(),
-            max: max.toDouble(),
-            onChanged: (v) => onValueChanged(
-              snapToStep(v.round(), min: min, max: max, step: step),
-            ),
-          ),
-          // Min / max range labels under the slider (live from the catalog).
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('$min', style: const TextStyle(fontSize: 9)),
-              Text('$max', style: const TextStyle(fontSize: 9)),
-            ],
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -380,35 +625,113 @@ Color _colorFromHex(String? value) {
   return parsed == null ? Colors.white : Color(0xFF000000 | parsed);
 }
 
-String _colorToHex(Color color) {
-  int channel(double value) => (value * 255).round().clamp(0, 255);
-  String part(int value) => value.toRadixString(16).padLeft(2, '0');
-  return '#${part(channel(color.r))}${part(channel(color.g))}${part(channel(color.b))}'
-      .toUpperCase();
-}
-
-class _DpiColorButton extends StatelessWidget {
-  const _DpiColorButton({required this.color, required this.onTap});
+class _DpiColorButton extends StatefulWidget {
+  const _DpiColorButton({required this.color, required this.onColorChanged});
 
   final Color color;
-  final VoidCallback onTap;
+  final ValueChanged<Color>? onColorChanged;
+
+  @override
+  State<_DpiColorButton> createState() => _DpiColorButtonState();
+}
+
+class _DpiColorButtonState extends State<_DpiColorButton> {
+  final LayerLink _layerLink = LayerLink();
+  OverlayEntry? _overlayEntry;
+
+  void _togglePopover() {
+    if (_overlayEntry != null) {
+      _closePopover();
+    } else {
+      _openPopover();
+    }
+  }
+
+  void _closePopover() {
+    _overlayEntry?.remove();
+    _overlayEntry = null;
+  }
+
+  void _openPopover() {
+    final overlay = Overlay.of(context);
+    _overlayEntry = OverlayEntry(
+      builder: (context) => Stack(
+        children: [
+          // Dismiss when clicking anywhere outside
+          Positioned.fill(
+            child: GestureDetector(
+              behavior: HitTestBehavior.translucent,
+              onTap: _closePopover,
+            ),
+          ),
+          Positioned(
+            width: 240,
+            child: CompositedTransformFollower(
+              link: _layerLink,
+              showWhenUnlinked: false,
+              offset: const Offset(-8, 22),
+              child: Material(
+                elevation: 16,
+                color: Colors.transparent,
+                child: _DpiCompactColorOverlay(
+                  initialColor: widget.color,
+                  onColorChanged: (color) {
+                    widget.onColorChanged?.call(color);
+                  },
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    overlay.insert(_overlayEntry!);
+  }
+
+  @override
+  void dispose() {
+    _closePopover();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Tooltip(
-      message: 'DPI stage color',
-      child: InkWell(
-        onTap: onTap,
-        customBorder: const CircleBorder(),
-        child: Padding(
-          padding: const EdgeInsets.all(2),
-          child: Container(
-            width: 12,
-            height: 12,
-            decoration: BoxDecoration(
-              color: color,
-              shape: BoxShape.circle,
-              border: Border.all(color: Theme.of(context).colorScheme.outline),
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final outerBorderColor = isDark
+        ? Colors.white.withValues(alpha: 0.55)
+        : Colors.black.withValues(alpha: 0.35);
+
+    return CompositedTransformTarget(
+      link: _layerLink,
+      child: Tooltip(
+        message: 'DPI stage color',
+        child: InkWell(
+          onTap: _togglePopover,
+          customBorder: const CircleBorder(),
+          child: Padding(
+            padding: const EdgeInsets.all(2),
+            child: Container(
+              width: 16,
+              height: 16,
+              decoration: BoxDecoration(
+                color: widget.color,
+                shape: BoxShape.circle,
+                border: Border.all(color: outerBorderColor, width: 1.5),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.15),
+                    blurRadius: 3,
+                    offset: const Offset(0, 1),
+                  ),
+                  BoxShadow(
+                    color: widget.color.withValues(alpha: 0.45),
+                    blurRadius: 6,
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -417,182 +740,328 @@ class _DpiColorButton extends StatelessWidget {
   }
 }
 
-class _DpiColorDialog extends StatefulWidget {
-  const _DpiColorDialog({required this.initial});
+class _DpiCompactColorOverlay extends StatefulWidget {
+  const _DpiCompactColorOverlay({
+    required this.initialColor,
+    required this.onColorChanged,
+  });
 
-  final Color initial;
+  final Color initialColor;
+  final ValueChanged<Color> onColorChanged;
 
   @override
-  State<_DpiColorDialog> createState() => _DpiColorDialogState();
+  State<_DpiCompactColorOverlay> createState() =>
+      _DpiCompactColorOverlayState();
 }
 
-class _DpiColorDialogState extends State<_DpiColorDialog> {
+class _DpiCompactColorOverlayState extends State<_DpiCompactColorOverlay> {
   late HSVColor _hsv;
+  late TextEditingController _rCtrl;
+  late TextEditingController _gCtrl;
+  late TextEditingController _bCtrl;
 
   @override
   void initState() {
     super.initState();
-    _hsv = HSVColor.fromColor(widget.initial);
+    final c = widget.initialColor;
+    final parsedHsv = HSVColor.fromColor(c);
+    _hsv = (parsedHsv.saturation == 0 && parsedHsv.value == 1.0)
+        ? HSVColor.fromAHSV(1.0, 0.0, 0.0, 1.0)
+        : parsedHsv;
+    _rCtrl = TextEditingController(text: '${(c.r * 255).round()}');
+    _gCtrl = TextEditingController(text: '${(c.g * 255).round()}');
+    _bCtrl = TextEditingController(text: '${(c.b * 255).round()}');
+  }
+
+  @override
+  void dispose() {
+    _rCtrl.dispose();
+    _gCtrl.dispose();
+    _bCtrl.dispose();
+    super.dispose();
+  }
+
+  void _updateFromHsv(HSVColor newHsv) {
+    setState(() {
+      _hsv = newHsv;
+      final c = _hsv.toColor();
+      _rCtrl.text = '${(c.r * 255).round()}';
+      _gCtrl.text = '${(c.g * 255).round()}';
+      _bCtrl.text = '${(c.b * 255).round()}';
+    });
+    widget.onColorChanged(_hsv.toColor());
   }
 
   void _setSv(Offset local, double width, double height) {
     final saturation = (local.dx / width).clamp(0.0, 1.0);
-    final value = 1 - (local.dy / height).clamp(0.0, 1.0);
-    setState(() {
-      _hsv = _hsv.withSaturation(saturation).withValue(value);
-    });
+    final value = 1.0 - (local.dy / height).clamp(0.0, 1.0);
+    _updateFromHsv(_hsv.withSaturation(saturation).withValue(value));
   }
 
   void _setHue(Offset local, double width) {
-    setState(() {
-      _hsv = _hsv.withHue((local.dx / width * 360).clamp(0.0, 359.999));
-    });
+    final hue = (local.dx / width * 360).clamp(0.0, 359.999);
+    _updateFromHsv(_hsv.withHue(hue));
+  }
+
+  void _onRgbInputChanged() {
+    final r = int.tryParse(_rCtrl.text)?.clamp(0, 255);
+    final g = int.tryParse(_gCtrl.text)?.clamp(0, 255);
+    final b = int.tryParse(_bCtrl.text)?.clamp(0, 255);
+    if (r != null && g != null && b != null) {
+      final color = Color.fromARGB(255, r, g, b);
+      setState(() {
+        _hsv = HSVColor.fromColor(color);
+      });
+      widget.onColorChanged(color);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final color = _hsv.toColor();
-    return AlertDialog(
-      title: const Text('DPI stage color'),
-      content: SizedBox(
-        width: 300,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Text(_colorToHex(color)),
-            ),
-            const SizedBox(height: 8),
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final width = constraints.maxWidth;
-                const height = 160.0;
-                return GestureDetector(
-                  onPanDown: (details) =>
-                      _setSv(details.localPosition, width, height),
-                  onPanUpdate: (details) =>
-                      _setSv(details.localPosition, width, height),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(6),
-                    child: SizedBox(
-                      width: width,
-                      height: height,
-                      child: Stack(
-                        children: [
-                          Positioned.fill(
-                            child: ColoredBox(
-                              color: HSVColor.fromAHSV(
-                                1,
-                                _hsv.hue,
-                                1,
-                                1,
-                              ).toColor(),
-                            ),
-                          ),
-                          const Positioned.fill(
-                            child: DecoratedBox(
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [Colors.white, Colors.transparent],
-                                ),
-                              ),
-                            ),
-                          ),
-                          const Positioned.fill(
-                            child: DecoratedBox(
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  begin: Alignment.topCenter,
-                                  end: Alignment.bottomCenter,
-                                  colors: [Colors.transparent, Colors.black],
-                                ),
-                              ),
-                            ),
-                          ),
-                          Positioned(
-                            left: (_hsv.saturation * width - 8).clamp(
-                              0.0,
-                              width - 16,
-                            ),
-                            top: ((1 - _hsv.value) * height - 8).clamp(
-                              0.0,
-                              height - 16,
-                            ),
-                            child: Container(
-                              width: 16,
-                              height: 16,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: Colors.white,
-                                  width: 2,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
+    final currentColor = _hsv.toColor();
+    const double pickerWidth = 240.0;
+    const double svHeight = 140.0;
+
+    return Container(
+      width: pickerWidth,
+      decoration: BoxDecoration(
+        color: const Color(0xFF26262B),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFF3F3F46), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.65),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // 2D Saturation / Value Gradient Box
+          GestureDetector(
+            onPanDown: (d) => _setSv(d.localPosition, pickerWidth, svHeight),
+            onPanUpdate: (d) => _setSv(d.localPosition, pickerWidth, svHeight),
+            child: ClipRRect(
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(9),
+              ),
+              child: SizedBox(
+                width: pickerWidth,
+                height: svHeight,
+                child: Stack(
+                  children: [
+                    Positioned.fill(
+                      child: ColoredBox(
+                        color: HSVColor.fromAHSV(1, _hsv.hue, 1, 1).toColor(),
                       ),
                     ),
-                  ),
-                );
-              },
-            ),
-            const SizedBox(height: 8),
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final width = constraints.maxWidth;
-                const height = 18.0;
-                return GestureDetector(
-                  onPanDown: (details) => _setHue(details.localPosition, width),
-                  onPanUpdate: (details) =>
-                      _setHue(details.localPosition, width),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(6),
-                    child: SizedBox(
-                      width: width,
-                      height: height,
-                      child: const DecoratedBox(
+                    const Positioned.fill(
+                      child: DecoratedBox(
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
-                            colors: [
-                              Colors.red,
-                              Colors.yellow,
-                              Colors.green,
-                              Colors.cyan,
-                              Colors.blue,
-                              Colors.purple,
-                              Colors.red,
-                            ],
+                            colors: [Colors.white, Colors.transparent],
                           ),
                         ),
                       ),
                     ),
-                  ),
-                );
-              },
+                    const Positioned.fill(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [Colors.transparent, Colors.black],
+                          ),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      left: (_hsv.saturation * pickerWidth - 7).clamp(
+                        0.0,
+                        pickerWidth - 14,
+                      ),
+                      top: ((1 - _hsv.value) * svHeight - 7).clamp(
+                        0.0,
+                        svHeight - 14,
+                      ),
+                      child: Container(
+                        width: 14,
+                        height: 14,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2),
+                          boxShadow: const [
+                            BoxShadow(color: Colors.black54, blurRadius: 3),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
-          ],
-        ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Swatch + Hue Bar row
+                Row(
+                  children: [
+                    Icon(
+                      Icons.colorize,
+                      size: 18,
+                      color: Colors.white.withValues(alpha: 0.7),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      width: 26,
+                      height: 26,
+                      decoration: BoxDecoration(
+                        color: currentColor,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.4),
+                          width: 1.5,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: currentColor.withValues(alpha: 0.4),
+                            blurRadius: 4,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    // Hue Rainbow Slider
+                    Expanded(
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          final barWidth = constraints.maxWidth;
+                          const barHeight = 12.0;
+                          return GestureDetector(
+                            onPanDown: (d) =>
+                                _setHue(d.localPosition, barWidth),
+                            onPanUpdate: (d) =>
+                                _setHue(d.localPosition, barWidth),
+                            child: SizedBox(
+                              height: 18,
+                              child: Stack(
+                                alignment: Alignment.centerLeft,
+                                children: [
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(6),
+                                    child: Container(
+                                      height: barHeight,
+                                      decoration: const BoxDecoration(
+                                        gradient: LinearGradient(
+                                          colors: [
+                                            Color(0xFFFF0000),
+                                            Color(0xFFFFFF00),
+                                            Color(0xFF00FF00),
+                                            Color(0xFF00FFFF),
+                                            Color(0xFF0000FF),
+                                            Color(0xFFFF00FF),
+                                            Color(0xFFFF0000),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  Positioned(
+                                    left: (_hsv.hue / 360 * barWidth - 6).clamp(
+                                      0.0,
+                                      barWidth - 12,
+                                    ),
+                                    child: Container(
+                                      width: 12,
+                                      height: 12,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: Colors.white,
+                                        border: Border.all(
+                                          color: Colors.black54,
+                                          width: 1.5,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                // RGB Value inputs row
+                Row(
+                  children: [
+                    _buildRgbField('R', _rCtrl),
+                    const SizedBox(width: 8),
+                    _buildRgbField('G', _gCtrl),
+                    const SizedBox(width: 8),
+                    _buildRgbField('B', _bCtrl),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.of(context).pop(color),
-          child: const Text('Done'),
-        ),
-      ],
+    );
+  }
+
+  Widget _buildRgbField(String label, TextEditingController controller) {
+    return Expanded(
+      child: Column(
+        children: [
+          Container(
+            height: 28,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: const Color(0xFF1E1E22),
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(color: const Color(0xFF3F3F46)),
+            ),
+            child: TextField(
+              controller: controller,
+              keyboardType: TextInputType.number,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+              ),
+              decoration: const InputDecoration(
+                isDense: true,
+                contentPadding: EdgeInsets.zero,
+                border: InputBorder.none,
+              ),
+              onChanged: (_) => _onRgbInputChanged(),
+            ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 10,
+              color: Colors.grey,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
 
-/// Outer group container for Report Rate.
-///
-/// Later, radio options will be filtered by L2 capabilities
-/// (e.g. device may only support 125/250/500 Hz).
 class _ReportRateGroup extends StatelessWidget {
   const _ReportRateGroup({
     required this.options,
@@ -607,48 +1076,138 @@ class _ReportRateGroup extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(8),
+        color: isDark
+            ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.45)
+            : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.65),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
+          width: 1,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Choose a polling rate for mouse (reports per second)',
-            style: TextStyle(fontSize: 12),
-          ),
-          const SizedBox(height: 8),
-          // Row container for radio options
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surface,
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: RadioGroup<int>(
-              groupValue: selectedHz,
-              onChanged: (value) {
-                if (value != null) onChanged?.call(value);
-              },
-              child: Row(
-                children: [
-                  for (final rate in options)
-                    Expanded(
-                      child: Row(
-                        children: [
-                          Radio<int>(value: rate),
-                          Text('$rate'),
-                        ],
-                      ),
-                    ),
-                ],
+          Row(
+            children: [
+              Text(
+                'Report Rate',
+                style: theme.textTheme.labelLarge?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
               ),
-            ),
+              const SizedBox(width: 8),
+              Text(
+                '($selectedHz Hz)',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.primary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              for (final rate in options)
+                _PollingRateChip(
+                  hz: rate,
+                  isSelected: rate == selectedHz,
+                  onTap: () => onChanged?.call(rate),
+                ),
+            ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _PollingRateChip extends StatelessWidget {
+  const _PollingRateChip({
+    required this.hz,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  final int hz;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? theme.colorScheme.primary
+              : isDark
+              ? theme.colorScheme.surface.withValues(alpha: 0.9)
+              : theme.colorScheme.surface,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isSelected
+                ? theme.colorScheme.primary
+                : theme.colorScheme.outlineVariant.withValues(alpha: 0.6),
+            width: isSelected ? 1.5 : 1.0,
+          ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.35),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
+                    blurRadius: 4,
+                    offset: const Offset(0, 1),
+                  ),
+                ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              isSelected
+                  ? Icons.check_circle_rounded
+                  : Icons.radio_button_unchecked_rounded,
+              size: 14,
+              color: isSelected
+                  ? theme.colorScheme.onPrimary
+                  : theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              '$hz Hz',
+              style: TextStyle(
+                color: isSelected
+                    ? theme.colorScheme.onPrimary
+                    : theme.colorScheme.onSurface,
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -481,6 +481,7 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                                   // why: highlight the user's UI selection; fall
                                   // back to the device's active level initially.
                                   dpiCurrentLevel:
+                                      view.dpiCurrentLevelStaging ??
                                       _selectedDpiLevel ??
                                       display?.dpiActiveIndex,
                                   dpiCurrentLevelStaging:

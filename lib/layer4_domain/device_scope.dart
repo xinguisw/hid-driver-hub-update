@@ -724,10 +724,7 @@ class DeviceScope {
     );
   }
 
-  static String _defaultColorForSlot(
-    List<DpiLevel> capLevels,
-    int index,
-  ) {
+  static String _defaultColorForSlot(List<DpiLevel> capLevels, int index) {
     if (index < capLevels.length) {
       final c = capLevels[index].color;
       if (c.isNotEmpty) return c;

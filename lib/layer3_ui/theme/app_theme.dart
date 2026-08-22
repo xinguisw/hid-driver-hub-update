@@ -3,7 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 abstract class AppTheme {
   // Brand accent colors
-  static const Color brandPrimary = Color(0xFFD84315);
+  static const Color brandPrimary = Color(0xFFC85628);
   static const Color brandAccent = Color(0xFFFF6D00);
 
   // Light Theme Colors
@@ -65,8 +65,8 @@ abstract class AppTheme {
       useMaterial3: true,
       brightness: Brightness.dark,
       colorScheme: const ColorScheme.dark(
-        primary: brandAccent,
-        secondary: brandPrimary,
+        primary: brandPrimary,
+        secondary: brandAccent,
         surface: _darkSurfaceBg,
         onSurface: _darkTextPrimary,
         onSurfaceVariant: _darkTextSecondary,

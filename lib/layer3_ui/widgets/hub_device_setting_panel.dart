@@ -106,8 +106,10 @@ class _FirmwareBox extends StatelessWidget {
       width: 400,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHighest.withOpacity(0.3),
-        border: Border.all(color: colorScheme.outlineVariant.withOpacity(0.5)),
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+        border: Border.all(
+          color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+        ),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(

@@ -5,7 +5,7 @@
 ///
 /// Hardware B2 wire order matches logical UI slot order directly:
 /// Slot 0 = Left, Slot 1 = Right, Slot 2 = Middle, Slot 3 = Forward, Slot 4 = Backward, Slot 5 = DPI.
-const List<int> _uiToWireIndex = [0, 1, 2, 4, 3, 5];
+const List<int> _uiToWireIndex = [0, 1, 2, 3, 4, 5];
 
 /// Reorder logical UI entries into the device's B2 wire-slot order.
 List<T> buttonMappingUiToWire<T>(List<T> uiEntries) {

@@ -86,9 +86,7 @@ class _HubLeftSidebarState extends State<HubLeftSidebar> {
                       child: AnimatedContainer(
                         duration: _animationDuration,
                         color: selected
-                            ? theme.colorScheme.secondaryContainer.withValues(
-                                alpha: 0.5,
-                              )
+                            ? theme.colorScheme.surfaceContainerHighest
                             : Colors.transparent,
                         child: Padding(
                           padding: const EdgeInsets.symmetric(

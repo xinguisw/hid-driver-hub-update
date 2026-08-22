@@ -20,16 +20,18 @@ class HubDeviceSettingPanel extends StatelessWidget {
         ? '—'
         : card.dongleFirmwareVersion;
 
-    // Both halves hug the center instead of spreading to the edges.
-    return Center(
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isWide = constraints.maxWidth > 700;
+        final children = [
           // Left: device image.
           if (card.imageLarge.isNotEmpty)
-            Image.asset(card.imageLarge, width: 300, fit: BoxFit.contain),
-          const SizedBox(width: 64),
+            Image.asset(
+              card.imageLarge,
+              width: isWide ? 300 : 200,
+              fit: BoxFit.contain,
+            ),
+          SizedBox(width: isWide ? 64 : 0, height: isWide ? 0 : 32),
           // Right: firmware info container + reset (fixed width, centered col).
           Column(
             mainAxisSize: MainAxisSize.min,
@@ -37,65 +39,139 @@ class HubDeviceSettingPanel extends StatelessWidget {
               _FirmwareBox(
                 title: 'Mouse Firmware Version',
                 version: mouseVersion,
+                icon: Icons.mouse_outlined,
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
               _FirmwareBox(
                 title: 'Dongle Firmware Version',
                 version: dongleVersion,
+                icon: Icons.usb_outlined,
               ),
-              const SizedBox(height: 24),
-              Center(
-                child: OutlinedButton(
-                  onPressed: null, // skeleton — not wired yet
-                  child: const Text('RESET TO DEFAULT'),
+              const SizedBox(height: 32),
+              OutlinedButton.icon(
+                onPressed: null, // skeleton — not wired yet
+                icon: const Icon(Icons.restore),
+                label: const Text('RESET TO DEFAULT'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 16,
+                  ),
+                  side: const BorderSide(color: Colors.redAccent),
+                  foregroundColor: Colors.redAccent,
                 ),
               ),
             ],
           ),
-        ],
-      ),
+        ];
+
+        return Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: isWide
+                ? Row(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: children,
+                  )
+                : Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: children,
+                  ),
+          ),
+        );
+      },
     );
   }
 }
 
 class _FirmwareBox extends StatelessWidget {
-  const _FirmwareBox({required this.title, required this.version});
+  const _FirmwareBox({
+    required this.title,
+    required this.version,
+    required this.icon,
+  });
 
   final String title;
   final String version;
+  final IconData icon;
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Container(
-      width: 320,
-      padding: const EdgeInsets.all(16),
+      width: 400,
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        border: Border.all(color: Theme.of(context).colorScheme.outline),
-        borderRadius: BorderRadius.circular(8),
+        color: colorScheme.surfaceContainerHighest.withOpacity(0.3),
+        border: Border.all(color: colorScheme.outlineVariant.withOpacity(0.5)),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-          const SizedBox(height: 12),
           Row(
             children: [
-              const Text('Latest version'),
+              Icon(icon, color: colorScheme.primary),
               const SizedBox(width: 12),
-              Text(version),
-              const Spacer(),
-              const OutlinedButton(
-                onPressed: null,
-                child: Text('Check updates'),
+              Text(
+                title,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          const SizedBox(
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Text(
+                'Current Version',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: colorScheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  version,
+                  style: TextStyle(
+                    color: colorScheme.onPrimaryContainer,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              const Spacer(),
+              TextButton(
+                onPressed: null,
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                ),
+                child: const Text('Check for Updates'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
             width: double.infinity,
-            child: OutlinedButton(
+            child: FilledButton.icon(
               onPressed: null,
-              child: Text('New version & update'),
+              icon: const Icon(Icons.system_update_alt),
+              label: const Text('Update Firmware'),
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
             ),
           ),
         ],

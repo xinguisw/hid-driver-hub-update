@@ -154,7 +154,9 @@ class DeviceSession implements DeviceSettingsGateway {
     if (!isAlive) {
       throw StateError('setButtonMapping: session not alive');
     }
-    await _protocol.setButtonMapping(_session, buttons);
+    await _withSilentHandshakeRetry(
+      () => _protocol.setButtonMapping(_session, buttons),
+    );
   }
 
   /// Thin L1 forwarder for C2 SET (L5 encodes + CRC).
@@ -166,7 +168,9 @@ class DeviceSession implements DeviceSettingsGateway {
     if (!isAlive) {
       throw StateError('setReportRate: session not alive');
     }
-    await _protocol.setReportRate(_session, dataBlock);
+    await _withSilentHandshakeRetry(
+      () => _protocol.setReportRate(_session, dataBlock),
+    );
   }
 
   @override
@@ -199,7 +203,9 @@ class DeviceSession implements DeviceSettingsGateway {
     if (!isAlive) {
       throw StateError('setSensorOther: session not alive');
     }
-    await _protocol.setSensorOther(_session, dataBlock);
+    await _withSilentHandshakeRetry(
+      () => _protocol.setSensorOther(_session, dataBlock),
+    );
   }
 
   @override
@@ -230,7 +236,9 @@ class DeviceSession implements DeviceSettingsGateway {
       sleepWire: sleepWire,
       wheelInvert: wheelInvert,
     );
-    await _protocol.setSensorOther(_session, dataBlock);
+    await _withSilentHandshakeRetry(
+      () => _protocol.setSensorOther(_session, dataBlock),
+    );
     return dataBlock;
   }
 
@@ -240,7 +248,9 @@ class DeviceSession implements DeviceSettingsGateway {
     if (!isAlive) {
       throw StateError('setDpiTable: session not alive');
     }
-    await _protocol.setDpiTable(_session, dataBlock);
+    await _withSilentHandshakeRetry(
+      () => _protocol.setDpiTable(_session, dataBlock),
+    );
   }
 
   /// Thin L1 forwarder for C6 SET (L5 encodes + CRC).
@@ -249,7 +259,9 @@ class DeviceSession implements DeviceSettingsGateway {
     if (!isAlive) {
       throw StateError('setDpiRgb: session not alive');
     }
-    await _protocol.setDpiRgb(_session, dataBlock);
+    await _withSilentHandshakeRetry(
+      () => _protocol.setDpiRgb(_session, dataBlock),
+    );
   }
 
   /// Thin L1 forwarder for E2 SET (L5 encodes + CRC).
@@ -258,7 +270,9 @@ class DeviceSession implements DeviceSettingsGateway {
     if (!isAlive) {
       throw StateError('setRgbBacklight: session not alive');
     }
-    await _protocol.setRgbBacklight(_session, dataBlock);
+    await _withSilentHandshakeRetry(
+      () => _protocol.setRgbBacklight(_session, dataBlock),
+    );
   }
 
   @override
@@ -285,7 +299,9 @@ class DeviceSession implements DeviceSettingsGateway {
       blue: blue,
       sleepWire: sleepWire,
     );
-    await _protocol.setRgbBacklight(_session, dataBlock);
+    await _withSilentHandshakeRetry(
+      () => _protocol.setRgbBacklight(_session, dataBlock),
+    );
     return dataBlock;
   }
 
@@ -295,7 +311,25 @@ class DeviceSession implements DeviceSettingsGateway {
     if (!isAlive) {
       throw StateError('setMacro: session not alive');
     }
-    await _protocol.setMacro(_session, macro);
+    await _withSilentHandshakeRetry(
+      () => _protocol.setMacro(_session, macro),
+    );
+  }
+
+  /// Executes a SET command with a silent re-handshake retry if the initial attempt
+  /// fails (e.g. handshake expired / NAK 0x01 or transport timeout).
+  Future<T> _withSilentHandshakeRetry<T>(Future<T> Function() action) async {
+    try {
+      return await action();
+    } catch (e) {
+      debugPrint('[session] SET write failed ($e); attempting silent rehandshake...');
+      final ok = await rehandshake();
+      if (ok && isAlive) {
+        debugPrint('[session] Silent rehandshake succeeded! Retrying SET write...');
+        return await action();
+      }
+      rethrow;
+    }
   }
 
   @override

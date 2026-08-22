@@ -259,43 +259,45 @@ Future<DeviceSettingsState> queryOnboardConfig(
     state = _withDecodeError(state, e, 'dpiTable');
   }
 
-  try {
-    final rgb = await session.queryDpiRgb();
-    if (rgb != null) {
-      state = state.copyWith(
-        rawBlocks: (state.rawBlocks ?? DeviceSettingsRawBlocks()).copyWith(
-          dpiRgb: rgb.data,
-        ),
-      );
-      if (dpiLevels != null) {
-        // Colors only matter when product matrix allows per-stage RGB.
-        // Map by hardware stage index (level - 1), not filtered list index.
-        final useColors = !hasCaps || state.dpiRgbPerStage;
-        final merged = <DpiStageData>[
-          for (final d in dpiLevels)
-            DpiStageData(
-              level: d.level,
-              value: d.value,
-              y: d.y,
-              color: () {
-                if (!useColors) return d.color;
-                final hi = d.level - 1;
-                if (hi < 0 || hi >= rgb.stages.length) return d.color;
-                final c = rgb.stages[hi];
-                return _rgbHex(c.r, c.g, c.b);
-              }(),
-            ),
-        ];
-        state = state.copyWith(dpiLevels: merged);
-        debugPrint('[settings] config dpiRgb $name: ok useColors=$useColors');
+  if (!hasCaps || state.dpiRgbPerStage) {
+    try {
+      final rgb = await session.queryDpiRgb();
+      if (rgb != null) {
+        state = state.copyWith(
+          rawBlocks: (state.rawBlocks ?? DeviceSettingsRawBlocks()).copyWith(
+            dpiRgb: rgb.data,
+          ),
+        );
+        if (dpiLevels != null) {
+          // Colors only matter when product matrix allows per-stage RGB.
+          // Map by hardware stage index (level - 1), not filtered list index.
+          final useColors = !hasCaps || state.dpiRgbPerStage;
+          final merged = <DpiStageData>[
+            for (final d in dpiLevels)
+              DpiStageData(
+                level: d.level,
+                value: d.value,
+                y: d.y,
+                color: () {
+                  if (!useColors) return d.color;
+                  final hi = d.level - 1;
+                  if (hi < 0 || hi >= rgb.stages.length) return d.color;
+                  final c = rgb.stages[hi];
+                  return _rgbHex(c.r, c.g, c.b);
+                }(),
+              ),
+          ];
+          state = state.copyWith(dpiLevels: merged);
+          debugPrint('[settings] config dpiRgb $name: ok useColors=$useColors');
+        }
       }
+    } catch (e) {
+      final fatal = _settingsLoadFatal(e, name, 'dpiRgb');
+      if (fatal != null) {
+        return state.copyWith(loading: false, error: fatal);
+      }
+      state = _withDecodeError(state, e, 'dpiRgb');
     }
-  } catch (e) {
-    final fatal = _settingsLoadFatal(e, name, 'dpiRgb');
-    if (fatal != null) {
-      return state.copyWith(loading: false, error: fatal);
-    }
-    state = _withDecodeError(state, e, 'dpiRgb');
   }
 
   try {

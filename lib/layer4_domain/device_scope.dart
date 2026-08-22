@@ -604,6 +604,14 @@ class DeviceScope {
     DiscoveredCardState card,
     Map<int, String> levelColors,
   ) async {
+    final caps = DeviceCapabilityStore.forDevice(card.devId);
+    if (!(caps?.dpi?.rgbPerStage ?? false)) {
+      debugPrint(
+        '[scope] ${card.displayName}: skipping commitDpiRgb because rgbPerStage is false',
+      );
+      return;
+    }
+
     final session = _sessionForCard(card);
     if (session == null || !session.isAlive) {
       throw StateError('commitDpiRgb: no session');
@@ -693,16 +701,19 @@ class DeviceScope {
     await session.setDpiTable(dataBlock);
 
     // 2. Build the full 8-slot 0xC6 DPI RGB colors wire table: active stage colors first, then default-fill.
-    final rgbBlock = Uint8List(24);
-    for (var i = 0; i < 8; i++) {
-      final stage = i < stagedLevels.length ? stagedLevels[i] : null;
-      final colorHex = stage?.color ?? _defaultColorForSlot(capLevels, i);
-      final rgb = _hexToRgb(colorHex);
-      rgbBlock[i * 3] = rgb[0];
-      rgbBlock[i * 3 + 1] = rgb[1];
-      rgbBlock[i * 3 + 2] = rgb[2];
+    Uint8List? rgbBlock;
+    if (dpi?.rgbPerStage ?? false) {
+      rgbBlock = Uint8List(24);
+      for (var i = 0; i < 8; i++) {
+        final stage = i < stagedLevels.length ? stagedLevels[i] : null;
+        final colorHex = stage?.color ?? _defaultColorForSlot(capLevels, i);
+        final rgb = _hexToRgb(colorHex);
+        rgbBlock[i * 3] = rgb[0];
+        rgbBlock[i * 3 + 1] = rgb[1];
+        rgbBlock[i * 3 + 2] = rgb[2];
+      }
+      await session.setDpiRgb(rgbBlock);
     }
-    await session.setDpiRgb(rgbBlock);
 
     // 3. 0xC2 active mask: first activeCount bits set.
     final latestRaw = _requireRawBlocks(card, 'commitDpiStages');
@@ -718,7 +729,7 @@ class DeviceScope {
       card,
       latestRaw.copyWith(
         dpiTable: dataBlock,
-        dpiRgb: rgbBlock,
+        dpiRgb: rgbBlock ?? latestRaw.dpiRgb,
         reportRateDpi: infoBlock,
       ),
     );

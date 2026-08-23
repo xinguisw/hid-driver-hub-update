@@ -678,5 +678,31 @@ void main() {
       expect(find.text('Macro failed to save'), findsOneWidget);
     },
   );
+
+  testWidgets(
+    'Reset preserves the chosen delay mode selection',
+    (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(home: Scaffold(body: HubMacroPanel())),
+      );
+
+      await tester.tap(find.text('Create Macro'));
+      await tester.pump();
+
+      // Select Fixed Delay
+      await tester.tap(find.widgetWithText(ChoiceChip, 'Fixed Delay'));
+      await tester.pump();
+
+      // Reset recording
+      await tester.tap(find.text('Reset'));
+      await tester.pump();
+
+      // Fixed Delay should still be selected
+      final fixedChip = tester.widget<ChoiceChip>(
+        find.widgetWithText(ChoiceChip, 'Fixed Delay'),
+      );
+      expect(fixedChip.selected, isTrue);
+    },
+  );
 }
 

@@ -590,8 +590,6 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
     setState(() {
       _recording = false;
       _calibrationMode = false;
-      _delayMode = MacroDelayMode.recorded;
-      _fixedDelayController.text = '10';
       _events.clear();
       _pressedKeyCodes.clear();
       _pressedKeyLabels.clear();
@@ -616,8 +614,6 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
     setState(() {
       _recording = false;
       _calibrationMode = false;
-      _delayMode = MacroDelayMode.recorded;
-      _fixedDelayController.text = '10';
       _pressedKeyCodes.clear();
       _pressedKeyLabels.clear();
       _activePointerCode = null;

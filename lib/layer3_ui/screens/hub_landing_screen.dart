@@ -57,7 +57,6 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
   static const int _parameterIndex = 3;
   static const int _backlightIndex = 4;
   static const int _deviceSettingIndex = 6;
-  static const int _appSettingsIndex = 7;
 
   @override
   void initState() {
@@ -893,15 +892,6 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                     )
                   else if (_selectedIndex == _deviceSettingIndex)
                     Expanded(child: HubDeviceSettingPanel(card: selected))
-                  else if (_selectedIndex == _appSettingsIndex)
-                    Expanded(
-                      child: AppSettingsPanel(
-                        lowBatteryThreshold: widget.scope.batteryLowThreshold,
-                        onLowBatteryThresholdChanged: (threshold) {
-                          widget.scope.setLowBatteryThreshold(threshold);
-                        },
-                      ),
-                    )
                   else
                     const Expanded(child: Center(child: Text(''))),
                 ],

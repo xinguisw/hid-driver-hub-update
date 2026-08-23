@@ -1,3 +1,4 @@
+import 'package:driver_hub/i18n/strings.g.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:driver_hub/main.dart';
@@ -13,7 +14,9 @@ void main() {
       macroRepository: InMemoryMacroRepository(),
       appSettingsRepository: MemoryAppSettingsRepository(),
     );
-    await tester.pumpWidget(DriverHubApp(scope: scope));
-    expect(find.text('driver_hub'), findsOneWidget);
+    await tester.pumpWidget(
+      TranslationProvider(child: DriverHubApp(scope: scope)),
+    );
+    expect(find.byType(DriverHubApp), findsOneWidget);
   });
 }

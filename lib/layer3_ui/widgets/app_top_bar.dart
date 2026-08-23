@@ -1,3 +1,4 @@
+import 'package:driver_hub/layer3_ui/screens/app_settings_screen.dart';
 import 'package:driver_hub/layer3_ui/widgets/hub_button_mapping_panel.dart';
 import 'package:driver_hub/layer3_ui/theme/theme_controller.dart';
 import 'package:driver_hub/i18n/strings.g.dart';
@@ -154,7 +155,7 @@ class _AppTopBarState extends State<AppTopBar> with WindowListener {
         elevation: 0,
         scrolledUnderElevation: 0,
         automaticallyImplyLeading: false,
-        leading: widget.showBackButton && Navigator.of(context).canPop()
+        leading: widget.showBackButton
             ? IconButton(
                 icon: Icon(Icons.arrow_back, color: iconColor),
                 onPressed: () => Navigator.of(context).maybePop(),
@@ -196,13 +197,19 @@ class _AppTopBarState extends State<AppTopBar> with WindowListener {
                 ? t.common.switchToLightMode
                 : t.common.switchToDarkMode,
           ),
-          // Settings (only shown if a callback is provided)
-          if (widget.onSettingsPressed != null)
-            IconButton(
-              icon: Icon(Icons.settings_outlined, size: 20, color: iconColor),
-              onPressed: widget.onSettingsPressed,
-              tooltip: t.common.settings,
-            ),
+          // Settings (language, theme, app settings in top bar)
+          IconButton(
+            icon: Icon(Icons.settings_outlined, size: 20, color: iconColor),
+            onPressed: widget.onSettingsPressed ??
+                () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const AppSettingsScreen(),
+                    ),
+                  );
+                },
+            tooltip: t.common.settings,
+          ),
           // Desktop window controls (with divider and spacing)
           if (_isDesktop) ...[
             const SizedBox(width: 8),

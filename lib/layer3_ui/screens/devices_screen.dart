@@ -136,34 +136,48 @@ class _DevicesScreenState extends State<DevicesScreen> {
             right: 16,
             top: 8,
           ),
-          child: Center(
-            child: FilledButton.icon(
-              onPressed: busy ? null : _scope.addDevice,
-              icon: const Icon(Icons.add, color: Colors.white, size: 16),
-              label: Text(
-                busy ? t.devices.working : t.devices.addDevice,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              FilledButton.icon(
+                onPressed: busy ? null : _scope.addDevice,
+                icon: const Icon(Icons.add, color: Colors.white, size: 16),
+                label: Text(
+                  busy ? t.devices.working : t.devices.addDevice,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                ),
+                style: FilledButton.styleFrom(
+                  backgroundColor: buttonBg,
+                  foregroundColor: Colors.white,
+                  disabledBackgroundColor: theme.colorScheme.onSurface.withValues(
+                    alpha: 0.26,
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 14,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  elevation: 0,
                 ),
               ),
-              style: FilledButton.styleFrom(
-                backgroundColor: buttonBg,
-                foregroundColor: Colors.white,
-                disabledBackgroundColor: theme.colorScheme.onSurface.withValues(
-                  alpha: 0.26,
+              const SizedBox(height: 16),
+              Text(
+                t.devices.bluetoothWarning,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: theme.colorScheme.onSurfaceVariant,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w400,
+                  height: 1.4,
                 ),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 14,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                elevation: 0,
               ),
-            ),
+            ],
           ),
         ),
       ),

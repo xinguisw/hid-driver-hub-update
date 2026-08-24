@@ -262,9 +262,10 @@ class _DpiSettingsGroup extends StatelessWidget {
                         vertical: 5,
                       ),
                       decoration: BoxDecoration(
-                        color: canAdd 
-                            ? theme.colorScheme.surface 
-                            : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                        color: canAdd
+                            ? theme.colorScheme.surface
+                            : theme.colorScheme.surfaceContainerHighest
+                                  .withValues(alpha: 0.3),
                         borderRadius: BorderRadius.circular(6),
                         border: Border.all(
                           color: theme.colorScheme.outlineVariant.withValues(
@@ -272,7 +273,7 @@ class _DpiSettingsGroup extends StatelessWidget {
                           ),
                           width: 1,
                         ),
-                        boxShadow: canAdd 
+                        boxShadow: canAdd
                             ? [
                                 BoxShadow(
                                   color: Colors.black.withValues(alpha: 0.05),
@@ -288,19 +289,24 @@ class _DpiSettingsGroup extends StatelessWidget {
                           Icon(
                             Icons.add_rounded,
                             size: 14,
-                            color: canAdd 
-                                ? theme.colorScheme.onSurface 
-                                : theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+                            color: canAdd
+                                ? theme.colorScheme.onSurface
+                                : theme.colorScheme.onSurfaceVariant.withValues(
+                                    alpha: 0.5,
+                                  ),
                           ),
                           const SizedBox(width: 4),
                           Text(
                             'Add',
                             style: TextStyle(
                               fontSize: 11,
-                              fontWeight: canAdd ? FontWeight.w700 : FontWeight.w600,
-                              color: canAdd 
-                                  ? theme.colorScheme.onSurface 
-                                  : theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+                              fontWeight: canAdd
+                                  ? FontWeight.w700
+                                  : FontWeight.w600,
+                              color: canAdd
+                                  ? theme.colorScheme.onSurface
+                                  : theme.colorScheme.onSurfaceVariant
+                                        .withValues(alpha: 0.5),
                             ),
                           ),
                         ],
@@ -388,9 +394,7 @@ class _LevelChip extends StatelessWidget {
           border: Border.all(
             color: isSelected
                 ? theme.colorScheme.primary
-                : (isDark
-                    ? const Color(0xFF3F424B)
-                    : const Color(0xFFD0D5DD)),
+                : (isDark ? const Color(0xFF3F424B) : const Color(0xFFD0D5DD)),
             width: 1.0,
           ),
           boxShadow: isSelected
@@ -403,9 +407,7 @@ class _LevelChip extends StatelessWidget {
                 ]
               : [
                   BoxShadow(
-                    color: Colors.black.withValues(
-                      alpha: isDark ? 0.25 : 0.05,
-                    ),
+                    color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
                     blurRadius: 3,
                     offset: const Offset(0, 1),
                   ),
@@ -416,9 +418,7 @@ class _LevelChip extends StatelessWidget {
           style: TextStyle(
             color: isSelected
                 ? Colors.white
-                : (isDark
-                    ? const Color(0xFFE0E3EB)
-                    : const Color(0xFF344054)),
+                : (isDark ? const Color(0xFFE0E3EB) : const Color(0xFF344054)),
             fontSize: 12,
             fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
           ),
@@ -767,13 +767,6 @@ class _DpiColorButtonState extends State<_DpiColorButton> {
                 color: widget.color,
                 shape: BoxShape.circle,
                 border: Border.all(color: outerBorderColor, width: 1.5),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.15),
-                    blurRadius: 3,
-                    offset: const Offset(0, 1),
-                  ),
-                ],
               ),
             ),
           ),
@@ -1145,7 +1138,6 @@ class _ReportRateGroup extends StatelessWidget {
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
-
             ],
           ),
           const SizedBox(height: 12),
@@ -1200,8 +1192,8 @@ class _PollingRateChip extends StatelessWidget {
               color: isSelected
                   ? theme.colorScheme.primary
                   : (isDark
-                      ? const Color(0xFF3F424B)
-                      : const Color(0xFFD0D5DD)),
+                        ? const Color(0xFF3F424B)
+                        : const Color(0xFFD0D5DD)),
               width: 1.0,
             ),
             boxShadow: isSelected
@@ -1230,8 +1222,8 @@ class _PollingRateChip extends StatelessWidget {
               color: isSelected
                   ? Colors.white
                   : (isDark
-                      ? const Color(0xFFE0E3EB)
-                      : const Color(0xFF344054)),
+                        ? const Color(0xFFE0E3EB)
+                        : const Color(0xFF344054)),
               letterSpacing: 0.1,
             ),
           ),

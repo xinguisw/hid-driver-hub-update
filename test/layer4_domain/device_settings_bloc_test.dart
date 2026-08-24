@@ -157,6 +157,12 @@ void main() {
           await pumpEventQueue();
           bloc.add(const DeviceSettingsReportRateRequested(hz: 125));
           bloc.add(const DeviceSettingsDpiLevelRequested(level: 3));
+          bloc.add(
+            const DeviceSettingsDpiColorRequested(
+              level: 1,
+              color: '#FF0000',
+            ),
+          );
           await pumpEventQueue();
           bloc.add(const DeviceSettingsResetDpiConfigurationRequested());
           await pumpEventQueue();
@@ -171,6 +177,7 @@ void main() {
           expect(bloc.state.synced?.dpiLevels, hasLength(5));
           expect(bloc.state.reportRateStaging, isNull);
           expect(bloc.state.dpiCurrentLevelStaging, isNull);
+          expect(bloc.state.dpiRgbStaging, isNull);
           expect(bloc.state.isDirty, false);
           expect(bloc.state.committing, false);
           expect(bloc.state.lastError, isNull);

@@ -542,6 +542,7 @@ class DeviceSettingsBloc
       clearReportRateStaging: true,
       clearDpiCurrentLevelStaging: true,
       clearDpiValueStaging: true,
+      clearDpiRgbStaging: true,
       clearDpiStageStaging: true,
     );
     emit(nextState.copyWith(isDirty: nextState.hasAnyStaging));

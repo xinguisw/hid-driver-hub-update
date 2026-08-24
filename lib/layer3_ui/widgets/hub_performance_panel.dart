@@ -382,15 +382,15 @@ class _LevelChip extends StatelessWidget {
 
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(6),
+      borderRadius: BorderRadius.circular(10),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 160),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
           color: isSelected
               ? theme.colorScheme.primary
               : (isDark ? const Color(0xFF26282E) : Colors.white),
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(10),
           border: Border.all(
             color: isSelected
                 ? theme.colorScheme.primary
@@ -401,15 +401,15 @@ class _LevelChip extends StatelessWidget {
               ? [
                   BoxShadow(
                     color: theme.colorScheme.primary.withValues(alpha: 0.35),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2.5),
                   ),
                 ]
               : [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
-                    blurRadius: 3,
-                    offset: const Offset(0, 1),
+                    blurRadius: 4,
+                    offset: const Offset(0, 1.5),
                   ),
                 ],
         ),

@@ -210,6 +210,7 @@ class _ModeBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     return _CardBox(
       isActive: rgbModeId != null,
@@ -261,14 +262,25 @@ class _ModeBox extends StatelessWidget {
           );
 
           final dropdownWidget = Container(
-            height: 34,
-            padding: const EdgeInsets.symmetric(horizontal: 10),
+            height: 38,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
             decoration: BoxDecoration(
-              color: theme.colorScheme.surface,
-              borderRadius: BorderRadius.circular(6),
+              color: isDark ? const Color(0xFF26282E) : Colors.white,
+              borderRadius: BorderRadius.circular(10),
               border: Border.all(
-                color: theme.colorScheme.outline.withValues(alpha: 0.3),
+                color: (isDark
+                    ? const Color(0xFF3F424B)
+                    : const Color(0xFFD0D5DD)),
+                width: 1.0,
               ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black
+                      .withValues(alpha: isDark ? 0.25 : 0.05),
+                  blurRadius: 4,
+                  offset: const Offset(0, 1.5),
+                ),
+              ],
             ),
             child: DropdownButtonHideUnderline(
               child: DropdownButton<int>(
@@ -278,13 +290,14 @@ class _ModeBox extends StatelessWidget {
                     : null,
                 hint: const Text(
                   'Select Mode',
-                  style: TextStyle(fontSize: 12.5),
+                  style: TextStyle(fontSize: 13),
                 ),
                 menuMaxHeight: 240,
-                borderRadius: BorderRadius.circular(8),
-                dropdownColor: theme.colorScheme.surfaceContainerHigh,
+                borderRadius: BorderRadius.circular(10),
+                dropdownColor:
+                    isDark ? const Color(0xFF26282E) : Colors.white,
                 elevation: 4,
-                icon: const Icon(Icons.keyboard_arrow_down, size: 18),
+                icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 20),
                 items: [
                   for (var i = 0; i < rgbModes.length; i++)
                     DropdownMenuItem<int>(

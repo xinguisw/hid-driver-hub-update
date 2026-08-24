@@ -6,6 +6,7 @@ import 'package:driver_hub/layer4_domain/device_scope.dart';
 import 'package:driver_hub/layer4_domain/models/discovered_card_state.dart';
 import 'package:driver_hub/layer4_domain/models/macro.dart';
 import 'package:driver_hub/layer5_codec/codecs/keyvalue_table.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -53,6 +54,7 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
   int? _selectedSlot;
   int? _activePointerCode;
   String? _activePointerLabel;
+  MacroDefinition? _originalMacro;
   Stopwatch? _recordClock;
   int? _lastRecordEventUs;
   Stopwatch? _calibrationClock;
@@ -65,6 +67,28 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
   static const _minimumMakeDelay = 1;
 
   bool get _hasScope => widget.scope != null && widget.card != null;
+
+  bool get _isDirty {
+    final draft = _draft;
+    if (draft == null || _recording) return false;
+    final orig = _originalMacro;
+    if (orig == null) {
+      return _events.isNotEmpty ||
+          _nameController.text.trim() != 'M${draft.slot}';
+    }
+    final currentName = _nameController.text.trim().isEmpty
+        ? 'M${draft.slot}'
+        : _nameController.text.trim();
+    final currentLoop = int.tryParse(_loopController.text) ?? 1;
+
+    final nameMatches =
+        currentName == (orig.name.isEmpty ? 'M${orig.slot}' : orig.name);
+    final modeMatches = draft.mode == orig.mode;
+    final loopMatches = currentLoop == orig.loopTimes;
+    final actionsMatch = listEquals(_events, orig.actions);
+
+    return !(nameMatches && modeMatches && loopMatches && actionsMatch);
+  }
 
   @override
   void initState() {
@@ -146,6 +170,7 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
       _delayMode = MacroDelayMode.recorded;
       _fixedDelayController.text = '10';
       _selectedSlot = slot;
+      _originalMacro = null;
       _events.clear();
       _pressedKeyCodes.clear();
       _pressedKeyLabels.clear();
@@ -185,6 +210,7 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
       _calibrationMode = _isTimingProbeMacro(macro);
       _delayMode = MacroDelayMode.recorded;
       _fixedDelayController.text = '10';
+      _originalMacro = macro;
       _events
         ..clear()
         ..addAll(macro.actions);
@@ -535,9 +561,11 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _selectedSlot = null;
-        _draft = null;
-        _events.clear();
+        _originalMacro = macro;
+        _draft = _draftFrom(macro);
+        _events
+          ..clear()
+          ..addAll(macro.actions);
         _error = null;
       });
       _showToast(message: 'Macro saved successfully', isSuccess: true);
@@ -587,8 +615,7 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
   }
 
   void _reset() {
-    final draft = _draft;
-    if (draft == null) return;
+    if (_draft == null) return;
     setState(() {
       _recording = false;
       _calibrationMode = false;
@@ -1299,19 +1326,29 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
                       children: [
                         OutlinedButton(
                           onPressed: _loading || _recording ? null : _reset,
-                          style: buttonStyle,
+                          style: _macroOutlinedButtonStyle(context),
                           child: const Text('Reset'),
                         ),
                         const SizedBox(width: 12),
-                        OutlinedButton(
-                          onPressed: _loading || _recording ? null : _save,
-                          style: buttonStyle,
-                          child: const Text('Save'),
-                        ),
+                        (!_loading &&
+                                !_recording &&
+                                _error == null &&
+                                _events.isNotEmpty &&
+                                _isDirty)
+                            ? FilledButton(
+                                onPressed: _save,
+                                style: _macroPrimaryButtonStyle(context),
+                                child: const Text('Save'),
+                              )
+                            : OutlinedButton(
+                                onPressed: null,
+                                style: _macroOutlinedButtonStyle(context),
+                                child: const Text('Save'),
+                              ),
                         const SizedBox(width: 12),
                         OutlinedButton(
                           onPressed: _loading ? null : _cancel,
-                          style: buttonStyle,
+                          style: _macroOutlinedButtonStyle(context),
                           child: const Text('Cancel'),
                         ),
                       ],
@@ -1601,11 +1638,28 @@ ButtonStyle _macroOutlinedButtonStyle(BuildContext context) {
   final theme = Theme.of(context);
   final isDark = theme.brightness == Brightness.dark;
   return OutlinedButton.styleFrom(
+    backgroundColor: isDark ? const Color(0xFF26282E) : Colors.white,
     foregroundColor: theme.colorScheme.onSurface,
+    minimumSize: const Size(80, 42),
     side: BorderSide(
       color: (isDark ? const Color(0xFF3F424B) : const Color(0xFFD0D5DD)),
       width: 1.0,
     ),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+    elevation: 1.5,
+    shadowColor: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
+  );
+}
+
+ButtonStyle _macroPrimaryButtonStyle(BuildContext context) {
+  final theme = Theme.of(context);
+  return FilledButton.styleFrom(
+    backgroundColor: theme.colorScheme.primary,
+    foregroundColor: Colors.white,
+    minimumSize: const Size(80, 42),
+    elevation: 3,
+    shadowColor: theme.colorScheme.primary.withValues(alpha: 0.35),
     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
     padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
   );

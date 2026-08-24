@@ -1079,25 +1079,74 @@ class _ParameterActionBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final style = OutlinedButton.styleFrom(
+    final isDark = theme.brightness == Brightness.dark;
+
+    final outlinedButtonStyle = OutlinedButton.styleFrom(
+      backgroundColor: isDark ? const Color(0xFF26282E) : Colors.white,
       foregroundColor: theme.colorScheme.onSurface,
-      side: BorderSide(color: theme.colorScheme.outline),
-      shape: const StadiumBorder(),
+      minimumSize: const Size(80, 42),
+      side: BorderSide(
+        color: (isDark ? const Color(0xFF3F424B) : const Color(0xFFD0D5DD)),
+        width: 1.0,
+      ),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+      elevation: 1.5,
+      shadowColor: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
     );
+
+    final saveCanClick = isDirty && !committing;
+    final primaryButtonStyle = saveCanClick
+        ? FilledButton.styleFrom(
+            backgroundColor: theme.colorScheme.primary,
+            foregroundColor: Colors.white,
+            minimumSize: const Size(80, 42),
+            elevation: 3,
+            shadowColor: theme.colorScheme.primary.withValues(alpha: 0.35),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+          )
+        : OutlinedButton.styleFrom(
+            backgroundColor: isDark ? const Color(0xFF26282E) : Colors.white,
+            foregroundColor:
+                theme.colorScheme.onSurface.withValues(alpha: 0.38),
+            minimumSize: const Size(80, 42),
+            side: BorderSide(
+              color:
+                  (isDark ? const Color(0xFF3F424B) : const Color(0xFFD0D5DD))
+                      .withValues(alpha: 0.5),
+              width: 1.0,
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+          );
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
-          OutlinedButton(
-            onPressed: (!isDirty || committing) ? null : onSave,
-            style: style,
-            child: const Text('Save'),
-          ),
+          saveCanClick
+              ? FilledButton(
+                  onPressed: onSave,
+                  style: primaryButtonStyle,
+                  child: const Text('Save'),
+                )
+              : OutlinedButton(
+                  onPressed: null,
+                  style: primaryButtonStyle,
+                  child: const Text('Save'),
+                ),
           const SizedBox(width: 12),
           OutlinedButton(
             onPressed: committing ? null : onCancel,
-            style: style,
+            style: outlinedButtonStyle,
             child: const Text('Cancel'),
           ),
         ],
@@ -1126,25 +1175,74 @@ class _BacklightActionBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final style = OutlinedButton.styleFrom(
+    final isDark = theme.brightness == Brightness.dark;
+
+    final outlinedButtonStyle = OutlinedButton.styleFrom(
+      backgroundColor: isDark ? const Color(0xFF26282E) : Colors.white,
       foregroundColor: theme.colorScheme.onSurface,
-      side: BorderSide(color: theme.colorScheme.outline),
-      shape: const StadiumBorder(),
+      minimumSize: const Size(80, 42),
+      side: BorderSide(
+        color: (isDark ? const Color(0xFF3F424B) : const Color(0xFFD0D5DD)),
+        width: 1.0,
+      ),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+      elevation: 1.5,
+      shadowColor: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
     );
+
+    final saveCanClick = isDirty && !committing;
+    final primaryButtonStyle = saveCanClick
+        ? FilledButton.styleFrom(
+            backgroundColor: theme.colorScheme.primary,
+            foregroundColor: Colors.white,
+            minimumSize: const Size(80, 42),
+            elevation: 3,
+            shadowColor: theme.colorScheme.primary.withValues(alpha: 0.35),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+          )
+        : OutlinedButton.styleFrom(
+            backgroundColor: isDark ? const Color(0xFF26282E) : Colors.white,
+            foregroundColor:
+                theme.colorScheme.onSurface.withValues(alpha: 0.38),
+            minimumSize: const Size(80, 42),
+            side: BorderSide(
+              color:
+                  (isDark ? const Color(0xFF3F424B) : const Color(0xFFD0D5DD))
+                      .withValues(alpha: 0.5),
+              width: 1.0,
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+          );
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
-          OutlinedButton(
-            onPressed: (!isDirty || committing) ? null : onSave,
-            style: style,
-            child: const Text('Save'),
-          ),
+          saveCanClick
+              ? FilledButton(
+                  onPressed: onSave,
+                  style: primaryButtonStyle,
+                  child: const Text('Save'),
+                )
+              : OutlinedButton(
+                  onPressed: null,
+                  style: primaryButtonStyle,
+                  child: const Text('Save'),
+                ),
           const SizedBox(width: 12),
           OutlinedButton(
             onPressed: committing ? null : onCancel,
-            style: style,
+            style: outlinedButtonStyle,
             child: const Text('Cancel'),
           ),
         ],
@@ -1174,6 +1272,54 @@ class _PerformanceActionBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final outlinedButtonStyle = OutlinedButton.styleFrom(
+      backgroundColor: isDark ? const Color(0xFF26282E) : Colors.white,
+      foregroundColor: theme.colorScheme.onSurface,
+      minimumSize: const Size(80, 42),
+      side: BorderSide(
+        color: (isDark ? const Color(0xFF3F424B) : const Color(0xFFD0D5DD)),
+        width: 1.0,
+      ),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+      elevation: 1.5,
+      shadowColor: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
+    );
+
+    final saveCanClick = isDirty && !committing;
+    final primaryButtonStyle = saveCanClick
+        ? FilledButton.styleFrom(
+            backgroundColor: theme.colorScheme.primary,
+            foregroundColor: Colors.white,
+            minimumSize: const Size(80, 42),
+            elevation: 3,
+            shadowColor: theme.colorScheme.primary.withValues(alpha: 0.35),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+          )
+        : OutlinedButton.styleFrom(
+            backgroundColor: isDark ? const Color(0xFF26282E) : Colors.white,
+            foregroundColor:
+                theme.colorScheme.onSurface.withValues(alpha: 0.38),
+            minimumSize: const Size(80, 42),
+            side: BorderSide(
+              color:
+                  (isDark ? const Color(0xFF3F424B) : const Color(0xFFD0D5DD))
+                      .withValues(alpha: 0.5),
+              width: 1.0,
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+          );
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
@@ -1181,34 +1327,25 @@ class _PerformanceActionBar extends StatelessWidget {
         children: [
           OutlinedButton(
             onPressed: committing ? null : onReset,
-            style: OutlinedButton.styleFrom(
-              foregroundColor: theme.colorScheme.onSurface,
-              side: BorderSide(color: theme.colorScheme.outline, width: 2.0),
-              shape: const StadiumBorder(),
-              textStyle: theme.textTheme.labelLarge?.copyWith(
-                fontWeight: FontWeight.w500,
-              ),
-            ),
+            style: outlinedButtonStyle,
             child: const Text('Reset to Default'),
           ),
           const SizedBox(width: 12),
-          OutlinedButton(
-            onPressed: (!isDirty || committing) ? null : onSave,
-            style: OutlinedButton.styleFrom(
-              foregroundColor: theme.colorScheme.onSurface,
-              side: BorderSide(color: theme.colorScheme.outline),
-              shape: const StadiumBorder(),
-            ),
-            child: const Text('Save'),
-          ),
+          saveCanClick
+              ? FilledButton(
+                  onPressed: onSave,
+                  style: primaryButtonStyle,
+                  child: const Text('Save'),
+                )
+              : OutlinedButton(
+                  onPressed: null,
+                  style: primaryButtonStyle,
+                  child: const Text('Save'),
+                ),
           const SizedBox(width: 12),
           OutlinedButton(
             onPressed: committing ? null : onCancel,
-            style: OutlinedButton.styleFrom(
-              foregroundColor: theme.colorScheme.onSurface,
-              side: BorderSide(color: theme.colorScheme.outline),
-              shape: const StadiumBorder(),
-            ),
+            style: outlinedButtonStyle,
             child: const Text('Cancel'),
           ),
         ],

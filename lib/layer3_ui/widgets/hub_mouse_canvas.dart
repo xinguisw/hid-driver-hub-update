@@ -182,18 +182,27 @@ class _HubMouseCanvasState extends State<HubMouseCanvas> {
                     OutlinedButton(
                       onPressed: widget.onResetToDefault,
                       style: OutlinedButton.styleFrom(
+                        backgroundColor: (theme.brightness == Brightness.dark
+                            ? const Color(0xFF26282E)
+                            : Colors.white),
                         foregroundColor: theme.colorScheme.onSurface,
+                        minimumSize: const Size(80, 42),
                         side: BorderSide(
-                          color: theme.colorScheme.outline,
-                          width: 2.0,
+                          color: (theme.brightness == Brightness.dark
+                              ? const Color(0xFF3F424B)
+                              : const Color(0xFFD0D5DD)),
+                          width: 1.0,
                         ),
-                        shape: const StadiumBorder(),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 10,
+                          horizontal: 18,
+                          vertical: 12,
                         ),
-                        textStyle: theme.textTheme.labelLarge?.copyWith(
-                          fontWeight: FontWeight.w500,
+                        elevation: 1.5,
+                        shadowColor: Colors.black.withValues(
+                          alpha: theme.brightness == Brightness.dark ? 0.25 : 0.05,
                         ),
                       ),
                       child: Text(t.common.resetToDefault),
@@ -206,10 +215,18 @@ class _HubMouseCanvasState extends State<HubMouseCanvas> {
                           FilledButton(
                             onPressed: widget.onSave,
                             style: FilledButton.styleFrom(
-                              shape: const StadiumBorder(),
+                              backgroundColor: theme.colorScheme.primary,
+                              foregroundColor: Colors.white,
+                              minimumSize: const Size(80, 42),
+                              elevation: 3,
+                              shadowColor: theme.colorScheme.primary
+                                  .withValues(alpha: 0.35),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 24,
-                                vertical: 10,
+                                horizontal: 18,
+                                vertical: 12,
                               ),
                             ),
                             child: Text(t.common.save),
@@ -218,10 +235,30 @@ class _HubMouseCanvasState extends State<HubMouseCanvas> {
                           OutlinedButton(
                             onPressed: widget.onCancel,
                             style: OutlinedButton.styleFrom(
-                              shape: const StadiumBorder(),
+                              backgroundColor:
+                                  (theme.brightness == Brightness.dark
+                                      ? const Color(0xFF26282E)
+                                      : Colors.white),
+                              foregroundColor: theme.colorScheme.onSurface,
+                              minimumSize: const Size(80, 42),
+                              side: BorderSide(
+                                color: (theme.brightness == Brightness.dark
+                                    ? const Color(0xFF3F424B)
+                                    : const Color(0xFFD0D5DD)),
+                                width: 1.0,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 24,
-                                vertical: 10,
+                                horizontal: 18,
+                                vertical: 12,
+                              ),
+                              elevation: 1.5,
+                              shadowColor: Colors.black.withValues(
+                                alpha: theme.brightness == Brightness.dark
+                                    ? 0.25
+                                    : 0.05,
                               ),
                             ),
                             child: Text(t.common.cancel),

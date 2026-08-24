@@ -48,20 +48,10 @@ class HubDeviceSettingPanel extends StatelessWidget {
               ),
               const SizedBox(height: 32),
               OutlinedButton.icon(
-                onPressed: null, // skeleton — not wired yet
-                icon: const Icon(Icons.restore),
-                label: const Text('RESET TO DEFAULT'),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 16,
-                  ),
-                  side: const BorderSide(color: Colors.redAccent),
-                  foregroundColor: Colors.redAccent,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                ),
+                onPressed: () {}, // active UI state
+                icon: const Icon(Icons.restore_rounded, size: 18),
+                label: const Text('Reset to Default'),
+                style: _devicePanelOutlinedButtonStyle(context),
               ),
             ],
           ),
@@ -161,12 +151,17 @@ class _FirmwareBox extends StatelessWidget {
                 ),
               ),
               const Spacer(),
-              TextButton(
-                onPressed: null,
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
+              OutlinedButton(
+                onPressed: () {},
+                style: _devicePanelOutlinedButtonStyle(context).copyWith(
+                  padding: WidgetStateProperty.all(
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  ),
                 ),
-                child: const Text('Check for Updates'),
+                child: const Text(
+                  'Check for Updates',
+                  style: TextStyle(fontSize: 12),
+                ),
               ),
             ],
           ),
@@ -174,19 +169,47 @@ class _FirmwareBox extends StatelessWidget {
           SizedBox(
             width: double.infinity,
             child: FilledButton.icon(
-              onPressed: null,
-              icon: const Icon(Icons.system_update_alt),
+              onPressed: () {},
+              icon: const Icon(Icons.system_update_alt_rounded, size: 18),
               label: const Text('Update Firmware'),
-              style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
+              style: _devicePanelPrimaryButtonStyle(context),
             ),
           ),
         ],
       ),
     );
   }
+}
+
+ButtonStyle _devicePanelOutlinedButtonStyle(BuildContext context) {
+  final theme = Theme.of(context);
+  final isDark = theme.brightness == Brightness.dark;
+  return OutlinedButton.styleFrom(
+    backgroundColor: isDark ? const Color(0xFF26282E) : Colors.white,
+    foregroundColor: theme.colorScheme.onSurface,
+    side: BorderSide(
+      color: (isDark ? const Color(0xFF3F424B) : const Color(0xFFD0D5DD)),
+      width: 1.0,
+    ),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(10),
+    ),
+    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+    elevation: 1.5,
+    shadowColor: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
+  );
+}
+
+ButtonStyle _devicePanelPrimaryButtonStyle(BuildContext context) {
+  final theme = Theme.of(context);
+  return FilledButton.styleFrom(
+    backgroundColor: theme.colorScheme.primary,
+    foregroundColor: Colors.white,
+    elevation: 3,
+    shadowColor: theme.colorScheme.primary.withValues(alpha: 0.35),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(10),
+    ),
+    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+  );
 }

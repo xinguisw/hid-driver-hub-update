@@ -18,13 +18,13 @@ class AppSettingsPanel extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _SettingsSection(title: 'System', child: _systemSettings()),
+          _SettingsSection(title: 'System', child: _systemSettings(context)),
           const SizedBox(height: 8),
           _SettingsSection(title: 'Help', child: _helpSettings(context)),
           const SizedBox(height: 8),
           _SettingsSection(
             title: 'Performance Settings',
-            child: _performanceSettings(),
+            child: _performanceSettings(context),
           ),
           const SizedBox(height: 8),
           _SettingsSection(title: 'About NEWMEN HUB', child: _aboutSettings()),
@@ -33,7 +33,7 @@ class AppSettingsPanel extends StatelessWidget {
     );
   }
 
-  Widget _systemSettings() {
+  Widget _systemSettings(BuildContext context) {
     return Wrap(
       spacing: 16,
       runSpacing: 12,
@@ -44,7 +44,9 @@ class AppSettingsPanel extends StatelessWidget {
           width: 220,
           child: DropdownButtonFormField<String>(
             initialValue: 'English',
-            decoration: const InputDecoration(isDense: true),
+            decoration: _dropdownDecoration(context),
+            icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 20),
+            borderRadius: BorderRadius.circular(10),
             items: const [
               DropdownMenuItem(value: 'English', child: Text('English')),
             ],
@@ -52,11 +54,11 @@ class AppSettingsPanel extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 180, child: Text('Theme')),
-        const SizedBox(
+        SizedBox(
           width: 220,
           child: TextField(
             enabled: false,
-            decoration: InputDecoration(isDense: true),
+            decoration: _dropdownDecoration(context),
           ),
         ),
       ],
@@ -93,7 +95,7 @@ class AppSettingsPanel extends StatelessWidget {
     );
   }
 
-  Widget _performanceSettings() {
+  Widget _performanceSettings(BuildContext context) {
     return Wrap(
       spacing: 16,
       runSpacing: 12,
@@ -104,10 +106,12 @@ class AppSettingsPanel extends StatelessWidget {
           width: 220,
           child: ValueListenableBuilder<int>(
             valueListenable: lowBatteryThreshold,
-            builder: (context, threshold, _) => DropdownButtonFormField<int>(
+            builder: (ctx, threshold, _) => DropdownButtonFormField<int>(
               key: const Key('app-setting-threshold'),
               initialValue: threshold,
-              decoration: const InputDecoration(isDense: true),
+              decoration: _dropdownDecoration(ctx),
+              icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 20),
+              borderRadius: BorderRadius.circular(10),
               items: const [
                 DropdownMenuItem(value: 10, child: Text('10%')),
                 DropdownMenuItem(value: 20, child: Text('20%')),
@@ -169,9 +173,51 @@ class _SettingsSection extends StatelessWidget {
 
 ButtonStyle _appSettingsButtonStyle(BuildContext context) {
   final theme = Theme.of(context);
+  final isDark = theme.brightness == Brightness.dark;
   return OutlinedButton.styleFrom(
+    backgroundColor: isDark ? const Color(0xFF26282E) : Colors.white,
     foregroundColor: theme.colorScheme.onSurface,
-    side: BorderSide(color: theme.colorScheme.outline),
-    shape: const StadiumBorder(),
+    side: BorderSide(
+      color: (isDark ? const Color(0xFF3F424B) : const Color(0xFFD0D5DD)),
+      width: 1.0,
+    ),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(10),
+    ),
+    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+    elevation: 1.5,
+    shadowColor: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
+  );
+}
+
+InputDecoration _dropdownDecoration(BuildContext context) {
+  final theme = Theme.of(context);
+  final isDark = theme.brightness == Brightness.dark;
+  return InputDecoration(
+    isDense: true,
+    filled: true,
+    fillColor: isDark ? const Color(0xFF26282E) : Colors.white,
+    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(10),
+      borderSide: BorderSide(
+        color: (isDark ? const Color(0xFF3F424B) : const Color(0xFFD0D5DD)),
+        width: 1.0,
+      ),
+    ),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(10),
+      borderSide: BorderSide(
+        color: (isDark ? const Color(0xFF3F424B) : const Color(0xFFD0D5DD)),
+        width: 1.0,
+      ),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(10),
+      borderSide: BorderSide(
+        color: theme.colorScheme.primary,
+        width: 1.5,
+      ),
+    ),
   );
 }

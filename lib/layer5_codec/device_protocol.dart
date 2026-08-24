@@ -353,7 +353,9 @@ class MouseProtocol implements DeviceProtocol {
   static const int _firmwareDongleOffset = 7;
   static const int _firmwareVersionLength = 2;
 
-  static const Duration _sendTimeout = Duration(milliseconds: 600);
+  static const Duration _sendTimeout = kIsWeb
+      ? Duration(milliseconds: 2000)
+      : Duration(milliseconds: 600);
 
   @override
   Future<DeviceHandshake> handshake(

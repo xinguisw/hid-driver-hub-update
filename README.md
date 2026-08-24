@@ -20,12 +20,18 @@ git -C build/web add -A
 git -C build/web commit -m "Update web build"
 ```
 
-### Step 3: Push `build/web` to GitHub Pages repository
-Push `build/web` to `https://github.com/xinguisw/xinguisw.github.io.git`:
-```bash
-git -C build/web push https://<YOUR_PERSONAL_ACCESS_TOKEN>@github.com/xinguisw/xinguisw.github.io.git main --force
-```
-*(Replace `<YOUR_PERSONAL_ACCESS_TOKEN>` with your GitHub Personal Access Token).*
+### Step 3: Push `build/web` to target GitHub Pages repository
+
+- **Dev Environment (`suman`):**
+  ```bash
+  git -C build/web push https://github.com/sumanxram23/sumanxram23.github.io.git main --force
+  ```
+
+- **Tester Release (`xingui`):**
+  ```bash
+  git -C build/web push https://<YOUR_PERSONAL_ACCESS_TOKEN>@github.com/xinguisw/xinguisw.github.io.git main --force
+  ```
+  *(Replace `<YOUR_PERSONAL_ACCESS_TOKEN>` with your GitHub Personal Access Token).*
 
 ---
 

@@ -135,6 +135,7 @@ class MacroDefinition {
 
   static const maxSlots = 16;
   static const maxActions = 30;
+  static const maxNameLength = 30;
 
   final int slot;
   final String name;
@@ -234,6 +235,11 @@ List<String> validateMacro(MacroDefinition macro) {
   }
   if (macro.loopTimes < 1 || macro.loopTimes > 0xFF) {
     errors.add('Loop count must be between 1 and 255');
+  }
+  if (macro.name.length > MacroDefinition.maxNameLength) {
+    errors.add(
+      'Macro name must not exceed ${MacroDefinition.maxNameLength} characters',
+    );
   }
   if (macro.actions.isEmpty ||
       macro.actions.length > MacroDefinition.maxActions) {

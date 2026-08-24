@@ -43,7 +43,6 @@ class _HubLeftSidebarState extends State<HubLeftSidebar> {
       (index: 4, label: t.sidebar.backlightSetting, iconName: 'backlight'),
     (index: 5, label: t.sidebar.profileManagement, iconName: 'profile'),
     (index: 6, label: t.sidebar.deviceSetting, iconName: 'setting'),
-    (index: 7, label: 'App Setting', iconName: 'setting'),
   ];
 
   @override

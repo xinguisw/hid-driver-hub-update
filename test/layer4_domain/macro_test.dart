@@ -115,4 +115,17 @@ void main() {
       expect(loaded.single.name, 'Sniper Combo');
     },
   );
+
+  test('validates macro name max length limit', () {
+    final validName = macro.copyWith(name: 'A' * 30);
+    expect(validateMacro(validName), isEmpty);
+
+    final invalidName = macro.copyWith(name: 'A' * 31);
+    final errors = validateMacro(invalidName);
+    expect(errors, hasLength(1));
+    expect(
+      errors.first,
+      'Macro name must not exceed 30 characters',
+    );
+  });
 }

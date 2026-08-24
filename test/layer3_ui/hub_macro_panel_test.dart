@@ -551,5 +551,158 @@ void main() {
       expect(find.text('Macro failed to save'), findsNothing);
     },
   );
+
+  testWidgets(
+    'entering a macro name exceeding 30 characters displays error message',
+    (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(home: Scaffold(body: HubMacroPanel())),
+      );
+
+      await tester.tap(find.text('Create Macro'));
+      await tester.pump();
+
+      // Enter 31 characters in Macro Name field
+      final nameField = find.byWidgetPredicate(
+        (w) => w is TextField && w.decoration?.labelText == 'Macro Name',
+      );
+      expect(nameField, findsOneWidget);
+      await tester.enterText(nameField, 'A' * 31);
+      await tester.pump();
+
+      expect(
+        find.text('Macro name must not exceed 30 characters'),
+        findsOneWidget,
+      );
+
+      // Shorten name to 30 characters
+      await tester.enterText(nameField, 'A' * 30);
+      await tester.pump();
+
+      expect(
+        find.text('Macro name must not exceed 30 characters'),
+        findsNothing,
+      );
+    },
+  );
+
+  testWidgets(
+    'delay mode defaults to Recorded Delay ChoiceChip',
+    (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(home: Scaffold(body: HubMacroPanel())),
+      );
+
+      await tester.tap(find.text('Create Macro'));
+      await tester.pump();
+
+      final recordedChip = tester.widget<ChoiceChip>(
+        find.widgetWithText(ChoiceChip, 'Recorded Delay'),
+      );
+      final fixedChip = tester.widget<ChoiceChip>(
+        find.widgetWithText(ChoiceChip, 'Fixed Delay'),
+      );
+
+      expect(recordedChip.selected, isTrue);
+      expect(fixedChip.selected, isFalse);
+    },
+  );
+
+  testWidgets(
+    'selecting Fixed Delay ChoiceChip applies configured fixed delay to actions',
+    (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(home: Scaffold(body: HubMacroPanel())),
+      );
+
+      await tester.tap(find.text('Create Macro'));
+      await tester.pump();
+
+      // Select Fixed Delay
+      await tester.tap(find.widgetWithText(ChoiceChip, 'Fixed Delay'));
+      await tester.pump();
+
+      // Enter 50 ms in Fixed Delay field
+      final fixedDelayField = find.byWidgetPredicate(
+        (w) => w is TextField && w.decoration?.labelText == 'Fixed Delay (ms)',
+      );
+      expect(fixedDelayField, findsOneWidget);
+      await tester.enterText(fixedDelayField, '50');
+      await tester.pump();
+
+      // Record key taps
+      await tester.tap(find.text('Start Recording'));
+      await tester.pump();
+
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.keyA);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.keyA);
+      await tester.tap(find.text('Stop Recording'));
+      await tester.pump();
+
+      // First action delay should be fixed 50 ms
+      expect(find.text('50 ms'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'entering a fixed delay > 100 ms displays error message',
+    (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(home: Scaffold(body: HubMacroPanel())),
+      );
+
+      await tester.tap(find.text('Create Macro'));
+      await tester.pump();
+
+      // Select Fixed Delay
+      await tester.tap(find.widgetWithText(ChoiceChip, 'Fixed Delay'));
+      await tester.pump();
+
+      final fixedDelayField = find.byWidgetPredicate(
+        (w) => w is TextField && w.decoration?.labelText == 'Fixed Delay (ms)',
+      );
+      await tester.enterText(fixedDelayField, '150');
+      await tester.pump();
+
+      expect(
+        find.text('Fixed delay must be between 0 and 100 ms'),
+        findsOneWidget,
+      );
+
+      // Attempt save
+      final saveButton = find.text('Save');
+      await tester.ensureVisible(saveButton);
+      await tester.tap(saveButton);
+      await tester.pump();
+
+      expect(find.text('Macro failed to save'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'Reset preserves the chosen delay mode selection',
+    (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(home: Scaffold(body: HubMacroPanel())),
+      );
+
+      await tester.tap(find.text('Create Macro'));
+      await tester.pump();
+
+      // Select Fixed Delay
+      await tester.tap(find.widgetWithText(ChoiceChip, 'Fixed Delay'));
+      await tester.pump();
+
+      // Reset recording
+      await tester.tap(find.text('Reset'));
+      await tester.pump();
+
+      // Fixed Delay should still be selected
+      final fixedChip = tester.widget<ChoiceChip>(
+        find.widgetWithText(ChoiceChip, 'Fixed Delay'),
+      );
+      expect(fixedChip.selected, isTrue);
+    },
+  );
 }
 

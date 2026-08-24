@@ -12,6 +12,8 @@ import 'package:flutter/services.dart';
 
 const _macroDelayUnitMs = 10;
 
+enum MacroDelayMode { recorded, fixed }
+
 /// Macro Settings page — macro list (left) + editor (right).
 ///
 /// L3 owns only editor presentation and input capture. Device writes and
@@ -35,6 +37,10 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
     text: '1',
   );
   final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _fixedDelayController = TextEditingController(
+    text: '10',
+  );
+  MacroDelayMode _delayMode = MacroDelayMode.recorded;
   final List<MacroAction> _events = [];
   final Set<int> _pressedKeyCodes = <int>{};
   final Map<int, String> _pressedKeyLabels = <int, String>{};
@@ -83,6 +89,7 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
     _recordScrollController.dispose();
     _loopController.dispose();
     _nameController.dispose();
+    _fixedDelayController.dispose();
     super.dispose();
   }
 
@@ -134,6 +141,8 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
     setState(() {
       _error = null;
       _calibrationMode = false;
+      _delayMode = MacroDelayMode.recorded;
+      _fixedDelayController.text = '10';
       _selectedSlot = slot;
       _events.clear();
       _pressedKeyCodes.clear();
@@ -172,6 +181,8 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
     setState(() {
       _error = null;
       _calibrationMode = _isTimingProbeMacro(macro);
+      _delayMode = MacroDelayMode.recorded;
+      _fixedDelayController.text = '10';
       _events
         ..clear()
         ..addAll(macro.actions);
@@ -319,9 +330,15 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
       // 10 ms inline unit without sending host-clock milliseconds on-wire.
       if (_events.isNotEmpty && nowUs != null && _lastRecordEventUs != null) {
         final previous = _events.last;
-        final elapsedUs = nowUs - _lastRecordEventUs!;
-        final rounded = (elapsedUs / _macroDelayUnitUs).round();
-        final rawDelay = rounded.clamp(0, 0x7F);
+        int rawDelay;
+        if (_delayMode == MacroDelayMode.fixed) {
+          final fixedMs = int.tryParse(_fixedDelayController.text) ?? 10;
+          rawDelay = (fixedMs / _macroDelayUnitMs).round().clamp(0, 10);
+        } else {
+          final elapsedUs = nowUs - _lastRecordEventUs!;
+          final rounded = (elapsedUs / _macroDelayUnitUs).round();
+          rawDelay = rounded.clamp(0, 0x7F);
+        }
         _events[_events.length - 1] = previous.copyWith(
           delay: !previous.isBreak && rawDelay == 0
               ? _minimumMakeDelay
@@ -421,6 +438,36 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
     return bounds.contains(position);
   }
 
+  void _applyFixedDelayToEvents() {
+    if (_delayMode != MacroDelayMode.fixed || _events.length <= 1) return;
+    final fixedMs = int.tryParse(_fixedDelayController.text) ?? 10;
+    final rawDelay = (fixedMs / _macroDelayUnitMs).round().clamp(0, 10);
+    for (var i = 0; i < _events.length - 1; i++) {
+      final act = _events[i];
+      _events[i] = act.copyWith(
+        delay: !act.isBreak && rawDelay == 0 ? _minimumMakeDelay : rawDelay,
+      );
+    }
+    _syncDraftActions();
+  }
+
+  bool _validateFixedDelay(String value) {
+    if (_delayMode != MacroDelayMode.fixed) return true;
+    final val = int.tryParse(value);
+    if (val == null || val < 0 || val > 100) {
+      setState(() {
+        _error = 'Fixed delay must be between 0 and 100 ms';
+      });
+      return false;
+    } else if (_error != null &&
+        _error!.startsWith('Fixed delay must be between')) {
+      setState(() {
+        _error = null;
+      });
+    }
+    return true;
+  }
+
   void _updateDraft(MacroDraft Function(MacroDraft) change) {
     final draft = _draft;
     if (draft == null) return;
@@ -445,6 +492,14 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
     if (_recording) return;
     final draft = _draft;
     if (draft == null) return;
+    if (_delayMode == MacroDelayMode.fixed) {
+      final fixedMs = int.tryParse(_fixedDelayController.text);
+      if (fixedMs == null || fixedMs < 0 || fixedMs > 100) {
+        setState(() => _error = 'Fixed delay must be between 0 and 100 ms');
+        _showToast(message: 'Macro failed to save', isSuccess: false);
+        return;
+      }
+    }
     final loopTimes = int.tryParse(_loopController.text) ?? 0;
     final nameInput = _nameController.text.trim();
     final macroName = nameInput.isEmpty ? 'M${draft.slot}' : nameInput;
@@ -752,6 +807,19 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
                             ),
                             onChanged: (value) {
                               _updateDraft((d) => d.copyWith(name: value));
+                              if (value.length > MacroDefinition.maxNameLength) {
+                                setState(() {
+                                  _error =
+                                      'Macro name must not exceed ${MacroDefinition.maxNameLength} characters';
+                                });
+                              } else if (_error != null &&
+                                  _error!.startsWith(
+                                    'Macro name must not exceed',
+                                  )) {
+                                setState(() {
+                                  _error = null;
+                                });
+                              }
                             },
                           ),
                         ),
@@ -821,6 +889,100 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
                               decoration: const InputDecoration(
                                 labelText: 'Loop count',
                               ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: Theme.of(context).colorScheme.outline,
+                        ),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Key Delay Mode',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Wrap(
+                                  spacing: 8,
+                                  children: [
+                                    ChoiceChip(
+                                      label: const Text('Recorded Delay'),
+                                      selected:
+                                          _delayMode == MacroDelayMode.recorded,
+                                      onSelected: (selected) {
+                                        if (selected) {
+                                          setState(() {
+                                            _delayMode =
+                                                MacroDelayMode.recorded;
+                                            if (_error != null &&
+                                                _error!.startsWith(
+                                                  'Fixed delay must be between',
+                                                )) {
+                                              _error = null;
+                                            }
+                                          });
+                                        }
+                                      },
+                                    ),
+                                    ChoiceChip(
+                                      label: const Text('Fixed Delay'),
+                                      selected:
+                                          _delayMode == MacroDelayMode.fixed,
+                                      onSelected: (selected) {
+                                        if (selected) {
+                                          setState(() {
+                                            _delayMode = MacroDelayMode.fixed;
+                                            _applyFixedDelayToEvents();
+                                            _validateFixedDelay(
+                                              _fixedDelayController.text,
+                                            );
+                                          });
+                                        }
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          SizedBox(
+                            width: 140,
+                            child: TextField(
+                              controller: _fixedDelayController,
+                              enabled: _delayMode == MacroDelayMode.fixed,
+                              keyboardType: TextInputType.number,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
+                              ],
+                              decoration: const InputDecoration(
+                                labelText: 'Fixed Delay (ms)',
+                                hintText: '10',
+                              ),
+                              onChanged: (val) {
+                                setState(() {
+                                  _validateFixedDelay(val);
+                                  if (_delayMode == MacroDelayMode.fixed) {
+                                    _applyFixedDelayToEvents();
+                                  }
+                                });
+                              },
                             ),
                           ),
                         ],

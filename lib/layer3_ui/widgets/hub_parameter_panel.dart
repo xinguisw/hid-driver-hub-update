@@ -218,7 +218,7 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
-/// Titl;e + icon + description helper.
+/// Title + icon + description helper.
 class _FieldTitle extends StatelessWidget {
   const _FieldTitle({required this.title, this.description, this.icon});
 
@@ -996,8 +996,8 @@ class _SelectableChip extends StatelessWidget {
               color: selected
                   ? theme.colorScheme.primary
                   : (isDark
-                      ? const Color(0xFF3F424B)
-                      : const Color(0xFFD0D5DD)),
+                        ? const Color(0xFF3F424B)
+                        : const Color(0xFFD0D5DD)),
               width: 1.0,
             ),
             boxShadow: selected
@@ -1028,8 +1028,8 @@ class _SelectableChip extends StatelessWidget {
                   color: selected
                       ? Colors.white
                       : (isDark
-                          ? const Color(0xFFE0E3EB)
-                          : const Color(0xFF344054)),
+                            ? const Color(0xFFE0E3EB)
+                            : const Color(0xFF344054)),
                 ),
                 const SizedBox(width: 6),
               ],
@@ -1041,8 +1041,8 @@ class _SelectableChip extends StatelessWidget {
                   color: selected
                       ? Colors.white
                       : (isDark
-                          ? const Color(0xFFE0E3EB)
-                          : const Color(0xFF344054)),
+                            ? const Color(0xFFE0E3EB)
+                            : const Color(0xFF344054)),
                   letterSpacing: 0.1,
                 ),
               ),

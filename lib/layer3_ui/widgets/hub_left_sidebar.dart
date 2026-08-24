@@ -86,7 +86,7 @@ class _HubLeftSidebarState extends State<HubLeftSidebar> {
                       ),
                       child: Material(
                         color: selected
-                            ? theme.colorScheme.surfaceContainerHighest
+                            ? theme.colorScheme.onSurface.withValues(alpha: 0.08)
                             : Colors.transparent,
                         borderRadius: BorderRadius.circular(8),
                         clipBehavior: Clip.antiAlias,
@@ -101,13 +101,19 @@ class _HubLeftSidebarState extends State<HubLeftSidebar> {
                               widget.onDestinationSelected(destination.index),
                           child: Padding(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
+                              horizontal: 16,
                               vertical: 10,
                             ),
-                            child: _destinationRow(
-                              label: label,
-                              iconName: destination.iconName,
-                              suffix: suffix,
+                            child: SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              physics: const NeverScrollableScrollPhysics(),
+                              child: _destinationRow(
+                                label: label,
+                                iconName: destination.iconName,
+                                suffix: suffix,
+                                theme: theme,
+                                isSelected: selected,
+                              ),
                             ),
                           ),
                         ),
@@ -180,31 +186,37 @@ class _HubLeftSidebarState extends State<HubLeftSidebar> {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Row(
-          children: [
-            Icon(
-              widget.card.connectionMode == 0 ? Icons.cable : Icons.wifi,
-              size: 16,
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-            const SizedBox(width: 4),
-            Text(_modeLabel, style: subStyle),
-            const SizedBox(width: 12),
-            Icon(
-              _batteryIcon,
-              size: 16,
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-            const SizedBox(width: 4),
-            Expanded(
-              child: Text(
-                _batteryLabel,
-                style: subStyle,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          physics: const NeverScrollableScrollPhysics(),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                widget.card.connectionMode == 0 ? Icons.cable : Icons.wifi,
+                size: 16,
+                color: theme.colorScheme.onSurfaceVariant,
               ),
-            ),
-          ],
+              const SizedBox(width: 4),
+              Text(_modeLabel, style: subStyle),
+              const SizedBox(width: 12),
+              Icon(
+                _batteryIcon,
+                size: 16,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+              const SizedBox(width: 4),
+              SizedBox(
+                width: 90,
+                child: Text(
+                  _batteryLabel,
+                  style: subStyle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: 6),
         Text(
@@ -229,15 +241,6 @@ class _HubLeftSidebarState extends State<HubLeftSidebar> {
             Icons.mouse,
             size: 22,
             color: theme.colorScheme.onSurfaceVariant,
-          ),
-          const SizedBox(height: 4),
-          Text(
-            t.sidebar.mouse,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.labelSmall?.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
           ),
         ],
       ),
@@ -293,10 +296,13 @@ class _HubLeftSidebarState extends State<HubLeftSidebar> {
   /// Destination row with fixed icon slot and fading label
   Widget _destinationRow({
     required String label,
-    required String iconName,
+    String? iconName,
     required String suffix,
+    required ThemeData theme,
+    required bool isSelected,
   }) {
     return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
         SizedBox(
           width: 24,
@@ -310,16 +316,20 @@ class _HubLeftSidebarState extends State<HubLeftSidebar> {
           ),
         ),
         const SizedBox(width: 12),
-        Expanded(
-          child: AnimatedOpacity(
-            duration: const Duration(milliseconds: 180),
-            opacity: _extended ? 1.0 : 0.0,
+        AnimatedOpacity(
+          duration: const Duration(milliseconds: 180),
+          opacity: _extended ? 1.0 : 0.0,
+          child: SizedBox(
+            width: 160,
             child: Text(
               label,
               maxLines: 1,
               overflow: TextOverflow.clip,
               softWrap: false,
-              style: const TextStyle(fontWeight: FontWeight.w500),
+              style: TextStyle(
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                color: isSelected ? theme.colorScheme.onSurface : theme.colorScheme.onSurfaceVariant,
+              ),
             ),
           ),
         ),

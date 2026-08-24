@@ -9,7 +9,6 @@ import 'package:driver_hub/layer3_ui/widgets/hub_macro_panel.dart';
 import 'package:driver_hub/layer3_ui/widgets/hub_mouse_canvas.dart';
 import 'package:driver_hub/layer3_ui/widgets/hub_parameter_panel.dart';
 import 'package:driver_hub/layer3_ui/widgets/hub_performance_panel.dart';
-import 'package:driver_hub/layer3_ui/widgets/app_settings_panel.dart';
 import 'package:driver_hub/layer4_domain/bloc/device_settings_bloc.dart';
 import 'package:driver_hub/layer4_domain/bloc/device_settings_event.dart';
 import 'package:driver_hub/layer4_domain/bloc/device_settings_state_view.dart';
@@ -353,7 +352,8 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                                     bloc.add(
                                       const DeviceSettingsCancelRequested(),
                                     );
-                                  },                                  ),
+                                  },
+                                ),
                               ),
                               Builder(
                                 builder: (context) {
@@ -361,7 +361,8 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                                     _lastSelectedButtonId = _selectedButtonId;
                                   }
                                   final activeId =
-                                      _selectedButtonId ?? _lastSelectedButtonId;
+                                      _selectedButtonId ??
+                                      _lastSelectedButtonId;
                                   final isOpen = _selectedButtonId != null;
 
                                   return _AnimatedRightSidebar(
@@ -385,21 +386,23 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                                                 ),
                                               );
                                             },
-                                            onComboSelected: (modifierIds, keyChar) {
-                                              _settingsBloc.add(
-                                                DeviceSettingsSpecialComboRequested(
-                                                  buttonId: activeId,
-                                                  modifierIds: modifierIds,
-                                                  keyChar: keyChar,
-                                                ),
-                                              );
-                                            },
+                                            onComboSelected:
+                                                (modifierIds, keyChar) {
+                                                  _settingsBloc.add(
+                                                    DeviceSettingsSpecialComboRequested(
+                                                      buttonId: activeId,
+                                                      modifierIds: modifierIds,
+                                                      keyChar: keyChar,
+                                                    ),
+                                                  );
+                                                },
                                             macroSlots: widget.scope
                                                 .macrosFor(widget.card)
                                                 .indexed
                                                 .map(
                                                   (entry) => MacroSlot(
-                                                    id: (entry.$1 + 1).toString(),
+                                                    id: (entry.$1 + 1)
+                                                        .toString(),
                                                     name: entry.$2.name,
                                                   ),
                                                 )
@@ -409,7 +412,8 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                                                 DeviceSettingsMacroMappingRequested(
                                                   buttonId: activeId,
                                                   macroSlot:
-                                                      int.tryParse(macroSlot) ?? 0,
+                                                      int.tryParse(macroSlot) ??
+                                                      0,
                                                 ),
                                               );
                                             },
@@ -1215,10 +1219,7 @@ class _PerformanceActionBar extends StatelessWidget {
 
 /// Smooth width slide animation wrapper for button mapping right panel matching left sidebar curves.
 class _AnimatedRightSidebar extends StatelessWidget {
-  const _AnimatedRightSidebar({
-    required this.isOpen,
-    required this.child,
-  });
+  const _AnimatedRightSidebar({required this.isOpen, required this.child});
 
   final bool isOpen;
   final Widget child;

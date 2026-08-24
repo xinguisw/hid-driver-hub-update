@@ -36,18 +36,7 @@ class WebHidScanner implements HidScanner {
         webhid.RequestOptions(filters: webFilters),
       );
     } catch (e) {
-      debugPrint('[WebHidScanner] scan filtered requestDevice error: $e');
-    }
-
-    if (devices.isEmpty) {
-      debugPrint('[WebHidScanner] scan: retrying requestDevice with empty filters (all devices)...');
-      try {
-        devices = await instance.requestDevice(
-          webhid.RequestOptions(filters: const []),
-        );
-      } catch (e) {
-        debugPrint('[WebHidScanner] scan unconstrained requestDevice error: $e');
-      }
+      debugPrint('[WebHidScanner] scan requestDevice error: $e');
     }
 
     debugPrint('[WebHidScanner] scan: picker returned ${devices.length} devices');

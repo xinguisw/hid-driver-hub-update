@@ -972,13 +972,6 @@ class _SelectablePill extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    final selectedBg = theme.colorScheme.primaryContainer;
-    final selectedFg = theme.colorScheme.onPrimaryContainer;
-    final unselectedBg = isDark
-        ? theme.colorScheme.surfaceContainerHigh.withValues(alpha: 0.5)
-        : theme.colorScheme.surface;
-    final unselectedFg = theme.colorScheme.onSurface;
-
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -990,21 +983,46 @@ class _SelectablePill extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: selected ? selectedBg : unselectedBg,
+            color: selected
+                ? theme.colorScheme.primary
+                : (isDark ? const Color(0xFF26282E) : Colors.white),
             borderRadius: BorderRadius.circular(6),
             border: Border.all(
               color: selected
                   ? theme.colorScheme.primary
-                  : theme.colorScheme.outline.withValues(alpha: 0.3),
-              width: selected ? 1.5 : 1,
+                  : (isDark
+                      ? const Color(0xFF3F424B)
+                      : const Color(0xFFD0D5DD)),
+              width: 1.0,
             ),
+            boxShadow: selected
+                ? [
+                    BoxShadow(
+                      color: theme.colorScheme.primary.withValues(alpha: 0.35),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                : [
+                    BoxShadow(
+                      color: Colors.black.withValues(
+                        alpha: isDark ? 0.25 : 0.05,
+                      ),
+                      blurRadius: 3,
+                      offset: const Offset(0, 1),
+                    ),
+                  ],
           ),
           child: Text(
             label,
             style: TextStyle(
               fontSize: 12,
               fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-              color: selected ? selectedFg : unselectedFg,
+              color: selected
+                  ? Colors.white
+                  : (isDark
+                      ? const Color(0xFFE0E3EB)
+                      : const Color(0xFF344054)),
             ),
           ),
         ),

@@ -360,19 +360,19 @@ class _LevelChip extends StatelessWidget {
       borderRadius: BorderRadius.circular(6),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 160),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
         decoration: BoxDecoration(
           color: isSelected
               ? theme.colorScheme.primary
-              : isDark
-              ? theme.colorScheme.surface.withValues(alpha: 0.8)
-              : theme.colorScheme.surface,
+              : (isDark ? const Color(0xFF26282E) : Colors.white),
           borderRadius: BorderRadius.circular(6),
           border: Border.all(
             color: isSelected
                 ? theme.colorScheme.primary
-                : theme.colorScheme.outlineVariant.withValues(alpha: 0.6),
-            width: isSelected ? 1.5 : 1.0,
+                : (isDark
+                    ? const Color(0xFF3F424B)
+                    : const Color(0xFFD0D5DD)),
+            width: 1.0,
           ),
           boxShadow: isSelected
               ? [
@@ -382,14 +382,24 @@ class _LevelChip extends StatelessWidget {
                     offset: const Offset(0, 2),
                   ),
                 ]
-              : null,
+              : [
+                  BoxShadow(
+                    color: Colors.black.withValues(
+                      alpha: isDark ? 0.25 : 0.05,
+                    ),
+                    blurRadius: 3,
+                    offset: const Offset(0, 1),
+                  ),
+                ],
         ),
         child: Text(
           '$index',
           style: TextStyle(
             color: isSelected
-                ? theme.colorScheme.onPrimary
-                : theme.colorScheme.onSurface,
+                ? Colors.white
+                : (isDark
+                    ? const Color(0xFFE0E3EB)
+                    : const Color(0xFF344054)),
             fontSize: 12,
             fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
           ),
@@ -1166,65 +1176,58 @@ class _PollingRateChip extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? theme.colorScheme.primary
-              : isDark
-              ? theme.colorScheme.surface.withValues(alpha: 0.9)
-              : theme.colorScheme.surface,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
             color: isSelected
                 ? theme.colorScheme.primary
-                : theme.colorScheme.outlineVariant.withValues(alpha: 0.6),
-            width: isSelected ? 1.5 : 1.0,
-          ),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: theme.colorScheme.primary.withValues(alpha: 0.35),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ]
-              : [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
-                    blurRadius: 4,
-                    offset: const Offset(0, 1),
-                  ),
-                ],
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              isSelected
-                  ? Icons.check_circle_rounded
-                  : Icons.radio_button_unchecked_rounded,
-              size: 14,
+                : (isDark ? const Color(0xFF26282E) : Colors.white),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
               color: isSelected
-                  ? theme.colorScheme.onPrimary
-                  : theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+                  ? theme.colorScheme.primary
+                  : (isDark
+                      ? const Color(0xFF3F424B)
+                      : const Color(0xFFD0D5DD)),
+              width: 1.0,
             ),
-            const SizedBox(width: 8),
-            Text(
-              '$hz Hz',
-              style: TextStyle(
-                color: isSelected
-                    ? theme.colorScheme.onPrimary
-                    : theme.colorScheme.onSurface,
-                fontSize: 12,
-                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-              ),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: theme.colorScheme.primary.withValues(alpha: 0.35),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2.5),
+                    ),
+                  ]
+                : [
+                    BoxShadow(
+                      color: Colors.black.withValues(
+                        alpha: isDark ? 0.25 : 0.05,
+                      ),
+                      blurRadius: 4,
+                      offset: const Offset(0, 1.5),
+                    ),
+                  ],
+          ),
+          child: Text(
+            '$hz Hz',
+            style: theme.textTheme.bodySmall?.copyWith(
+              fontSize: 13,
+              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+              color: isSelected
+                  ? Colors.white
+                  : (isDark
+                      ? const Color(0xFFE0E3EB)
+                      : const Color(0xFF344054)),
+              letterSpacing: 0.1,
             ),
-          ],
+          ),
         ),
       ),
     );

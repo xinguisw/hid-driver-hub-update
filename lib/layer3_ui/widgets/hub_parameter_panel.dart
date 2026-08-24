@@ -218,19 +218,13 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
-/// Title + icon badge + description helper.
+/// Titl;e + icon + description helper.
 class _FieldTitle extends StatelessWidget {
-  const _FieldTitle({
-    required this.title,
-    this.description,
-    this.icon,
-    this.badge,
-  });
+  const _FieldTitle({required this.title, this.description, this.icon});
 
   final String title;
   final String? description;
   final IconData? icon;
-  final Widget? badge;
 
   @override
   Widget build(BuildContext context) {
@@ -263,7 +257,6 @@ class _FieldTitle extends StatelessWidget {
                 ),
               ),
             ),
-            if (badge != null) ...[const SizedBox(width: 8), badge!],
           ],
         ),
         if (description != null) ...[
@@ -309,7 +302,7 @@ class _GroupContainer extends StatelessWidget {
   }
 }
 
-/// Inner card container with elevated surface background, clean border, and hover sheen.
+/// Inner card container with elevated surface background and clean neutral border.
 class _CardBox extends StatelessWidget {
   const _CardBox({required this.child, this.isActive = false});
 
@@ -321,26 +314,21 @@ class _CardBox extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 180),
+    return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: isActive
-              ? theme.colorScheme.primary.withValues(alpha: 0.5)
-              : theme.colorScheme.outline.withValues(
-                  alpha: isDark ? 0.35 : 0.45,
-                ),
-          width: isActive ? 1.4 : 1.0,
+          color: theme.colorScheme.outline.withValues(
+            alpha: isDark ? 0.25 : 0.35,
+          ),
+          width: 1.0,
         ),
         boxShadow: [
           BoxShadow(
-            color: isActive
-                ? theme.colorScheme.primary.withValues(alpha: 0.08)
-                : Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
-            blurRadius: isActive ? 12 : 8,
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+            blurRadius: 8,
             offset: const Offset(0, 3),
           ),
         ],
@@ -529,130 +517,32 @@ class _LodBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final selectedOption = options.where((o) => o.wire == lodMm).firstOrNull;
-
     return _CardBox(
-      isActive: lodMm != null,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _FieldTitle(
+          const _FieldTitle(
             title: 'Lift-Off Distance',
             description:
                 'Sensor cut-off tracking height when the mouse is lifted.',
             icon: Icons.arrow_upward,
-            badge: selectedOption != null
-                ? Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.primary.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Text(
-                      '${selectedOption.mm}mm',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: theme.colorScheme.primary,
-                      ),
-                    ),
-                  )
-                : null,
           ),
           const SizedBox(height: 14),
-          RadioGroup<int>(
-            groupValue: lodMm,
-            // why: RadioGroup always fires with a value; null only means
-            // deselected, which a radio group cannot reach on its own.
-            onChanged: (value) {
-              if (value != null) onLodChanged?.call(value);
-            },
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                for (final opt in options)
-                  _LodRadioTile(
-                    label: '${opt.mm} mm',
-                    wire: opt.wire,
-                    isSelected: lodMm == opt.wire,
-                    onTap: onLodChanged == null
-                        ? null
-                        : () => onLodChanged!(opt.wire),
-                  ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Interactive radio tile for LOD options with hover & active backgrounds.
-class _LodRadioTile extends StatelessWidget {
-  const _LodRadioTile({
-    required this.label,
-    required this.wire,
-    required this.isSelected,
-    this.onTap,
-  });
-
-  final String label;
-  final int wire;
-  final bool isSelected;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 140),
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          decoration: BoxDecoration(
-            color: isSelected
-                ? theme.colorScheme.primary.withValues(alpha: 0.1)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: isSelected
-                  ? theme.colorScheme.primary.withValues(alpha: 0.35)
-                  : Colors.transparent,
-            ),
-          ),
-          child: Row(
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
             children: [
-              SizedBox(
-                height: 20,
-                width: 20,
-                child: Radio<int>(
-                  value: wire,
-                  activeColor: theme.colorScheme.primary,
-                  visualDensity: VisualDensity.compact,
-                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              for (final opt in options)
+                _SelectableChip(
+                  label: '${opt.mm} mm',
+                  selected: lodMm == opt.wire,
+                  onTap: onLodChanged == null
+                      ? null
+                      : () => onLodChanged!(opt.wire),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                label,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                  color: isSelected
-                      ? theme.colorScheme.primary
-                      : theme.colorScheme.onSurface,
-                ),
-              ),
             ],
           ),
-        ),
+        ],
       ),
     );
   }
@@ -1089,10 +979,6 @@ class _SelectableChip extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    final baseBorderColor = isDark
-        ? theme.colorScheme.outline.withValues(alpha: 0.25)
-        : theme.colorScheme.outline.withValues(alpha: 0.4);
-
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -1100,27 +986,37 @@ class _SelectableChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(10),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 160),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           decoration: BoxDecoration(
             color: selected
-                ? theme.colorScheme.primary.withValues(alpha: 0.14)
-                : theme.colorScheme.surfaceContainerHighest.withValues(
-                    alpha: 0.45,
-                  ),
+                ? theme.colorScheme.primary
+                : (isDark ? const Color(0xFF26282E) : Colors.white),
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
-              color: selected ? theme.colorScheme.primary : baseBorderColor,
-              width: selected ? 1.5 : 1.0,
+              color: selected
+                  ? theme.colorScheme.primary
+                  : (isDark
+                      ? const Color(0xFF3F424B)
+                      : const Color(0xFFD0D5DD)),
+              width: 1.0,
             ),
             boxShadow: selected
                 ? [
                     BoxShadow(
-                      color: theme.colorScheme.primary.withValues(alpha: 0.15),
+                      color: theme.colorScheme.primary.withValues(alpha: 0.35),
                       blurRadius: 8,
-                      offset: const Offset(0, 2),
+                      offset: const Offset(0, 2.5),
                     ),
                   ]
-                : null,
+                : [
+                    BoxShadow(
+                      color: Colors.black.withValues(
+                        alpha: isDark ? 0.25 : 0.05,
+                      ),
+                      blurRadius: 4,
+                      offset: const Offset(0, 1.5),
+                    ),
+                  ],
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -1130,8 +1026,10 @@ class _SelectableChip extends StatelessWidget {
                   icon,
                   size: 15,
                   color: selected
-                      ? theme.colorScheme.primary
-                      : theme.colorScheme.onSurfaceVariant,
+                      ? Colors.white
+                      : (isDark
+                          ? const Color(0xFFE0E3EB)
+                          : const Color(0xFF344054)),
                 ),
                 const SizedBox(width: 6),
               ],
@@ -1141,22 +1039,13 @@ class _SelectableChip extends StatelessWidget {
                   fontSize: 13,
                   fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                   color: selected
-                      ? (isDark ? Colors.white : theme.colorScheme.primary)
-                      : theme.colorScheme.onSurface,
+                      ? Colors.white
+                      : (isDark
+                          ? const Color(0xFFE0E3EB)
+                          : const Color(0xFF344054)),
                   letterSpacing: 0.1,
                 ),
               ),
-              if (selected) ...[
-                const SizedBox(width: 6),
-                Container(
-                  width: 6,
-                  height: 6,
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.primary,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-              ],
             ],
           ),
         ),
@@ -1175,17 +1064,21 @@ class _CustomSwitch extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Switch(
       value: value,
       onChanged: onChanged,
       activeThumbColor: Colors.white,
       activeTrackColor: theme.colorScheme.primary,
-      inactiveThumbColor: theme.colorScheme.outline,
-      inactiveTrackColor: theme.colorScheme.surfaceContainerHighest,
+      inactiveThumbColor: isDark ? const Color(0xFFA0A5B0) : Colors.white,
+      inactiveTrackColor: isDark
+          ? const Color(0xFF2C2D30)
+          : const Color(0xFFDDE1E6),
       trackOutlineColor: WidgetStateProperty.resolveWith(
         (states) => states.contains(WidgetState.selected)
             ? Colors.transparent
-            : theme.colorScheme.outline.withValues(alpha: 0.3),
+            : (isDark ? const Color(0xFF42454D) : const Color(0xFFBAC0CA)),
       ),
     );
   }

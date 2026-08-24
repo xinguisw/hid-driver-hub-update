@@ -170,11 +170,7 @@ class _CardBox extends StatelessWidget {
         ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.28)
         : theme.colorScheme.surfaceContainerLowest;
 
-    final borderColor = isActive
-        ? theme.colorScheme.primary.withValues(alpha: 0.45)
-        : isDark
-        ? theme.colorScheme.outline.withValues(alpha: 0.15)
-        : theme.colorScheme.outlineVariant.withValues(alpha: 0.6);
+    final borderColor = (isDark ? Colors.white : Colors.black).withValues(alpha: 0.45);
 
     return Container(
       padding: padding,

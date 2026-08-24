@@ -154,6 +154,7 @@ class _AppTopBarState extends State<AppTopBar> with WindowListener {
         backgroundColor: theme.scaffoldBackgroundColor,
         elevation: 0,
         scrolledUnderElevation: 0,
+        titleSpacing: 24,
         automaticallyImplyLeading: false,
         leading: widget.showBackButton
             ? IconButton(
@@ -222,6 +223,8 @@ class _AppTopBarState extends State<AppTopBar> with WindowListener {
             ),
             const SizedBox(width: 16),
             ..._buildDesktopWindowControls(secondaryIconColor),
+          ] else ...[
+            const SizedBox(width: 24),
           ],
         ],
       ),

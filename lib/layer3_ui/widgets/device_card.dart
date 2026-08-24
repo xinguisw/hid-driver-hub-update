@@ -46,7 +46,9 @@ class _DeviceCardState extends State<DeviceCard> {
         ? theme.colorScheme.primary
         : theme.colorScheme.outline;
     final textColor = theme.colorScheme.onSurface;
-    final iconColor = theme.colorScheme.onSurfaceVariant;
+    final iconColor = _isHovered
+        ? theme.colorScheme.primary
+        : theme.colorScheme.onSurfaceVariant;
 
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
@@ -126,33 +128,35 @@ class _DeviceCardState extends State<DeviceCard> {
                   const SizedBox(height: 6),
 
                   // ---- Status row: Mode icon + Battery icon + Battery text ----
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      // Connection mode icon (USB or 2.4G)
-                      Icon(
-                        widget.state.connectionMode == 0
-                            ? Icons.cable
-                            : Icons.wifi,
-                        size: 22,
-                        color: textColor,
-                      ),
-                      const SizedBox(width: 16),
-
-                      // Battery status icon
-                      Icon(_batteryIcon, size: 22, color: iconColor),
-                      const SizedBox(width: 6),
-
-                      // Battery percentage text
-                      Text(
-                        _batteryLabel,
-                        style: TextStyle(
-                          fontSize: 13,
+                  AnimatedDefaultTextStyle(
+                    duration: const Duration(milliseconds: 180),
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: iconColor,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Connection mode icon (USB or 2.4G)
+                        Icon(
+                          widget.state.connectionMode == 0
+                              ? Icons.cable
+                              : Icons.wifi,
+                          size: 20,
                           color: iconColor,
-                          fontWeight: FontWeight.w500,
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: 14),
+
+                        // Battery status icon
+                        Icon(_batteryIcon, size: 20, color: iconColor),
+                        const SizedBox(width: 5),
+
+                        // Battery percentage text
+                        Text(_batteryLabel),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -180,7 +184,6 @@ class _DeviceCardState extends State<DeviceCard> {
   /// Battery percentage text label
   String get _batteryLabel {
     if (widget.state.batteryPercentage < 0) return '—';
-    final pct = '${widget.state.batteryPercentage}%';
-    return widget.state.isCharging ? '$pct ⚡' : pct;
+    return '${widget.state.batteryPercentage}%';
   }
 }

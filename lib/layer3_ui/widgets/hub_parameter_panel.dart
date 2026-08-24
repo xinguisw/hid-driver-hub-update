@@ -218,7 +218,7 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
-/// Titl;e + icon + description helper.
+/// Title + icon + description helper.
 class _FieldTitle extends StatelessWidget {
   const _FieldTitle({required this.title, this.description, this.icon});
 
@@ -294,7 +294,7 @@ class _GroupContainer extends StatelessWidget {
             : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.8),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: theme.colorScheme.outline.withValues(alpha: 0.25),
+          color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.15),
         ),
       ),
       child: child,
@@ -314,15 +314,15 @@ class _CardBox extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
+    final borderColor = (isDark ? Colors.white : Colors.black).withValues(alpha: 0.45);
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: theme.colorScheme.outline.withValues(
-            alpha: isDark ? 0.25 : 0.35,
-          ),
+          color: borderColor,
           width: 1.0,
         ),
         boxShadow: [
@@ -518,6 +518,7 @@ class _LodBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _CardBox(
+      isActive: lodMm != null,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -918,6 +919,7 @@ class _WheelBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _CardBox(
+      isActive: true,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -996,8 +998,8 @@ class _SelectableChip extends StatelessWidget {
               color: selected
                   ? theme.colorScheme.primary
                   : (isDark
-                      ? const Color(0xFF3F424B)
-                      : const Color(0xFFD0D5DD)),
+                        ? const Color(0xFF3F424B)
+                        : const Color(0xFFD0D5DD)),
               width: 1.0,
             ),
             boxShadow: selected
@@ -1028,8 +1030,8 @@ class _SelectableChip extends StatelessWidget {
                   color: selected
                       ? Colors.white
                       : (isDark
-                          ? const Color(0xFFE0E3EB)
-                          : const Color(0xFF344054)),
+                            ? const Color(0xFFE0E3EB)
+                            : const Color(0xFF344054)),
                 ),
                 const SizedBox(width: 6),
               ],
@@ -1041,8 +1043,8 @@ class _SelectableChip extends StatelessWidget {
                   color: selected
                       ? Colors.white
                       : (isDark
-                          ? const Color(0xFFE0E3EB)
-                          : const Color(0xFF344054)),
+                            ? const Color(0xFFE0E3EB)
+                            : const Color(0xFF344054)),
                   letterSpacing: 0.1,
                 ),
               ),

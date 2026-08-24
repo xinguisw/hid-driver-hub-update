@@ -25,6 +25,7 @@ class WebHidScanner implements HidScanner {
         .map((f) => webhid.DeviceFilter(
               vendorId: f.vendorId,
               productId: f.productId,
+              usagePage: f.usagePage,
             ))
         .toList();
 
@@ -63,6 +64,11 @@ class WebHidScanner implements HidScanner {
     List<webhid.Device> devices = [];
     try {
       devices = await instance.getDevices();
+      if (devices.isEmpty) {
+        // Brief retry for Chrome cache initialization on page load
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+        devices = await instance.getDevices();
+      }
       debugPrint('[WebHidScanner] getAuthorized: browser returned ${devices.length} authorized devices');
       for (final d in devices) {
         debugPrint('  -> Authorized Device: "${d.productName}" (VID: 0x${d.vendorId.toRadixString(16)}, PID: 0x${d.productId.toRadixString(16)})');
@@ -106,8 +112,8 @@ class WebHidScanner implements HidScanner {
       if (f.vendorId != null && d.vendorId != f.vendorId) continue;
       if (f.productId != null && d.productId != f.productId) continue;
       // Catalog usagePage filter: require vendor usagePage (e.g. 0xFF02 / 65282).
-      // This explicitly filters out Chrome's protected generic mouse collection (usagePage 1)
-      // and selects the unprotected vendor configuration channel (usagePage 0xFF02).
+      // This explicitly filters out Chrome's blocked mouse collection (usagePage 1)
+      // and only accepts the vendor configuration collection (usagePage 0xFF02).
       if (f.usagePage != null && usagePages.isNotEmpty) {
         if (!usagePages.contains(f.usagePage)) continue;
       }
@@ -176,7 +182,14 @@ class WebHidDeviceAdapter extends HidDevice {
   bool get isOpen => device.opened;
 
   @override
-  Future<void> open() => device.open();
+  Future<void> open() async {
+    try {
+      await device.open();
+    } catch (e) {
+      debugPrint('[WebHidDeviceAdapter] open() failed for $path: $e');
+      rethrow;
+    }
+  }
 
   @override
   Future<void> close() => device.close();

@@ -56,15 +56,15 @@ void main() async {
 
   isccPath ??= 'iscc';
 
-  print('[InnoSetup] Compiling installer with $isccPath...');
+  stdout.writeln('[InnoSetup] Compiling installer with $isccPath...');
   final result = await Process.run(isccPath, ['build/innosetup.iss']);
   stdout.write(result.stdout);
   stderr.write(result.stderr);
 
   if (result.exitCode == 0) {
-    print('\n[InnoSetup] Success! Installer built at: build/installer/hid_driver_hub_installer.exe');
+    stdout.writeln('\n[InnoSetup] Success! Installer built at: build/installer/hid_driver_hub_installer.exe');
   } else {
-    print('\n[InnoSetup] Compilation failed with exit code ${result.exitCode}');
+    stderr.writeln('\n[InnoSetup] Compilation failed with exit code ${result.exitCode}');
     exitCode = result.exitCode;
   }
 }

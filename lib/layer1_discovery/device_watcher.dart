@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:driver_hub/layer1_discovery/device_scanner.dart';
 import 'package:driver_hub/layer1_discovery/discovered_device.dart';
 import 'package:driver_hub/layer6_transport/hid_session.dart';
@@ -111,14 +112,35 @@ class DeviceWatcher {
     if (_sessions.containsKey(path)) return; // already active
     // Cancel any pending dispose for this path (rapid replug).
     _pendingDisposes.remove(path)?.cancel();
-    // Give browser WebHID engine 200ms to settle USB descriptors after hot-plug
-    await Future<void>.delayed(const Duration(milliseconds: 200));
+    final orphan = _pendingOrphans.remove(path);
+    if (orphan != null) {
+      await orphan.dispose();
+    }
+
+    if (kIsWeb) {
+      // Find and cancel any pending dispose by VID/PID on Web
+      final webOrphanKey = _pendingOrphans.keys.firstWhere(
+        (k) => k.startsWith('web:$vid:$pid:'),
+        orElse: () => '',
+      );
+      if (webOrphanKey.isNotEmpty) {
+        _pendingDisposes.remove(webOrphanKey)?.cancel();
+        final webOrphan = _pendingOrphans.remove(webOrphanKey);
+        if (webOrphan != null) {
+          await webOrphan.dispose();
+        }
+      }
+      // Give browser WebHID engine 200ms to settle USB descriptors after hot-plug
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+    }
 
     final discovered = await _scanner.discoverAuthorized();
     DiscoveredDevice? match;
     for (final d in discovered) {
-      // Match by path or VID:PID key on web
-      if (d.hidDevice.path == path) {
+      // Match by exact path, or on Web match by VID/PID
+      final isWebMatch =
+          kIsWeb && d.hidDevice.vendorId == vid && d.hidDevice.productId == pid;
+      if (d.hidDevice.path == path || isWebMatch) {
         match = d;
         break;
       }
@@ -137,7 +159,10 @@ class DeviceWatcher {
       await session.dispose();
       return;
     }
-    _sessions[path] = session;
+    _sessions[match.hidDevice.path] = session;
+    if (path != match.hidDevice.path) {
+      _sessions[path] = session;
+    }
     onConnect(session);
   }
 
@@ -147,7 +172,16 @@ class DeviceWatcher {
     int pid,
     DeviceDisconnectCallback onDisconnect,
   ) async {
-    final session = _sessions.remove(path);
+    var session = _sessions.remove(path);
+    if (session == null && kIsWeb) {
+      for (final entry in _sessions.entries) {
+        if (entry.value.device.hidDevice.vendorId == vid &&
+            entry.value.device.hidDevice.productId == pid) {
+          session = _sessions.remove(entry.key);
+          break;
+        }
+      }
+    }
     // Defer teardown by [_replugDebounce]; reconnect cancels it.
     _pendingDisposes[path]?.cancel();
     if (session != null) {

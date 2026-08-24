@@ -1,44 +1,22 @@
-// Web-only JS interop for WebHID connect/disconnect events.
-//
-// hid_tool receives these events internally but does not expose them. This file
-// binds navigator.hid.addEventListener directly via dart:js_interop so the
-// reconnect watcher can hear connect/disconnect on web.
+// Web-only connect/disconnect events using flutter_webhid streams.
 //
 // Selected via the conditional import in hid_events.dart.
-import 'dart:js_interop';
+import 'package:flutter_webhid/flutter_webhid.dart';
 
 import '../hid_event_handle.dart';
 
-@JS('navigator.hid')
-external _Hid? get _navigatorHid;
-
-@JS('HID')
-extension type _Hid._(JSObject _) implements JSObject {
-  external void addEventListener(String type, JSFunction listener);
-  external void removeEventListener(String type, JSFunction listener);
+int _primaryUsagePage(Device dev) {
+  for (final c in dev.collections) {
+    if (c.usagePage >= 0xFF00) return c.usagePage;
+  }
+  return dev.collections.isNotEmpty ? dev.collections.first.usagePage : 0;
 }
 
-@JS('HIDConnectionEvent')
-extension type _HidConnectionEvent._(JSObject _) implements JSObject {
-  external _HidDevice get device;
-}
+/// Synthesizes the device path reported for a web device (`web:<vid>:<pid>:<usagePage>`).
+String _pathFor(int vendorId, int productId, int usagePage) =>
+    'web:$vendorId:$productId:${usagePage.toRadixString(16)}';
 
-@JS('Device')
-extension type _HidDevice._(JSObject _) implements JSObject {
-  external int get vendorId;
-  external int get productId;
-}
-
-/// Returns navigator.hid, or null if WebHID is unavailable.
-_Hid? _getNavigatorHid() => _navigatorHid;
-
-/// Synthesizes the device path hid_tool reports for a web [HidDevice]
-/// (`web:<vid>:<pid>`), so connect/disconnect events match the path on a
-/// [DiscoveredDevice.hidDevice]. WebHID has no inherent per-instance id; two
-/// identical web mice share this path (a hid_tool limitation).
-String _pathFor(int vendorId, int productId) => 'web:$vendorId:$productId';
-
-/// Starts listening to web connect/disconnect events.
+/// Starts listening to web connect/disconnect events via flutter_webhid.
 ///
 /// Each callback receives (path, vendorId, productId). Returns a handle whose
 /// [stop] removes the listeners.
@@ -46,30 +24,27 @@ HidEventSubscription startWebHidListeners({
   required void Function(String path, int vendorId, int productId) onConnect,
   required void Function(String path, int vendorId, int productId) onDisconnect,
 }) {
-  final hid = _getNavigatorHid();
-  if (hid == null) {
+  if (!WebHID.isSupported || WebHID.instance == null) {
     return const HidEventSubscription.noop();
   }
 
-  void connectHandler(_HidConnectionEvent e) {
-    final vid = e.device.vendorId;
-    final pid = e.device.productId;
-    onConnect(_pathFor(vid, pid), vid, pid);
-  }
+  final webHid = WebHID.instance!;
+  final connectSub = webHid.onConnect.listen((event) {
+    final dev = event.device;
+    final page = _primaryUsagePage(dev);
+    onConnect(_pathFor(dev.vendorId, dev.productId, page), dev.vendorId, dev.productId);
+  });
 
-  void disconnectHandler(_HidConnectionEvent e) {
-    final vid = e.device.vendorId;
-    final pid = e.device.productId;
-    onDisconnect(_pathFor(vid, pid), vid, pid);
-  }
-
-  final c = connectHandler.toJS;
-  final d = disconnectHandler.toJS;
-  hid.addEventListener('connect', c);
-  hid.addEventListener('disconnect', d);
+  final disconnectSub = webHid.onDisconnect.listen((event) {
+    final dev = event.device;
+    final page = _primaryUsagePage(dev);
+    onDisconnect(_pathFor(dev.vendorId, dev.productId, page), dev.vendorId, dev.productId);
+  });
 
   return HidEventSubscription(() {
-    hid.removeEventListener('connect', c);
-    hid.removeEventListener('disconnect', d);
+    connectSub.cancel();
+    disconnectSub.cancel();
   });
 }
+
+

@@ -111,20 +111,19 @@ class DeviceWatcher {
     if (_sessions.containsKey(path)) return; // already active
     // Cancel any pending dispose for this path (rapid replug).
     _pendingDisposes.remove(path)?.cancel();
-    // why: awaited so the old handle closes before the new open() on the same
-    // path. A second open while the first is live can be rejected.
-    await _pendingOrphans.remove(path)?.dispose();
+    // Give browser WebHID engine 200ms to settle USB descriptors after hot-plug
+    await Future<void>.delayed(const Duration(milliseconds: 200));
 
     final discovered = await _scanner.discoverAuthorized();
     DiscoveredDevice? match;
     for (final d in discovered) {
-      // Match the specific instance by path. On desktop the path is unique per
-      // device, so a second identical mouse is matched here, not ignored.
+      // Match by path or VID:PID key on web
       if (d.hidDevice.path == path) {
         match = d;
         break;
       }
     }
+
     if (match == null) return; // not a supported device
 
     final session = _sessionCtor(

@@ -311,9 +311,7 @@ class DeviceSession implements DeviceSettingsGateway {
     if (!isAlive) {
       throw StateError('setMacro: session not alive');
     }
-    await _withSilentHandshakeRetry(
-      () => _protocol.setMacro(_session, macro),
-    );
+    await _withSilentHandshakeRetry(() => _protocol.setMacro(_session, macro));
   }
 
   /// Executes a SET command with a silent re-handshake retry if the initial attempt
@@ -322,10 +320,14 @@ class DeviceSession implements DeviceSettingsGateway {
     try {
       return await action();
     } catch (e) {
-      debugPrint('[session] SET write failed ($e); attempting silent rehandshake...');
+      debugPrint(
+        '[session] SET write failed ($e); attempting silent rehandshake...',
+      );
       final ok = await rehandshake();
       if (ok && isAlive) {
-        debugPrint('[session] Silent rehandshake succeeded! Retrying SET write...');
+        debugPrint(
+          '[session] Silent rehandshake succeeded! Retrying SET write...',
+        );
         return await action();
       }
       rethrow;

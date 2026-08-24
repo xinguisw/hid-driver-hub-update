@@ -172,6 +172,7 @@ class WebHidDeviceAdapter extends HidDevice {
 
   @override
   Future<void> open() async {
+    if (device.opened) return;
     try {
       await device.open();
     } catch (e) {

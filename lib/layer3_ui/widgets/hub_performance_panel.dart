@@ -215,7 +215,7 @@ class _DpiSettingsGroup extends StatelessWidget {
             : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.65),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
+          color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.15),
           width: 1,
         ),
       ),
@@ -248,48 +248,67 @@ class _DpiSettingsGroup extends StatelessWidget {
                   ],
                 ),
               ),
-              if (activeCount < maxLevels) ...[
-                const SizedBox(width: 12),
-                InkWell(
-                  onTap: onAddStage,
-                  borderRadius: BorderRadius.circular(6),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 5,
-                    ),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.primary.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(
-                        color: theme.colorScheme.primary.withValues(
-                          alpha: 0.35,
+              const SizedBox(width: 12),
+              Builder(
+                builder: (context) {
+                  final canAdd = stages.length < maxLevels;
+                  return InkWell(
+                    onTap: canAdd ? onAddStage : null,
+                    borderRadius: BorderRadius.circular(6),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 150),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: canAdd 
+                            ? theme.colorScheme.surface 
+                            : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: theme.colorScheme.outlineVariant.withValues(
+                            alpha: canAdd ? 0.8 : 0.3,
+                          ),
+                          width: 1,
                         ),
-                        width: 1,
+                        boxShadow: canAdd 
+                            ? [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.05),
+                                  blurRadius: 2,
+                                  offset: const Offset(0, 1),
+                                ),
+                              ]
+                            : null,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.add_rounded,
+                            size: 14,
+                            color: canAdd 
+                                ? theme.colorScheme.onSurface 
+                                : theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Add',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: canAdd ? FontWeight.w700 : FontWeight.w600,
+                              color: canAdd 
+                                  ? theme.colorScheme.onSurface 
+                                  : theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.add_rounded,
-                          size: 14,
-                          color: theme.colorScheme.primary,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Add',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: theme.colorScheme.primary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
+                  );
+                },
+              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -321,7 +340,7 @@ class _DpiSettingsGroup extends StatelessWidget {
                       rgbPerStage: rgbPerStage,
                       onColorChanged: onColorChanged,
                       onRemoveStage:
-                          activeCount <= 1 || onDpiStageRemove == null
+                          stages.length <= 1 || onDpiStageRemove == null
                           ? null
                           : () => onDpiStageRemove?.call(stage.level),
                     ),
@@ -492,19 +511,19 @@ class _DpiSliderRowState extends State<_DpiSliderRow> {
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
               color: borderColor,
-              width: widget.isSelected ? 1.8 : (_isHovered ? 1.4 : 1.0),
+              width: widget.isSelected ? 1.2 : (_isHovered ? 1.2 : 1.0),
             ),
             boxShadow: [
               if (widget.isSelected)
                 BoxShadow(
-                  color: theme.colorScheme.primary.withValues(alpha: 0.25),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
+                  color: theme.colorScheme.primary.withValues(alpha: 0.15),
+                  blurRadius: 4,
+                  offset: const Offset(0, 1),
                 )
               else if (_isHovered)
                 BoxShadow(
-                  color: theme.colorScheme.primary.withValues(alpha: 0.12),
-                  blurRadius: 6,
+                  color: theme.colorScheme.primary.withValues(alpha: 0.08),
+                  blurRadius: 3,
                   offset: const Offset(0, 1),
                 )
               else
@@ -574,7 +593,7 @@ class _DpiSliderRowState extends State<_DpiSliderRow> {
               const SizedBox(height: 2),
               SliderTheme(
                 data: SliderTheme.of(context).copyWith(
-                  trackHeight: 4,
+                  trackHeight: 2,
                   activeTrackColor: isDark ? Colors.white : Colors.black,
                   inactiveTrackColor: (isDark ? Colors.white : Colors.black)
                       .withValues(alpha: 0.15),
@@ -582,8 +601,8 @@ class _DpiSliderRowState extends State<_DpiSliderRow> {
                   overlayColor: (isDark ? Colors.white : Colors.black)
                       .withValues(alpha: 0.1),
                   thumbShape: _RingSliderThumbShape(
-                    enabledThumbRadius: 6,
-                    thickness: 3,
+                    enabledThumbRadius: 5,
+                    thickness: 2.5,
                     fillColor: isDark
                         ? theme.colorScheme.surface.withValues(alpha: 0.95)
                         : theme.colorScheme.surface,
@@ -753,10 +772,6 @@ class _DpiColorButtonState extends State<_DpiColorButton> {
                     color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.15),
                     blurRadius: 3,
                     offset: const Offset(0, 1),
-                  ),
-                  BoxShadow(
-                    color: widget.color.withValues(alpha: 0.45),
-                    blurRadius: 6,
                   ),
                 ],
               ),
@@ -1114,7 +1129,7 @@ class _ReportRateGroup extends StatelessWidget {
             : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.65),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
+          color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.15),
           width: 1,
         ),
       ),
@@ -1130,15 +1145,7 @@ class _ReportRateGroup extends StatelessWidget {
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
-              const SizedBox(width: 8),
-              Text(
-                '($selectedHz Hz)',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: theme.colorScheme.primary,
-                ),
-              ),
+
             ],
           ),
           const SizedBox(height: 12),

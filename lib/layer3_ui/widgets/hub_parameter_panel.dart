@@ -294,7 +294,7 @@ class _GroupContainer extends StatelessWidget {
             : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.8),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: theme.colorScheme.outline.withValues(alpha: 0.25),
+          color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.15),
         ),
       ),
       child: child,
@@ -314,15 +314,15 @@ class _CardBox extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
+    final borderColor = (isDark ? Colors.white : Colors.black).withValues(alpha: 0.45);
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: theme.colorScheme.outline.withValues(
-            alpha: isDark ? 0.25 : 0.35,
-          ),
+          color: borderColor,
           width: 1.0,
         ),
         boxShadow: [
@@ -518,6 +518,7 @@ class _LodBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _CardBox(
+      isActive: lodMm != null,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -918,6 +919,7 @@ class _WheelBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _CardBox(
+      isActive: true,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

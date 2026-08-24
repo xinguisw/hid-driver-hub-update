@@ -48,7 +48,7 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
   MacroDraft? _draft;
   bool _recording = false;
   bool _calibrationMode = false;
-  bool _loading = false;
+  bool _loading = true;
   String? _error;
   int? _selectedSlot;
   int? _activePointerCode;
@@ -69,7 +69,11 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
   @override
   void initState() {
     super.initState();
-    if (_hasScope) WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+    if (_hasScope) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+    } else {
+      _loading = false;
+    }
   }
 
   @override
@@ -101,8 +105,6 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
       setState(() {
         _macros = loaded;
         _loading = false;
-        // Loading the list must not implicitly open the first macro. The
-        // editor is entered only after an explicit list selection.
         _draft = null;
         _selectedSlot = null;
       });
@@ -641,10 +643,16 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
   Widget build(BuildContext context) {
     Widget content;
     if (_loading && _draft == null) {
-      content = const Center(child: CircularProgressIndicator());
+      content = const Center(
+        key: ValueKey('loading'),
+        child: CircularProgressIndicator(),
+      );
     } else if (_draft == null) {
       if (_macros.isEmpty) {
-        content = _EmptyMacroState(onCreate: _openCreation);
+        content = _EmptyMacroState(
+          key: const ValueKey('empty_list'),
+          onCreate: _openCreation,
+        );
       } else {
         content = _buildUnselectedMacroState(context);
       }
@@ -674,41 +682,128 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
   }
 
   Widget _buildUnselectedMacroState(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Expanded(
-          flex: 1,
+        SizedBox(
+          width: 220,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Padding(
-                padding: EdgeInsets.all(12),
-                child: Text(
-                  'Macro List',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.extension_rounded,
+                          size: 18,
+                          color: theme.colorScheme.primary,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Macro List',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.add_rounded, size: 20),
+                      tooltip: 'New Macro',
+                      onPressed: _recording ? null : _openCreation,
+                    ),
+                  ],
                 ),
               ),
-              const Divider(height: 1),
+              Divider(
+                height: 1,
+                color: (isDark ? Colors.white : Colors.black).withValues(
+                  alpha: 0.12,
+                ),
+              ),
+              const SizedBox(height: 8),
               Expanded(
-                child: ListView(
-                  children: [
-                    for (final macro in _macros)
-                      ListTile(
-                        title: Text(
-                          macro.name.isEmpty ? 'M${macro.slot}' : macro.name,
-                        ),
-                        selected: false,
+                child: ListView.separated(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  itemCount: _macros.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 6),
+                  itemBuilder: (context, index) {
+                    final macro = _macros[index];
+                    final displayName = macro.name.isEmpty
+                        ? 'M${macro.slot}'
+                        : macro.name;
+                    return Material(
+                      color: Colors.transparent,
+                      child: InkWell(
                         onTap: _recording ? null : () => _selectMacro(macro),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.delete_outline, size: 20),
-                          tooltip: 'Delete Macro',
-                          onPressed: _recording
-                              ? null
-                              : () => _deleteMacro(macro),
+                        borderRadius: BorderRadius.circular(10),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? theme.colorScheme.surfaceContainerHighest
+                                      .withValues(alpha: 0.2)
+                                : Colors.grey.withValues(alpha: 0.05),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: isDark
+                                  ? Colors.white.withValues(alpha: 0.1)
+                                  : Colors.black.withValues(alpha: 0.08),
+                              width: 1.0,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.keyboard_command_key_rounded,
+                                size: 16,
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  displayName,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                    color: theme.colorScheme.onSurface,
+                                  ),
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.delete_outline_rounded,
+                                  size: 18,
+                                ),
+                                color: theme.colorScheme.onSurfaceVariant
+                                    .withValues(alpha: 0.6),
+                                tooltip: 'Delete Macro',
+                                onPressed: _recording
+                                    ? null
+                                    : () => _deleteMacro(macro),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                  ],
+                    );
+                  },
                 ),
               ),
             ],
@@ -725,42 +820,160 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
 
   Widget _buildMacroEditor(BuildContext context) {
     final draft = _draft!;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final buttonStyle = _macroOutlinedButtonStyle(context);
+    final cardBorderColor = (isDark ? Colors.white : Colors.black).withValues(
+      alpha: 0.45,
+    );
+    final cardBoxDecoration = BoxDecoration(
+      color: theme.colorScheme.surface,
+      borderRadius: BorderRadius.circular(14),
+      border: Border.all(color: cardBorderColor, width: 1.0),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+          blurRadius: 8,
+          offset: const Offset(0, 3),
+        ),
+      ],
+    );
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Expanded(
-          flex: 1,
+        SizedBox(
+          width: 220,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Padding(
-                padding: EdgeInsets.all(12),
-                child: Text(
-                  'Macro List',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.extension_rounded,
+                          size: 18,
+                          color: theme.colorScheme.primary,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Macro List',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.add_rounded, size: 20),
+                      tooltip: 'New Macro',
+                      onPressed: _recording ? null : _openCreation,
+                    ),
+                  ],
                 ),
               ),
-              const Divider(height: 1),
+              Divider(
+                height: 1,
+                color: (isDark ? Colors.white : Colors.black).withValues(
+                  alpha: 0.12,
+                ),
+              ),
+              const SizedBox(height: 8),
               Expanded(
-                child: ListView(
-                  children: [
-                    for (final macro in _macros)
-                      ListTile(
-                        title: Text(
-                          macro.name.isEmpty ? 'M${macro.slot}' : macro.name,
-                        ),
-                        selected: macro.slot == _selectedSlot,
+                child: ListView.separated(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  itemCount: _macros.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 6),
+                  itemBuilder: (context, index) {
+                    final macro = _macros[index];
+                    final isSelected = macro.slot == _selectedSlot;
+                    final displayName = macro.name.isEmpty
+                        ? 'M${macro.slot}'
+                        : macro.name;
+                    return Material(
+                      color: Colors.transparent,
+                      child: InkWell(
                         onTap: _recording ? null : () => _selectMacro(macro),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.delete_outline, size: 20),
-                          tooltip: 'Delete Macro',
-                          onPressed: _recording
-                              ? null
-                              : () => _deleteMacro(macro),
+                        borderRadius: BorderRadius.circular(10),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 150),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? theme.colorScheme.primary.withValues(
+                                    alpha: 0.12,
+                                  )
+                                : (isDark
+                                      ? theme
+                                            .colorScheme
+                                            .surfaceContainerHighest
+                                            .withValues(alpha: 0.2)
+                                      : Colors.grey.withValues(alpha: 0.05)),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: isSelected
+                                  ? theme.colorScheme.primary
+                                  : (isDark
+                                        ? Colors.white.withValues(alpha: 0.1)
+                                        : Colors.black.withValues(alpha: 0.08)),
+                              width: isSelected ? 1.5 : 1.0,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.keyboard_command_key_rounded,
+                                size: 16,
+                                color: isSelected
+                                    ? theme.colorScheme.primary
+                                    : theme.colorScheme.onSurfaceVariant,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  displayName,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: isSelected
+                                        ? FontWeight.w700
+                                        : FontWeight.w500,
+                                    color: isSelected
+                                        ? theme.colorScheme.primary
+                                        : theme.colorScheme.onSurface,
+                                  ),
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.delete_outline_rounded,
+                                  size: 18,
+                                ),
+                                color: theme.colorScheme.onSurfaceVariant
+                                    .withValues(alpha: 0.6),
+                                tooltip: 'Delete Macro',
+                                onPressed: _recording
+                                    ? null
+                                    : () => _deleteMacro(macro),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                  ],
+                    );
+                  },
                 ),
               ),
             ],
@@ -807,7 +1020,8 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
                             ),
                             onChanged: (value) {
                               _updateDraft((d) => d.copyWith(name: value));
-                              if (value.length > MacroDefinition.maxNameLength) {
+                              if (value.length >
+                                  MacroDefinition.maxNameLength) {
                                 setState(() {
                                   _error =
                                       'Macro name must not exceed ${MacroDefinition.maxNameLength} characters';
@@ -840,16 +1054,57 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
                         ),
                       ],
                     ),
+                    if (_error != null) ...[
+                      const SizedBox(height: 12),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? const Color(0x33F87171)
+                              : const Color(0xFFFDE8E8),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: isDark
+                                ? const Color(0xFFF87171)
+                                : const Color(0xFFF8B4B4),
+                            width: 1.0,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.error_outline_rounded,
+                              size: 18,
+                              color: isDark
+                                  ? const Color(0xFFFCA5A5)
+                                  : const Color(0xFF9B1C1C),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                _error!,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: isDark
+                                      ? const Color(0xFFFCA5A5)
+                                      : const Color(0xFF9B1C1C),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 12),
                     Container(
                       width: double.infinity,
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        border: Border.all(
-                          color: Theme.of(context).colorScheme.outline,
-                        ),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
+                      padding: const EdgeInsets.all(16),
+                      decoration: cardBoxDecoration,
                       child: Row(
                         children: [
                           Expanded(
@@ -897,13 +1152,8 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
                     const SizedBox(height: 12),
                     Container(
                       width: double.infinity,
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        border: Border.all(
-                          color: Theme.of(context).colorScheme.outline,
-                        ),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
+                      padding: const EdgeInsets.all(16),
+                      decoration: cardBoxDecoration,
                       child: Row(
                         children: [
                           Expanded(
@@ -917,43 +1167,39 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
                                     color: Colors.grey,
                                   ),
                                 ),
-                                const SizedBox(height: 6),
+                                const SizedBox(height: 8),
                                 Wrap(
-                                  spacing: 8,
+                                  spacing: 10,
+                                  runSpacing: 10,
                                   children: [
-                                    ChoiceChip(
-                                      label: const Text('Recorded Delay'),
+                                    _SelectableChip(
+                                      label: 'Recorded Delay',
                                       selected:
                                           _delayMode == MacroDelayMode.recorded,
-                                      onSelected: (selected) {
-                                        if (selected) {
-                                          setState(() {
-                                            _delayMode =
-                                                MacroDelayMode.recorded;
-                                            if (_error != null &&
-                                                _error!.startsWith(
-                                                  'Fixed delay must be between',
-                                                )) {
-                                              _error = null;
-                                            }
-                                          });
-                                        }
+                                      onTap: () {
+                                        setState(() {
+                                          _delayMode = MacroDelayMode.recorded;
+                                          if (_error != null &&
+                                              _error!.startsWith(
+                                                'Fixed delay must be between',
+                                              )) {
+                                            _error = null;
+                                          }
+                                        });
                                       },
                                     ),
-                                    ChoiceChip(
-                                      label: const Text('Fixed Delay'),
+                                    _SelectableChip(
+                                      label: 'Fixed Delay',
                                       selected:
                                           _delayMode == MacroDelayMode.fixed,
-                                      onSelected: (selected) {
-                                        if (selected) {
-                                          setState(() {
-                                            _delayMode = MacroDelayMode.fixed;
-                                            _applyFixedDelayToEvents();
-                                            _validateFixedDelay(
-                                              _fixedDelayController.text,
-                                            );
-                                          });
-                                        }
+                                      onTap: () {
+                                        setState(() {
+                                          _delayMode = MacroDelayMode.fixed;
+                                          _applyFixedDelayToEvents();
+                                          _validateFixedDelay(
+                                            _fixedDelayController.text,
+                                          );
+                                        });
                                       },
                                     ),
                                   ],
@@ -1009,13 +1255,8 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
                     const SizedBox(height: 12),
                     Container(
                       width: double.infinity,
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        border: Border.all(
-                          color: Theme.of(context).colorScheme.outline,
-                        ),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
+                      padding: const EdgeInsets.all(16),
+                      decoration: cardBoxDecoration,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -1052,15 +1293,6 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
                         ],
                       ),
                     ),
-                    if (_error != null) ...[
-                      const SizedBox(height: 12),
-                      Text(
-                        _error!,
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.error,
-                        ),
-                      ),
-                    ],
                     const SizedBox(height: 24),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.end,
@@ -1367,32 +1599,136 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
 
 ButtonStyle _macroOutlinedButtonStyle(BuildContext context) {
   final theme = Theme.of(context);
+  final isDark = theme.brightness == Brightness.dark;
   return OutlinedButton.styleFrom(
     foregroundColor: theme.colorScheme.onSurface,
-    side: BorderSide(color: theme.colorScheme.outline),
-    shape: const StadiumBorder(),
+    side: BorderSide(
+      color: (isDark ? const Color(0xFF3F424B) : const Color(0xFFD0D5DD)),
+      width: 1.0,
+    ),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
   );
 }
 
+class _SelectableChip extends StatelessWidget {
+  const _SelectableChip({
+    required this.label,
+    required this.selected,
+    this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
+            color: selected
+                ? theme.colorScheme.primary
+                : (isDark ? const Color(0xFF26282E) : Colors.white),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: selected
+                  ? theme.colorScheme.primary
+                  : (isDark
+                        ? const Color(0xFF3F424B)
+                        : const Color(0xFFD0D5DD)),
+              width: 1.0,
+            ),
+            boxShadow: selected
+                ? [
+                    BoxShadow(
+                      color: theme.colorScheme.primary.withValues(alpha: 0.35),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2.5),
+                    ),
+                  ]
+                : [
+                    BoxShadow(
+                      color: Colors.black.withValues(
+                        alpha: isDark ? 0.25 : 0.05,
+                      ),
+                      blurRadius: 4,
+                      offset: const Offset(0, 1.5),
+                    ),
+                  ],
+          ),
+          child: Text(
+            label,
+            style: theme.textTheme.bodySmall?.copyWith(
+              fontSize: 13,
+              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+              color: selected
+                  ? Colors.white
+                  : (isDark
+                        ? const Color(0xFFE0E3EB)
+                        : const Color(0xFF344054)),
+              letterSpacing: 0.1,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _EmptyMacroState extends StatelessWidget {
-  const _EmptyMacroState({required this.onCreate});
+  const _EmptyMacroState({super.key, required this.onCreate});
   final VoidCallback onCreate;
 
   @override
-  Widget build(BuildContext context) => Center(
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        const Text('No macros configured'),
-        const SizedBox(height: 16),
-        OutlinedButton(
-          onPressed: onCreate,
-          style: _macroOutlinedButtonStyle(context),
-          child: const Text('Create Macro'),
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.extension_rounded,
+              size: 56,
+              color: theme.colorScheme.primary.withValues(alpha: 0.4),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'No macros configured',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Create a macro to record key sequences and mouse actions.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 20),
+            OutlinedButton.icon(
+              onPressed: onCreate,
+              icon: const Icon(Icons.add_rounded, size: 18),
+              style: _macroOutlinedButtonStyle(context),
+              label: const Text('Create Macro'),
+            ),
+          ],
         ),
-      ],
-    ),
-  );
+      ),
+    );
+  }
 }
 
 class _MacroSelectionEmptyState extends StatelessWidget {
@@ -1401,20 +1737,45 @@ class _MacroSelectionEmptyState extends StatelessWidget {
   final VoidCallback onNewMacro;
 
   @override
-  Widget build(BuildContext context) => Center(
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        const Text('Please select a shortcut to edit'),
-        const SizedBox(height: 16),
-        OutlinedButton(
-          onPressed: onNewMacro,
-          style: _macroOutlinedButtonStyle(context),
-          child: const Text('New Macro'),
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.extension_rounded,
+              size: 56,
+              color: theme.colorScheme.primary.withValues(alpha: 0.4),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Please select a shortcut to edit',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Choose a macro from the sidebar list or create a new one.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 20),
+            OutlinedButton.icon(
+              onPressed: onNewMacro,
+              icon: const Icon(Icons.add_rounded, size: 18),
+              style: _macroOutlinedButtonStyle(context),
+              label: const Text('New Macro'),
+            ),
+          ],
         ),
-      ],
-    ),
-  );
+      ),
+    );
+  }
 }
 
 class _MacroRow extends StatelessWidget {
@@ -1429,46 +1790,140 @@ class _MacroRow extends StatelessWidget {
       action.keyCode == MacroWireActions.tiltRight;
 
   @override
-  Widget build(BuildContext context) => Container(
-    margin: const EdgeInsets.symmetric(vertical: 1),
-    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 1),
-    decoration: BoxDecoration(
-      border: Border.all(color: Theme.of(context).colorScheme.outline),
-      borderRadius: BorderRadius.circular(4),
-    ),
-    child: Row(
-      children: [
-        Text(action.label ?? '0x${action.keyCode.toRadixString(16)}'),
-        Expanded(
-          child: Center(
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final isKeyDown = !action.isBreak;
+    final badgeColor = _isWheelOrTilt
+        ? (isDark ? const Color(0xFF00838F) : const Color(0xFF00ACC1))
+        : (isKeyDown
+              ? (isDark ? const Color(0xFF1E88E5) : const Color(0xFF1976D2))
+              : (isDark ? const Color(0xFFE65100) : const Color(0xFFF57C00)));
+
+    final eventTypeLabel = _isWheelOrTilt
+        ? 'Wheel'
+        : (action.isBreak ? 'Key Up' : 'Key Down');
+
+    final eventIcon = _isWheelOrTilt
+        ? Icons.mouse_rounded
+        : (action.isBreak
+              ? Icons.arrow_upward_rounded
+              : Icons.arrow_downward_rounded);
+
+    return Container(
+      height: 44,
+      margin: const EdgeInsets.symmetric(vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: isDark
+            ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3)
+            : theme.colorScheme.surfaceContainerLowest,
+        border: Border.all(
+          color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.12),
+          width: 1,
+        ),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          // Key / Action Label on Left (width 130 ensures Wheel Down fits on one line)
+          SizedBox(
+            width: 130,
             child: Text(
-              _isWheelOrTilt ? '' : (action.isBreak ? 'KeyUp' : 'KeyDown'),
+              action.label ?? '0x${action.keyCode.toRadixString(16)}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: theme.colorScheme.onSurface,
+              ),
             ),
           ),
-        ),
-        SizedBox(
-          width: 64,
-          child: Text(
-            '${action.delay * _macroDelayUnitMs} ms',
-            textAlign: TextAlign.right,
+          // Key Down / Key Up / Wheel Badge Centered in Middle (fixed 108x26 container)
+          Expanded(
+            child: Center(
+              child: Container(
+                width: 108,
+                height: 26,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: badgeColor.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                    color: badgeColor.withValues(alpha: 0.4),
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(eventIcon, size: 13, color: badgeColor),
+                    const SizedBox(width: 5),
+                    Text(
+                      eventTypeLabel,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: badgeColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
-        ),
-        const SizedBox(width: 12),
-        IconButton(
-          onPressed: onDelete,
-          icon: const Icon(Icons.delete_outline, size: 16),
-        ),
-      ],
-    ),
-  );
+          // Delay ms Container on Right (fixed 85x24 container)
+          Container(
+            width: 85,
+            height: 24,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: (isDark ? Colors.white : Colors.black).withValues(
+                alpha: 0.06,
+              ),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.timer_outlined,
+                  size: 12,
+                  color: theme.colorScheme.onSurfaceVariant.withValues(
+                    alpha: 0.7,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  '${action.delay * _macroDelayUnitMs} ms',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          IconButton(
+            onPressed: onDelete,
+            icon: const Icon(Icons.close_rounded, size: 16),
+            color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+            tooltip: 'Remove Action',
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class MacroToast extends StatelessWidget {
-  const MacroToast({
-    super.key,
-    required this.message,
-    required this.isSuccess,
-  });
+  const MacroToast({super.key, required this.message, required this.isSuccess});
 
   final String message;
   final bool isSuccess;

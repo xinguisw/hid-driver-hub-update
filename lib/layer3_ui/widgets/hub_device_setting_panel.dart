@@ -24,28 +24,27 @@ class HubDeviceSettingPanel extends StatelessWidget {
       builder: (context, constraints) {
         final isWide = constraints.maxWidth > 700;
         final children = [
-          // Left: device image.
+          // Left: device image centered.
           if (card.imageLarge.isNotEmpty)
             Image.asset(
               card.imageLarge,
-              width: isWide ? 300 : 200,
+              width: isWide ? 320 : 220,
               fit: BoxFit.contain,
             ),
           SizedBox(width: isWide ? 64 : 0, height: isWide ? 0 : 32),
-          // Right: firmware info container + reset (fixed width, centered col).
+          // Right: firmware info container + reset button.
           Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               _FirmwareBox(
                 title: 'Mouse Firmware Version',
                 version: mouseVersion,
-                icon: Icons.mouse_outlined,
               ),
               const SizedBox(height: 16),
               _FirmwareBox(
                 title: 'Dongle Firmware Version',
                 version: dongleVersion,
-                icon: Icons.usb_outlined,
               ),
               const SizedBox(height: 32),
               OutlinedButton.icon(
@@ -59,6 +58,9 @@ class HubDeviceSettingPanel extends StatelessWidget {
                   ),
                   side: const BorderSide(color: Colors.redAccent),
                   foregroundColor: Colors.redAccent,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
                 ),
               ),
             ],
@@ -70,8 +72,8 @@ class HubDeviceSettingPanel extends StatelessWidget {
             padding: const EdgeInsets.all(24),
             child: isWide
                 ? Row(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.center,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: children,
                   )
                 : Column(
@@ -87,45 +89,44 @@ class HubDeviceSettingPanel extends StatelessWidget {
 }
 
 class _FirmwareBox extends StatelessWidget {
-  const _FirmwareBox({
-    required this.title,
-    required this.version,
-    required this.icon,
-  });
+  const _FirmwareBox({required this.title, required this.version});
 
   final String title;
   final String version;
-  final IconData icon;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+
+    final cardBorderColor = (isDark ? Colors.white : Colors.black).withValues(
+      alpha: 0.45,
+    );
 
     return Container(
       width: 400,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-        border: Border.all(
-          color: colorScheme.outlineVariant.withValues(alpha: 0.5),
-        ),
-        borderRadius: BorderRadius.circular(16),
+        color: colorScheme.surface,
+        border: Border.all(color: cardBorderColor, width: 1.0),
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Icon(icon, color: colorScheme.primary),
-              const SizedBox(width: 12),
-              Text(
-                title,
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
+          Text(
+            title,
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
           ),
           const SizedBox(height: 16),
           Row(
@@ -140,13 +141,21 @@ class _FirmwareBox extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: colorScheme.primaryContainer,
+                  color: (isDark ? Colors.white : Colors.black).withValues(
+                    alpha: 0.08,
+                  ),
                   borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                    color: (isDark ? Colors.white : Colors.black).withValues(
+                      alpha: 0.15,
+                    ),
+                    width: 1.0,
+                  ),
                 ),
                 child: Text(
                   version,
                   style: TextStyle(
-                    color: colorScheme.onPrimaryContainer,
+                    color: colorScheme.onSurface,
                     fontWeight: FontWeight.bold,
                   ),
                 ),

@@ -11,6 +11,7 @@ import 'package:driver_hub/layer5_codec/button_action_catalog_map.dart';
 import 'package:driver_hub/layer5_codec/codecs/translation_codec.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:bloc_concurrency/bloc_concurrency.dart';
 
 typedef ButtonMappingCommit =
     Future<void> Function(List<ButtonMappingSlot> slots);
@@ -175,42 +176,84 @@ class DeviceSettingsBloc
        ) {
     on<DeviceSettingsHydrated>(_onHydrated);
     on<DeviceSettingsLivePerformanceUpdated>(_onLivePerformanceUpdated);
-    on<DeviceSettingsResetButtonMappingRequested>(_onResetButtonMapping);
-    on<DeviceSettingsResetDpiConfigurationRequested>(_onResetDpiConfiguration);
-    on<DeviceSettingsSaveRequested>(_onSave);
+    on<DeviceSettingsResetButtonMappingRequested>(
+      _onResetButtonMapping,
+      transformer: droppable(),
+    );
+    on<DeviceSettingsResetDpiConfigurationRequested>(
+      _onResetDpiConfiguration,
+      transformer: droppable(),
+    );
+    on<DeviceSettingsSaveRequested>(_onSave, transformer: droppable());
     on<DeviceSettingsCancelRequested>(_onCancel);
     on<DeviceSettingsNavigationRequested>(_onNavigationRequested);
     on<DeviceSettingsButtonMappingSlotRequested>(_onButtonMappingSlotRequested);
     on<DeviceSettingsMacroMappingRequested>(_onMacroMappingRequested);
     on<DeviceSettingsSpecialComboRequested>(_onSpecialComboRequested);
     on<DeviceSettingsReportRateRequested>(_onReportRateRequested);
-    on<DeviceSettingsSaveReportRateRequested>(_onSaveReportRate);
-    on<DeviceSettingsSaveDpiConfigurationRequested>(_onSaveDpiConfiguration);
+    on<DeviceSettingsSaveReportRateRequested>(
+      _onSaveReportRate,
+      transformer: droppable(),
+    );
+    on<DeviceSettingsSaveDpiConfigurationRequested>(
+      _onSaveDpiConfiguration,
+      transformer: droppable(),
+    );
     on<DeviceSettingsDpiLevelRequested>(_onDpiLevelRequested);
-    on<DeviceSettingsSaveDpiLevelRequested>(_onSaveDpiLevel);
+    on<DeviceSettingsSaveDpiLevelRequested>(
+      _onSaveDpiLevel,
+      transformer: droppable(),
+    );
     on<DeviceSettingsDpiValueRequested>(_onDpiValueRequested);
     on<DeviceSettingsDpiColorRequested>(_onDpiColorRequested);
-    on<DeviceSettingsSaveDpiValuesRequested>(_onSaveDpiValues);
+    on<DeviceSettingsSaveDpiValuesRequested>(
+      _onSaveDpiValues,
+      transformer: droppable(),
+    );
     on<DeviceSettingsDpiStageAddRequested>(_onDpiStageAddRequested);
     on<DeviceSettingsDpiStageRemoveRequested>(_onDpiStageRemoveRequested);
-    on<DeviceSettingsSaveDpiStagesRequested>(_onSaveDpiStages);
+    on<DeviceSettingsSaveDpiStagesRequested>(
+      _onSaveDpiStages,
+      transformer: droppable(),
+    );
     on<DeviceSettingsRippleControlRequested>(_onRippleControlRequested);
     on<DeviceSettingsAngleSnapRequested>(_onAngleSnapRequested);
-    on<DeviceSettingsSaveSensorTuningRequested>(_onSaveSensorTuning);
+    on<DeviceSettingsSaveSensorTuningRequested>(
+      _onSaveSensorTuning,
+      transformer: droppable(),
+    );
     on<DeviceSettingsAngleTuneToggled>(_onAngleTuneToggled);
     on<DeviceSettingsAngleTuneValueChanged>(_onAngleTuneValueChanged);
-    on<DeviceSettingsSaveAngleTuneRequested>(_onSaveAngleTune);
+    on<DeviceSettingsSaveAngleTuneRequested>(
+      _onSaveAngleTune,
+      transformer: droppable(),
+    );
     on<DeviceSettingsLodRequested>(_onLodRequested);
-    on<DeviceSettingsSaveLodRequested>(_onSaveLod);
+    on<DeviceSettingsSaveLodRequested>(_onSaveLod, transformer: droppable());
     on<DeviceSettingsPerformanceRequested>(_onPerformanceRequested);
-    on<DeviceSettingsSavePerformanceRequested>(_onSavePerformance);
+    on<DeviceSettingsSavePerformanceRequested>(
+      _onSavePerformance,
+      transformer: droppable(),
+    );
     on<DeviceSettingsButtonDebounceRequested>(_onDebounceRequested);
-    on<DeviceSettingsSaveButtonDebounceRequested>(_onSaveDebounce);
+    on<DeviceSettingsSaveButtonDebounceRequested>(
+      _onSaveDebounce,
+      transformer: droppable(),
+    );
     on<DeviceSettingsSleepTimeRequested>(_onSleepRequested);
-    on<DeviceSettingsSaveSleepTimeRequested>(_onSaveSleep);
+    on<DeviceSettingsSaveSleepTimeRequested>(
+      _onSaveSleep,
+      transformer: droppable(),
+    );
     on<DeviceSettingsWheelInvertRequested>(_onWheelInvertRequested);
-    on<DeviceSettingsSaveWheelInvertRequested>(_onSaveWheelInvert);
-    on<DeviceSettingsSaveParameterSettingsRequested>(_onSaveParameterSettings);
+    on<DeviceSettingsSaveWheelInvertRequested>(
+      _onSaveWheelInvert,
+      transformer: droppable(),
+    );
+    on<DeviceSettingsSaveParameterSettingsRequested>(
+      _onSaveParameterSettings,
+      transformer: droppable(),
+    );
     on<DeviceSettingsBacklightEnableRequested>(_onBacklightEnableRequested);
     on<DeviceSettingsBacklightModeRequested>(_onBacklightModeRequested);
     on<DeviceSettingsBacklightColorRequested>(_onBacklightColorRequested);
@@ -219,7 +262,10 @@ class DeviceSettingsBloc
     );
     on<DeviceSettingsBacklightSpeedRequested>(_onBacklightSpeedRequested);
     on<DeviceSettingsBacklightSleepRequested>(_onBacklightSleepRequested);
-    on<DeviceSettingsSaveBacklightRequested>(_onSaveBacklight);
+    on<DeviceSettingsSaveBacklightRequested>(
+      _onSaveBacklight,
+      transformer: droppable(),
+    );
   }
 
   final ButtonMappingCommit commitButtonMapping;

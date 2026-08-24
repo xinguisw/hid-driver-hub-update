@@ -44,14 +44,14 @@ enum Status { connecting, verified, rejected, error }
 /// Per-device orchestrator: open -> handshake -> verify against the catalog.
 ///
 class DeviceSession implements DeviceSettingsGateway {
-  /// Max transport open attempts per [start] (total tries).
-  static const int maxOpenAttempts = 1;
+  /// Max transport open attempts per [start] (1 initial + 1 retry).
+  static const int maxOpenAttempts = 2;
 
   /// Delay between failed open attempts.
   static const Duration openRetryDelay = Duration(milliseconds: 120);
 
-  /// Max handshake (identity read) attempts per [start] (total tries).
-  static const int maxHandshakeAttempts = 1;
+  /// Max handshake (identity read) attempts per [start] (1 initial + 1 retry).
+  static const int maxHandshakeAttempts = 2;
 
   /// Delay between failed handshake attempts.
   static const Duration handshakeRetryDelay = Duration(milliseconds: 120);

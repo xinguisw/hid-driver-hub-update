@@ -41,7 +41,7 @@ Future<DeviceSettingsState> queryOnboardConfig(
     return state.copyWith(loading: false, error: 'no session');
   }
 
-  // --- L2 product matrix (show/hide + options); soft-fail if missing ---
+  // --- L2 product matrix (show/hide + options); fail if missing ---
   final caps = await _loadCapabilitiesForSession(session, card);
   final hasCaps = caps != null;
   if (hasCaps) {
@@ -52,7 +52,8 @@ Future<DeviceSettingsState> queryOnboardConfig(
       'sensorTuning=${state.hasSensorTuning} sleep=${state.hasSleepTime}',
     );
   } else {
-    debugPrint('[settings] caps $name: none — UI falls back to live GETs');
+    debugPrint('[settings] caps $name: missing capability blueprint — aborting settings load');
+    return state.copyWith(loading: false, error: 'missing capability blueprint');
   }
   // L2 action catalogs (Mouse / Keyboard / Special) — soft-fail per tab.
   state = await _packActionCatalogTab(state, name, 'mouse', (s, sections) {
@@ -185,7 +186,7 @@ Future<DeviceSettingsState> queryOnboardConfig(
     if (table != null) {
       // Decode C4 stages with the L2-owned shared USB wire profile.
       // Active mask (C2) selects which of the eight slots are shown.
-      final dpiCaps = caps?.dpi;
+      final dpiCaps = caps.dpi;
       final enc = dpiCaps?.wireProfile;
       if (dpiCaps == null || enc == null) {
         throw StateError(
@@ -247,7 +248,7 @@ Future<DeviceSettingsState> queryOnboardConfig(
       debugPrint(
         '[settings] config dpiTable $name: stages=${table.stages.length} '
         'active=${decodedLevels.length} '
-        'sensor=${caps?.sensor?.model ?? 'unknown'} '
+        'sensor=${caps.sensor?.model ?? 'unknown'} '
         'profile=${enc.key} enc=${enc.transform}/${enc.bytesPerAxis}b',
       );
     }

@@ -1341,8 +1341,26 @@ class DeviceSettingsBloc
 
     final next = {...?state.dpiValueStaging};
     next[event.level] = snapped;
+
+    final stagedLevels = state.dpiStageLevelsStaging?.map((stage) {
+      if (stage.level == event.level) {
+        return DpiStageData(
+          level: stage.level,
+          value: snapped,
+          y: stage.y,
+          color: stage.color,
+        );
+      }
+      return stage;
+    }).toList();
+
     emit(
-      state.copyWith(dpiValueStaging: next, isDirty: true, clearError: true),
+      state.copyWith(
+        dpiValueStaging: next,
+        dpiStageLevelsStaging: stagedLevels,
+        isDirty: true,
+        clearError: true,
+      ),
     );
 
     debugPrint('[bloc] DPI value staged: level=${event.level} value=$snapped');
@@ -1373,17 +1391,32 @@ class DeviceSettingsBloc
       return;
     }
 
+    final colorHex = event.color.toUpperCase();
     final next = {...?state.dpiRgbStaging};
-    next[event.level] = event.color.toUpperCase();
+    next[event.level] = colorHex;
+
+    final stagedLevels = state.dpiStageLevelsStaging?.map((stage) {
+      if (stage.level == event.level) {
+        return DpiStageData(
+          level: stage.level,
+          value: stage.value,
+          y: stage.y,
+          color: colorHex,
+        );
+      }
+      return stage;
+    }).toList();
+
     emit(
       state.copyWith(
         dpiRgbStaging: next,
+        dpiStageLevelsStaging: stagedLevels,
         isDirty: true,
         clearError: true,
       ),
     );
     debugPrint(
-      '[bloc] DPI RGB color staged: level=${event.level} color=${event.color}',
+      '[bloc] DPI RGB color staged: level=${event.level} color=$colorHex',
     );
   }
 
@@ -1474,13 +1507,22 @@ class DeviceSettingsBloc
     // else the synced levels; the count comes from that same base.
     final staged = state.dpiStageLevelsStaging;
     final baseLevels = staged ?? synced.dpiLevels;
-    final currentCount = baseLevels?.length ?? 0;
+    final resolvedBase = [
+      for (final l in baseLevels ?? <DpiStageData>[])
+        DpiStageData(
+          level: l.level,
+          value: state.dpiValueStaging?[l.level] ?? l.value,
+          y: l.y,
+          color: state.dpiRgbStaging?[l.level] ?? l.color,
+        ),
+    ];
+    final currentCount = resolvedBase.length;
     final maxLevels = synced.dpiMaxLevels ?? 8;
     if (currentCount >= maxLevels) {
       emit(state.copyWith(lastError: 'cannot add: max DPI stages reached'));
       return;
     }
-    final levels = [...?baseLevels];
+    final levels = [...resolvedBase];
     final newLevel = currentCount + 1;
     final defaultDpi = _defaultDpiValue(synced) ?? 1600;
     // why: the new stage's color comes from the catalog's level-default
@@ -1515,24 +1557,31 @@ class DeviceSettingsBloc
     // multiple stages before Save.
     final staged = state.dpiStageLevelsStaging;
     final baseLevels = staged ?? synced.dpiLevels;
-    final activeCount = baseLevels?.length ?? 0;
+    final resolvedBase = [
+      for (final l in baseLevels ?? <DpiStageData>[])
+        DpiStageData(
+          level: l.level,
+          value: state.dpiValueStaging?[l.level] ?? l.value,
+          y: l.y,
+          color: state.dpiRgbStaging?[l.level] ?? l.color,
+        ),
+    ];
+    final activeCount = resolvedBase.length;
     if (activeCount <= 1) {
       emit(state.copyWith(lastError: 'cannot remove: at least one stage'));
       return;
     }
     // Remove the selected level; shift later stages toward slot 1.
-    final levels = [...?baseLevels];
-    final removed = levels.where((l) => l.level != event.level).toList();
-    final reindexed = <DpiStageData>[];
-    for (var i = 0; i < removed.length; i++) {
-      reindexed.add(
+    final remaining = resolvedBase.where((l) => l.level != event.level).toList();
+    final reindexed = <DpiStageData>[
+      for (var i = 0; i < remaining.length; i++)
         DpiStageData(
           level: i + 1,
-          value: removed[i].value,
-          color: removed[i].color,
+          value: remaining[i].value,
+          y: remaining[i].y,
+          color: remaining[i].color,
         ),
-      );
-    }
+    ];
     final currentLevel = state.dpiCurrentLevelStaging ?? synced.dpiActiveIndex ?? 1;
     int nextLevel;
     if (currentLevel == event.level) {
@@ -1542,10 +1591,42 @@ class DeviceSettingsBloc
     } else {
       nextLevel = currentLevel.clamp(1, reindexed.length);
     }
+
+    // Re-key dpiRgbStaging and dpiValueStaging so slot indexing stays in sync
+    Map<int, String>? nextRgbStaging;
+    if (state.dpiRgbStaging != null) {
+      nextRgbStaging = {};
+      for (final entry in state.dpiRgbStaging!.entries) {
+        if (entry.key < event.level) {
+          nextRgbStaging[entry.key] = entry.value;
+        } else if (entry.key > event.level) {
+          nextRgbStaging[entry.key - 1] = entry.value;
+        }
+      }
+      if (nextRgbStaging.isEmpty) nextRgbStaging = null;
+    }
+
+    Map<int, int>? nextValueStaging;
+    if (state.dpiValueStaging != null) {
+      nextValueStaging = {};
+      for (final entry in state.dpiValueStaging!.entries) {
+        if (entry.key < event.level) {
+          nextValueStaging[entry.key] = entry.value;
+        } else if (entry.key > event.level) {
+          nextValueStaging[entry.key - 1] = entry.value;
+        }
+      }
+      if (nextValueStaging.isEmpty) nextValueStaging = null;
+    }
+
     emit(
       state.copyWith(
         dpiStageRemoveLevelStaging: event.level,
         dpiStageLevelsStaging: reindexed,
+        dpiRgbStaging: nextRgbStaging,
+        dpiValueStaging: nextValueStaging,
+        clearDpiRgbStaging: nextRgbStaging == null,
+        clearDpiValueStaging: nextValueStaging == null,
         dpiCurrentLevelStaging: nextLevel,
         isDirty: true,
         clearError: true,

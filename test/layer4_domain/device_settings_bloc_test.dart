@@ -1256,6 +1256,82 @@ void main() {
       expect(bloc.state.synced?.dpiActiveLevelCount, 5);
       await bloc.close();
     });
+
+    test(
+      'removing level 1 shifts staged RGB colors to the remaining slots 1..4',
+      () async {
+        final caps = resetCapabilities(
+          devId: '02AA',
+          defaultReportRate: 500,
+          reportRateOptions: const [500, 250, 125],
+          rgbPerStage: true,
+        );
+        final bloc = DeviceSettingsBloc(
+          commitButtonMapping: (_) async {},
+          commitReportRate: (_) async {},
+          commitDpiLevel: (_) async {},
+          commitDpiValues: (_) async {},
+          commitDpiStages: (_, _) async {},
+          commitSensorTuning: (_, _) async {},
+          commitAngleTune: (_) async {},
+          commitLod: (_) async {},
+          commitPerformance: (_) async {},
+          commitDebounce: (_) async {},
+          commitSleep: (_) async {},
+          commitWheelInvert: (_) async {},
+          commitRgbBacklight: (_) async {},
+          capabilities: caps,
+        );
+        bloc.add(
+          DeviceSettingsHydrated(
+            baseSettings().copyWith(
+              dpiActiveLevelCount: 5,
+              dpiActiveIndex: 1,
+              dpiMaxLevels: 8,
+              dpiLevels: const [
+                DpiStageData(level: 1, value: 800, color: '#FFFFFF'),
+                DpiStageData(level: 2, value: 1600, color: '#FFFFFF'),
+                DpiStageData(level: 3, value: 2400, color: '#FFFFFF'),
+                DpiStageData(level: 4, value: 3200, color: '#FFFFFF'),
+                DpiStageData(level: 5, value: 5000, color: '#FFFFFF'),
+              ],
+            ),
+          ),
+        );
+        await pumpEventQueue();
+
+        // User sets custom colors for levels 1..5:
+        // 1=Green, 2=Red, 3=Blue, 4=Cyan, 5=Yellow
+        bloc.add(const DeviceSettingsDpiColorRequested(level: 1, color: '#00FF00'));
+        bloc.add(const DeviceSettingsDpiColorRequested(level: 2, color: '#FF0000'));
+        bloc.add(const DeviceSettingsDpiColorRequested(level: 3, color: '#0000FF'));
+        bloc.add(const DeviceSettingsDpiColorRequested(level: 4, color: '#00FFFF'));
+        bloc.add(const DeviceSettingsDpiColorRequested(level: 5, color: '#FFFF00'));
+        await pumpEventQueue();
+
+        // User deletes Level 1 (Green)
+        bloc.add(const DeviceSettingsDpiStageRemoveRequested(level: 1));
+        await pumpEventQueue();
+
+        final stages = bloc.state.dpiStageLevelsStaging;
+        expect(stages, hasLength(4));
+        expect(stages![0].level, 1);
+        expect(stages[0].color, '#FF0000'); // Red
+        expect(stages[1].level, 2);
+        expect(stages[1].color, '#0000FF'); // Blue
+        expect(stages[2].level, 3);
+        expect(stages[2].color, '#00FFFF'); // Cyan
+        expect(stages[3].level, 4);
+        expect(stages[3].color, '#FFFF00'); // Yellow
+
+        final rgbStaging = bloc.state.dpiRgbStaging;
+        expect(rgbStaging?[1], '#FF0000');
+        expect(rgbStaging?[2], '#0000FF');
+        expect(rgbStaging?[3], '#00FFFF');
+        expect(rgbStaging?[4], '#FFFF00');
+        await bloc.close();
+      },
+    );
   });
 
   group('DeviceSettingsBloc decode-error guard', () {

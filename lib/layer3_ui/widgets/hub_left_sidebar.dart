@@ -86,7 +86,9 @@ class _HubLeftSidebarState extends State<HubLeftSidebar> {
                       ),
                       child: Material(
                         color: selected
-                            ? theme.colorScheme.onSurface.withValues(alpha: 0.08)
+                            ? theme.colorScheme.onSurface.withValues(
+                                alpha: 0.08,
+                              )
                             : Colors.transparent,
                         borderRadius: BorderRadius.circular(8),
                         clipBehavior: Clip.antiAlias,
@@ -155,27 +157,30 @@ class _HubLeftSidebarState extends State<HubLeftSidebar> {
 
   /// Animated device header transition
   Widget _deviceHeader(ThemeData theme) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: widget.onDeviceTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
-        child: AnimatedCrossFade(
-          duration: _animationDuration,
-          firstCurve: _animationCurve,
-          secondCurve: _animationCurve,
-          crossFadeState: _extended
-              ? CrossFadeState.showFirst
-              : CrossFadeState.showSecond,
-          firstChild: _expandedHeaderContent(theme),
-          secondChild: _collapsedHeaderContent(theme),
+    return Tooltip(
+      message: 'Back',
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: widget.onDeviceTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+            child: AnimatedCrossFade(
+              duration: _animationDuration,
+              firstCurve: _animationCurve,
+              secondCurve: _animationCurve,
+              crossFadeState: _extended
+                  ? CrossFadeState.showFirst
+                  : CrossFadeState.showSecond,
+              firstChild: _expandedHeaderContent(theme),
+              secondChild: _collapsedHeaderContent(theme),
+            ),
+          ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   /// Expanded Header View
   Widget _expandedHeaderContent(ThemeData theme) {
@@ -206,15 +211,7 @@ class _HubLeftSidebarState extends State<HubLeftSidebar> {
                 color: theme.colorScheme.onSurfaceVariant,
               ),
               const SizedBox(width: 4),
-              SizedBox(
-                width: 90,
-                child: Text(
-                  _batteryLabel,
-                  style: subStyle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
+              Text(_batteryLabel, style: subStyle),
             ],
           ),
         ),
@@ -261,12 +258,9 @@ class _HubLeftSidebarState extends State<HubLeftSidebar> {
   String get _batteryLabel {
     final pct = widget.card.batteryPercentage;
     if (pct < 0) {
-      return t.sidebar.batteryEmpty;
+      return '—';
     }
-    if (widget.card.isCharging) {
-      return t.sidebar.batteryCharging(pct: pct.toString());
-    }
-    return t.sidebar.batteryLabel(pct: pct.toString());
+    return '$pct%';
   }
 
   /// Maps battery state to the corresponding Material icon.
@@ -328,7 +322,9 @@ class _HubLeftSidebarState extends State<HubLeftSidebar> {
               softWrap: false,
               style: TextStyle(
                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                color: isSelected ? theme.colorScheme.onSurface : theme.colorScheme.onSurfaceVariant,
+                color: isSelected
+                    ? theme.colorScheme.onSurface
+                    : theme.colorScheme.onSurfaceVariant,
               ),
             ),
           ),

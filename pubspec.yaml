@@ -123,6 +123,18 @@ flutter:
     # Note: a directory entry bundles only its direct files (no recursion), so keep flat.
     - assets/images/
 
+  fonts:
+    - family: Poppins
+      fonts:
+        - asset: assets/fonts/Poppins-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Poppins-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Poppins-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Poppins-Bold.ttf
+          weight: 700
+
 
 dependency_overrides:
   dart_style: 2.3.6

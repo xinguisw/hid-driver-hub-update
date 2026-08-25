@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 abstract class AppTheme {
   // Brand accent colors
@@ -20,10 +19,23 @@ abstract class AppTheme {
   static const Color _darkTextPrimary = Color(0xFFF3F4F6);
   static const Color _darkTextSecondary = Color(0xFF9CA3AF);
 
+  // Font Fallbacks for CJK / Multi-language support
+  static const List<String> fontFallbacks = [
+    'Microsoft YaHei',
+    'PingFang SC',
+    'SimHei',
+    'Source Han Sans SC',
+    'Noto Sans CJK SC',
+    'Noto Sans SC',
+    'sans-serif',
+  ];
+
   /// Light Theme
   static ThemeData get lightTheme {
     final baseTheme = ThemeData(
       useMaterial3: true,
+      fontFamily: 'Poppins',
+      fontFamilyFallback: fontFallbacks,
       brightness: Brightness.light,
       colorScheme: const ColorScheme.light(
         primary: brandPrimary,
@@ -63,6 +75,8 @@ abstract class AppTheme {
   static ThemeData get darkTheme {
     final baseTheme = ThemeData(
       useMaterial3: true,
+      fontFamily: 'Poppins',
+      fontFamilyFallback: fontFallbacks,
       brightness: Brightness.dark,
       colorScheme: const ColorScheme.dark(
         primary: brandPrimary,
@@ -98,9 +112,12 @@ abstract class AppTheme {
     );
   }
 
-  /// Applies Poppins font with proper typographic hierarchy weights
+  /// Applies Poppins font with proper typographic hierarchy weights and CJK fallbacks
   static TextTheme _applyPoppinsHierarchy(TextTheme baseTheme) {
-    final poppinsTheme = GoogleFonts.poppinsTextTheme(baseTheme);
+    final poppinsTheme = baseTheme.apply(
+      fontFamily: 'Poppins',
+      fontFamilyFallback: fontFallbacks,
+    );
     return poppinsTheme.copyWith(
       // Headers get bold weights for strong contrast
       headlineLarge: poppinsTheme.headlineLarge?.copyWith(

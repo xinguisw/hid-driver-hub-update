@@ -1,8 +1,9 @@
+import 'dart:math' as math;
 import 'package:driver_hub/layer4_domain/models/device_settings_state.dart';
+import 'package:driver_hub/layer3_ui/theme/app_theme.dart';
 import 'package:driver_hub/i18n/strings.g.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 /// Backlight Setting page — RGB backlight controls.
 ///
@@ -169,7 +170,9 @@ class _CardBox extends StatelessWidget {
         ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.28)
         : theme.colorScheme.surfaceContainerLowest;
 
-    final borderColor = (isDark ? Colors.white : Colors.black).withValues(alpha: 0.45);
+    final borderColor = (isDark ? Colors.white : Colors.black).withValues(
+      alpha: 0.45,
+    );
 
     return Container(
       padding: padding,
@@ -242,10 +245,9 @@ class _ModeBox extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final isWide = constraints.maxWidth > 500;
+          final isWide = constraints.maxWidth >= 640;
 
           final titleSection = Row(
-            mainAxisSize: MainAxisSize.min,
             children: [
               Container(
                 padding: const EdgeInsets.all(6),
@@ -302,8 +304,7 @@ class _ModeBox extends StatelessWidget {
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black
-                      .withValues(alpha: isDark ? 0.25 : 0.05),
+                  color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
                   blurRadius: 4,
                   offset: const Offset(0, 1.5),
                 ),
@@ -321,8 +322,7 @@ class _ModeBox extends StatelessWidget {
                 ),
                 menuMaxHeight: 240,
                 borderRadius: BorderRadius.circular(10),
-                dropdownColor:
-                    isDark ? const Color(0xFF26282E) : Colors.white,
+                dropdownColor: isDark ? const Color(0xFF26282E) : Colors.white,
                 elevation: 4,
                 icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 20),
                 items: [
@@ -347,7 +347,11 @@ class _ModeBox extends StatelessWidget {
 
           if (isWide) {
             return Row(
-              children: [titleSection, const Spacer(), dropdownWidget],
+              children: [
+                Expanded(child: titleSection),
+                const SizedBox(width: 16),
+                dropdownWidget,
+              ],
             );
           } else {
             return Column(
@@ -506,114 +510,151 @@ class _ColorBoxState extends State<_ColorBox> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.primary.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Icon(
-                  Icons.color_lens_outlined,
-                  size: 16,
-                  color: theme.colorScheme.primary,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isWide = constraints.maxWidth >= 640;
+              final titleSection = Row(
                 children: [
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        t.backlight.color,
-                        style: theme.textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 13,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      // Live Color Swatch preview
-                      Container(
-                        width: 20,
-                        height: 20,
-                        decoration: BoxDecoration(
-                          color: color,
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: theme.colorScheme.outline.withValues(
-                              alpha: 0.4,
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Icon(
+                      Icons.color_lens_outlined,
+                      size: 16,
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              t.backlight.color,
+                              style: theme.textTheme.titleSmall?.copyWith(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13,
+                              ),
                             ),
-                            width: 1.5,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: color.withValues(alpha: 0.35),
-                              blurRadius: 4,
+                            const SizedBox(width: 10),
+                            // Live Color Swatch preview
+                            Container(
+                              width: 20,
+                              height: 20,
+                              decoration: BoxDecoration(
+                                color: color,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: theme.colorScheme.outline.withValues(
+                                    alpha: 0.4,
+                                  ),
+                                  width: 1.5,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: color.withValues(alpha: 0.35),
+                                    blurRadius: 4,
+                                  ),
+                                ],
+                              ),
                             ),
                           ],
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    widget.enabled
-                        ? t.backlight.colorDescEnabled
-                        : t.backlight.colorDescDisabled,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant.withValues(
-                        alpha: 0.75,
-                      ),
-                      fontSize: 11,
+                        const SizedBox(height: 2),
+                        Text(
+                          widget.enabled
+                              ? t.backlight.colorDescEnabled
+                              : t.backlight.colorDescDisabled,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant
+                                .withValues(alpha: 0.75),
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
-              ),
-              const Spacer(),
-              Text(
-                'Color code',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: theme.colorScheme.onSurfaceVariant.withValues(
-                    alpha: 0.8,
+              );
+
+              final hexFieldWidget = Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Flexible(
+                    child: Text(
+                      'Color code',
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: theme.colorScheme.onSurfaceVariant.withValues(
+                          alpha: 0.8,
+                        ),
+                      ),
+                    ),
                   ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              SizedBox(
-                width: 90,
-                height: 32,
-                child: TextField(
-                  controller: _hexController,
-                  enabled: widget.enabled,
-                  inputFormatters: [
-                    LengthLimitingTextInputFormatter(6),
-                    FilteringTextInputFormatter.allow(RegExp(r'[0-9a-fA-F]')),
+                  const SizedBox(width: 8),
+                  SizedBox(
+                    width: 84,
+                    height: 32,
+                    child: TextField(
+                      controller: _hexController,
+                      enabled: widget.enabled,
+                      inputFormatters: [
+                        LengthLimitingTextInputFormatter(6),
+                        FilteringTextInputFormatter.allow(
+                          RegExp(r'[0-9a-fA-F]'),
+                        ),
+                      ],
+                      decoration: InputDecoration(
+                        isDense: true,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        prefixText: '#',
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 6,
+                        ),
+                      ),
+                      style: const TextStyle(
+                        fontFamily: 'Poppins',
+                        fontFamilyFallback: AppTheme.fontFallbacks,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      onChanged: _onHexChanged,
+                      onSubmitted: _onHexChanged,
+                    ),
+                  ),
+                ],
+              );
+
+              if (isWide) {
+                return Row(
+                  children: [
+                    Expanded(child: titleSection),
+                    const SizedBox(width: 16),
+                    hexFieldWidget,
                   ],
-                  decoration: InputDecoration(
-                    isDense: true,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    prefixText: '#',
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 6,
-                    ),
-                  ),
-                  style: GoogleFonts.firaCode(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  onChanged: _onHexChanged,
-                  onSubmitted: _onHexChanged,
-                ),
-              ),
-            ],
+                );
+              } else {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    titleSection,
+                    const SizedBox(height: 10),
+                    hexFieldWidget,
+                  ],
+                );
+              }
+            },
           ),
           const SizedBox(height: 12),
 
@@ -647,7 +688,7 @@ class _ColorBoxState extends State<_ColorBox> {
           // Proportional Saturation / Value Gradient Picker (Bounded Width & Centered)
           LayoutBuilder(
             builder: (context, constraints) {
-              final w = constraints.maxWidth.clamp(280.0, 480.0);
+              final w = math.min(constraints.maxWidth, 480.0);
               const h = 160.0;
               return Align(
                 alignment: Alignment.center,
@@ -701,13 +742,13 @@ class _ColorBoxState extends State<_ColorBox> {
                                 ),
                               ),
                               Positioned(
-                                left: (_hsv.saturation * w - 8).clamp(
-                                  0.0,
-                                  w - 16,
-                                ),
+                                left: (w > 16
+                                        ? (_hsv.saturation * w - 8)
+                                        : 0.0)
+                                    .clamp(0.0, math.max(0.0, w - 16)),
                                 top: ((1 - _hsv.value) * h - 8).clamp(
                                   0.0,
-                                  h - 16,
+                                  math.max(0.0, h - 16),
                                 ),
                                 child: Container(
                                   width: 16,
@@ -772,10 +813,10 @@ class _ColorBoxState extends State<_ColorBox> {
                             ),
                             // Thumb Indicator (Not Clipped)
                             Positioned(
-                              left: (_hsv.hue / 360 * (w - 20)).clamp(
-                                0.0,
-                                w - 20,
-                              ),
+                              left: (w > 20
+                                      ? (_hsv.hue / 360 * (w - 20))
+                                      : 0.0)
+                                  .clamp(0.0, math.max(0.0, w - 20)),
                               child: Container(
                                 width: 20,
                                 height: 20,
@@ -919,10 +960,9 @@ class _LevelBox extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final isWide = constraints.maxWidth > 580;
+          final isWide = constraints.maxWidth >= 640;
 
           final titleWidget = Row(
-            mainAxisSize: MainAxisSize.min,
             children: [
               if (icon != null) ...[
                 Container(
@@ -1004,7 +1044,7 @@ class _SelectablePill extends StatelessWidget {
   const _SelectablePill({
     required this.label,
     required this.selected,
-    required this.onTap,
+    this.onTap,
   });
 
   final String label;
@@ -1035,8 +1075,8 @@ class _SelectablePill extends StatelessWidget {
               color: selected
                   ? theme.colorScheme.primary
                   : (isDark
-                      ? const Color(0xFF3F424B)
-                      : const Color(0xFFD0D5DD)),
+                        ? const Color(0xFF3F424B)
+                        : const Color(0xFFD0D5DD)),
               width: 1.0,
             ),
             boxShadow: selected
@@ -1059,14 +1099,15 @@ class _SelectablePill extends StatelessWidget {
           ),
           child: Text(
             label,
+            overflow: TextOverflow.ellipsis,
             style: TextStyle(
               fontSize: 12,
               fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
               color: selected
                   ? Colors.white
                   : (isDark
-                      ? const Color(0xFFE0E3EB)
-                      : const Color(0xFF344054)),
+                        ? const Color(0xFFE0E3EB)
+                        : const Color(0xFF344054)),
             ),
           ),
         ),

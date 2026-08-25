@@ -225,33 +225,33 @@ class _DpiSettingsGroup extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Levels row with modern chips and add stage trigger on the far right
-          Wrap(
-            alignment: WrapAlignment.spaceBetween,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: 12,
-            runSpacing: 10,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Wrap(
-                crossAxisAlignment: WrapCrossAlignment.center,
-                spacing: 8,
-                runSpacing: 6,
-                children: [
-                  Text(
-                    t.performance.levels,
-                    style: theme.textTheme.labelLarge?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: theme.colorScheme.onSurfaceVariant,
+              Expanded(
+                child: Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 8,
+                  runSpacing: 6,
+                  children: [
+                    Text(
+                      t.performance.levels,
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 4),
-                  for (final stage in stages)
-                    _LevelChip(
-                      index: stage.level,
-                      isSelected: stage.level == selectedLevel,
-                      onTap: () => onLevelSelected(stage.level),
-                    ),
-                ],
+                    const SizedBox(width: 4),
+                    for (final stage in stages)
+                      _LevelChip(
+                        index: stage.level,
+                        isSelected: stage.level == selectedLevel,
+                        onTap: () => onLevelSelected(stage.level),
+                      ),
+                  ],
+                ),
               ),
+              const SizedBox(width: 12),
               Builder(
                 builder: (context) {
                   final canAdd = stages.length < maxLevels;
@@ -294,6 +294,15 @@ class _DpiSettingsGroup extends StatelessWidget {
                             Icon(
                               Icons.add_rounded,
                               size: 14,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Add',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: canAdd
+                                    ? FontWeight.w700
+                                    : FontWeight.w600,
                               color: canAdd
                                   ? theme.colorScheme.onSurface
                                   : theme.colorScheme.onSurfaceVariant.withValues(
@@ -327,7 +336,7 @@ class _DpiSettingsGroup extends StatelessWidget {
           // DPI slider cards
           LayoutBuilder(
             builder: (context, constraints) {
-              final crossAxisCount = constraints.maxWidth > 580 ? 2 : 1;
+              final crossAxisCount = constraints.maxWidth >= 640 ? 2 : 1;
               return GridView(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
@@ -543,63 +552,68 @@ class _DpiSliderRowState extends State<_DpiSliderRow> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  if (widget.rgbPerStage) ...[
-                    _DpiColorButton(
-                      color: _colorFromHex(widget.stage.color),
-                      onColorChanged: (color) {
-                        widget.onColorChanged?.call((
-                          level: widget.stage.level,
-                          color: color,
-                        ));
-                      },
-                    ),
-                    const SizedBox(width: 8),
-                  ],
-                  Expanded(
-                    child: Text(
-                      t.performance.dpiLevel(level: widget.stage.level),
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.labelMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 12,
-                        color: widget.isSelected
-                            ? theme.colorScheme.primary
-                            : null,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  _DpiStepperInput(
-                    value: widget.stagedValue,
-                    min: widget.min,
-                    max: widget.max,
-                    step: widget.step,
-                    onChanged: widget.onValueChanged,
-                  ),
-                  if (widget.onRemoveStage != null) ...[
-                    const SizedBox(width: 6),
-                    Tooltip(
-                      message: t.performance.deleteStage(
-                        level: widget.stage.level,
-                      ),
-                      child: InkWell(
-                        onTap: widget.onRemoveStage,
-                        borderRadius: BorderRadius.circular(4),
-                        child: Padding(
-                          padding: const EdgeInsets.all(3),
-                          child: Icon(
-                            Icons.close_rounded,
-                            size: 14,
-                            color: theme.colorScheme.onSurfaceVariant
-                                .withValues(alpha: 0.7),
+              LayoutBuilder(
+                builder: (context, rowConstraints) {
+                  return Row(
+                    children: [
+                      if (widget.rgbPerStage) ...[
+                        _DpiColorButton(
+                          color: _colorFromHex(widget.stage.color),
+                          onColorChanged: (color) {
+                            widget.onColorChanged?.call((
+                              level: widget.stage.level,
+                              color: color,
+                            ));
+                          },
+                        ),
+                        const SizedBox(width: 6),
+                      ],
+                      Expanded(
+                        child: Text(
+                          t.performance.dpiLevel(level: widget.stage.level),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                          style: theme.textTheme.labelMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 12,
+                            color: widget.isSelected
+                                ? theme.colorScheme.primary
+                                : null,
                           ),
                         ),
                       ),
-                    ),
-                  ],
-                ],
+                      const SizedBox(width: 4),
+                      _DpiStepperInput(
+                        value: widget.stagedValue,
+                        min: widget.min,
+                        max: widget.max,
+                        step: widget.step,
+                        onChanged: widget.onValueChanged,
+                      ),
+                      if (widget.onRemoveStage != null) ...[
+                        const SizedBox(width: 4),
+                        Tooltip(
+                          message: t.performance.deleteStage(
+                            level: widget.stage.level,
+                          ),
+                          child: InkWell(
+                            onTap: widget.onRemoveStage,
+                            borderRadius: BorderRadius.circular(4),
+                            child: Padding(
+                              padding: const EdgeInsets.all(3),
+                              child: Icon(
+                                Icons.close_rounded,
+                                size: 14,
+                                color: theme.colorScheme.onSurfaceVariant
+                                    .withValues(alpha: 0.7),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  );
+                },
               ),
               const SizedBox(height: 2),
               SliderTheme(
@@ -1264,18 +1278,26 @@ class _PollingRateChip extends StatelessWidget {
                     ),
                   ],
           ),
-          child: Text(
-            '$hz Hz',
-            style: theme.textTheme.bodySmall?.copyWith(
-              fontSize: 13,
-              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-              color: isSelected
-                  ? Colors.white
-                  : (isDark
-                        ? const Color(0xFFE0E3EB)
-                        : const Color(0xFF344054)),
-              letterSpacing: 0.1,
-            ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Flexible(
+                child: Text(
+                  '$hz Hz',
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    fontSize: 13,
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                    color: isSelected
+                        ? Colors.white
+                        : (isDark
+                              ? const Color(0xFFE0E3EB)
+                              : const Color(0xFF344054)),
+                    letterSpacing: 0.1,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -1391,7 +1413,7 @@ class _DpiStepperInputState extends State<_DpiStepperInput> {
         mainAxisSize: MainAxisSize.min,
         children: [
           SizedBox(
-            width: 54,
+            width: 48,
             child: TextField(
               controller: _controller,
               focusNode: _focusNode,
@@ -1419,7 +1441,7 @@ class _DpiStepperInputState extends State<_DpiStepperInput> {
             color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
           ),
           SizedBox(
-            width: 22,
+            width: 18,
             child: Column(
               children: [
                 Expanded(

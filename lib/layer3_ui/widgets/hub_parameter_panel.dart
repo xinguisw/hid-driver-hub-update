@@ -190,11 +190,13 @@ class _SectionHeader extends StatelessWidget {
               ),
               const SizedBox(width: 10),
             ],
-            Text(
-              title,
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.2,
+            Expanded(
+              child: Text(
+                title,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.2,
+                ),
               ),
             ),
           ],
@@ -235,7 +237,6 @@ class _FieldTitle extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Row(
-          mainAxisSize: MainAxisSize.min,
           children: [
             if (icon != null) ...[
               Container(
@@ -248,7 +249,7 @@ class _FieldTitle extends StatelessWidget {
               ),
               const SizedBox(width: 10),
             ],
-            Flexible(
+            Expanded(
               child: Text(
                 title,
                 style: theme.textTheme.titleSmall?.copyWith(
@@ -385,50 +386,104 @@ class _SensorFeatureGroup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final topCards = <Widget>[
+      if (hasSensorTuning)
+        _SensorTuningBox(
+          rippleOn: rippleOn,
+          angleSnapOn: angleSnapOn,
+          onRippleChanged: onRippleChanged,
+          onAngleSnapChanged: onAngleSnapChanged,
+        ),
+      if (hasLod)
+        _LodBox(
+          options: lodOptions,
+          lodMm: lodMm,
+          onLodChanged: onLodChanged,
+        ),
+      if (hasAngleTune)
+        _AngleTuneBox(
+          angleTuneOn: angleTuneOn,
+          angleTuneLabel: angleTuneLabel,
+          onAngleTuneToggled: onAngleTuneToggled,
+          onAngleTuneDecrement: onAngleTuneDecrement,
+          onAngleTuneIncrement: onAngleTuneIncrement,
+        ),
+    ];
+
     return _GroupContainer(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // L2 gate: absent on this device -> row keeps LOD + angle tune.
-              if (hasSensorTuning) ...[
-                Expanded(
-                  child: _SensorTuningBox(
-                    rippleOn: rippleOn,
-                    angleSnapOn: angleSnapOn,
-                    onRippleChanged: onRippleChanged,
-                    onAngleSnapChanged: onAngleSnapChanged,
-                  ),
-                ),
-                const SizedBox(width: 14),
-              ],
-              if (hasLod) ...[
-                Expanded(
-                  child: _LodBox(
-                    options: lodOptions,
-                    lodMm: lodMm,
-                    onLodChanged: onLodChanged,
-                  ),
-                ),
-                const SizedBox(width: 14),
-              ],
-              if (hasAngleTune) ...[
-                Expanded(
-                  child: _AngleTuneBox(
-                    angleTuneOn: angleTuneOn,
-                    angleTuneLabel: angleTuneLabel,
-                    onAngleTuneToggled: onAngleTuneToggled,
-                    onAngleTuneDecrement: onAngleTuneDecrement,
-                    onAngleTuneIncrement: onAngleTuneIncrement,
-                  ),
-                ),
-              ],
-            ],
-          ),
+          if (topCards.isNotEmpty)
+            LayoutBuilder(
+              builder: (context, constraints) {
+                if (topCards.length == 3) {
+                  if (constraints.maxWidth >= 960) {
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(child: topCards[0]),
+                        const SizedBox(width: 14),
+                        Expanded(child: topCards[1]),
+                        const SizedBox(width: 14),
+                        Expanded(child: topCards[2]),
+                      ],
+                    );
+                  } else if (constraints.maxWidth >= 640) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(child: topCards[0]),
+                            const SizedBox(width: 14),
+                            Expanded(child: topCards[1]),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+                        topCards[2],
+                      ],
+                    );
+                  } else {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        topCards[0],
+                        const SizedBox(height: 14),
+                        topCards[1],
+                        const SizedBox(height: 14),
+                        topCards[2],
+                      ],
+                    );
+                  }
+                } else if (topCards.length == 2) {
+                  if (constraints.maxWidth >= 640) {
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(child: topCards[0]),
+                        const SizedBox(width: 14),
+                        Expanded(child: topCards[1]),
+                      ],
+                    );
+                  } else {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        topCards[0],
+                        const SizedBox(height: 14),
+                        topCards[1],
+                      ],
+                    );
+                  }
+                } else {
+                  return topCards.first;
+                }
+              },
+            ),
           if (hasPerformance) ...[
-            const SizedBox(height: 14),
+            if (topCards.isNotEmpty) const SizedBox(height: 14),
             _PerformanceRow(
               options: performanceOptions,
               performance: performance,
@@ -604,16 +659,22 @@ class _AngleTuneBox extends StatelessWidget {
                   tooltip: t.parameter.decreaseAngle,
                   onTap: angleTuneOn ? onAngleTuneDecrement : null,
                 ),
-                AnimatedDefaultTextStyle(
-                  duration: const Duration(milliseconds: 150),
-                  style: theme.textTheme.titleMedium!.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: angleTuneOn
-                        ? theme.colorScheme.primary
-                        : theme.colorScheme.onSurfaceVariant,
-                    fontSize: 16,
+                Flexible(
+                  child: AnimatedDefaultTextStyle(
+                    duration: const Duration(milliseconds: 150),
+                    style: theme.textTheme.titleMedium!.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: angleTuneOn
+                          ? theme.colorScheme.primary
+                          : theme.colorScheme.onSurfaceVariant,
+                      fontSize: 16,
+                    ),
+                    child: Text(
+                      angleTuneLabel,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                    ),
                   ),
-                  child: Text(angleTuneLabel),
                 ),
                 _StepperButton(
                   icon: Icons.add,
@@ -794,50 +855,89 @@ class _OtherFeatureGroup extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (hasButtonDebounce) ...[
-                Expanded(
-                  flex: 3,
-                  child: _OptionsBox(
-                    title: t.parameter.debounce,
-                    description: t.parameter.debounceDesc,
-                    icon: Icons.timer_outlined,
-                    options: buttonDebounceOptions,
-                    selectedWire: debounceMs,
-                    onSelected: onDebounceChanged,
-                  ),
-                ),
-                const SizedBox(width: 14),
-              ],
-              if (hasWheelInvert) ...[
-                Expanded(
-                  flex: 2,
-                  child: _WheelBox(
-                    invert: wheelInvert ?? false,
-                    onInvertChanged: onWheelInvertChanged,
-                  ),
-                ),
-              ],
-            ],
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isWide = constraints.maxWidth >= 640;
+              final hasBoth = hasButtonDebounce && hasWheelInvert;
+
+              if (hasBoth) {
+                if (isWide) {
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        flex: 3,
+                        child: _OptionsBox(
+                          title: t.parameter.debounce,
+                          description: t.parameter.debounceDesc,
+                          icon: Icons.timer_outlined,
+                          options: buttonDebounceOptions,
+                          selectedWire: debounceMs,
+                          onSelected: onDebounceChanged,
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        flex: 2,
+                        child: _WheelBox(
+                          invert: wheelInvert ?? false,
+                          onInvertChanged: onWheelInvertChanged,
+                        ),
+                      ),
+                    ],
+                  );
+                } else {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _OptionsBox(
+                        title: t.parameter.debounce,
+                        description: t.parameter.debounceDesc,
+                        icon: Icons.timer_outlined,
+                        options: buttonDebounceOptions,
+                        selectedWire: debounceMs,
+                        onSelected: onDebounceChanged,
+                      ),
+                      const SizedBox(height: 14),
+                      _WheelBox(
+                        invert: wheelInvert ?? false,
+                        onInvertChanged: onWheelInvertChanged,
+                      ),
+                    ],
+                  );
+                }
+              }
+
+              if (hasButtonDebounce) {
+                return _OptionsBox(
+                  title: t.parameter.debounce,
+                  description: t.parameter.debounceDesc,
+                  icon: Icons.timer_outlined,
+                  options: buttonDebounceOptions,
+                  selectedWire: debounceMs,
+                  onSelected: onDebounceChanged,
+                );
+              }
+
+              if (hasWheelInvert) {
+                return _WheelBox(
+                  invert: wheelInvert ?? false,
+                  onInvertChanged: onWheelInvertChanged,
+                );
+              }
+
+              return const SizedBox.shrink();
+            },
           ),
           if (hasSleepTime) ...[
-            const SizedBox(height: 14),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: _OptionsBox(
-                    title: t.parameter.sleepTimer,
-                    description: t.parameter.sleepTimerDesc,
-                    icon: Icons.bedtime_outlined,
-                    options: sleepTimeOptions,
-                    selectedWire: sleepSeconds,
-                    onSelected: onSleepChanged,
-                  ),
-                ),
-              ],
+            if (hasButtonDebounce || hasWheelInvert) const SizedBox(height: 14),
+            _OptionsBox(
+              title: t.parameter.sleepTimer,
+              description: t.parameter.sleepTimerDesc,
+              icon: Icons.bedtime_outlined,
+              options: sleepTimeOptions,
+              selectedWire: sleepSeconds,
+              onSelected: onSleepChanged,
             ),
           ],
         ],
@@ -1028,17 +1128,20 @@ class _SelectableChip extends StatelessWidget {
                 ),
                 const SizedBox(width: 6),
               ],
-              Text(
-                label,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  fontSize: 13,
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                  color: selected
-                      ? Colors.white
-                      : (isDark
-                            ? const Color(0xFFE0E3EB)
-                            : const Color(0xFF344054)),
-                  letterSpacing: 0.1,
+              Flexible(
+                child: Text(
+                  label,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    fontSize: 13,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                    color: selected
+                        ? Colors.white
+                        : (isDark
+                              ? const Color(0xFFE0E3EB)
+                              : const Color(0xFF344054)),
+                    letterSpacing: 0.1,
+                  ),
                 ),
               ),
             ],

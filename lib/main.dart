@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:ui' as ui;
 import 'package:driver_hub/desktop_shell/window_bootstrap_stub.dart'
     if (dart.library.io) 'package:driver_hub/desktop_shell/window_bootstrap.dart'
     as window_bootstrap;
@@ -19,6 +20,9 @@ import 'package:window_manager/window_manager.dart';
 
 Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Configure lifecycle channel buffer to allow overflow and prevent discarded message warnings on Web startup
+  ui.channelBuffers.allowOverflow('flutter/lifecycle', true);
 
   // Silence all debugPrint logs when running in release mode
   if (kReleaseMode) {

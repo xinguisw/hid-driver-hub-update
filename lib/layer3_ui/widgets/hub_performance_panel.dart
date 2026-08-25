@@ -136,11 +136,14 @@ class _SectionHeader extends StatelessWidget {
               child: Icon(icon, size: 16, color: theme.colorScheme.primary),
             ),
             const SizedBox(width: 10),
-            Text(
-              title,
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.2,
+            Expanded(
+              child: Text(
+                title,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.2,
+                ),
               ),
             ),
           ],
@@ -223,32 +226,33 @@ class _DpiSettingsGroup extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Levels row with modern chips and add stage trigger on the far right
-          Row(
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 12,
+            runSpacing: 10,
             children: [
-              Text(
-                'Levels',
-                style: theme.textTheme.labelLarge?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
+              Wrap(
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 8,
+                runSpacing: 6,
+                children: [
+                  Text(
+                    'Levels',
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  for (final stage in stages)
+                    _LevelChip(
+                      index: stage.level,
+                      isSelected: stage.level == selectedLevel,
+                      onTap: () => onLevelSelected(stage.level),
+                    ),
+                ],
               ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    for (final stage in stages)
-                      _LevelChip(
-                        index: stage.level,
-                        isSelected: stage.level == selectedLevel,
-                        onTap: () => onLevelSelected(stage.level),
-                      ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
               Builder(
                 builder: (context) {
                   final canAdd = stages.length < maxLevels;
@@ -551,17 +555,20 @@ class _DpiSliderRowState extends State<_DpiSliderRow> {
                     ),
                     const SizedBox(width: 8),
                   ],
-                  Text(
-                    'DPI ${widget.stage.level}',
-                    style: theme.textTheme.labelMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 12,
-                      color: widget.isSelected
-                          ? theme.colorScheme.primary
-                          : null,
+                  Expanded(
+                    child: Text(
+                      'DPI ${widget.stage.level}',
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 12,
+                        color: widget.isSelected
+                            ? theme.colorScheme.primary
+                            : null,
+                      ),
                     ),
                   ),
-                  const Spacer(),
+                  const SizedBox(width: 6),
                   _DpiStepperInput(
                     value: widget.stagedValue,
                     min: widget.min,

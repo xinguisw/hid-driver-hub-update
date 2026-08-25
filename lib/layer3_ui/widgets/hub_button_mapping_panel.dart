@@ -260,11 +260,9 @@ class _HubButtonMappingPanelState extends State<HubButtonMappingPanel> {
     return TapRegion(
       groupId: hubButtonMappingTapRegionId,
       onTapOutside: (_) => widget.onCollapse?.call(),
-      child: SizedBox(
-        width: HubButtonMappingPanel.width,
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
             Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -410,8 +408,7 @@ class _HubButtonMappingPanelState extends State<HubButtonMappingPanel> {
               ),
           ],
         ),
-      ),
-    );
+      );
   }
 }
 

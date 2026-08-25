@@ -1159,17 +1159,19 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
                             ),
                           ),
                           const SizedBox(width: 16),
-                          SizedBox(
-                            width: 120,
-                            child: TextField(
-                              controller: _loopController,
-                              enabled: draft.mode == MacroMode.loop,
-                              keyboardType: TextInputType.number,
-                              inputFormatters: [
-                                FilteringTextInputFormatter.digitsOnly,
-                              ],
-                              decoration: const InputDecoration(
-                                labelText: 'Loop count',
+                          Flexible(
+                            child: SizedBox(
+                              width: 120,
+                              child: TextField(
+                                controller: _loopController,
+                                enabled: draft.mode == MacroMode.loop,
+                                keyboardType: TextInputType.number,
+                                inputFormatters: [
+                                  FilteringTextInputFormatter.digitsOnly,
+                                ],
+                                decoration: const InputDecoration(
+                                  labelText: 'Loop count',
+                                ),
                               ),
                             ),
                           ),
@@ -1747,7 +1749,7 @@ class _EmptyMacroState extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Center(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -1794,7 +1796,7 @@ class _MacroSelectionEmptyState extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Center(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -1882,8 +1884,8 @@ class _MacroRow extends StatelessWidget {
       child: Row(
         children: [
           // Key / Action Label on Left (width 130 ensures Wheel Down fits on one line)
-          SizedBox(
-            width: 130,
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 130),
             child: Text(
               action.label ?? '0x${action.keyCode.toRadixString(16)}',
               maxLines: 1,

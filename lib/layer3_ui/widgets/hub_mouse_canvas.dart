@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:driver_hub/layer4_domain/models/device_settings_state.dart';
 import 'package:driver_hub/i18n/strings.g.dart';
 import 'package:flutter/material.dart';
@@ -74,9 +75,12 @@ class _HubMouseCanvasState extends State<HubMouseCanvas> {
 
         // why: fixed band so mouse never jumps; Save/Cancel hide when clean (ref)
         const actionBand = 88.0;
-        final drawH = (paneH - actionBand).clamp(1.0, paneH);
+        final drawH = ((paneH - actionBand).clamp(1.0, paneH)).toDouble();
         // Ensure side margins (left & right) preserve at least 115px each so text boxes & stem lines fit cleanly
-        final maxAllowedW = (paneW - 230.0).clamp(120.0, paneW * 0.5);
+        final maxAllowedW = ((paneW - 230.0).clamp(
+          120.0,
+          math.max(120.0, paneW * 0.5),
+        )).toDouble();
         final imgMaxW = maxAllowedW;
         final imgMaxH = drawH * 0.55;
 
@@ -106,85 +110,130 @@ class _HubMouseCanvasState extends State<HubMouseCanvas> {
           paneSize,
         );
 
-        return TapRegion(
-          groupId: hubButtonMappingTapRegionId,
-          child: Column(
-            children: [
-              // -----------------------------------------------------------------
-              // 1. MOUSE CANVAS AREA
-              // -----------------------------------------------------------------
-              Expanded(
-                child: MouseRegion(
-                  cursor: _hoveredButtonId != null
-                      ? SystemMouseCursors.click
-                      : SystemMouseCursors.basic,
-                  onHover: (event) {
-                    final id = _hitButtonId(targets, event.localPosition);
-                    if (id != _hoveredButtonId) {
-                      setState(() => _hoveredButtonId = id);
-                    }
-                  },
-                  onExit: (_) {
-                    if (_hoveredButtonId != null) {
-                      setState(() => _hoveredButtonId = null);
-                    }
-                  },
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTapUp: (details) {
-                      final id = _hitButtonId(targets, details.localPosition);
-                      if (id != null) {
-                        widget.onButtonSelected?.call(id);
-                      } else {
-                        widget.onBackgroundTap?.call();
-                      }
-                    },
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        Positioned.fromRect(
-                          rect: imageRect,
-                          child: Image.asset(
-                            widget.imageLarge,
-                            fit: BoxFit.fill,
-                            errorBuilder: (_, _, _) => Image.asset(
-                              'assets/images/m7xse/large.png',
-                              fit: BoxFit.fill,
-                              errorBuilder: (_, _, _) =>
-                                  Text(t.mouseCanvas.imageMissing),
-                            ),
-                          ),
-                        ),
-                        CustomPaint(
-                          size: paneSize,
-                          painter: _HotspotPainter(
-                            targets: targets,
-                            selectedButtonId: widget.selectedButtonId,
-                            hoveredButtonId: _hoveredButtonId,
-                            isDark: isDark,
-                            theme: theme,
-                          ),
-                        ),
-                      ],
+        final canvasWidget = MouseRegion(
+          cursor: _hoveredButtonId != null
+              ? SystemMouseCursors.click
+              : SystemMouseCursors.basic,
+          onHover: (event) {
+            final id = _hitButtonId(targets, event.localPosition);
+            if (id != _hoveredButtonId) {
+              setState(() => _hoveredButtonId = id);
+            }
+          },
+          onExit: (_) {
+            if (_hoveredButtonId != null) {
+              setState(() => _hoveredButtonId = null);
+            }
+          },
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTapUp: (details) {
+              final id = _hitButtonId(targets, details.localPosition);
+              if (id != null) {
+                widget.onButtonSelected?.call(id);
+              } else {
+                widget.onBackgroundTap?.call();
+              }
+            },
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                Positioned.fromRect(
+                  rect: imageRect,
+                  child: Image.asset(
+                    widget.imageLarge,
+                    fit: BoxFit.fill,
+                    errorBuilder: (_, _, _) => Image.asset(
+                      'assets/images/m7xse/large.png',
+                      fit: BoxFit.fill,
+                      errorBuilder: (_, _, _) =>
+                          Text(t.mouseCanvas.imageMissing),
                     ),
                   ),
                 ),
-              ),
+                CustomPaint(
+                  size: paneSize,
+                  painter: _HotspotPainter(
+                    targets: targets,
+                    selectedButtonId: widget.selectedButtonId,
+                    hoveredButtonId: _hoveredButtonId,
+                    isDark: isDark,
+                    theme: theme,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
 
-              // -----------------------------------------------------------------
-              // 2. BOTTOM ACTIONS BAR
-              // -----------------------------------------------------------------
-              Padding(
-                padding: const EdgeInsets.only(bottom: 24, top: 12),
-                child: Column(
+        final bottomActions = Padding(
+          padding: EdgeInsets.only(
+            bottom: paneH < 320 ? 8 : 24,
+            top: paneH < 320 ? 4 : 12,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              OutlinedButton(
+                onPressed: widget.onResetToDefault,
+                style: OutlinedButton.styleFrom(
+                  backgroundColor: (theme.brightness == Brightness.dark
+                      ? const Color(0xFF26282E)
+                      : Colors.white),
+                  foregroundColor: theme.colorScheme.onSurface,
+                  minimumSize: const Size(80, 42),
+                  side: BorderSide(
+                    color: (theme.brightness == Brightness.dark
+                        ? const Color(0xFF3F424B)
+                        : const Color(0xFFD0D5DD)),
+                    width: 1.0,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                    vertical: 12,
+                  ),
+                  elevation: 1.5,
+                  shadowColor: Colors.black.withValues(
+                    alpha: theme.brightness == Brightness.dark ? 0.25 : 0.05,
+                  ),
+                ),
+                child: Text(t.common.resetToDefault),
+              ),
+              if (widget.isDirty) ...[
+                const SizedBox(height: 12),
+                Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    FilledButton(
+                      onPressed: widget.onSave,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: theme.colorScheme.primary,
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size(80, 42),
+                        elevation: 3,
+                        shadowColor: theme.colorScheme.primary
+                            .withValues(alpha: 0.35),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 18,
+                          vertical: 12,
+                        ),
+                      ),
+                      child: Text(t.common.save),
+                    ),
+                    const SizedBox(width: 12),
                     OutlinedButton(
-                      onPressed: widget.onResetToDefault,
+                      onPressed: widget.onCancel,
                       style: OutlinedButton.styleFrom(
-                        backgroundColor: (theme.brightness == Brightness.dark
-                            ? const Color(0xFF26282E)
-                            : Colors.white),
+                        backgroundColor:
+                            (theme.brightness == Brightness.dark
+                                ? const Color(0xFF26282E)
+                                : Colors.white),
                         foregroundColor: theme.colorScheme.onSurface,
                         minimumSize: const Size(80, 42),
                         side: BorderSide(
@@ -202,75 +251,45 @@ class _HubMouseCanvasState extends State<HubMouseCanvas> {
                         ),
                         elevation: 1.5,
                         shadowColor: Colors.black.withValues(
-                          alpha: theme.brightness == Brightness.dark ? 0.25 : 0.05,
+                          alpha:
+                              theme.brightness == Brightness.dark ? 0.25 : 0.05,
                         ),
                       ),
-                      child: Text(t.common.resetToDefault),
+                      child: Text(t.common.cancel),
                     ),
-                    if (widget.isDirty) ...[
-                      const SizedBox(height: 12),
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          FilledButton(
-                            onPressed: widget.onSave,
-                            style: FilledButton.styleFrom(
-                              backgroundColor: theme.colorScheme.primary,
-                              foregroundColor: Colors.white,
-                              minimumSize: const Size(80, 42),
-                              elevation: 3,
-                              shadowColor: theme.colorScheme.primary
-                                  .withValues(alpha: 0.35),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 18,
-                                vertical: 12,
-                              ),
-                            ),
-                            child: Text(t.common.save),
-                          ),
-                          const SizedBox(width: 12),
-                          OutlinedButton(
-                            onPressed: widget.onCancel,
-                            style: OutlinedButton.styleFrom(
-                              backgroundColor:
-                                  (theme.brightness == Brightness.dark
-                                      ? const Color(0xFF26282E)
-                                      : Colors.white),
-                              foregroundColor: theme.colorScheme.onSurface,
-                              minimumSize: const Size(80, 42),
-                              side: BorderSide(
-                                color: (theme.brightness == Brightness.dark
-                                    ? const Color(0xFF3F424B)
-                                    : const Color(0xFFD0D5DD)),
-                                width: 1.0,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 18,
-                                vertical: 12,
-                              ),
-                              elevation: 1.5,
-                              shadowColor: Colors.black.withValues(
-                                alpha: theme.brightness == Brightness.dark
-                                    ? 0.25
-                                    : 0.05,
-                              ),
-                            ),
-                            child: Text(t.common.cancel),
-                          ),
-                        ],
-                      ),
-                    ],
                   ],
                 ),
-              ),
+              ],
             ],
           ),
+        );
+
+        Widget content;
+        if (paneH < 220) {
+          content = SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  height: math.max(100.0, drawH),
+                  child: canvasWidget,
+                ),
+                bottomActions,
+              ],
+            ),
+          );
+        } else {
+          content = Column(
+            children: [
+              Expanded(child: canvasWidget),
+              bottomActions,
+            ],
+          );
+        }
+
+        return TapRegion(
+          groupId: hubButtonMappingTapRegionId,
+          child: content,
         );
       },
     );

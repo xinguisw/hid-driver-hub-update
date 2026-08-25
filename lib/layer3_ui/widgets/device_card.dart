@@ -55,8 +55,10 @@ class _DeviceCardState extends State<DeviceCard> {
       onExit: (_) => setState(() => _isHovered = false),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
-        width: cardWidth,
-        height: cardHeight,
+        constraints: BoxConstraints(
+          maxWidth: cardWidth,
+          maxHeight: cardHeight,
+        ),
         decoration: BoxDecoration(
           color: theme.cardColor,
           borderRadius: BorderRadius.circular(20),

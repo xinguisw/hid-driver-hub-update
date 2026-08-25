@@ -88,21 +88,49 @@ class _DevicesScreenState extends State<DevicesScreen> {
       body: ValueListenableBuilder<List<DiscoveredCardState>>(
         valueListenable: _scope.cards,
         builder: (context, cards, _) {
-          return Column(
-            children: [
-              Expanded(
-                child: cards.isEmpty
-                    ? ValueListenableBuilder<bool>(
-                        valueListenable: _scope.busy,
-                        builder: (context, busy, _) => EmptyDeviceState(
-                          busy: busy,
-                          onAddDevice: _scope.addDevice,
-                        ),
-                      )
-                    : DeviceCardGrid(cards: cards, onCardTap: _openHubLanding),
-              ),
-              if (kIsWeb && cards.isNotEmpty) _addDeviceBar,
-            ],
+          return LayoutBuilder(
+            builder: (context, constraints) {
+              if (constraints.maxHeight < 200) {
+                return SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      cards.isEmpty
+                          ? ValueListenableBuilder<bool>(
+                              valueListenable: _scope.busy,
+                              builder: (context, busy, _) => EmptyDeviceState(
+                                busy: busy,
+                                onAddDevice: _scope.addDevice,
+                              ),
+                            )
+                          : DeviceCardGrid(
+                              cards: cards,
+                              onCardTap: _openHubLanding,
+                            ),
+                      if (kIsWeb && cards.isNotEmpty) _addDeviceBar,
+                    ],
+                  ),
+                );
+              }
+              return Column(
+                children: [
+                  Expanded(
+                    child: cards.isEmpty
+                        ? ValueListenableBuilder<bool>(
+                            valueListenable: _scope.busy,
+                            builder: (context, busy, _) => EmptyDeviceState(
+                              busy: busy,
+                              onAddDevice: _scope.addDevice,
+                            ),
+                          )
+                        : DeviceCardGrid(
+                            cards: cards,
+                            onCardTap: _openHubLanding,
+                          ),
+                  ),
+                  if (kIsWeb && cards.isNotEmpty) _addDeviceBar,
+                ],
+              );
+            },
           );
         },
       ),
@@ -172,7 +200,7 @@ class _DevicesScreenState extends State<DevicesScreen> {
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: theme.colorScheme.onSurfaceVariant,
-                  fontSize: 13,
+                  fontSize: 14,
                   fontWeight: FontWeight.w400,
                   height: 1.4,
                 ),

@@ -478,122 +478,118 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                                   );
                                 }).toList()
                               : baseStages;
-                          return Column(
-                            children: [
-                              Expanded(
-                                child: HubPerformancePanel(
-                                  // why: staged add/remove level list paints the
-                                  // rearranged containers live before Save.
-                                  dpiStages: resolvedStages,
-                                  dpiRgbPerStage:
-                                      display?.dpiRgbPerStage ?? false,
-                                  onDpiColorChanged: (change) {
-                                    bloc.add(
-                                      DeviceSettingsDpiColorRequested(
-                                        level: change.level,
-                                        color: _dpiColorHex(change.color),
-                                      ),
-                                    );
-                                  },
-                                  // why: highlight the user's UI selection; fall
-                                  // back to the device's active level initially.
-                                  dpiCurrentLevel:
-                                      view.dpiCurrentLevelStaging ??
-                                      _selectedDpiLevel ??
-                                      display?.dpiActiveIndex,
-                                  dpiCurrentLevelStaging:
-                                      view.dpiCurrentLevelStaging,
-                                  onDpiLevelSelected: (level) {
-                                    setState(() => _selectedDpiLevel = level);
-                                    bloc.add(
-                                      DeviceSettingsDpiLevelRequested(
-                                        level: level,
-                                      ),
-                                    );
-                                  },
-                                  dpiMin: display?.dpiMin,
-                                  dpiMax: display?.dpiMax,
-                                  dpiStep: display?.dpiStep,
-                                  dpiValueStaging: view.dpiValueStaging,
-                                  onDpiValueChanged: (pair) {
-                                    bloc.add(
-                                      DeviceSettingsDpiValueRequested(
-                                        level: pair.level,
-                                        value: pair.value,
-                                      ),
-                                    );
-                                  },
-                                  dpiActiveLevelCount:
-                                      display?.dpiActiveLevelCount,
-                                  dpiMaxLevels: display?.dpiMaxLevels,
-                                  onDpiStageAdd: () {
-                                    bloc.add(
-                                      const DeviceSettingsDpiStageAddRequested(),
-                                    );
-                                  },
-                                  // why: `x` only removes the user's clicked
-                                  // level; disabled until a level is selected.
-                                  dpiRemoveEnabled: _selectedDpiLevel != null,
-                                  onDpiStageRemove: (level) {
-                                    setState(() => _selectedDpiLevel = 1);
-                                    bloc.add(
-                                      DeviceSettingsDpiStageRemoveRequested(
-                                        level: level,
-                                      ),
-                                    );
-                                  },
-                                  reportRateOptions: display?.reportRateOptions,
-                                  reportRateHz: display?.reportRateHz,
-                                  reportRateStaging: view.reportRateStaging,
-                                  onReportRateChanged: (hz) {
-                                    bloc.add(
-                                      DeviceSettingsReportRateRequested(hz: hz),
-                                    );
-                                  },
-                                ),
-                              ),
-                              _PerformanceActionBar(
-                                isDirty: view.isDirty,
-                                committing: view.committing,
-                                onReset: () {
-                                  debugPrint(
-                                    '[hub] ${widget.card.displayName}: '
-                                    'dispatch reset DPI configuration',
-                                  );
-                                  setState(() => _selectedDpiLevel = null);
+                          return _buildScrollablePanel(
+                            panel: HubPerformancePanel(
+                              // why: staged add/remove level list paints the
+                              // rearranged containers live before Save.
+                              dpiStages: resolvedStages,
+                              dpiRgbPerStage:
+                                  display?.dpiRgbPerStage ?? false,
+                              onDpiColorChanged: (change) {
+                                bloc.add(
+                                  DeviceSettingsDpiColorRequested(
+                                    level: change.level,
+                                    color: _dpiColorHex(change.color),
+                                  ),
+                                );
+                              },
+                              // why: highlight the user's UI selection; fall
+                              // back to the device's active level initially.
+                              dpiCurrentLevel:
+                                  view.dpiCurrentLevelStaging ??
+                                  _selectedDpiLevel ??
+                                  display?.dpiActiveIndex,
+                              dpiCurrentLevelStaging:
+                                  view.dpiCurrentLevelStaging,
+                              onDpiLevelSelected: (level) {
+                                setState(() => _selectedDpiLevel = level);
+                                bloc.add(
+                                  DeviceSettingsDpiLevelRequested(
+                                    level: level,
+                                  ),
+                                );
+                              },
+                              dpiMin: display?.dpiMin,
+                              dpiMax: display?.dpiMax,
+                              dpiStep: display?.dpiStep,
+                              dpiValueStaging: view.dpiValueStaging,
+                              onDpiValueChanged: (pair) {
+                                bloc.add(
+                                  DeviceSettingsDpiValueRequested(
+                                    level: pair.level,
+                                    value: pair.value,
+                                  ),
+                                );
+                              },
+                              dpiActiveLevelCount:
+                                  display?.dpiActiveLevelCount,
+                              dpiMaxLevels: display?.dpiMaxLevels,
+                              onDpiStageAdd: () {
+                                bloc.add(
+                                  const DeviceSettingsDpiStageAddRequested(),
+                                );
+                              },
+                              // why: `x` only removes the user's clicked
+                              // level; disabled until a level is selected.
+                              dpiRemoveEnabled: _selectedDpiLevel != null,
+                              onDpiStageRemove: (level) {
+                                setState(() => _selectedDpiLevel = 1);
+                                bloc.add(
+                                  DeviceSettingsDpiStageRemoveRequested(
+                                    level: level,
+                                  ),
+                                );
+                              },
+                              reportRateOptions: display?.reportRateOptions,
+                              reportRateHz: display?.reportRateHz,
+                              reportRateStaging: view.reportRateStaging,
+                              onReportRateChanged: (hz) {
+                                bloc.add(
+                                  DeviceSettingsReportRateRequested(hz: hz),
+                                );
+                              },
+                            ),
+                            actionBar: _PerformanceActionBar(
+                              isDirty: view.isDirty,
+                              committing: view.committing,
+                              onReset: () {
+                                debugPrint(
+                                  '[hub] ${widget.card.displayName}: '
+                                  'dispatch reset DPI configuration',
+                                );
+                                setState(() => _selectedDpiLevel = null);
+                                bloc.add(
+                                  const DeviceSettingsResetDpiConfigurationRequested(),
+                                );
+                              },
+                              onSave: () {
+                                final hasDpiValueStaging =
+                                    view.dpiValueStaging != null &&
+                                    view.dpiValueStaging!.isNotEmpty;
+                                final hasDpiRgbStaging =
+                                    view.dpiRgbStaging != null &&
+                                    view.dpiRgbStaging!.isNotEmpty;
+                                final hasDpiStageStaging =
+                                    view.dpiStageAddStaging ||
+                                    view.dpiStageRemoveLevelStaging != null;
+                                if (view.reportRateStaging != null ||
+                                    view.dpiCurrentLevelStaging != null ||
+                                    hasDpiValueStaging ||
+                                    hasDpiRgbStaging ||
+                                    hasDpiStageStaging ||
+                                    view.dpiStageLevelsStaging != null) {
                                   bloc.add(
-                                    const DeviceSettingsResetDpiConfigurationRequested(),
+                                    const DeviceSettingsSaveDpiConfigurationRequested(),
                                   );
-                                },
-                                onSave: () {
-                                  final hasDpiValueStaging =
-                                      view.dpiValueStaging != null &&
-                                      view.dpiValueStaging!.isNotEmpty;
-                                  final hasDpiRgbStaging =
-                                      view.dpiRgbStaging != null &&
-                                      view.dpiRgbStaging!.isNotEmpty;
-                                  final hasDpiStageStaging =
-                                      view.dpiStageAddStaging ||
-                                      view.dpiStageRemoveLevelStaging != null;
-                                  if (view.reportRateStaging != null ||
-                                      view.dpiCurrentLevelStaging != null ||
-                                      hasDpiValueStaging ||
-                                      hasDpiRgbStaging ||
-                                      hasDpiStageStaging ||
-                                      view.dpiStageLevelsStaging != null) {
-                                    bloc.add(
-                                      const DeviceSettingsSaveDpiConfigurationRequested(),
-                                    );
-                                  }
-                                },
-                                onCancel: () {
-                                  setState(() => _selectedDpiLevel = null);
-                                  bloc.add(
-                                    const DeviceSettingsCancelRequested(),
-                                  );
-                                },
-                              ),
-                            ],
+                                }
+                              },
+                              onCancel: () {
+                                setState(() => _selectedDpiLevel = null);
+                                bloc.add(
+                                  const DeviceSettingsCancelRequested(),
+                                );
+                              },
+                            ),
                           );
                         },
                       ),
@@ -621,10 +617,8 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                         builder: (context, view) {
                           final synced = view.synced;
                           final bloc = context.read<DeviceSettingsBloc>();
-                          return Column(
-                            children: [
-                              Expanded(
-                                child: HubParameterPanel(
+                          return _buildScrollablePanel(
+                            panel: HubParameterPanel(
                                   hasSensorTuning:
                                       synced?.hasSensorTuning ?? false,
                                   hasLod: synced?.hasLod ?? false,
@@ -778,8 +772,7 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                                     }
                                   },
                                 ),
-                              ),
-                              _ParameterActionBar(
+                            actionBar: _ParameterActionBar(
                                 isDirty: view.isDirty,
                                 committing: view.committing,
                                 onSave: () {
@@ -793,7 +786,6 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                                   );
                                 },
                               ),
-                            ],
                           );
                         },
                       ),
@@ -822,10 +814,8 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                           final sleepOpts = DeviceCapabilityStore.forDevice(
                             widget.card.devId,
                           )?.rgbBacklight?.sleepTimeOptions;
-                          return Column(
-                            children: [
-                              Expanded(
-                                child: HubBacklightPanel(
+                          return _buildScrollablePanel(
+                            panel: HubBacklightPanel(
                                   rgbModes: synced?.rgbModes,
                                   // why: dropdown shows the human label (L5-owned),
                                   // not the raw localization key.
@@ -874,8 +864,7 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                                     ),
                                   ),
                                 ),
-                              ),
-                              _BacklightActionBar(
+                              actionBar: _BacklightActionBar(
                                 isDirty: view.isDirty,
                                 committing: view.committing,
                                 onSave: () {
@@ -889,7 +878,6 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                                   );
                                 },
                               ),
-                            ],
                           );
                         },
                       ),
@@ -1157,6 +1145,33 @@ class _ParameterActionBar extends StatelessWidget {
 
 /// Bottom-right action bar for Backlight Setting.
 ///
+Widget _buildScrollablePanel({
+  required Widget panel,
+  required Widget actionBar,
+}) {
+  return LayoutBuilder(
+    builder: (context, constraints) {
+      if (constraints.maxHeight < 220) {
+        return SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              panel,
+              actionBar,
+            ],
+          ),
+        );
+      }
+      return Column(
+        children: [
+          Expanded(child: panel),
+          actionBar,
+        ],
+      );
+    },
+  );
+}
+
 /// Save/Cancel buttons docked right. No Reset — only Performance and Button
 /// Mapping offer reset-to-default for now.
 class _BacklightActionBar extends StatelessWidget {
@@ -1225,8 +1240,11 @@ class _BacklightActionBar extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
+      child: Wrap(
+        alignment: WrapAlignment.end,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 12,
+        runSpacing: 8,
         children: [
           saveCanClick
               ? FilledButton(
@@ -1239,7 +1257,6 @@ class _BacklightActionBar extends StatelessWidget {
                   style: primaryButtonStyle,
                   child: const Text('Save'),
                 ),
-          const SizedBox(width: 12),
           OutlinedButton(
             onPressed: committing ? null : onCancel,
             style: outlinedButtonStyle,
@@ -1322,15 +1339,17 @@ class _PerformanceActionBar extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
+      child: Wrap(
+        alignment: WrapAlignment.end,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 12,
+        runSpacing: 8,
         children: [
           OutlinedButton(
             onPressed: committing ? null : onReset,
             style: outlinedButtonStyle,
             child: const Text('Reset to Default'),
           ),
-          const SizedBox(width: 12),
           saveCanClick
               ? FilledButton(
                   onPressed: onSave,
@@ -1342,7 +1361,6 @@ class _PerformanceActionBar extends StatelessWidget {
                   style: primaryButtonStyle,
                   child: const Text('Save'),
                 ),
-          const SizedBox(width: 12),
           OutlinedButton(
             onPressed: committing ? null : onCancel,
             style: outlinedButtonStyle,

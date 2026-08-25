@@ -1,5 +1,6 @@
 import 'package:driver_hub/i18n/strings.g.dart';
 import 'package:driver_hub/layer4_domain/models/device_settings_state.dart';
+import 'package:driver_hub/layer5_codec/codecs/keyvalue_table.dart';
 
 /// Helper utility for localizing catalog section titles, action items,
 /// and dynamic button/action labels.
@@ -166,6 +167,8 @@ class CatalogLocalization {
         return t.actions.forward;
       case 'Backward Button':
       case 'Backward':
+      case 'Back Button':
+      case 'Back':
         return t.actions.backward;
       case 'DPI Cycle':
       case 'DPI cycle':
@@ -201,40 +204,59 @@ class CatalogLocalization {
       case 'Sniper':
         return t.actions.sniper;
       case 'Volume Up':
+      case 'Volume up':
         return t.actions.volumeUp;
       case 'Volume Down':
+      case 'Volume down':
         return t.actions.volumeDown;
       case 'Volume Mute':
+      case 'Volume mute':
         return t.actions.volumeMute;
       case 'Next Track':
+      case 'Next track':
         return t.actions.nextTrack;
       case 'Previous Track':
+      case 'Previous track':
         return t.actions.prevTrack;
       case 'Stop':
+      case 'stop':
         return t.actions.stop;
       case 'Play / Pause':
+      case 'Play / pause':
         return t.actions.playPause;
       case 'Web Search':
+      case 'Web search':
         return t.actions.webSearch;
       case 'Web Home':
+      case 'Web home':
         return t.actions.webHome;
       case 'Web Back':
+      case 'Web back':
         return t.actions.webBack;
       case 'Web Forward':
+      case 'Web forward':
         return t.actions.webForward;
       case 'Web Stop':
+      case 'Web stop':
         return t.actions.webStop;
       case 'Web Refresh':
+      case 'Web refresh':
         return t.actions.webRefresh;
       case 'Web Favourite':
+      case 'Web favourite':
+      case 'Web favourites':
         return t.actions.webFavourite;
       case 'Media Player':
+      case 'Media player':
         return t.actions.mediaPlayer;
       case 'Email':
+      case 'email':
         return t.actions.email;
       case 'Calculator':
+      case 'calculator':
         return t.actions.calculator;
       case 'My Computer':
+      case 'My computer':
         return t.actions.myComputer;
       case 'Left Alt':
         return t.actions.leftAlt;
@@ -362,51 +384,10 @@ class CatalogLocalization {
   }
 
   static String _modifierByteToLabel(int v) {
-    switch (v) {
-      case 0xE0:
-        return 'Left Ctrl';
-      case 0xE1:
-        return 'Left Shift';
-      case 0xE2:
-        return 'Left Alt';
-      case 0xE3:
-        return 'Left Win';
-      case 0xE4:
-        return 'Right Ctrl';
-      case 0xE5:
-        return 'Right Shift';
-      case 0xE6:
-        return 'Right Alt';
-      case 0xE7:
-        return 'Right Win';
-      default:
-        return 'Mod 0x${v.toRadixString(16)}';
-    }
+    return KeyvalueTable.labels[v] ?? 'Mod 0x${v.toRadixString(16)}';
   }
 
   static String _keyByteToLabel(int v) {
-    if (v >= 0x04 && v <= 0x1D) {
-      return String.fromCharCode(65 + (v - 0x04)); // A..Z
-    }
-    if (v >= 0x1E && v <= 0x26) {
-      return String.fromCharCode(49 + (v - 0x1E)); // 1..9
-    }
-    if (v == 0x27) return '0';
-    switch (v) {
-      case 0x28:
-        return 'Enter';
-      case 0x29:
-        return 'Esc';
-      case 0x2A:
-        return 'Backspace';
-      case 0x2B:
-        return 'Tab';
-      case 0x2C:
-        return 'Space';
-      case 0x39:
-        return 'Caps Lock';
-      default:
-        return 'Key 0x${v.toRadixString(16)}';
-    }
+    return KeyvalueTable.labels[v] ?? 'Key 0x${v.toRadixString(16)}';
   }
 }

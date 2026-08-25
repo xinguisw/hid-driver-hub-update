@@ -99,5 +99,42 @@ void main() {
       expect(CatalogLocalization.localizeButtonCallout(button, en), 'Left Win + V');
       expect(CatalogLocalization.localizeButtonCallout(button, zh), '左 Win + V');
     });
+
+    test('CatalogLocalization translates Consumer Web Home and Web Back callouts', () async {
+      const buttonHome = ButtonData(
+        id: 5,
+        labelKey: 'button.5',
+        remappable: true,
+        action: 0x13,
+        param1: 0xA4, // Web Home
+      );
+
+      const buttonBack = ButtonData(
+        id: 5,
+        labelKey: 'button.5',
+        remappable: true,
+        action: 0x13,
+        param1: 0xA5, // Web Back
+      );
+
+      const buttonBackward = ButtonData(
+        id: 5,
+        labelKey: 'button.backward',
+        remappable: true,
+        action: 0x06, // Backward Button
+      );
+
+      final en = await AppLocale.en.build();
+      final zh = await AppLocale.zh.build();
+
+      expect(CatalogLocalization.localizeButtonCallout(buttonHome, en), 'Web Home');
+      expect(CatalogLocalization.localizeButtonCallout(buttonHome, zh), '主页');
+
+      expect(CatalogLocalization.localizeButtonCallout(buttonBack, en), 'Web Back');
+      expect(CatalogLocalization.localizeButtonCallout(buttonBack, zh), '网页后退');
+
+      expect(CatalogLocalization.localizeButtonCallout(buttonBackward, en), 'Backward Button');
+      expect(CatalogLocalization.localizeButtonCallout(buttonBackward, zh), '后退');
+    });
   });
 }

@@ -94,8 +94,8 @@ class KeyvalueTable {
 
     // Consumer / Media
     0xA0: 'Web back', 0xA1: 'Web forward', 0xA2: 'Web refresh',
-    0xA3: 'Web search', 0xA4: 'Web home', 0xA5: 'Web stop',
-    0xA6: 'Web forward', 0xA7: 'Web back', 0xA8: 'Web stop',
+    0xA3: 'Web search', 0xA4: 'Web home', 0xA5: 'Web back',
+    0xA6: 'Web forward', 0xA7: 'Web stop', 0xA8: 'Web refresh',
     0xA9: 'Web favourites', 0xAA: 'Media player', 0xAB: 'Email',
     0xAC: 'Calculator', 0xAD: 'My computer', 0xAE: 'Next track',
     0xAF: 'Previous track', 0xB0: 'Stop', 0xB1: 'Play / pause',

@@ -119,20 +119,12 @@ class _HubMouseCanvasState extends State<HubMouseCanvas> {
           onHover: (event) {
             final id = _hitButtonId(targets, event.localPosition);
             if (id != _hoveredButtonId) {
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (mounted && id != _hoveredButtonId) {
-                  setState(() => _hoveredButtonId = id);
-                }
-              });
+              setState(() => _hoveredButtonId = id);
             }
           },
           onExit: (_) {
             if (_hoveredButtonId != null) {
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (mounted && _hoveredButtonId != null) {
-                  setState(() => _hoveredButtonId = null);
-                }
-              });
+              setState(() => _hoveredButtonId = null);
             }
           },
           child: GestureDetector(

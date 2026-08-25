@@ -1026,7 +1026,6 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
                                     ),
                                     color: theme.colorScheme.onSurfaceVariant
                                         .withValues(alpha: 0.6),
-.withValues(alpha: 0.6),
                                     tooltip: t.macro.deleteMacro,
                                     onPressed: _recording
                                         ? null

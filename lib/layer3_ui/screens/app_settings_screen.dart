@@ -32,6 +32,7 @@ class AppSettingsScreen extends StatelessWidget {
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppTopBar(
         showBackButton: true,
+        onSettingsPressed: () {},
         title: Row(
           children: [
             const SizedBox(width: 8),

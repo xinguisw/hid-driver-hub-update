@@ -108,12 +108,21 @@ class _DevicesScreenState extends State<DevicesScreen> {
     );
   }
 
+  bool _openingDevice = false;
+
   void _openHubLanding(DiscoveredCardState card) {
+    if (_openingDevice) return;
+    _openingDevice = true;
     Navigator.of(context).push(
       MaterialPageRoute<void>(
+        settings: RouteSettings(name: '/hub_landing/${card.devId}'),
         builder: (_) => HubLandingScreen(card: card, scope: _scope),
       ),
-    );
+    ).then((_) {
+      if (mounted) {
+        _openingDevice = false;
+      }
+    });
   }
 
   /// Always-visible on web so a second device can be added. Disabled while a

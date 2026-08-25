@@ -1056,7 +1056,7 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
                             controller: _nameController,
                             style: const TextStyle(
                               fontSize: 16,
-                              fontWeight: FontWeight.bold,
+                              fontWeight: FontWeight.w500,
                             ),
                             decoration: InputDecoration(
                               labelText: 'Macro Name',
@@ -1067,7 +1067,7 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
                                     .onSurfaceVariant
                                     .withValues(alpha: 0.5),
                                 fontSize: 16,
-                                fontWeight: FontWeight.bold,
+                                fontWeight: FontWeight.w500,
                               ),
                               isDense: true,
                             ),

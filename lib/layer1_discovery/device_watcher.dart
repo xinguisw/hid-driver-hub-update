@@ -42,6 +42,7 @@ class DeviceWatcher {
 
   final HidEvents _events;
   final _sessions = <String, DeviceSession>{}; // keyed by device path
+  final _inFlightOpens = <String, Completer<DeviceSession?>>{};
 
   /// Disconnect teardown is deferred by [_replugDebounce]. If the same path
   /// reconnects within the window, [_handleConnect] cancels the pending timer
@@ -103,67 +104,145 @@ class DeviceWatcher {
   DeviceSession? getSession(String path) => _sessions[path];
   bool hasSession(String path) => _sessions.containsKey(path);
 
+  bool hasSessionForVidPid(int vid, int pid) {
+    return _sessions.values.any(
+      (s) =>
+          s.isAlive &&
+          s.device.hidDevice.vendorId == vid &&
+          s.device.hidDevice.productId == pid,
+    );
+  }
+
+  bool isInFlight(String path, [int? vid, int? pid]) {
+    if (_inFlightOpens.containsKey(path)) return true;
+    if (kIsWeb && vid != null && pid != null) {
+      final prefix = 'web:$vid:$pid:';
+      return _inFlightOpens.keys.any((k) => k.startsWith(prefix));
+    }
+    return false;
+  }
+
+  Future<DeviceSession?> runWithInFlightLock(
+    String path,
+    int vid,
+    int pid,
+    Future<DeviceSession?> Function() action,
+  ) async {
+    final isAlreadyOpen = _sessions.containsKey(path) ||
+        (kIsWeb && hasSessionForVidPid(vid, pid));
+    if (isAlreadyOpen) {
+      final existing = getSession(path) ??
+          (kIsWeb
+              ? _sessions.values.firstWhere(
+                  (s) =>
+                      s.isAlive &&
+                      s.device.hidDevice.vendorId == vid &&
+                      s.device.hidDevice.productId == pid,
+                  orElse: () => _sessions.values.first,
+                )
+              : null);
+      if (existing != null && existing.isAlive) {
+        return existing;
+      }
+    }
+
+    if (isInFlight(path, vid, pid)) {
+      final completer = _inFlightOpens[path] ??
+          (kIsWeb
+              ? _inFlightOpens.entries
+                  .firstWhere(
+                    (e) => e.key.startsWith('web:$vid:$pid:'),
+                    orElse: () => MapEntry('', Completer<DeviceSession?>()),
+                  )
+                  .value
+              : null);
+      if (completer != null && !completer.isCompleted) {
+        return await completer.future;
+      }
+      return null;
+    }
+
+    final completer = Completer<DeviceSession?>();
+    _inFlightOpens[path] = completer;
+    try {
+      final session = await action();
+      if (!completer.isCompleted) {
+        completer.complete(session);
+      }
+      return session;
+    } catch (e) {
+      if (!completer.isCompleted) {
+        completer.complete(null);
+      }
+      rethrow;
+    } finally {
+      _inFlightOpens.remove(path);
+    }
+  }
+
   Future<void> _handleConnect(
     String path,
     int vid,
     int pid,
     DeviceSessionCallback onConnect,
   ) async {
-    if (_sessions.containsKey(path)) return; // already active
-    // Cancel any pending dispose for this path (rapid replug).
-    _pendingDisposes.remove(path)?.cancel();
-    final orphan = _pendingOrphans.remove(path);
-    if (orphan != null) {
-      await orphan.dispose();
-    }
+    await runWithInFlightLock(path, vid, pid, () async {
+      // Cancel any pending dispose for this path (rapid replug).
+      _pendingDisposes.remove(path)?.cancel();
+      final orphan = _pendingOrphans.remove(path);
+      if (orphan != null) {
+        await orphan.dispose();
+      }
 
-    if (kIsWeb) {
-      // Find and cancel any pending dispose by VID/PID on Web
-      final webOrphanKey = _pendingOrphans.keys.firstWhere(
-        (k) => k.startsWith('web:$vid:$pid:'),
-        orElse: () => '',
-      );
-      if (webOrphanKey.isNotEmpty) {
-        _pendingDisposes.remove(webOrphanKey)?.cancel();
-        final webOrphan = _pendingOrphans.remove(webOrphanKey);
-        if (webOrphan != null) {
-          await webOrphan.dispose();
+      if (kIsWeb) {
+        // Find and cancel any pending dispose by VID/PID on Web
+        final webOrphanKey = _pendingOrphans.keys.firstWhere(
+          (k) => k.startsWith('web:$vid:$pid:'),
+          orElse: () => '',
+        );
+        if (webOrphanKey.isNotEmpty) {
+          _pendingDisposes.remove(webOrphanKey)?.cancel();
+          final webOrphan = _pendingOrphans.remove(webOrphanKey);
+          if (webOrphan != null) {
+            await webOrphan.dispose();
+          }
+        }
+        // Give browser WebHID engine 200ms to settle USB descriptors after hot-plug
+        await Future<void>.delayed(const Duration(milliseconds: 200));
+      }
+
+      final discovered = await _scanner.discoverAuthorized();
+      DiscoveredDevice? match;
+      for (final d in discovered) {
+        // Match by exact path, or on Web match by VID/PID
+        final isWebMatch =
+            kIsWeb && d.hidDevice.vendorId == vid && d.hidDevice.productId == pid;
+        if (d.hidDevice.path == path || isWebMatch) {
+          match = d;
+          break;
         }
       }
-      // Give browser WebHID engine 200ms to settle USB descriptors after hot-plug
-      await Future<void>.delayed(const Duration(milliseconds: 200));
-    }
 
-    final discovered = await _scanner.discoverAuthorized();
-    DiscoveredDevice? match;
-    for (final d in discovered) {
-      // Match by exact path, or on Web match by VID/PID
-      final isWebMatch =
-          kIsWeb && d.hidDevice.vendorId == vid && d.hidDevice.productId == pid;
-      if (d.hidDevice.path == path || isWebMatch) {
-        match = d;
-        break;
+      if (match == null) return null;
+
+      final session = _sessionCtor(
+        device: match,
+        session: _sessionFactory(match),
+        protocol: _protocolFactory(),
+      );
+      // Register only after verify; rejected sessions are closed and discarded.
+      final verified = await session.start();
+      if (!verified) {
+        await session.dispose();
+        return null;
       }
-    }
-
-    if (match == null) return; // not a supported device
-
-    final session = _sessionCtor(
-      device: match,
-      session: _sessionFactory(match),
-      protocol: _protocolFactory(),
-    );
-    // Register only after verify; rejected sessions are closed and discarded.
-    final verified = await session.start();
-    if (!verified) {
-      await session.dispose();
-      return;
-    }
-    _sessions[match.hidDevice.path] = session;
-    if (path != match.hidDevice.path) {
-      _sessions[path] = session;
-    }
-    onConnect(session);
+      _sessions[match.hidDevice.path] = session;
+      if (path != match.hidDevice.path) {
+        _sessions[path] = session;
+      }
+      onConnect(session);
+      return session;
+    });
   }
 
   Future<void> _handleDisconnect(

@@ -103,7 +103,7 @@ class WebHidScanner implements HidScanner {
       // Catalog usagePage filter: require vendor usagePage (e.g. 0xFF02 / 65282).
       // This explicitly filters out Chrome's blocked mouse collection (usagePage 1)
       // and only accepts the vendor configuration collection (usagePage 0xFF02).
-      if (f.usagePage != null && usagePages.isNotEmpty) {
+      if (f.usagePage != null) {
         if (!usagePages.contains(f.usagePage)) continue;
       }
       return true;

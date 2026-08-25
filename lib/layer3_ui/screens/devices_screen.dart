@@ -52,7 +52,6 @@ class _DevicesScreenState extends State<DevicesScreen> {
       unawaited(batteryLowOsdSubscription.cancel());
     }
     _osd.dispose();
-    _scope.dispose();
     super.dispose();
   }
 

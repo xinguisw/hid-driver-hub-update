@@ -1,6 +1,7 @@
 // Web-only connect/disconnect events using flutter_webhid streams.
 //
 // Selected via the conditional import in hid_events.dart.
+import 'dart:async';
 import 'package:flutter_webhid/flutter_webhid.dart';
 
 import '../hid_event_handle.dart';
@@ -29,19 +30,53 @@ HidEventSubscription startWebHidListeners({
   }
 
   final webHid = WebHID.instance!;
+  final pendingConnectTimers = <String, Timer>{};
+  final pendingConnectDevices = <String, Device>{};
+
   final connectSub = webHid.onConnect.listen((event) {
     final dev = event.device;
-    final page = _primaryUsagePage(dev);
-    onConnect(_pathFor(dev.vendorId, dev.productId, page), dev.vendorId, dev.productId);
+    final key = '${dev.vendorId}:${dev.productId}';
+    final currentBest = pendingConnectDevices[key];
+
+    // Favor vendor collection (usagePage >= 0xFF00) over mouse/consumer collections
+    if (currentBest == null || _primaryUsagePage(dev) >= 0xFF00) {
+      pendingConnectDevices[key] = dev;
+    }
+
+    pendingConnectTimers[key]?.cancel();
+    pendingConnectTimers[key] = Timer(const Duration(milliseconds: 150), () {
+      pendingConnectTimers.remove(key);
+      final chosen = pendingConnectDevices.remove(key);
+      if (chosen != null) {
+        final page = _primaryUsagePage(chosen);
+        onConnect(
+          _pathFor(chosen.vendorId, chosen.productId, page),
+          chosen.vendorId,
+          chosen.productId,
+        );
+      }
+    });
   });
 
   final disconnectSub = webHid.onDisconnect.listen((event) {
     final dev = event.device;
+    final key = '${dev.vendorId}:${dev.productId}';
+    pendingConnectTimers.remove(key)?.cancel();
+    pendingConnectDevices.remove(key);
     final page = _primaryUsagePage(dev);
-    onDisconnect(_pathFor(dev.vendorId, dev.productId, page), dev.vendorId, dev.productId);
+    onDisconnect(
+      _pathFor(dev.vendorId, dev.productId, page),
+      dev.vendorId,
+      dev.productId,
+    );
   });
 
   return HidEventSubscription(() {
+    for (final timer in pendingConnectTimers.values) {
+      timer.cancel();
+    }
+    pendingConnectTimers.clear();
+    pendingConnectDevices.clear();
     connectSub.cancel();
     disconnectSub.cancel();
   });

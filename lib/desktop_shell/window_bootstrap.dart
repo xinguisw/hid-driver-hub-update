@@ -1,7 +1,5 @@
 import 'dart:io';
-import 'package:desktop_multi_window/desktop_multi_window.dart';
-import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 import 'package:tray_manager/tray_manager.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -12,39 +10,6 @@ const double kDesktopWindowHeight = 753;
 /// Minimum window dimensions to ensure layout usability while allowing resize.
 const double kMinDesktopWindowWidth = 1024;
 const double kMinDesktopWindowHeight = 614;
-
-const _osdWindowArgument = 'driver_hub.osd';
-
-WindowController? _osdController;
-
-bool isOsdWindow(List<String> args) {
-  return args.length >= 3 &&
-      args[0] == 'multi_window' &&
-      args[2] == _osdWindowArgument;
-}
-
-/// Registers the OSD handler after the child engine has reached its first frame.
-Future<bool> prepareOsdWindow({
-  required Future<dynamic> Function(MethodCall call) handler,
-  required List<String> args,
-}) async {
-  if (!isOsdWindow(args)) return false;
-
-  // why: the native callback registers child plugins after the child engine
-  // starts, so current-engine discovery is not safe during Dart startup.
-  final controller = WindowController.fromWindowId(args[1]);
-  _osdController = controller;
-  await controller.setWindowMethodHandler(handler);
-  return true;
-}
-
-Future<void> showOsdWindow() async {
-  await _osdController?.show();
-}
-
-Future<void> hideOsdWindow() async {
-  await _osdController?.hide();
-}
 
 /// Unhide, restore if minimized, and bring the main window to the foreground.
 Future<void> showAndFocusMainWindow() async {

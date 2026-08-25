@@ -5,7 +5,6 @@ import 'package:driver_hub/desktop_shell/window_bootstrap_stub.dart'
     as window_bootstrap;
 import 'package:driver_hub/layer3_ui/theme/app_theme.dart';
 import 'package:driver_hub/layer3_ui/theme/theme_controller.dart';
-import 'package:driver_hub/layer3_ui/widgets/osd_overlay_window.dart';
 import 'package:driver_hub/layer1_discovery/device_runtime.dart';
 import 'package:driver_hub/layer4_domain/device_scope.dart';
 import 'package:driver_hub/layer3_ui/widgets/main_shell.dart';
@@ -33,20 +32,6 @@ Future<void> main(List<String> args) async {
   LocaleSettings.useDeviceLocale();
 
   if (_isDesktop) {
-    if (_isWindows && window_bootstrap.isOsdWindow(args)) {
-      final osdController = OsdOverlayWindowController(
-        showWindow: window_bootstrap.showOsdWindow,
-        hideWindow: window_bootstrap.hideOsdWindow,
-      );
-      runApp(OsdOverlayApp(controller: osdController));
-      await WidgetsBinding.instance.endOfFrame;
-      await window_bootstrap.prepareOsdWindow(
-        args: args,
-        handler: osdController.handle,
-      );
-      return;
-    }
-
     await windowManager.ensureInitialized();
 
     //  Hide the default title bar and make window frameless
@@ -90,9 +75,6 @@ bool get _isDesktop {
       return false;
   }
 }
-
-bool get _isWindows =>
-    !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
 
 class DriverHubApp extends StatelessWidget {
   const DriverHubApp({super.key, required this.scope});

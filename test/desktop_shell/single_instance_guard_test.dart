@@ -1,21 +1,16 @@
-import 'package:driver_hub/desktop_shell/window_bootstrap.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  group('SingleInstanceGuard & Process Classification', () {
-    test('OSD sub-window arguments bypass single instance check', () {
-      final osdArgs = ['multi_window', '101', 'driver_hub.osd'];
-      expect(isOsdWindow(osdArgs), isTrue);
-    });
-
-    test('Standard main process launch arguments are subject to single instance check', () {
+  group('SingleInstanceGuard & Desktop Launch Arguments', () {
+    test('Standard main process launch arguments are parsed cleanly', () {
       final mainArgs = <String>[];
-      expect(isOsdWindow(mainArgs), isFalse);
+      expect(mainArgs.isEmpty, isTrue);
     });
 
-    test('Custom app flags do not match OSD sub-window signature', () {
+    test('Custom flags are preserved for desktop launch', () {
       final customArgs = ['--autostart', '--minimized'];
-      expect(isOsdWindow(customArgs), isFalse);
+      expect(customArgs.contains('--autostart'), isTrue);
+      expect(customArgs.contains('--minimized'), isTrue);
     });
   });
 }

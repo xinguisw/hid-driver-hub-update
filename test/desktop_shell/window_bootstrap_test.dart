@@ -2,24 +2,17 @@ import 'package:driver_hub/desktop_shell/window_bootstrap.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  group('isOsdWindow', () {
-    test('recognizes the desktop_multi_window OSD arguments', () {
+  group('desktop window configuration', () {
+    test('default and minimum dimensions are valid', () {
+      expect(kDesktopWindowWidth, greaterThanOrEqualTo(kMinDesktopWindowWidth));
       expect(
-        isOsdWindow(const <String>[
-          'multi_window',
-          'window-1',
-          'driver_hub.osd',
-        ]),
-        isTrue,
+        kDesktopWindowHeight,
+        greaterThanOrEqualTo(kMinDesktopWindowHeight),
       );
-    });
-
-    test('does not classify the main engine as the OSD window', () {
-      expect(isOsdWindow(const <String>[]), isFalse);
-      expect(
-        isOsdWindow(const <String>['multi_window', 'window-1', 'other']),
-        isFalse,
-      );
+      expect(kDesktopWindowWidth, 1256);
+      expect(kDesktopWindowHeight, 753);
+      expect(kMinDesktopWindowWidth, 1024);
+      expect(kMinDesktopWindowHeight, 614);
     });
   });
 }

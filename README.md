@@ -58,3 +58,12 @@ Upon completion, the installer executable will be generated at:
 ```
 build/installer/hid_driver_hub_installer.exe
 ```
+
+---
+
+## 3. Architecture & Execution Flows Documentation
+
+- **[End-to-End Application Flows (`app-execution-flows.html`)](file:///c:/Users/USER/Desktop/Software/hid-driver-hub/docs/flows/app-execution-flows.html)**: Detailed Web vs. Desktop execution lifecycles, discovery, coalescing, and commit flows.
+- **[System Architecture Documentation](file:///c:/Users/USER/Desktop/Software/hid-driver-hub/docs/Architecture_Documentation.md)**: Decoupled 6-layer architecture, BLoC state staging, and resilience matrix.
+- **[Flow Diagrams Index (`docs/flows/README.md`)](file:///c:/Users/USER/Desktop/Software/hid-driver-hub/docs/flows/README.md)**: Index of standalone layer and interactive workflow diagrams.
+

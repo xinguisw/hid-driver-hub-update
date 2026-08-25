@@ -77,9 +77,8 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Navigator(
-            onPopPage: (route, result) {
+            onDidRemovePage: (page) {
               popped = true;
-              return route.didPop(result);
             },
             pages: [
               const MaterialPage(child: Text('Dashboard')),
@@ -121,9 +120,8 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Navigator(
-            onPopPage: (route, result) {
+            onDidRemovePage: (page) {
               popped = true;
-              return route.didPop(result);
             },
             pages: [
               const MaterialPage(child: Text('Dashboard')),

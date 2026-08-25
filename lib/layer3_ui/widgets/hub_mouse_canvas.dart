@@ -119,12 +119,20 @@ class _HubMouseCanvasState extends State<HubMouseCanvas> {
           onHover: (event) {
             final id = _hitButtonId(targets, event.localPosition);
             if (id != _hoveredButtonId) {
-              setState(() => _hoveredButtonId = id);
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted && id != _hoveredButtonId) {
+                  setState(() => _hoveredButtonId = id);
+                }
+              });
             }
           },
           onExit: (_) {
             if (_hoveredButtonId != null) {
-              setState(() => _hoveredButtonId = null);
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted && _hoveredButtonId != null) {
+                  setState(() => _hoveredButtonId = null);
+                }
+              });
             }
           },
           child: GestureDetector(
@@ -216,8 +224,9 @@ class _HubMouseCanvasState extends State<HubMouseCanvas> {
                         foregroundColor: Colors.white,
                         minimumSize: const Size(80, 42),
                         elevation: 3,
-                        shadowColor: theme.colorScheme.primary
-                            .withValues(alpha: 0.35),
+                        shadowColor: theme.colorScheme.primary.withValues(
+                          alpha: 0.35,
+                        ),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),
@@ -232,10 +241,9 @@ class _HubMouseCanvasState extends State<HubMouseCanvas> {
                     OutlinedButton(
                       onPressed: widget.onCancel,
                       style: OutlinedButton.styleFrom(
-                        backgroundColor:
-                            (theme.brightness == Brightness.dark
-                                ? const Color(0xFF26282E)
-                                : Colors.white),
+                        backgroundColor: (theme.brightness == Brightness.dark
+                            ? const Color(0xFF26282E)
+                            : Colors.white),
                         foregroundColor: theme.colorScheme.onSurface,
                         minimumSize: const Size(80, 42),
                         side: BorderSide(
@@ -253,8 +261,9 @@ class _HubMouseCanvasState extends State<HubMouseCanvas> {
                         ),
                         elevation: 1.5,
                         shadowColor: Colors.black.withValues(
-                          alpha:
-                              theme.brightness == Brightness.dark ? 0.25 : 0.05,
+                          alpha: theme.brightness == Brightness.dark
+                              ? 0.25
+                              : 0.05,
                         ),
                       ),
                       child: Text(t.common.cancel),
@@ -272,10 +281,7 @@ class _HubMouseCanvasState extends State<HubMouseCanvas> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                SizedBox(
-                  height: math.max(100.0, drawH),
-                  child: canvasWidget,
-                ),
+                SizedBox(height: math.max(100.0, drawH), child: canvasWidget),
                 bottomActions,
               ],
             ),
@@ -289,10 +295,7 @@ class _HubMouseCanvasState extends State<HubMouseCanvas> {
           );
         }
 
-        return TapRegion(
-          groupId: hubButtonMappingTapRegionId,
-          child: content,
-        );
+        return TapRegion(groupId: hubButtonMappingTapRegionId, child: content);
       },
     );
   }

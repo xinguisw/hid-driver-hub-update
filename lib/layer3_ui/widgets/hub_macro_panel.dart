@@ -418,6 +418,8 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
             4 => ('Middle Button', 0xC3),
             8 => ('Backward Button', 0xC5),
             16 => ('Forward Button', 0xC4),
+            32 => ('Tilt Left', 0xB9),
+            64 => ('Tilt Right', 0xB8),
             _ => null,
           }
         : (_activePointerCode == null || _activePointerLabel == null
@@ -444,19 +446,43 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
     // including wheel input received while calibration is active.
     if (_calibrationMode || event is! PointerScrollEvent) return;
     final verticalDelta = event.scrollDelta.dy;
-    if (verticalDelta == 0) return;
-    final isWheelUp = verticalDelta < 0;
-    // Record each notch as a single semantic wheel action. Mouse wheel is a
-    // directional impulse event rather than a key down/up pair.
-    final label = isWheelUp ? 'Wheel Up' : 'Wheel Down';
-    final action = isWheelUp
-        ? const MacroAction.wheelUp(isBreak: false, delay: 0, label: 'Wheel Up')
-        : const MacroAction.wheelDown(
-            isBreak: false,
-            delay: 0,
-            label: 'Wheel Down',
-          );
-    _appendRecordedAction(action: action, isBreak: false, label: label);
+    final horizontalDelta = event.scrollDelta.dx;
+
+    if (verticalDelta != 0) {
+      final isWheelUp = verticalDelta < 0;
+      // Record each notch as a single semantic wheel action. Mouse wheel is a
+      // directional impulse event rather than a key down/up pair.
+      final label = isWheelUp ? 'Wheel Up' : 'Wheel Down';
+      final action = isWheelUp
+          ? const MacroAction.wheelUp(
+              isBreak: false,
+              delay: 0,
+              label: 'Wheel Up',
+            )
+          : const MacroAction.wheelDown(
+              isBreak: false,
+              delay: 0,
+              label: 'Wheel Down',
+            );
+      _appendRecordedAction(action: action, isBreak: false, label: label);
+    }
+
+    if (horizontalDelta != 0) {
+      final isTiltLeft = horizontalDelta < 0;
+      final label = isTiltLeft ? 'Tilt Left' : 'Tilt Right';
+      final action = isTiltLeft
+          ? const MacroAction.tiltLeft(
+              isBreak: false,
+              delay: 0,
+              label: 'Tilt Left',
+            )
+          : const MacroAction.tiltRight(
+              isBreak: false,
+              delay: 0,
+              label: 'Tilt Right',
+            );
+      _appendRecordedAction(action: action, isBreak: false, label: label);
+    }
   }
 
   bool _isPointerOver(GlobalKey key, Offset position) {

@@ -257,7 +257,9 @@ List<String> validateMacro(MacroDefinition macro) {
     final isMouseButton = action.keyCode >= 0xC1 && action.keyCode <= 0xC5;
     final isMouseWheel =
         action.keyCode == MacroWireActions.wheelUp ||
-        action.keyCode == MacroWireActions.wheelDown;
+        action.keyCode == MacroWireActions.wheelDown ||
+        action.keyCode == MacroWireActions.tiltLeft ||
+        action.keyCode == MacroWireActions.tiltRight;
     final isMouse = isMouseButton || isMouseWheel;
     final isTiming = action.keyCode >= 0x01 && action.keyCode <= 0x03;
     if (!isKeyboard && !isMouse && !isTiming) {

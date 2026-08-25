@@ -9,7 +9,6 @@
 #include <string>
 #include <vector>
 
-#include "desktop_multi_window/desktop_multi_window_plugin.h"
 #include "flutter/generated_plugin_registrant.h"
 #include "resource.h"
 
@@ -60,21 +59,34 @@ class NativeOsdWindow {
       return;
     }
 
+    UINT dpi = 96;
+    if (window_ != nullptr) {
+      dpi = GetDpiForWindow(window_);
+    } else if (owner != nullptr) {
+      dpi = GetDpiForWindow(owner);
+    }
+    if (dpi == 0) {
+      dpi = 96;
+    }
+    const float scale = static_cast<float>(dpi) / 96.0f;
+    const int osd_width = static_cast<int>(kOsdWindowWidth * scale);
+    const int osd_height = static_cast<int>(kOsdWindowHeight * scale);
+    const int osd_margin = static_cast<int>(kOsdWindowMargin * scale);
+
     const HMONITOR monitor =
-        MonitorFromWindow(owner, MONITOR_DEFAULTTOPRIMARY);
+        MonitorFromWindow(owner != nullptr ? owner : window_, MONITOR_DEFAULTTOPRIMARY);
     MONITORINFO monitor_info{};
     monitor_info.cbSize = sizeof(monitor_info);
-    int x = kOsdWindowMargin;
-    int y = kOsdWindowMargin;
+    int x = osd_margin;
+    int y = osd_margin;
     if (monitor != nullptr && GetMonitorInfo(monitor, &monitor_info)) {
-      x = monitor_info.rcWork.right - kOsdWindowWidth - kOsdWindowMargin;
-      y = monitor_info.rcWork.bottom - kOsdWindowHeight - kOsdWindowMargin;
+      x = monitor_info.rcWork.right - osd_width - osd_margin;
+      y = monitor_info.rcWork.bottom - osd_height - osd_margin;
     }
 
     InvalidateRect(window_, nullptr, FALSE);
     KillTimer(window_, kNativeOsdTimerId);
-    SetWindowPos(window_, HWND_TOPMOST, x, y, kOsdWindowWidth,
-                 kOsdWindowHeight,
+    SetWindowPos(window_, HWND_TOPMOST, x, y, osd_width, osd_height,
                  SWP_NOACTIVATE | SWP_NOOWNERZORDER | SWP_SHOWWINDOW);
     SetTimer(window_, kNativeOsdTimerId, kNativeOsdDurationMilliseconds,
              nullptr);
@@ -147,9 +159,17 @@ class NativeOsdWindow {
     if (!GetClientRect(window_, &client)) {
       return;
     }
+    UINT dpi = GetDpiForWindow(window_);
+    if (dpi == 0) {
+      dpi = 96;
+    }
+    const float scale = static_cast<float>(dpi) / 96.0f;
+    const int corner_radius = static_cast<int>(12 * scale);
+
     const HRGN region = CreateRoundRectRgn(client.left, client.top,
                                             client.right + 1,
-                                            client.bottom + 1, 12, 12);
+                                            client.bottom + 1,
+                                            corner_radius, corner_radius);
     if (region != nullptr) {
       SetWindowRgn(window_, region, TRUE);
     }
@@ -168,16 +188,26 @@ class NativeOsdWindow {
     FillRect(context, &client, background);
     DeleteObject(background);
 
+    UINT dpi = GetDpiForWindow(window_);
+    if (dpi == 0) {
+      dpi = 96;
+    }
+    const float scale = static_cast<float>(dpi) / 96.0f;
+
     SetBkMode(context, TRANSPARENT);
     SetTextColor(context, RGB(255, 255, 255));
-    const HFONT title_font = CreateFontW(-14, 0, 0, 0, FW_SEMIBOLD, FALSE,
+
+    const int title_font_height = static_cast<int>(-14 * scale);
+    const int body_font_height = static_cast<int>(-12 * scale);
+
+    const HFONT title_font = CreateFontW(title_font_height, 0, 0, 0, FW_SEMIBOLD, FALSE,
                                          FALSE, FALSE, DEFAULT_CHARSET,
                                          OUT_DEFAULT_PRECIS,
                                          CLIP_DEFAULT_PRECIS,
                                          CLEARTYPE_QUALITY,
                                          DEFAULT_PITCH | FF_DONTCARE,
                                          L"Segoe UI");
-    const HFONT body_font = CreateFontW(-12, 0, 0, 0, FW_NORMAL, FALSE, FALSE,
+    const HFONT body_font = CreateFontW(body_font_height, 0, 0, 0, FW_NORMAL, FALSE, FALSE,
                                         FALSE, DEFAULT_CHARSET,
                                         OUT_DEFAULT_PRECIS,
                                         CLIP_DEFAULT_PRECIS,
@@ -185,18 +215,25 @@ class NativeOsdWindow {
                                         DEFAULT_PITCH | FF_DONTCARE,
                                         L"Segoe UI");
 
+    const int pad_x = static_cast<int>(12 * scale);
+    const int title_top = static_cast<int>(9 * scale);
+    const int title_bottom = static_cast<int>(27 * scale);
+
     const HGDIOBJ previous_font = SelectObject(context, title_font);
-    RECT title_rect{12, 9, client.right - 12, 27};
+    RECT title_rect{pad_x, title_top, client.right - pad_x, title_bottom};
     DrawTextW(context, title_.c_str(), -1, &title_rect,
               DT_SINGLELINE | DT_END_ELLIPSIS | DT_NOPREFIX);
 
     SelectObject(context, body_font);
-    int line_top = 33;
+    int line_top = static_cast<int>(33 * scale);
+    const int line_height = static_cast<int>(18 * scale);
+    const int line_step = static_cast<int>(19 * scale);
+
     for (const auto& line : lines_) {
-      RECT line_rect{12, line_top, client.right - 12, line_top + 18};
+      RECT line_rect{pad_x, line_top, client.right - pad_x, line_top + line_height};
       DrawTextW(context, line.c_str(), -1, &line_rect,
                 DT_SINGLELINE | DT_END_ELLIPSIS | DT_NOPREFIX);
-      line_top += 19;
+      line_top += line_step;
     }
 
     SelectObject(context, previous_font);
@@ -211,50 +248,6 @@ class NativeOsdWindow {
 };
 
 NativeOsdWindow native_osd;
-
-void ConfigureOsdWindow(HWND hwnd, HWND child_hwnd) {
-  if (hwnd == nullptr) {
-    return;
-  }
-
-  // Configure the secondary engine's HWND directly; nativeapi's focused-window
-  // lookup can return the main window while the hidden OSD engine is starting.
-  const LONG_PTR style = GetWindowLongPtr(hwnd, GWL_STYLE);
-  const LONG_PTR frame_styles = WS_CAPTION | WS_THICKFRAME | WS_MINIMIZEBOX |
-                                WS_MAXIMIZEBOX | WS_SYSMENU;
-  SetWindowLongPtr(hwnd, GWL_STYLE, (style & ~frame_styles) | WS_POPUP);
-
-  const LONG_PTR extended_style = GetWindowLongPtr(hwnd, GWL_EXSTYLE);
-  const LONG_PTR osd_extended_style =
-      (extended_style & ~WS_EX_APPWINDOW) | WS_EX_TOOLWINDOW |
-      WS_EX_NOACTIVATE | WS_EX_TRANSPARENT;
-  SetWindowLongPtr(hwnd, GWL_EXSTYLE, osd_extended_style);
-
-  int x = 0;
-  int y = 0;
-  const HMONITOR monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTOPRIMARY);
-  MONITORINFO monitor_info{};
-  monitor_info.cbSize = sizeof(monitor_info);
-  if (monitor != nullptr && GetMonitorInfo(monitor, &monitor_info)) {
-    x = monitor_info.rcWork.right - kOsdWindowWidth - kOsdWindowMargin;
-    y = monitor_info.rcWork.bottom - kOsdWindowHeight - kOsdWindowMargin;
-  }
-
-  SetWindowPos(hwnd, HWND_TOPMOST, x, y, kOsdWindowWidth, kOsdWindowHeight,
-               SWP_FRAMECHANGED | SWP_NOACTIVATE | SWP_NOOWNERZORDER);
-
-  // why: the child Flutter surface was attached before the popup's final
-  // client bounds were applied, so synchronize it after the native resize.
-  if (child_hwnd != nullptr) {
-    RECT client{};
-    if (GetClientRect(hwnd, &client)) {
-      MoveWindow(child_hwnd, client.left, client.top,
-                 client.right - client.left, client.bottom - client.top, TRUE);
-    }
-  }
-
-  ShowWindow(hwnd, SW_HIDE);
-}
 
 }  // namespace
 
@@ -332,18 +325,6 @@ bool FlutterWindow::OnCreate() {
         native_osd.Show(GetHandle(), *title, text_lines);
         result->Success();
       });
-  DesktopMultiWindowSetWindowCreatedCallback([](void *controller) {
-    auto *flutter_view_controller =
-        reinterpret_cast<flutter::FlutterViewController *>(controller);
-    const HWND view_hwnd = flutter_view_controller->view()->GetNativeWindow();
-    const HWND window_hwnd = GetAncestor(view_hwnd, GA_ROOT);
-    ConfigureOsdWindow(window_hwnd != nullptr ? window_hwnd : view_hwnd,
-                       view_hwnd);
-    RegisterPlugins(flutter_view_controller->engine());
-    // why: native sizing can occur before the child engine paints its first
-    // frame; request the same redraw used by the main runner startup path.
-    flutter_view_controller->ForceRedraw();
-  });
   SetChildContent(flutter_controller_->view()->GetNativeWindow());
 
   flutter_controller_->engine()->SetNextFrameCallback([&]() {

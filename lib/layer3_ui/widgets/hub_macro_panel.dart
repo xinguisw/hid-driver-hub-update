@@ -1905,8 +1905,8 @@ class _MacroRow extends StatelessWidget {
       child: Row(
         children: [
           // Key / Action Label on Left (width 130 ensures Wheel Down fits on one line)
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 130),
+          SizedBox(
+            width: 130,
             child: Text(
               displayLabel,
               maxLines: 1,

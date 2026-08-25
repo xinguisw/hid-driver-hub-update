@@ -255,64 +255,67 @@ class _DpiSettingsGroup extends StatelessWidget {
               Builder(
                 builder: (context) {
                   final canAdd = stages.length < maxLevels;
-                  return InkWell(
-                    onTap: canAdd ? onAddStage : null,
-                    borderRadius: BorderRadius.circular(6),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 150),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 5,
-                      ),
-                      decoration: BoxDecoration(
-                        color: canAdd
-                            ? theme.colorScheme.surface
-                            : theme.colorScheme.surfaceContainerHighest
-                                  .withValues(alpha: 0.3),
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(
-                          color: theme.colorScheme.outlineVariant.withValues(
-                            alpha: canAdd ? 0.8 : 0.3,
-                          ),
-                          width: 1,
+                  return Tooltip(
+                    message: t.performance.addStage,
+                    child: InkWell(
+                      onTap: canAdd ? onAddStage : null,
+                      borderRadius: BorderRadius.circular(6),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 150),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
                         ),
-                        boxShadow: canAdd
-                            ? [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.05),
-                                  blurRadius: 2,
-                                  offset: const Offset(0, 1),
-                                ),
-                              ]
-                            : null,
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.add_rounded,
-                            size: 14,
-                            color: canAdd
-                                ? theme.colorScheme.onSurface
-                                : theme.colorScheme.onSurfaceVariant.withValues(
-                                    alpha: 0.5,
-                                  ),
+                        decoration: BoxDecoration(
+                          color: canAdd
+                              ? theme.colorScheme.surface
+                              : theme.colorScheme.surfaceContainerHighest
+                                    .withValues(alpha: 0.3),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(
+                            color: theme.colorScheme.outlineVariant.withValues(
+                              alpha: canAdd ? 0.8 : 0.3,
+                            ),
+                            width: 1,
                           ),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Add',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: canAdd
-                                  ? FontWeight.w700
-                                  : FontWeight.w600,
+                          boxShadow: canAdd
+                              ? [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.05),
+                                    blurRadius: 2,
+                                    offset: const Offset(0, 1),
+                                  ),
+                                ]
+                              : null,
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.add_rounded,
+                              size: 14,
                               color: canAdd
                                   ? theme.colorScheme.onSurface
-                                  : theme.colorScheme.onSurfaceVariant
-                                        .withValues(alpha: 0.5),
+                                  : theme.colorScheme.onSurfaceVariant.withValues(
+                                      alpha: 0.5,
+                                    ),
                             ),
-                          ),
-                        ],
+                            const SizedBox(width: 4),
+                            Text(
+                              t.performance.addStage,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: canAdd
+                                    ? FontWeight.w700
+                                    : FontWeight.w600,
+                                color: canAdd
+                                    ? theme.colorScheme.onSurface
+                                    : theme.colorScheme.onSurfaceVariant
+                                          .withValues(alpha: 0.5),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   );

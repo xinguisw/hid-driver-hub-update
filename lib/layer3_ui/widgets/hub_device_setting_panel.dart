@@ -1,4 +1,5 @@
 import 'package:driver_hub/layer4_domain/models/discovered_card_state.dart';
+import 'package:driver_hub/i18n/strings.g.dart';
 import 'package:flutter/material.dart';
 
 /// Device Setting page — device image (left) + firmware info (right).
@@ -38,19 +39,19 @@ class HubDeviceSettingPanel extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               _FirmwareBox(
-                title: 'Mouse Firmware Version',
+                title: t.deviceSetting.mouseFirmwareVersion,
                 version: mouseVersion,
               ),
               const SizedBox(height: 16),
               _FirmwareBox(
-                title: 'Dongle Firmware Version',
+                title: t.deviceSetting.dongleFirmwareVersion,
                 version: dongleVersion,
               ),
               const SizedBox(height: 32),
               OutlinedButton.icon(
                 onPressed: () {}, // active UI state
                 icon: const Icon(Icons.restore_rounded, size: 18),
-                label: const Text('Reset to Default'),
+                label: Text(t.common.resetToDefault),
                 style: _devicePanelOutlinedButtonStyle(context),
               ),
             ],
@@ -132,7 +133,7 @@ class _FirmwareBox extends StatelessWidget {
                 runSpacing: 4,
                 children: [
                   Text(
-                    'Current Version',
+                    t.deviceSetting.currentVersion,
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: colorScheme.onSurfaceVariant,
                     ),
@@ -170,9 +171,9 @@ class _FirmwareBox extends StatelessWidget {
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   ),
                 ),
-                child: const Text(
-                  'Check for Updates',
-                  style: TextStyle(fontSize: 12),
+                child: Text(
+                  t.deviceSetting.checkForUpdates,
+                  style: const TextStyle(fontSize: 12),
                 ),
               ),
             ],
@@ -183,7 +184,7 @@ class _FirmwareBox extends StatelessWidget {
             child: FilledButton.icon(
               onPressed: () {},
               icon: const Icon(Icons.system_update_alt_rounded, size: 18),
-              label: const Text('Update Firmware'),
+              label: Text(t.deviceSetting.updateFirmware),
               style: _devicePanelPrimaryButtonStyle(context),
             ),
           ),

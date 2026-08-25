@@ -1,4 +1,5 @@
 import 'package:driver_hub/layer4_domain/models/device_settings_state.dart';
+import 'package:driver_hub/i18n/strings.g.dart';
 import 'package:flutter/material.dart';
 
 /// Parameter Setting page — sensor feature + other feature.
@@ -101,9 +102,9 @@ class HubParameterPanel extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (hasSensorContent) ...[
-            const _SectionHeader(
-              title: 'Sensor features',
-              subtitle: 'Advanced optical sensor tuning and calibration',
+            _SectionHeader(
+              title: t.parameter.sensorFeature,
+              subtitle: t.parameter.sensorFeatureSubtitle,
               icon: Icons.tune,
             ),
             const SizedBox(height: 14),
@@ -133,9 +134,9 @@ class HubParameterPanel extends StatelessWidget {
             const SizedBox(height: 28),
           ],
           if (hasOtherContent) ...[
-            const _SectionHeader(
-              title: 'Device features',
-              subtitle: 'Response times, power management and mechanics',
+            _SectionHeader(
+              title: t.parameter.otherFeature,
+              subtitle: t.parameter.otherFeatureSubtitle,
               icon: Icons.settings_input_component,
             ),
             const SizedBox(height: 14),
@@ -465,11 +466,10 @@ class _SensorTuningBox extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              const Expanded(
+              Expanded(
                 child: _FieldTitle(
-                  title: 'Ripple Control',
-                  description:
-                      'Smooths micro-movements to reduce cursor jitter at high DPI.',
+                  title: t.parameter.rippleControl,
+                  description: t.parameter.rippleControlDesc,
                   icon: Icons.waves,
                 ),
               ),
@@ -486,11 +486,10 @@ class _SensorTuningBox extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              const Expanded(
+              Expanded(
                 child: _FieldTitle(
-                  title: 'Angle Snap',
-                  description:
-                      'Locks horizontal or vertical lines to clean straight axes.',
+                  title: t.parameter.angleSnap,
+                  description: t.parameter.angleSnapDesc,
                   icon: Icons.straighten,
                 ),
               ),
@@ -522,10 +521,9 @@ class _LodBox extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const _FieldTitle(
-            title: 'Lift-Off Distance',
-            description:
-                'Sensor cut-off tracking height when the mouse is lifted.',
+          _FieldTitle(
+            title: t.parameter.lod,
+            description: t.parameter.lodDesc,
             icon: Icons.arrow_upward,
           ),
           const SizedBox(height: 14),
@@ -575,11 +573,10 @@ class _AngleTuneBox extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              const Expanded(
+              Expanded(
                 child: _FieldTitle(
-                  title: 'Angle Snapping & Tune',
-                  description:
-                      'Rotates tracking coordinate axis to match hand grip tilt.',
+                  title: t.parameter.angleTune,
+                  description: t.parameter.angleTuneDesc,
                   icon: Icons.rotate_right,
                 ),
               ),
@@ -604,7 +601,7 @@ class _AngleTuneBox extends StatelessWidget {
               children: [
                 _StepperButton(
                   icon: Icons.remove,
-                  tooltip: 'Decrease angle',
+                  tooltip: t.parameter.decreaseAngle,
                   onTap: angleTuneOn ? onAngleTuneDecrement : null,
                 ),
                 AnimatedDefaultTextStyle(
@@ -620,7 +617,7 @@ class _AngleTuneBox extends StatelessWidget {
                 ),
                 _StepperButton(
                   icon: Icons.add,
-                  tooltip: 'Increase angle',
+                  tooltip: t.parameter.increaseAngle,
                   onTap: angleTuneOn ? onAngleTuneIncrement : null,
                 ),
               ],
@@ -711,10 +708,9 @@ class _PerformanceRow extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const _FieldTitle(
-            title: 'Performance Mode',
-            description:
-                'Balances sensor frame-rate between maximum responsiveness and battery endurance.',
+          _FieldTitle(
+            title: t.parameter.performance,
+            description: t.parameter.performanceDesc,
             icon: Icons.speed,
           ),
           const SizedBox(height: 14),
@@ -754,13 +750,13 @@ class _PerformanceRow extends StatelessWidget {
   String _performanceLabel(int wire) {
     switch (wire) {
       case 0:
-        return 'Low Performance (Eco)';
+        return t.parameter.performanceEco;
       case 1:
-        return 'Office Mouse';
+        return t.parameter.performanceOffice;
       case 2:
-        return 'High Performance (Gaming)';
+        return t.parameter.performanceGaming;
       default:
-        return 'Mode $wire';
+        return t.parameter.performanceMode(wire: '$wire');
     }
   }
 }
@@ -805,9 +801,8 @@ class _OtherFeatureGroup extends StatelessWidget {
                 Expanded(
                   flex: 3,
                   child: _OptionsBox(
-                    title: 'Button debounce delay',
-                    description:
-                        'Filters out unintended double-clicks caused by mechanical contact bounce.',
+                    title: t.parameter.debounce,
+                    description: t.parameter.debounceDesc,
                     icon: Icons.timer_outlined,
                     options: buttonDebounceOptions,
                     selectedWire: debounceMs,
@@ -834,9 +829,8 @@ class _OtherFeatureGroup extends StatelessWidget {
               children: [
                 Expanded(
                   child: _OptionsBox(
-                    title: 'Sleep timer',
-                    description:
-                        'Inactivity timeout before entering ultra-low power standby mode.',
+                    title: t.parameter.sleepTimer,
+                    description: t.parameter.sleepTimerDesc,
                     icon: Icons.bedtime_outlined,
                     options: sleepTimeOptions,
                     selectedWire: sleepSeconds,
@@ -923,10 +917,9 @@ class _WheelBox extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const _FieldTitle(
-            title: 'Wheel direction',
-            description:
-                'Inverts scroll direction to match your personal preference.',
+          _FieldTitle(
+            title: t.parameter.wheelDirection,
+            description: t.parameter.wheelDirectionDesc,
             icon: Icons.sync_alt,
           ),
           const SizedBox(height: 14),
@@ -934,7 +927,7 @@ class _WheelBox extends StatelessWidget {
             children: [
               Expanded(
                 child: _SelectableChip(
-                  label: 'Forward (Standard)',
+                  label: t.parameter.wheelForward,
                   icon: Icons.arrow_upward,
                   selected: !invert,
                   onTap: onInvertChanged == null
@@ -945,7 +938,7 @@ class _WheelBox extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: _SelectableChip(
-                  label: 'Reverse (Inverted)',
+                  label: t.parameter.wheelReverse,
                   icon: Icons.arrow_downward,
                   selected: invert,
                   onTap: onInvertChanged == null

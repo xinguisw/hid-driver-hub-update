@@ -7,7 +7,8 @@ import 'package:driver_hub/layer4_domain/device_scope.dart';
 import 'package:driver_hub/layer4_domain/models/discovered_card_state.dart';
 import 'package:driver_hub/layer4_domain/models/macro.dart';
 import 'package:driver_hub/layer5_codec/codecs/keyvalue_table.dart';
-import 'package:flutter/foundation.dart';
+import 'package:driver_hub/i18n/strings.g.dart';
+import 'package:driver_hub/i18n/catalog_localization.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -55,7 +56,6 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
   int? _selectedSlot;
   int? _activePointerCode;
   String? _activePointerLabel;
-  MacroDefinition? _originalMacro;
   Stopwatch? _recordClock;
   int? _lastRecordEventUs;
   Stopwatch? _calibrationClock;
@@ -69,27 +69,7 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
 
   bool get _hasScope => widget.scope != null && widget.card != null;
 
-  bool get _isDirty {
-    final draft = _draft;
-    if (draft == null || _recording) return false;
-    final orig = _originalMacro;
-    if (orig == null) {
-      return _events.isNotEmpty ||
-          _nameController.text.trim() != 'M${draft.slot}';
-    }
-    final currentName = _nameController.text.trim().isEmpty
-        ? 'M${draft.slot}'
-        : _nameController.text.trim();
-    final currentLoop = int.tryParse(_loopController.text) ?? 1;
 
-    final nameMatches =
-        currentName == (orig.name.isEmpty ? 'M${orig.slot}' : orig.name);
-    final modeMatches = draft.mode == orig.mode;
-    final loopMatches = currentLoop == orig.loopTimes;
-    final actionsMatch = listEquals(_events, orig.actions);
-
-    return !(nameMatches && modeMatches && loopMatches && actionsMatch);
-  }
 
   @override
   void initState() {
@@ -171,7 +151,6 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
       _delayMode = MacroDelayMode.recorded;
       _fixedDelayController.text = '10';
       _selectedSlot = slot;
-      _originalMacro = null;
       _events.clear();
       _pressedKeyCodes.clear();
       _pressedKeyLabels.clear();
@@ -211,7 +190,6 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
       _calibrationMode = _isTimingProbeMacro(macro);
       _delayMode = MacroDelayMode.recorded;
       _fixedDelayController.text = '10';
-      _originalMacro = macro;
       _events
         ..clear()
         ..addAll(macro.actions);
@@ -525,7 +503,7 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
       final fixedMs = int.tryParse(_fixedDelayController.text);
       if (fixedMs == null || fixedMs < 0 || fixedMs > 100) {
         setState(() => _error = 'Fixed delay must be between 0 and 100 ms');
-        _showToast(message: 'Macro failed to save', isSuccess: false);
+        _showToast(message: t.macro.savedFailed, isSuccess: false);
         return;
       }
     }
@@ -538,7 +516,7 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
     final errors = validateMacro(macro);
     if (errors.isNotEmpty) {
       setState(() => _error = errors.join('\n'));
-      _showToast(message: 'Macro failed to save', isSuccess: false);
+      _showToast(message: t.macro.savedFailed, isSuccess: false);
       return;
     }
     setState(() {
@@ -562,14 +540,11 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _originalMacro = macro;
-        _draft = _draftFrom(macro);
-        _events
-          ..clear()
-          ..addAll(macro.actions);
+        _draft = null;
+        _events.clear();
         _error = null;
       });
-      _showToast(message: 'Macro saved successfully', isSuccess: true);
+      _showToast(message: t.macro.savedSuccess, isSuccess: true);
       widget.onChanged?.call();
     } catch (e) {
       if (!mounted) return;
@@ -578,7 +553,7 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
         _error =
             'Macro save failed: ${e is FormatException ? e.message : 'device error or timeout'}';
       });
-      _showToast(message: 'Macro failed to save', isSuccess: false);
+      _showToast(message: t.macro.savedFailed, isSuccess: false);
     }
   }
 
@@ -740,7 +715,7 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
                         const SizedBox(width: 6),
                         Expanded(
                           child: Text(
-                            'Macro List',
+                            t.macro.macroList,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: theme.textTheme.titleMedium?.copyWith(
@@ -756,7 +731,7 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
                             minHeight: 28,
                           ),
                           icon: const Icon(Icons.add_rounded, size: 20),
-                          tooltip: 'New Macro',
+                          tooltip: t.macro.newMacro,
                           onPressed: _recording ? null : _openCreation,
                         ),
                       ],
@@ -831,7 +806,7 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
                                     ),
                                     color: theme.colorScheme.onSurfaceVariant
                                         .withValues(alpha: 0.6),
-                                    tooltip: 'Delete Macro',
+                                    tooltip: t.macro.deleteMacro,
                                     onPressed: _recording
                                         ? null
                                         : () => _deleteMacro(macro),
@@ -918,7 +893,7 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
                         const SizedBox(width: 6),
                         Expanded(
                           child: Text(
-                            'Macro List',
+                            t.macro.macroList,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: theme.textTheme.titleMedium?.copyWith(
@@ -934,7 +909,7 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
                             minHeight: 28,
                           ),
                           icon: const Icon(Icons.add_rounded, size: 20),
-                          tooltip: 'New Macro',
+                          tooltip: t.macro.newMacro,
                           onPressed: _recording ? null : _openCreation,
                         ),
                       ],
@@ -1025,7 +1000,7 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
                                     ),
                                     color: theme.colorScheme.onSurfaceVariant
                                         .withValues(alpha: 0.6),
-                                    tooltip: 'Delete Macro',
+                                    tooltip: t.macro.deleteMacro,
                                     onPressed: _recording
                                         ? null
                                         : () => _deleteMacro(macro),
@@ -1068,7 +1043,7 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
                                   fontWeight: FontWeight.bold,
                                 ),
                                 decoration: InputDecoration(
-                                  labelText: 'Macro Name',
+                                  labelText: t.macro.macroName,
                                   hintText: 'M${draft.slot}',
                                   hintStyle: TextStyle(
                                     color: Theme.of(context)
@@ -1105,7 +1080,7 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
                                 Icons.delete_outline,
                                 color: Colors.redAccent,
                               ),
-                              tooltip: 'Delete Macro',
+                              tooltip: t.macro.deleteMacro,
                               onPressed: () {
                                 final existing = _macros.firstWhere(
                                   (m) => m.slot == draft.slot,
@@ -1168,6 +1143,7 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
                           padding: const EdgeInsets.all(16),
                           decoration: cardBoxDecoration,
                           child: Wrap(
+                            alignment: WrapAlignment.spaceBetween,
                             spacing: 16,
                             runSpacing: 12,
                             crossAxisAlignment: WrapCrossAlignment.center,
@@ -1180,15 +1156,19 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
                                 child: DropdownButtonFormField<MacroMode>(
                                   initialValue: draft.mode,
                                   isExpanded: true,
-                                  decoration: const InputDecoration(
-                                    labelText: 'Macro type',
+                                  decoration: InputDecoration(
+                                    labelText: t.macro.macroType,
                                   ),
                                   items: [
                                     for (final mode in MacroMode.values)
                                       DropdownMenuItem(
                                         value: mode,
                                         child: Text(
-                                          mode.label,
+                                          mode == MacroMode.loop
+                                              ? t.macro.modes.loop
+                                              : (mode == MacroMode.stopOnAnyKey
+                                                  ? t.macro.modes.stopOnAnyKey
+                                                  : t.macro.modes.playOnHold),
                                           overflow: TextOverflow.ellipsis,
                                         ),
                                       ),
@@ -1201,7 +1181,7 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
                                 ),
                               ),
                               SizedBox(
-                                width: 120,
+                                width: 140,
                                 child: TextField(
                                   controller: _loopController,
                                   enabled: draft.mode == MacroMode.loop,
@@ -1209,8 +1189,8 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
                                   inputFormatters: [
                                     FilteringTextInputFormatter.digitsOnly,
                                   ],
-                                  decoration: const InputDecoration(
-                                    labelText: 'Loop count',
+                                  decoration: InputDecoration(
+                                    labelText: t.macro.loopCount,
                                   ),
                                 ),
                               ),
@@ -1231,9 +1211,9 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text(
-                                    'Key Delay Mode',
-                                    style: TextStyle(
+                                  Text(
+                                    t.macro.keyDelayMode,
+                                    style: const TextStyle(
                                       fontSize: 12,
                                       color: Colors.grey,
                                     ),
@@ -1244,7 +1224,7 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
                                     runSpacing: 10,
                                     children: [
                                       _SelectableChip(
-                                        label: 'Recorded Delay',
+                                        label: t.macro.recordedDelay,
                                         selected:
                                             _delayMode == MacroDelayMode.recorded,
                                         onTap: () {
@@ -1260,7 +1240,7 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
                                         },
                                       ),
                                       _SelectableChip(
-                                        label: 'Fixed Delay',
+                                        label: t.macro.fixedDelay,
                                         selected:
                                             _delayMode == MacroDelayMode.fixed,
                                         onTap: () {
@@ -1286,8 +1266,8 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
                                   inputFormatters: [
                                     FilteringTextInputFormatter.digitsOnly,
                                   ],
-                                  decoration: const InputDecoration(
-                                    labelText: 'Fixed Delay (ms)',
+                                  decoration: InputDecoration(
+                                    labelText: t.macro.fixedDelayMs,
                                     hintText: '10',
                                   ),
                                   onChanged: (val) {
@@ -1304,23 +1284,26 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
                           ),
                         ),
                         const SizedBox(height: 12),
-                        Wrap(
-                          alignment: WrapAlignment.end,
-                          spacing: 12,
-                          runSpacing: 8,
-                          children: [
-                            OutlinedButton(
-                              onPressed: _recording ? null : _startRecording,
-                              style: buttonStyle,
-                              child: const Text('Start Recording'),
-                            ),
-                            OutlinedButton(
-                              key: _stopRecordingKey,
-                              onPressed: _recording ? _stopRecording : null,
-                              style: buttonStyle,
-                              child: const Text('Stop Recording'),
-                            ),
-                          ],
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: Wrap(
+                            alignment: WrapAlignment.end,
+                            spacing: 12,
+                            runSpacing: 8,
+                            children: [
+                              OutlinedButton(
+                                onPressed: _recording ? null : _startRecording,
+                                style: buttonStyle,
+                                child: Text(t.macro.startRecording),
+                              ),
+                              OutlinedButton(
+                                key: _stopRecordingKey,
+                                onPressed: _recording ? _stopRecording : null,
+                                style: buttonStyle,
+                                child: Text(t.macro.stopRecording),
+                              ),
+                            ],
+                          ),
                         ),
                         const SizedBox(height: 12),
                         Container(
@@ -1330,13 +1313,13 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text('Record'),
+                              Text(t.macro.record),
                               const SizedBox(height: 8),
                               if (_events.isEmpty)
                                 Text(
                                   _recording
-                                      ? 'Recording — press keys…'
-                                      : 'No events recorded',
+                                      ? t.macro.recordingInProgress
+                                      : t.macro.noEventsRecorded,
                                   style: TextStyle(
                                     color: Theme.of(
                                       context,
@@ -1364,38 +1347,31 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
                           ),
                         ),
                         const SizedBox(height: 24),
-                        Wrap(
-                          alignment: WrapAlignment.end,
-                          crossAxisAlignment: WrapCrossAlignment.center,
-                          spacing: 12,
-                          runSpacing: 8,
-                          children: [
-                            OutlinedButton(
-                              onPressed: _loading || _recording ? null : _reset,
-                              style: _macroOutlinedButtonStyle(context),
-                              child: const Text('Reset'),
-                            ),
-                            (!_loading &&
-                                    !_recording &&
-                                    _error == null &&
-                                    _events.isNotEmpty &&
-                                    _isDirty)
-                                ? FilledButton(
-                                    onPressed: _save,
-                                    style: _macroPrimaryButtonStyle(context),
-                                    child: const Text('Save'),
-                                  )
-                                : OutlinedButton(
-                                    onPressed: null,
-                                    style: _macroOutlinedButtonStyle(context),
-                                    child: const Text('Save'),
-                                  ),
-                            OutlinedButton(
-                              onPressed: _loading ? null : _cancel,
-                              style: _macroOutlinedButtonStyle(context),
-                              child: const Text('Cancel'),
-                            ),
-                          ],
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: Wrap(
+                            alignment: WrapAlignment.end,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            spacing: 12,
+                            runSpacing: 8,
+                            children: [
+                              OutlinedButton(
+                                onPressed: _loading || _recording ? null : _reset,
+                                style: _macroOutlinedButtonStyle(context),
+                                child: Text(t.macro.reset),
+                              ),
+                              OutlinedButton(
+                                onPressed: _loading || _recording ? null : _save,
+                                style: _macroOutlinedButtonStyle(context),
+                                child: Text(t.macro.save),
+                              ),
+                              OutlinedButton(
+                                onPressed: _loading ? null : _cancel,
+                                style: _macroOutlinedButtonStyle(context),
+                                child: Text(t.macro.cancel),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     ),
@@ -1710,18 +1686,7 @@ ButtonStyle _macroOutlinedButtonStyle(BuildContext context) {
   );
 }
 
-ButtonStyle _macroPrimaryButtonStyle(BuildContext context) {
-  final theme = Theme.of(context);
-  return FilledButton.styleFrom(
-    backgroundColor: theme.colorScheme.primary,
-    foregroundColor: Colors.white,
-    minimumSize: const Size(80, 42),
-    elevation: 3,
-    shadowColor: theme.colorScheme.primary.withValues(alpha: 0.35),
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-  );
-}
+
 
 class _SelectableChip extends StatelessWidget {
   const _SelectableChip({
@@ -1739,58 +1704,27 @@ class _SelectableChip extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
+    return ChoiceChip(
+      label: Text(label),
+      selected: selected,
+      onSelected: (_) => onTap?.call(),
+      showCheckmark: false,
+      selectedColor: theme.colorScheme.primary,
+      backgroundColor: isDark ? const Color(0xFF26282E) : Colors.white,
+      labelStyle: theme.textTheme.bodySmall?.copyWith(
+        fontSize: 13,
+        fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+        color: selected
+            ? Colors.white
+            : (isDark ? const Color(0xFFE0E3EB) : const Color(0xFF344054)),
+      ),
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(10),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 160),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          decoration: BoxDecoration(
-            color: selected
-                ? theme.colorScheme.primary
-                : (isDark ? const Color(0xFF26282E) : Colors.white),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: selected
-                  ? theme.colorScheme.primary
-                  : (isDark
-                        ? const Color(0xFF3F424B)
-                        : const Color(0xFFD0D5DD)),
-              width: 1.0,
-            ),
-            boxShadow: selected
-                ? [
-                    BoxShadow(
-                      color: theme.colorScheme.primary.withValues(alpha: 0.35),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2.5),
-                    ),
-                  ]
-                : [
-                    BoxShadow(
-                      color: Colors.black.withValues(
-                        alpha: isDark ? 0.25 : 0.05,
-                      ),
-                      blurRadius: 4,
-                      offset: const Offset(0, 1.5),
-                    ),
-                  ],
-          ),
-          child: Text(
-            label,
-            style: theme.textTheme.bodySmall?.copyWith(
-              fontSize: 13,
-              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-              color: selected
-                  ? Colors.white
-                  : (isDark
-                        ? const Color(0xFFE0E3EB)
-                        : const Color(0xFF344054)),
-              letterSpacing: 0.1,
-            ),
-          ),
+        side: BorderSide(
+          color: selected
+              ? theme.colorScheme.primary
+              : (isDark ? const Color(0xFF3F424B) : const Color(0xFFD0D5DD)),
+          width: 1.0,
         ),
       ),
     );
@@ -1817,14 +1751,14 @@ class _EmptyMacroState extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             Text(
-              'No macros configured',
+              t.macro.noMacrosConfigured,
               style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
             ),
             const SizedBox(height: 6),
             Text(
-              'Create a macro to record key sequences and mouse actions.',
+              t.macro.noMacrosConfiguredDesc,
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
@@ -1834,7 +1768,7 @@ class _EmptyMacroState extends StatelessWidget {
               onPressed: onCreate,
               icon: const Icon(Icons.add_rounded, size: 18),
               style: _macroOutlinedButtonStyle(context),
-              label: const Text('Create Macro'),
+              label: Text(t.macro.createMacro),
             ),
           ],
         ),
@@ -1864,14 +1798,14 @@ class _MacroSelectionEmptyState extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             Text(
-              'Please select a shortcut to edit',
+              t.macro.selectShortcutEdit,
               style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
             ),
             const SizedBox(height: 6),
             Text(
-              'Choose a macro from the sidebar list or create a new one.',
+              t.macro.selectShortcutEditDesc,
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
@@ -1881,7 +1815,7 @@ class _MacroSelectionEmptyState extends StatelessWidget {
               onPressed: onNewMacro,
               icon: const Icon(Icons.add_rounded, size: 18),
               style: _macroOutlinedButtonStyle(context),
-              label: const Text('New Macro'),
+              label: Text(t.macro.newMacro),
             ),
           ],
         ),
@@ -1914,14 +1848,19 @@ class _MacroRow extends StatelessWidget {
               : (isDark ? const Color(0xFFE65100) : const Color(0xFFF57C00)));
 
     final eventTypeLabel = _isWheelOrTilt
-        ? 'Wheel'
-        : (action.isBreak ? 'Key Up' : 'Key Down');
+        ? t.macro.wheel
+        : (action.isBreak ? t.macro.keyUp : t.macro.keyDown);
 
     final eventIcon = _isWheelOrTilt
         ? Icons.mouse_rounded
         : (action.isBreak
               ? Icons.arrow_upward_rounded
               : Icons.arrow_downward_rounded);
+
+    final displayLabel = action.label != null
+        ? (CatalogLocalization.localizeLabelString(action.label!, t) ??
+            action.label!)
+        : '0x${action.keyCode.toRadixString(16)}';
 
     return Container(
       height: 44,
@@ -1943,7 +1882,7 @@ class _MacroRow extends StatelessWidget {
           ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 130),
             child: Text(
-              action.label ?? '0x${action.keyCode.toRadixString(16)}',
+              displayLabel,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
@@ -1953,12 +1892,13 @@ class _MacroRow extends StatelessWidget {
               ),
             ),
           ),
-          // Key Down / Key Up / Wheel Badge Centered in Middle (fixed 108x26 container)
+          // Key Down / Key Up / Wheel Badge Centered in Middle
           Expanded(
             child: Center(
               child: Container(
-                width: 108,
+                constraints: const BoxConstraints(minWidth: 70, maxWidth: 110),
                 height: 26,
+                padding: const EdgeInsets.symmetric(horizontal: 6),
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: badgeColor.withValues(alpha: 0.15),
@@ -1968,13 +1908,16 @@ class _MacroRow extends StatelessWidget {
                     width: 1,
                   ),
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                child: Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  alignment: WrapAlignment.center,
                   children: [
                     Icon(eventIcon, size: 13, color: badgeColor),
-                    const SizedBox(width: 5),
+                    const SizedBox(width: 4),
                     Text(
                       eventTypeLabel,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
@@ -2026,7 +1969,7 @@ class _MacroRow extends StatelessWidget {
             color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(),
-            tooltip: 'Remove Action',
+            tooltip: t.macro.removeAction,
           ),
         ],
       ),

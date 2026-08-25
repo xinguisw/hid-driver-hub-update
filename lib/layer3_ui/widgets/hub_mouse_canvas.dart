@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'package:driver_hub/layer4_domain/models/device_settings_state.dart';
 import 'package:driver_hub/i18n/strings.g.dart';
 import 'package:flutter/material.dart';
+import 'package:driver_hub/i18n/catalog_localization.dart';
 import 'package:driver_hub/layer3_ui/widgets/hub_button_mapping_panel.dart'
     show hubButtonMappingTapRegionId;
 
@@ -108,6 +109,7 @@ class _HubMouseCanvasState extends State<HubMouseCanvas> {
           widget.buttons,
           imageRect,
           paneSize,
+          t,
         );
 
         final canvasWidget = MouseRegion(
@@ -386,6 +388,7 @@ class _CalloutLayout {
     List<ButtonData> buttons,
     Rect imageRect,
     Size paneSize,
+    Translations t,
   ) {
     final sideMargin = (paneSize.width - imageRect.width) / 2;
     final effectiveStemLength = (sideMargin * 0.25).clamp(16.0, stemLength);
@@ -404,7 +407,7 @@ class _CalloutLayout {
       );
       final r = ((rNorm ?? 0.04) * imageRect.shortestSide).clamp(6.0, 24.0);
 
-      final label = b.actionLabel ?? b.buttonLabel ?? 'B${b.id}';
+      final label = CatalogLocalization.localizeButtonCallout(b, t);
       final tp = TextPainter(
         text: TextSpan(text: label, style: labelStyle),
         textDirection: TextDirection.ltr,

@@ -1,6 +1,7 @@
 import 'package:driver_hub/layer4_domain/models/device_settings_state.dart';
 import 'package:driver_hub/layer5_codec/button_action_catalog_map.dart';
 import 'package:driver_hub/i18n/strings.g.dart';
+import 'package:driver_hub/i18n/catalog_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -149,14 +150,20 @@ class _HubButtonMappingPanelState extends State<HubButtonMappingPanel> {
     setState(() {
       if (_specialModOrder.contains(id)) {
         _specialModOrder.remove(id);
-        return;
+      } else {
+        // At max: drop oldest so the new pick can light; always ≤ 2 selected.
+        if (_specialModOrder.length >=
+            HubButtonMappingPanel.maxSpecialModifiers) {
+          _specialModOrder.removeAt(0);
+        }
+        _specialModOrder.add(id);
       }
-      // At max: drop oldest so the new pick can light; always ≤ 2 selected.
-      if (_specialModOrder.length >=
-          HubButtonMappingPanel.maxSpecialModifiers) {
-        _specialModOrder.removeAt(0);
+      if (_anyKeyChar != null) {
+        widget.onComboSelected?.call(
+          List<String>.from(_specialModOrder),
+          _anyKeyChar!,
+        );
       }
-      _specialModOrder.add(id);
     });
   }
 
@@ -172,9 +179,8 @@ class _HubButtonMappingPanelState extends State<HubButtonMappingPanel> {
     if (!_anyKeyListening) return KeyEventResult.ignored;
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
 
+    // Extract character from event
     String? ch;
-
-    // Try character first (printable keys: letters, digits, symbols)
     final raw = event.character;
     if (raw != null &&
         raw.isNotEmpty &&
@@ -193,10 +199,7 @@ class _HubButtonMappingPanelState extends State<HubButtonMappingPanel> {
       _anyKeyListening = false;
     });
 
-    // Dispatch combo if modifiers are selected
-    if (_specialModOrder.isNotEmpty) {
-      widget.onComboSelected?.call(List<String>.from(_specialModOrder), ch);
-    }
+    widget.onComboSelected?.call(List<String>.from(_specialModOrder), ch);
 
     return KeyEventResult.handled;
   }
@@ -437,7 +440,7 @@ class _SectionCatalogList extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
               child: Text(
-                section.title,
+                CatalogLocalization.localizeSectionTitle(section.title, t),
                 style: theme.textTheme.labelMedium?.copyWith(
                   color: theme.colorScheme.onSurface,
                   fontWeight: FontWeight.bold,
@@ -522,7 +525,11 @@ class _CatalogItemTileState extends State<_CatalogItemTile> {
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             child: Text(
-              widget.item.label,
+              CatalogLocalization.localizeItemLabel(
+                widget.item.id,
+                widget.item.label,
+                t,
+              ),
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: widget.selected
                     ? theme.colorScheme.onPrimaryContainer
@@ -584,7 +591,7 @@ class _SpecialCombinationBody extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
           child: Text(
-            section.title,
+            CatalogLocalization.localizeSectionTitle(section.title, t),
             style: theme.textTheme.labelMedium?.copyWith(
               color: theme.colorScheme.onSurface,
               fontWeight: FontWeight.bold,
@@ -628,7 +635,11 @@ class _SpecialCombinationBody extends StatelessWidget {
                               vertical: 6,
                             ),
                             child: Text(
-                              m.label,
+                              CatalogLocalization.localizeItemLabel(
+                                m.id,
+                                m.label,
+                                t,
+                              ),
                               style: theme.textTheme.labelMedium?.copyWith(
                                 color: selectedMods.contains(m.id)
                                     ? theme.colorScheme.onPrimary
@@ -652,7 +663,13 @@ class _SpecialCombinationBody extends StatelessWidget {
               SizedBox(
                 width: 96,
                 child: Text(
-                  anyKey?.label ?? 'Any key',
+                  anyKey != null
+                      ? CatalogLocalization.localizeItemLabel(
+                          anyKey.id,
+                          anyKey.label,
+                          t,
+                        )
+                      : t.mapping.anyKey,
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                     fontSize: 12,
@@ -725,7 +742,7 @@ class _MacroCatalogBody extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
             child: Text(
-              'Macro Setting',
+              t.sidebar.macroSetting,
               style: theme.textTheme.labelMedium?.copyWith(
                 color: theme.colorScheme.onSurface,
                 fontWeight: FontWeight.bold,
@@ -747,7 +764,7 @@ class _MacroCatalogBody extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'No Macros Configured',
+                  t.macro.noMacrosConfigured,
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                     fontWeight: FontWeight.w600,
@@ -756,7 +773,7 @@ class _MacroCatalogBody extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Create and manage custom key macros for your device in Macro Settings.',
+                  t.macro.noMacrosConfiguredDesc,
                   textAlign: TextAlign.center,
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant.withValues(

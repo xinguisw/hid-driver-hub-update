@@ -1,3 +1,4 @@
+import 'package:driver_hub/i18n/strings.g.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
@@ -18,16 +19,16 @@ class AppSettingsPanel extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _SettingsSection(title: 'System', child: _systemSettings(context)),
+          _SettingsSection(title: t.appSettings.system, child: _systemSettings(context)),
           const SizedBox(height: 8),
-          _SettingsSection(title: 'Help', child: _helpSettings(context)),
+          _SettingsSection(title: t.appSettings.help, child: _helpSettings(context)),
           const SizedBox(height: 8),
           _SettingsSection(
-            title: 'Performance Settings',
+            title: t.appSettings.performanceSettings,
             child: _performanceSettings(context),
           ),
           const SizedBox(height: 8),
-          _SettingsSection(title: 'About NEWMEN HUB', child: _aboutSettings()),
+          _SettingsSection(title: t.appSettings.about, child: _aboutSettings()),
         ],
       ),
     );
@@ -39,7 +40,7 @@ class AppSettingsPanel extends StatelessWidget {
       runSpacing: 12,
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
-        const SizedBox(width: 180, child: Text('Language')),
+        SizedBox(width: 180, child: Text(t.appSettings.language)),
         SizedBox(
           width: 220,
           child: DropdownButtonFormField<String>(
@@ -53,7 +54,7 @@ class AppSettingsPanel extends StatelessWidget {
             onChanged: null,
           ),
         ),
-        const SizedBox(width: 180, child: Text('Theme')),
+        SizedBox(width: 180, child: Text(t.appSettings.theme)),
         SizedBox(
           width: 220,
           child: TextField(
@@ -71,26 +72,26 @@ class AppSettingsPanel extends StatelessWidget {
       children: [
         Row(
           children: [
-            Expanded(child: _helpButton(context, 'FAQ')),
+            Expanded(child: _helpButton(context, t.appSettings.faq)),
             const SizedBox(width: 8),
-            Expanded(child: _helpButton(context, 'Customer Service')),
+            Expanded(child: _helpButton(context, t.appSettings.customerService)),
             const SizedBox(width: 8),
-            Expanded(child: _helpButton(context, 'Key Test')),
+            Expanded(child: _helpButton(context, t.appSettings.keyTest)),
           ],
         ),
         const SizedBox(height: 8),
         Row(
           children: [
-            Expanded(child: _helpButton(context, 'Product Manual')),
+            Expanded(child: _helpButton(context, t.appSettings.productManual)),
             const SizedBox(width: 8),
             Expanded(
               flex: 2,
-              child: _helpButton(context, 'Driver Bug Feedback'),
+              child: _helpButton(context, t.appSettings.driverBugFeedback),
             ),
           ],
         ),
         const SizedBox(height: 8),
-        _helpButton(context, 'NEWMEN HUB Communities'),
+        _helpButton(context, t.appSettings.communities),
       ],
     );
   }
@@ -101,7 +102,7 @@ class AppSettingsPanel extends StatelessWidget {
       runSpacing: 12,
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
-        const SizedBox(width: 180, child: Text('Low Battery Alert Threshold')),
+        SizedBox(width: 180, child: Text(t.appSettings.lowBatteryThreshold)),
         SizedBox(
           width: 220,
           child: ValueListenableBuilder<int>(
@@ -129,12 +130,12 @@ class AppSettingsPanel extends StatelessWidget {
   }
 
   Widget _aboutSettings() {
-    return const Column(
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Current Version: 0.0.1'),
-        SizedBox(height: 8),
-        Text('Official Website: xxxx.com'),
+        Text(t.appSettings.currentVersion(version: '0.0.1')),
+        const SizedBox(height: 8),
+        Text(t.appSettings.officialWebsite(url: 'xxxx.com')),
       ],
     );
   }

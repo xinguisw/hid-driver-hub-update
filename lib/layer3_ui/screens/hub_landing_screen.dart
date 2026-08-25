@@ -1130,25 +1130,28 @@ class _ParameterActionBar extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
+      alignment: Alignment.centerRight,
+      child: Wrap(
+        alignment: WrapAlignment.end,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 12,
+        runSpacing: 8,
         children: [
           saveCanClick
               ? FilledButton(
                   onPressed: onSave,
                   style: primaryButtonStyle,
-                  child: const Text('Save'),
+                  child: Text(t.common.save),
                 )
               : OutlinedButton(
                   onPressed: null,
                   style: primaryButtonStyle,
-                  child: const Text('Save'),
+                  child: Text(t.common.save),
                 ),
-          const SizedBox(width: 12),
           OutlinedButton(
             onPressed: committing ? null : onCancel,
             style: outlinedButtonStyle,
-            child: const Text('Cancel'),
+            child: Text(t.common.cancel),
           ),
         ],
       ),
@@ -1167,6 +1170,7 @@ Widget _buildScrollablePanel({
       if (constraints.maxHeight < 220) {
         return SingleChildScrollView(
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             mainAxisSize: MainAxisSize.min,
             children: [
               panel,
@@ -1176,6 +1180,7 @@ Widget _buildScrollablePanel({
         );
       }
       return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Expanded(child: panel),
           actionBar,
@@ -1253,6 +1258,7 @@ class _BacklightActionBar extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      alignment: Alignment.centerRight,
       child: Wrap(
         alignment: WrapAlignment.end,
         crossAxisAlignment: WrapCrossAlignment.center,
@@ -1263,17 +1269,17 @@ class _BacklightActionBar extends StatelessWidget {
               ? FilledButton(
                   onPressed: onSave,
                   style: primaryButtonStyle,
-                  child: const Text('Save'),
+                  child: Text(t.common.save),
                 )
               : OutlinedButton(
                   onPressed: null,
                   style: primaryButtonStyle,
-                  child: const Text('Save'),
+                  child: Text(t.common.save),
                 ),
           OutlinedButton(
             onPressed: committing ? null : onCancel,
             style: outlinedButtonStyle,
-            child: const Text('Cancel'),
+            child: Text(t.common.cancel),
           ),
         ],
       ),
@@ -1352,6 +1358,7 @@ class _PerformanceActionBar extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      alignment: Alignment.centerRight,
       child: Wrap(
         alignment: WrapAlignment.end,
         crossAxisAlignment: WrapCrossAlignment.center,
@@ -1361,23 +1368,23 @@ class _PerformanceActionBar extends StatelessWidget {
           OutlinedButton(
             onPressed: committing ? null : onReset,
             style: outlinedButtonStyle,
-            child: const Text('Reset to Default'),
+            child: Text(t.common.resetToDefault),
           ),
           saveCanClick
               ? FilledButton(
                   onPressed: onSave,
                   style: primaryButtonStyle,
-                  child: const Text('Save'),
+                  child: Text(t.common.save),
                 )
               : OutlinedButton(
                   onPressed: null,
                   style: primaryButtonStyle,
-                  child: const Text('Save'),
+                  child: Text(t.common.save),
                 ),
           OutlinedButton(
             onPressed: committing ? null : onCancel,
             style: outlinedButtonStyle,
-            child: const Text('Cancel'),
+            child: Text(t.common.cancel),
           ),
         ],
       ),

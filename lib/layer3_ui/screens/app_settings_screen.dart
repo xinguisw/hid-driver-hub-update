@@ -1,6 +1,7 @@
 import 'package:driver_hub/layer3_ui/widgets/app_settings_panel.dart';
 import 'package:driver_hub/layer3_ui/widgets/app_top_bar.dart';
 import 'package:driver_hub/layer4_domain/device_scope.dart';
+import 'package:driver_hub/i18n/strings.g.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
@@ -36,7 +37,7 @@ class AppSettingsScreen extends StatelessWidget {
           children: [
             const SizedBox(width: 8),
             Text(
-              'App Setting',
+              t.appSettings.appSetting,
               style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.bold,
               ),

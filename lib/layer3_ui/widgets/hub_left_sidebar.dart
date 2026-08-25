@@ -196,7 +196,7 @@ class _HubLeftSidebarState extends State<HubLeftSidebar> {
   /// Animated device header transition
   Widget _deviceHeader(ThemeData theme) {
     return Tooltip(
-      message: 'Back',
+      message: t.sidebar.back,
       child: Material(
         color: Colors.transparent,
         child: InkWell(

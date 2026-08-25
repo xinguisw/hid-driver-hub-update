@@ -58,22 +58,25 @@ class LiveDeviceRuntime implements DeviceRuntime {
   Future<DeviceSettingsGateway?> openAndRegister(
     DiscoveredDevice device,
   ) async {
-    final existing = _watcher.getSession(device.hidDevice.path);
-    if (existing != null && existing.isAlive) {
-      return existing;
-    }
-    final session = DeviceSession(
-      device: device,
-      session: HidSession(device.hidDevice),
-      protocol: const MouseProtocol(),
+    return await _watcher.runWithInFlightLock(
+      device.hidDevice.path,
+      device.mode.vid,
+      device.mode.pid,
+      () async {
+        final session = DeviceSession(
+          device: device,
+          session: HidSession(device.hidDevice),
+          protocol: const MouseProtocol(),
+        );
+        if (!await session.start()) {
+          await session.dispose();
+          return null;
+        }
+        _saveLastDeviceHint(device);
+        _watcher.register(session);
+        return session;
+      },
     );
-    if (!await session.start()) {
-      await session.dispose();
-      return null;
-    }
-    _saveLastDeviceHint(device);
-    _watcher.register(session);
-    return session;
   }
 
   void _saveLastDeviceHint(DiscoveredDevice device) {

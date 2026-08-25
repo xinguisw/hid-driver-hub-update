@@ -60,73 +60,9 @@ class _HubLeftSidebarState extends State<HubLeftSidebar> {
         curve: _animationCurve,
         width: width,
         child: ClipRect(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // ---- Device Header ----
-              Padding(
-                padding: const EdgeInsets.fromLTRB(8, 12, 8, 8),
-                child: _deviceHeader(theme),
-              ),
-
-              // ---- Destination List ----
-              Expanded(
-                child: ListView.builder(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  itemCount: _destinations.length,
-                  itemBuilder: (context, index) {
-                    final destination = _destinations[index];
-                    final selected = destination.index == widget.selectedIndex;
-                    final label = destination.label;
-
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 2,
-                      ),
-                      child: Material(
-                        color: selected
-                            ? theme.colorScheme.onSurface.withValues(
-                                alpha: 0.08,
-                              )
-                            : Colors.transparent,
-                        borderRadius: BorderRadius.circular(8),
-                        clipBehavior: Clip.antiAlias,
-                        child: InkWell(
-                          canRequestFocus: false,
-                          focusColor: Colors.transparent,
-                          highlightColor: Colors.transparent,
-                          hoverColor: theme.colorScheme.surfaceContainerHighest
-                              .withValues(alpha: 0.5),
-                          borderRadius: BorderRadius.circular(8),
-                          onTap: () =>
-                              widget.onDestinationSelected(destination.index),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 10,
-                            ),
-                            child: SingleChildScrollView(
-                              scrollDirection: Axis.horizontal,
-                              physics: const NeverScrollableScrollPhysics(),
-                              child: _destinationRow(
-                                label: label,
-                                iconName: destination.iconName,
-                                suffix: suffix,
-                                theme: theme,
-                                isSelected: selected,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-
-              // ---- Smooth Rotating Collapse Toggle ----
-              Align(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final toggle = Align(
                 alignment: _extended ? Alignment.centerRight : Alignment.center,
                 child: Material(
                   color: Colors.transparent,
@@ -136,7 +72,7 @@ class _HubLeftSidebarState extends State<HubLeftSidebar> {
                     child: Padding(
                       padding: const EdgeInsets.all(12),
                       child: AnimatedRotation(
-                        turns: _extended ? 0.0 : 0.5, // Rotates 180 degrees
+                        turns: _extended ? 0.0 : 0.5,
                         duration: _animationDuration,
                         curve: _animationCurve,
                         child: Icon(
@@ -147,8 +83,110 @@ class _HubLeftSidebarState extends State<HubLeftSidebar> {
                     ),
                   ),
                 ),
+              );
+
+              if (constraints.maxHeight < 280) {
+                return ListView(
+                  padding: EdgeInsets.zero,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(8, 12, 8, 8),
+                      child: _deviceHeader(theme),
+                    ),
+                    for (final destination in _destinations)
+                      _buildDestinationTile(
+                        context,
+                        theme,
+                        destination,
+                        suffix,
+                      ),
+                    toggle,
+                  ],
+                );
+              }
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // ---- Device Header ----
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(8, 12, 8, 8),
+                    child: _deviceHeader(theme),
+                  ),
+
+                  // ---- Destination List ----
+                  Expanded(
+                    child: ListView.builder(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      itemCount: _destinations.length,
+                      itemBuilder: (context, index) {
+                        return _buildDestinationTile(
+                          context,
+                          theme,
+                          _destinations[index],
+                          suffix,
+                        );
+                      },
+                    ),
+                  ),
+
+                  // ---- Smooth Rotating Collapse Toggle ----
+                  toggle,
+                ],
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDestinationTile(
+    BuildContext context,
+    ThemeData theme,
+    ({int index, String label, String iconName}) destination,
+    String suffix,
+  ) {
+    final selected = destination.index == widget.selectedIndex;
+    final label = destination.label;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: 8,
+        vertical: 2,
+      ),
+      child: Material(
+        color: selected
+            ? theme.colorScheme.onSurface.withValues(
+                alpha: 0.08,
+              )
+            : Colors.transparent,
+        borderRadius: BorderRadius.circular(8),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          canRequestFocus: false,
+          focusColor: Colors.transparent,
+          highlightColor: Colors.transparent,
+          hoverColor: theme.colorScheme.surfaceContainerHighest
+              .withValues(alpha: 0.5),
+          borderRadius: BorderRadius.circular(8),
+          onTap: () => widget.onDestinationSelected(destination.index),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 10,
+            ),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              physics: const NeverScrollableScrollPhysics(),
+              child: _destinationRow(
+                label: label,
+                iconName: destination.iconName,
+                suffix: suffix,
+                theme: theme,
+                isSelected: selected,
               ),
-            ],
+            ),
           ),
         ),
       ),
@@ -158,7 +196,7 @@ class _HubLeftSidebarState extends State<HubLeftSidebar> {
   /// Animated device header transition
   Widget _deviceHeader(ThemeData theme) {
     return Tooltip(
-      message: 'Back',
+      message: t.sidebar.back,
       child: Material(
         color: Colors.transparent,
         child: InkWell(

@@ -1,4 +1,5 @@
 import 'package:driver_hub/layer4_domain/models/device_settings_state.dart';
+import 'package:driver_hub/i18n/strings.g.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -61,11 +62,10 @@ class HubPerformancePanel extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // DPI Settings Header
-          const _SectionHeader(
+          _SectionHeader(
             icon: Icons.speed_rounded,
-            title: 'DPI Settings',
-            subtitle:
-                'Configure sensitivity stages, color identifiers, and active levels',
+            title: t.performance.dpiSettings,
+            subtitle: t.performance.dpiSettingsSubtitle,
           ),
           const SizedBox(height: 12),
           _DpiSettingsGroup(
@@ -86,11 +86,10 @@ class HubPerformancePanel extends StatelessWidget {
           ),
           const SizedBox(height: 28),
           // Report Rate Header
-          const _SectionHeader(
+          _SectionHeader(
             icon: Icons.timer_outlined,
-            title: 'Polling Rate',
-            subtitle:
-                'Choose how frequently the mouse reports data to your computer',
+            title: t.performance.reportRate,
+            subtitle: t.performance.reportRateSubtitle,
           ),
           const SizedBox(height: 12),
           _ReportRateGroup(
@@ -136,11 +135,14 @@ class _SectionHeader extends StatelessWidget {
               child: Icon(icon, size: 16, color: theme.colorScheme.primary),
             ),
             const SizedBox(width: 10),
-            Text(
-              title,
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.2,
+            Expanded(
+              child: Text(
+                title,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.2,
+                ),
               ),
             ),
           ],
@@ -223,32 +225,33 @@ class _DpiSettingsGroup extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Levels row with modern chips and add stage trigger on the far right
-          Row(
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 12,
+            runSpacing: 10,
             children: [
-              Text(
-                'Levels',
-                style: theme.textTheme.labelLarge?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
+              Wrap(
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 8,
+                runSpacing: 6,
+                children: [
+                  Text(
+                    t.performance.levels,
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  for (final stage in stages)
+                    _LevelChip(
+                      index: stage.level,
+                      isSelected: stage.level == selectedLevel,
+                      onTap: () => onLevelSelected(stage.level),
+                    ),
+                ],
               ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    for (final stage in stages)
-                      _LevelChip(
-                        index: stage.level,
-                        isSelected: stage.level == selectedLevel,
-                        onTap: () => onLevelSelected(stage.level),
-                      ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
               Builder(
                 builder: (context) {
                   final canAdd = stages.length < maxLevels;
@@ -297,7 +300,7 @@ class _DpiSettingsGroup extends StatelessWidget {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            'Add',
+                            t.performance.addStage,
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: canAdd
@@ -551,17 +554,20 @@ class _DpiSliderRowState extends State<_DpiSliderRow> {
                     ),
                     const SizedBox(width: 8),
                   ],
-                  Text(
-                    'DPI ${widget.stage.level}',
-                    style: theme.textTheme.labelMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 12,
-                      color: widget.isSelected
-                          ? theme.colorScheme.primary
-                          : null,
+                  Expanded(
+                    child: Text(
+                      t.performance.dpiLevel(level: widget.stage.level),
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 12,
+                        color: widget.isSelected
+                            ? theme.colorScheme.primary
+                            : null,
+                      ),
                     ),
                   ),
-                  const Spacer(),
+                  const SizedBox(width: 6),
                   _DpiStepperInput(
                     value: widget.stagedValue,
                     min: widget.min,
@@ -572,7 +578,9 @@ class _DpiSliderRowState extends State<_DpiSliderRow> {
                   if (widget.onRemoveStage != null) ...[
                     const SizedBox(width: 6),
                     Tooltip(
-                      message: 'Delete DPI stage ${widget.stage.level}',
+                      message: t.performance.deleteStage(
+                        level: widget.stage.level,
+                      ),
                       child: InkWell(
                         onTap: widget.onRemoveStage,
                         borderRadius: BorderRadius.circular(4),
@@ -725,6 +733,7 @@ class _DpiColorButtonState extends State<_DpiColorButton> {
                   onColorChanged: (color) {
                     widget.onColorChanged?.call(color);
                   },
+                  onClose: _closePopover,
                 ),
               ),
             ),
@@ -780,10 +789,12 @@ class _DpiCompactColorOverlay extends StatefulWidget {
   const _DpiCompactColorOverlay({
     required this.initialColor,
     required this.onColorChanged,
+    this.onClose,
   });
 
   final Color initialColor;
   final ValueChanged<Color> onColorChanged;
+  final VoidCallback? onClose;
 
   @override
   State<_DpiCompactColorOverlay> createState() =>
@@ -876,67 +887,73 @@ class _DpiCompactColorOverlayState extends State<_DpiCompactColorOverlay> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
+            child: Text(
+              t.performance.dpiStageColor,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+              ),
+            ),
+          ),
           // 2D Saturation / Value Gradient Box
           GestureDetector(
             onPanDown: (d) => _setSv(d.localPosition, pickerWidth, svHeight),
             onPanUpdate: (d) => _setSv(d.localPosition, pickerWidth, svHeight),
-            child: ClipRRect(
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(9),
-              ),
-              child: SizedBox(
-                width: pickerWidth,
-                height: svHeight,
-                child: Stack(
-                  children: [
-                    Positioned.fill(
-                      child: ColoredBox(
-                        color: HSVColor.fromAHSV(1, _hsv.hue, 1, 1).toColor(),
-                      ),
+            child: SizedBox(
+              width: pickerWidth,
+              height: svHeight,
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: ColoredBox(
+                      color: HSVColor.fromAHSV(1, _hsv.hue, 1, 1).toColor(),
                     ),
-                    const Positioned.fill(
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [Colors.white, Colors.transparent],
-                          ),
+                  ),
+                  const Positioned.fill(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [Colors.white, Colors.transparent],
                         ),
                       ),
                     ),
-                    const Positioned.fill(
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [Colors.transparent, Colors.black],
-                          ),
+                  ),
+                  const Positioned.fill(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [Colors.transparent, Colors.black],
                         ),
                       ),
                     ),
-                    Positioned(
-                      left: (_hsv.saturation * pickerWidth - 7).clamp(
-                        0.0,
-                        pickerWidth - 14,
-                      ),
-                      top: ((1 - _hsv.value) * svHeight - 7).clamp(
-                        0.0,
-                        svHeight - 14,
-                      ),
-                      child: Container(
-                        width: 14,
-                        height: 14,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2),
-                          boxShadow: const [
-                            BoxShadow(color: Colors.black54, blurRadius: 3),
-                          ],
-                        ),
+                  ),
+                  Positioned(
+                    left: (_hsv.saturation * pickerWidth - 7).clamp(
+                      0.0,
+                      pickerWidth - 14,
+                    ),
+                    top: ((1 - _hsv.value) * svHeight - 7).clamp(
+                      0.0,
+                      svHeight - 14,
+                    ),
+                    child: Container(
+                      width: 14,
+                      height: 14,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 2),
+                        boxShadow: const [
+                          BoxShadow(color: Colors.black54, blurRadius: 3),
+                        ],
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -1046,6 +1063,36 @@ class _DpiCompactColorOverlayState extends State<_DpiCompactColorOverlay> {
                     _buildRgbField('B', _bCtrl),
                   ],
                 ),
+                const SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () {
+                        widget.onColorChanged(widget.initialColor);
+                        widget.onClose?.call();
+                      },
+                      style: TextButton.styleFrom(
+                        visualDensity: VisualDensity.compact,
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        minimumSize: const Size(48, 28),
+                      ),
+                      child: Text(t.common.cancel),
+                    ),
+                    const SizedBox(width: 6),
+                    FilledButton(
+                      onPressed: () {
+                        widget.onClose?.call();
+                      },
+                      style: FilledButton.styleFrom(
+                        visualDensity: VisualDensity.compact,
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        minimumSize: const Size(48, 28),
+                      ),
+                      child: Text(t.common.done),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
@@ -1132,7 +1179,7 @@ class _ReportRateGroup extends StatelessWidget {
           Row(
             children: [
               Text(
-                'Report Rate',
+                t.performance.reportRate,
                 style: theme.textTheme.labelLarge?.copyWith(
                   fontWeight: FontWeight.w600,
                   color: theme.colorScheme.onSurfaceVariant,

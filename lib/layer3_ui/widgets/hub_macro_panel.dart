@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:driver_hub/layer2_capabilities/capabilities.dart';
@@ -6,7 +7,8 @@ import 'package:driver_hub/layer4_domain/device_scope.dart';
 import 'package:driver_hub/layer4_domain/models/discovered_card_state.dart';
 import 'package:driver_hub/layer4_domain/models/macro.dart';
 import 'package:driver_hub/layer5_codec/codecs/keyvalue_table.dart';
-import 'package:flutter/foundation.dart';
+import 'package:driver_hub/i18n/strings.g.dart';
+import 'package:driver_hub/i18n/catalog_localization.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -54,7 +56,6 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
   int? _selectedSlot;
   int? _activePointerCode;
   String? _activePointerLabel;
-  MacroDefinition? _originalMacro;
   Stopwatch? _recordClock;
   int? _lastRecordEventUs;
   Stopwatch? _calibrationClock;
@@ -68,27 +69,7 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
 
   bool get _hasScope => widget.scope != null && widget.card != null;
 
-  bool get _isDirty {
-    final draft = _draft;
-    if (draft == null || _recording) return false;
-    final orig = _originalMacro;
-    if (orig == null) {
-      return _events.isNotEmpty ||
-          _nameController.text.trim() != 'M${draft.slot}';
-    }
-    final currentName = _nameController.text.trim().isEmpty
-        ? 'M${draft.slot}'
-        : _nameController.text.trim();
-    final currentLoop = int.tryParse(_loopController.text) ?? 1;
 
-    final nameMatches =
-        currentName == (orig.name.isEmpty ? 'M${orig.slot}' : orig.name);
-    final modeMatches = draft.mode == orig.mode;
-    final loopMatches = currentLoop == orig.loopTimes;
-    final actionsMatch = listEquals(_events, orig.actions);
-
-    return !(nameMatches && modeMatches && loopMatches && actionsMatch);
-  }
 
   @override
   void initState() {
@@ -170,7 +151,6 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
       _delayMode = MacroDelayMode.recorded;
       _fixedDelayController.text = '10';
       _selectedSlot = slot;
-      _originalMacro = null;
       _events.clear();
       _pressedKeyCodes.clear();
       _pressedKeyLabels.clear();
@@ -210,7 +190,6 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
       _calibrationMode = _isTimingProbeMacro(macro);
       _delayMode = MacroDelayMode.recorded;
       _fixedDelayController.text = '10';
-      _originalMacro = macro;
       _events
         ..clear()
         ..addAll(macro.actions);
@@ -550,7 +529,7 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
       final fixedMs = int.tryParse(_fixedDelayController.text);
       if (fixedMs == null || fixedMs < 0 || fixedMs > 100) {
         setState(() => _error = 'Fixed delay must be between 0 and 100 ms');
-        _showToast(message: 'Macro failed to save', isSuccess: false);
+        _showToast(message: t.macro.savedFailed, isSuccess: false);
         return;
       }
     }
@@ -563,7 +542,7 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
     final errors = validateMacro(macro);
     if (errors.isNotEmpty) {
       setState(() => _error = errors.join('\n'));
-      _showToast(message: 'Macro failed to save', isSuccess: false);
+      _showToast(message: t.macro.savedFailed, isSuccess: false);
       return;
     }
     setState(() {
@@ -587,14 +566,11 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _originalMacro = macro;
-        _draft = _draftFrom(macro);
-        _events
-          ..clear()
-          ..addAll(macro.actions);
+        _draft = null;
+        _events.clear();
         _error = null;
       });
-      _showToast(message: 'Macro saved successfully', isSuccess: true);
+      _showToast(message: t.macro.savedSuccess, isSuccess: true);
       widget.onChanged?.call();
     } catch (e) {
       if (!mounted) return;
@@ -603,7 +579,7 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
         _error =
             'Macro save failed: ${e is FormatException ? e.message : 'device error or timeout'}';
       });
-      _showToast(message: 'Macro failed to save', isSuccess: false);
+      _showToast(message: t.macro.savedFailed, isSuccess: false);
     }
   }
 
@@ -738,136 +714,160 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        SizedBox(
-          width: 220,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 10,
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final renderW = math.max(480.0, constraints.maxWidth);
+        final listWidth = (renderW * 0.32).clamp(160.0, 220.0);
+        final content = Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SizedBox(
+              width: listWidth,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 10,
+                    ),
+                    child: Row(
                       children: [
                         Icon(
                           Icons.extension_rounded,
                           size: 18,
                           color: theme.colorScheme.primary,
                         ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Macro List',
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            t.macro.macroList,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
                           ),
+                        ),
+                        IconButton(
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(
+                            minWidth: 28,
+                            minHeight: 28,
+                          ),
+                          icon: const Icon(Icons.add_rounded, size: 20),
+                          tooltip: t.macro.newMacro,
+                          onPressed: _recording ? null : _openCreation,
                         ),
                       ],
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.add_rounded, size: 20),
-                      tooltip: 'New Macro',
-                      onPressed: _recording ? null : _openCreation,
+                  ),
+                  Divider(
+                    height: 1,
+                    color: (isDark ? Colors.white : Colors.black).withValues(
+                      alpha: 0.12,
                     ),
-                  ],
-                ),
-              ),
-              Divider(
-                height: 1,
-                color: (isDark ? Colors.white : Colors.black).withValues(
-                  alpha: 0.12,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Expanded(
-                child: ListView.separated(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  itemCount: _macros.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 6),
-                  itemBuilder: (context, index) {
-                    final macro = _macros[index];
-                    final displayName = macro.name.isEmpty
-                        ? 'M${macro.slot}'
-                        : macro.name;
-                    return Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: _recording ? null : () => _selectMacro(macro),
-                        borderRadius: BorderRadius.circular(10),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 10,
-                          ),
-                          decoration: BoxDecoration(
-                            color: isDark
-                                ? theme.colorScheme.surfaceContainerHighest
-                                      .withValues(alpha: 0.2)
-                                : Colors.grey.withValues(alpha: 0.05),
+                  ),
+                  const SizedBox(height: 8),
+                  Expanded(
+                    child: ListView.separated(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      itemCount: _macros.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 6),
+                      itemBuilder: (context, index) {
+                        final macro = _macros[index];
+                        final displayName = macro.name.isEmpty
+                            ? 'M${macro.slot}'
+                            : macro.name;
+                        return Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: _recording
+                                ? null
+                                : () => _selectMacro(macro),
                             borderRadius: BorderRadius.circular(10),
-                            border: Border.all(
-                              color: isDark
-                                  ? Colors.white.withValues(alpha: 0.1)
-                                  : Colors.black.withValues(alpha: 0.08),
-                              width: 1.0,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 10,
+                              ),
+                              decoration: BoxDecoration(
+                                color: isDark
+                                    ? theme.colorScheme.surfaceContainerHighest
+                                          .withValues(alpha: 0.2)
+                                    : Colors.grey.withValues(alpha: 0.05),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: isDark
+                                      ? Colors.white.withValues(alpha: 0.1)
+                                      : Colors.black.withValues(alpha: 0.08),
+                                  width: 1.0,
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.keyboard_command_key_rounded,
+                                    size: 16,
+                                    color: theme.colorScheme.onSurfaceVariant,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      displayName,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w500,
+                                        color: theme.colorScheme.onSurface,
+                                      ),
+                                    ),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.delete_outline_rounded,
+                                      size: 18,
+                                    ),
+                                    color: theme.colorScheme.onSurfaceVariant
+                                        .withValues(alpha: 0.6),
+                                    tooltip: t.macro.deleteMacro,
+                                    onPressed: _recording
+                                        ? null
+                                        : () => _deleteMacro(macro),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.keyboard_command_key_rounded,
-                                size: 16,
-                                color: theme.colorScheme.onSurfaceVariant,
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  displayName,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w500,
-                                    color: theme.colorScheme.onSurface,
-                                  ),
-                                ),
-                              ),
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.delete_outline_rounded,
-                                  size: 18,
-                                ),
-                                color: theme.colorScheme.onSurfaceVariant
-                                    .withValues(alpha: 0.6),
-                                tooltip: 'Delete Macro',
-                                onPressed: _recording
-                                    ? null
-                                    : () => _deleteMacro(macro),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
-        ),
-        const VerticalDivider(thickness: 1, width: 1),
-        Expanded(
-          flex: 4,
-          child: _MacroSelectionEmptyState(onNewMacro: _openCreation),
-        ),
-      ],
+            ),
+            const VerticalDivider(thickness: 1, width: 1),
+            Expanded(
+              flex: 4,
+              child: _MacroSelectionEmptyState(onNewMacro: _openCreation),
+            ),
+          ],
+        );
+
+        if (constraints.maxWidth < 480) {
+          return SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: SizedBox(
+              width: 480,
+              height: constraints.maxHeight,
+              child: content,
+            ),
+          );
+        }
+        return content;
+      },
     );
   }
 
@@ -892,500 +892,535 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
       ],
     );
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        SizedBox(
-          width: 220,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 10,
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final renderW = math.max(480.0, constraints.maxWidth);
+        final listWidth = (renderW * 0.32).clamp(160.0, 220.0);
+        final content = Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SizedBox(
+              width: listWidth,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 10,
+                    ),
+                    child: Row(
                       children: [
                         Icon(
                           Icons.extension_rounded,
                           size: 18,
                           color: theme.colorScheme.primary,
                         ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Macro List',
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            t.macro.macroList,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
                           ),
+                        ),
+                        IconButton(
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(
+                            minWidth: 28,
+                            minHeight: 28,
+                          ),
+                          icon: const Icon(Icons.add_rounded, size: 20),
+                          tooltip: t.macro.newMacro,
+                          onPressed: _recording ? null : _openCreation,
                         ),
                       ],
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.add_rounded, size: 20),
-                      tooltip: 'New Macro',
-                      onPressed: _recording ? null : _openCreation,
+                  ),
+                  Divider(
+                    height: 1,
+                    color: (isDark ? Colors.white : Colors.black).withValues(
+                      alpha: 0.12,
                     ),
-                  ],
-                ),
-              ),
-              Divider(
-                height: 1,
-                color: (isDark ? Colors.white : Colors.black).withValues(
-                  alpha: 0.12,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Expanded(
-                child: ListView.separated(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  itemCount: _macros.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 6),
-                  itemBuilder: (context, index) {
-                    final macro = _macros[index];
-                    final isSelected = macro.slot == _selectedSlot;
-                    final displayName = macro.name.isEmpty
-                        ? 'M${macro.slot}'
-                        : macro.name;
-                    return Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: _recording ? null : () => _selectMacro(macro),
-                        borderRadius: BorderRadius.circular(10),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 150),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 10,
-                          ),
-                          decoration: BoxDecoration(
-                            color: isSelected
-                                ? theme.colorScheme.primary.withValues(
-                                    alpha: 0.12,
-                                  )
-                                : (isDark
-                                      ? theme
-                                            .colorScheme
-                                            .surfaceContainerHighest
-                                            .withValues(alpha: 0.2)
-                                      : Colors.grey.withValues(alpha: 0.05)),
+                  ),
+                  const SizedBox(height: 8),
+                  Expanded(
+                    child: ListView.separated(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      itemCount: _macros.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 6),
+                      itemBuilder: (context, index) {
+                        final macro = _macros[index];
+                        final isSelected = macro.slot == draft.slot;
+                        final displayName = macro.name.isEmpty
+                            ? 'M${macro.slot}'
+                            : macro.name;
+                        return Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: _recording
+                                ? null
+                                : () => _selectMacro(macro),
                             borderRadius: BorderRadius.circular(10),
-                            border: Border.all(
-                              color: isSelected
-                                  ? theme.colorScheme.primary
-                                  : (isDark
-                                        ? Colors.white.withValues(alpha: 0.1)
-                                        : Colors.black.withValues(alpha: 0.08)),
-                              width: isSelected ? 1.5 : 1.0,
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.keyboard_command_key_rounded,
-                                size: 16,
-                                color: isSelected
-                                    ? theme.colorScheme.primary
-                                    : theme.colorScheme.onSurfaceVariant,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 10,
                               ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  displayName,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: isSelected
-                                        ? FontWeight.w700
-                                        : FontWeight.w500,
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? theme.colorScheme.primary.withValues(
+                                        alpha: 0.12,
+                                      )
+                                    : (isDark
+                                          ? theme.colorScheme
+                                                .surfaceContainerHighest
+                                                .withValues(alpha: 0.2)
+                                          : Colors.grey.withValues(alpha: 0.05)),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: isSelected
+                                      ? theme.colorScheme.primary
+                                      : (isDark
+                                            ? Colors.white.withValues(alpha: 0.1)
+                                            : Colors.black.withValues(
+                                                alpha: 0.08,
+                                              )),
+                                  width: isSelected ? 1.5 : 1.0,
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.keyboard_command_key_rounded,
+                                    size: 16,
                                     color: isSelected
                                         ? theme.colorScheme.primary
-                                        : theme.colorScheme.onSurface,
+                                        : theme.colorScheme.onSurfaceVariant,
                                   ),
-                                ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      displayName,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: isSelected
+                                            ? FontWeight.bold
+                                            : FontWeight.w500,
+                                        color: isSelected
+                                            ? theme.colorScheme.primary
+                                            : theme.colorScheme.onSurface,
+                                      ),
+                                    ),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.delete_outline_rounded,
+                                      size: 18,
+                                    ),
+                                    color: theme.colorScheme.onSurfaceVariant
+                                        .withValues(alpha: 0.6),
+.withValues(alpha: 0.6),
+                                    tooltip: t.macro.deleteMacro,
+                                    onPressed: _recording
+                                        ? null
+                                        : () => _deleteMacro(macro),
+                                  ),
+                                ],
                               ),
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.delete_outline_rounded,
-                                  size: 18,
-                                ),
-                                color: theme.colorScheme.onSurfaceVariant
-                                    .withValues(alpha: 0.6),
-                                tooltip: 'Delete Macro',
-                                onPressed: _recording
-                                    ? null
-                                    : () => _deleteMacro(macro),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-        ),
-        const VerticalDivider(thickness: 1, width: 1),
-        Expanded(
-          flex: 4,
-          child: Listener(
-            behavior: HitTestBehavior.translucent,
-            onPointerDown: _onPointerEvent,
-            onPointerUp: _onPointerEvent,
-            onPointerSignal: _onPointerSignal,
-            child: Focus(
-              focusNode: _recordFocus,
-              onKeyEvent: _onRecordKeyEvent,
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: _nameController,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
                             ),
-                            decoration: InputDecoration(
-                              labelText: 'Macro Name',
-                              hintText: 'M${draft.slot}',
-                              hintStyle: TextStyle(
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .onSurfaceVariant
-                                    .withValues(alpha: 0.5),
-                                fontSize: 16,
-                                fontWeight: FontWeight.w500,
-                              ),
-                              isDense: true,
-                            ),
-                            onChanged: (value) {
-                              _updateDraft((d) => d.copyWith(name: value));
-                              if (value.length >
-                                  MacroDefinition.maxNameLength) {
-                                setState(() {
-                                  _error =
-                                      'Macro name must not exceed ${MacroDefinition.maxNameLength} characters';
-                                });
-                              } else if (_error != null &&
-                                  _error!.startsWith(
-                                    'Macro name must not exceed',
-                                  )) {
-                                setState(() {
-                                  _error = null;
-                                });
-                              }
-                            },
                           ),
-                        ),
-                        const SizedBox(width: 16),
-                        IconButton(
-                          icon: const Icon(
-                            Icons.delete_outline,
-                            color: Colors.redAccent,
-                          ),
-                          tooltip: 'Delete Macro',
-                          onPressed: () {
-                            final existing = _macros.firstWhere(
-                              (m) => m.slot == draft.slot,
-                              orElse: () => draft.toDefinition(),
-                            );
-                            _deleteMacro(existing);
-                          },
-                        ),
-                      ],
+                        );
+                      },
                     ),
-                    if (_error != null) ...[
-                      const SizedBox(height: 12),
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 10,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isDark
-                              ? const Color(0x33F87171)
-                              : const Color(0xFFFDE8E8),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                            color: isDark
-                                ? const Color(0xFFF87171)
-                                : const Color(0xFFF8B4B4),
-                            width: 1.0,
-                          ),
-                        ),
-                        child: Row(
+                  ),
+                ],
+              ),
+            ),
+            const VerticalDivider(thickness: 1, width: 1),
+            Expanded(
+              flex: 4,
+              child: Listener(
+                behavior: HitTestBehavior.translucent,
+                onPointerDown: _onPointerEvent,
+                onPointerUp: _onPointerEvent,
+                onPointerSignal: _onPointerSignal,
+                child: Focus(
+                  focusNode: _recordFocus,
+                  onKeyEvent: _onRecordKeyEvent,
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Icon(
-                              Icons.error_outline_rounded,
-                              size: 18,
-                              color: isDark
-                                  ? const Color(0xFFFCA5A5)
-                                  : const Color(0xFF9B1C1C),
-                            ),
-                            const SizedBox(width: 10),
                             Expanded(
-                              child: Text(
-                                _error!,
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
+                              child: TextField(
+                                controller: _nameController,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                decoration: InputDecoration(
+                                  labelText: t.macro.macroName,
+                                  hintText: 'M${draft.slot}',
+                                  hintStyle: TextStyle(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant
+                                        .withValues(alpha: 0.5),
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  isDense: true,
+                                ),
+                                onChanged: (value) {
+                                  _updateDraft((d) => d.copyWith(name: value));
+                                  if (value.length >
+                                      MacroDefinition.maxNameLength) {
+                                    setState(() {
+                                      _error =
+                                          'Macro name must not exceed ${MacroDefinition.maxNameLength} characters';
+                                    });
+                                  } else if (_error != null &&
+                                      _error!.startsWith(
+                                        'Macro name must not exceed',
+                                      )) {
+                                    setState(() {
+                                      _error = null;
+                                    });
+                                  }
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            IconButton(
+                              icon: const Icon(
+                                Icons.delete_outline,
+                                color: Colors.redAccent,
+                              ),
+                              tooltip: t.macro.deleteMacro,
+                              onPressed: () {
+                                final existing = _macros.firstWhere(
+                                  (m) => m.slot == draft.slot,
+                                  orElse: () => draft.toDefinition(),
+                                );
+                                _deleteMacro(existing);
+                              },
+                            ),
+                          ],
+                        ),
+                        if (_error != null) ...[
+                          const SizedBox(height: 12),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 10,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? const Color(0x33F87171)
+                                  : const Color(0xFFFDE8E8),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: isDark
+                                    ? const Color(0xFFF87171)
+                                    : const Color(0xFFF8B4B4),
+                                width: 1.0,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.error_outline_rounded,
+                                  size: 18,
                                   color: isDark
                                       ? const Color(0xFFFCA5A5)
                                       : const Color(0xFF9B1C1C),
                                 ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 12),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(16),
-                      decoration: cardBoxDecoration,
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: DropdownButtonFormField<MacroMode>(
-                              initialValue: draft.mode,
-                              isExpanded: true,
-                              decoration: const InputDecoration(
-                                labelText: 'Macro type',
-                              ),
-                              items: [
-                                for (final mode in MacroMode.values)
-                                  DropdownMenuItem(
-                                    value: mode,
-                                    child: Text(
-                                      mode.label,
-                                      overflow: TextOverflow.ellipsis,
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    _error!,
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: isDark
+                                          ? const Color(0xFFFCA5A5)
+                                          : const Color(0xFF9B1C1C),
                                     ),
                                   ),
+                                ),
                               ],
-                              onChanged: (mode) {
-                                if (mode != null) {
-                                  _updateDraft((d) => d.copyWith(mode: mode));
-                                }
-                              },
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          SizedBox(
-                            width: 120,
-                            child: TextField(
-                              controller: _loopController,
-                              enabled: draft.mode == MacroMode.loop,
-                              keyboardType: TextInputType.number,
-                              inputFormatters: [
-                                FilteringTextInputFormatter.digitsOnly,
-                              ],
-                              decoration: const InputDecoration(
-                                labelText: 'Loop count',
-                              ),
                             ),
                           ),
                         ],
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(16),
-                      decoration: cardBoxDecoration,
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Key Delay Mode',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.grey,
-                                  ),
+                        const SizedBox(height: 12),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(16),
+                          decoration: cardBoxDecoration,
+                          child: Wrap(
+                            alignment: WrapAlignment.spaceBetween,
+                            spacing: 16,
+                            runSpacing: 12,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              ConstrainedBox(
+                                constraints: const BoxConstraints(
+                                  minWidth: 140,
+                                  maxWidth: 240,
                                 ),
-                                const SizedBox(height: 8),
-                                Wrap(
-                                  spacing: 10,
-                                  runSpacing: 10,
-                                  children: [
-                                    _SelectableChip(
-                                      label: 'Recorded Delay',
-                                      selected:
-                                          _delayMode == MacroDelayMode.recorded,
-                                      onTap: () {
-                                        setState(() {
-                                          _delayMode = MacroDelayMode.recorded;
-                                          if (_error != null &&
-                                              _error!.startsWith(
-                                                'Fixed delay must be between',
-                                              )) {
-                                            _error = null;
-                                          }
-                                        });
-                                      },
-                                    ),
-                                    _SelectableChip(
-                                      label: 'Fixed Delay',
-                                      selected:
-                                          _delayMode == MacroDelayMode.fixed,
-                                      onTap: () {
-                                        setState(() {
-                                          _delayMode = MacroDelayMode.fixed;
-                                          _applyFixedDelayToEvents();
-                                          _validateFixedDelay(
-                                            _fixedDelayController.text,
-                                          );
-                                        });
-                                      },
-                                    ),
+                                child: DropdownButtonFormField<MacroMode>(
+                                  initialValue: draft.mode,
+                                  isExpanded: true,
+                                  decoration: InputDecoration(
+                                    labelText: t.macro.macroType,
+                                  ),
+                                  items: [
+                                    for (final mode in MacroMode.values)
+                                      DropdownMenuItem(
+                                        value: mode,
+                                        child: Text(
+                                          mode == MacroMode.loop
+                                              ? t.macro.modes.loop
+                                              : (mode == MacroMode.stopOnAnyKey
+                                                  ? t.macro.modes.stopOnAnyKey
+                                                  : t.macro.modes.playOnHold),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
                                   ],
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          SizedBox(
-                            width: 140,
-                            child: TextField(
-                              controller: _fixedDelayController,
-                              enabled: _delayMode == MacroDelayMode.fixed,
-                              keyboardType: TextInputType.number,
-                              inputFormatters: [
-                                FilteringTextInputFormatter.digitsOnly,
-                              ],
-                              decoration: const InputDecoration(
-                                labelText: 'Fixed Delay (ms)',
-                                hintText: '10',
-                              ),
-                              onChanged: (val) {
-                                setState(() {
-                                  _validateFixedDelay(val);
-                                  if (_delayMode == MacroDelayMode.fixed) {
-                                    _applyFixedDelayToEvents();
-                                  }
-                                });
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        OutlinedButton(
-                          onPressed: _recording ? null : _startRecording,
-                          style: buttonStyle,
-                          child: const Text('Start Recording'),
-                        ),
-                        const SizedBox(width: 12),
-                        OutlinedButton(
-                          key: _stopRecordingKey,
-                          onPressed: _recording ? _stopRecording : null,
-                          style: buttonStyle,
-                          child: const Text('Stop Recording'),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(16),
-                      decoration: cardBoxDecoration,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('Record'),
-                          const SizedBox(height: 8),
-                          if (_events.isEmpty)
-                            Text(
-                              _recording
-                                  ? 'Recording — press keys…'
-                                  : 'No events recorded',
-                              style: TextStyle(
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onSurfaceVariant,
-                                fontStyle: FontStyle.italic,
-                              ),
-                            )
-                          else
-                            ConstrainedBox(
-                              constraints: const BoxConstraints(maxHeight: 280),
-                              child: ListView.builder(
-                                controller: _recordScrollController,
-                                shrinkWrap: true,
-                                itemCount: _events.length,
-                                itemBuilder: (context, i) => _MacroRow(
-                                  action: _events[i],
-                                  onDelete: () => setState(() {
-                                    _events.removeAt(i);
-                                    _syncDraftActions();
-                                  }),
+                                  onChanged: (mode) {
+                                    if (mode != null) {
+                                      _updateDraft((d) => d.copyWith(mode: mode));
+                                    }
+                                  },
                                 ),
                               ),
-                            ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        OutlinedButton(
-                          onPressed: _loading || _recording ? null : _reset,
-                          style: _macroOutlinedButtonStyle(context),
-                          child: const Text('Reset'),
+                              SizedBox(
+                                width: 140,
+                                child: TextField(
+                                  controller: _loopController,
+                                  enabled: draft.mode == MacroMode.loop,
+                                  keyboardType: TextInputType.number,
+                                  inputFormatters: [
+                                    FilteringTextInputFormatter.digitsOnly,
+                                  ],
+                                  decoration: InputDecoration(
+                                    labelText: t.macro.loopCount,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                        const SizedBox(width: 12),
-                        (!_loading &&
-                                !_recording &&
-                                _error == null &&
-                                _events.isNotEmpty &&
-                                _isDirty)
-                            ? FilledButton(
-                                onPressed: _save,
-                                style: _macroPrimaryButtonStyle(context),
-                                child: const Text('Save'),
-                              )
-                            : OutlinedButton(
-                                onPressed: null,
+                        const SizedBox(height: 12),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(16),
+                          decoration: cardBoxDecoration,
+                          child: Wrap(
+                            alignment: WrapAlignment.spaceBetween,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            spacing: 16,
+                            runSpacing: 12,
+                            children: [
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    t.macro.keyDelayMode,
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Wrap(
+                                    spacing: 10,
+                                    runSpacing: 10,
+                                    children: [
+                                      _SelectableChip(
+                                        label: t.macro.recordedDelay,
+                                        selected:
+                                            _delayMode == MacroDelayMode.recorded,
+                                        onTap: () {
+                                          setState(() {
+                                            _delayMode = MacroDelayMode.recorded;
+                                            if (_error != null &&
+                                                _error!.startsWith(
+                                                  'Fixed delay must be between',
+                                                )) {
+                                              _error = null;
+                                            }
+                                          });
+                                        },
+                                      ),
+                                      _SelectableChip(
+                                        label: t.macro.fixedDelay,
+                                        selected:
+                                            _delayMode == MacroDelayMode.fixed,
+                                        onTap: () {
+                                          setState(() {
+                                            _delayMode = MacroDelayMode.fixed;
+                                            _applyFixedDelayToEvents();
+                                            _validateFixedDelay(
+                                              _fixedDelayController.text,
+                                            );
+                                          });
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                              SizedBox(
+                                width: 140,
+                                child: TextField(
+                                  controller: _fixedDelayController,
+                                  enabled: _delayMode == MacroDelayMode.fixed,
+                                  keyboardType: TextInputType.number,
+                                  inputFormatters: [
+                                    FilteringTextInputFormatter.digitsOnly,
+                                  ],
+                                  decoration: InputDecoration(
+                                    labelText: t.macro.fixedDelayMs,
+                                    hintText: '10',
+                                  ),
+                                  onChanged: (val) {
+                                    setState(() {
+                                      _validateFixedDelay(val);
+                                      if (_delayMode == MacroDelayMode.fixed) {
+                                        _applyFixedDelayToEvents();
+                                      }
+                                    });
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: Wrap(
+                            alignment: WrapAlignment.end,
+                            spacing: 12,
+                            runSpacing: 8,
+                            children: [
+                              OutlinedButton(
+                                onPressed: _recording ? null : _startRecording,
+                                style: buttonStyle,
+                                child: Text(t.macro.startRecording),
+                              ),
+                              OutlinedButton(
+                                key: _stopRecordingKey,
+                                onPressed: _recording ? _stopRecording : null,
+                                style: buttonStyle,
+                                child: Text(t.macro.stopRecording),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(16),
+                          decoration: cardBoxDecoration,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(t.macro.record),
+                              const SizedBox(height: 8),
+                              if (_events.isEmpty)
+                                Text(
+                                  _recording
+                                      ? t.macro.recordingInProgress
+                                      : t.macro.noEventsRecorded,
+                                  style: TextStyle(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                )
+                              else
+                                ConstrainedBox(
+                                  constraints: const BoxConstraints(maxHeight: 280),
+                                  child: ListView.builder(
+                                    controller: _recordScrollController,
+                                    shrinkWrap: true,
+                                    itemCount: _events.length,
+                                    itemBuilder: (context, i) => _MacroRow(
+                                      action: _events[i],
+                                      onDelete: () => setState(() {
+                                        _events.removeAt(i);
+                                        _syncDraftActions();
+                                      }),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: Wrap(
+                            alignment: WrapAlignment.end,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            spacing: 12,
+                            runSpacing: 8,
+                            children: [
+                              OutlinedButton(
+                                onPressed: _loading || _recording ? null : _reset,
                                 style: _macroOutlinedButtonStyle(context),
-                                child: const Text('Save'),
+                                child: Text(t.macro.reset),
                               ),
-                        const SizedBox(width: 12),
-                        OutlinedButton(
-                          onPressed: _loading ? null : _cancel,
-                          style: _macroOutlinedButtonStyle(context),
-                          child: const Text('Cancel'),
+                              OutlinedButton(
+                                onPressed: _loading || _recording ? null : _save,
+                                style: _macroOutlinedButtonStyle(context),
+                                child: Text(t.macro.save),
+                              ),
+                              OutlinedButton(
+                                onPressed: _loading ? null : _cancel,
+                                style: _macroOutlinedButtonStyle(context),
+                                child: Text(t.macro.cancel),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             ),
-          ),
-        ),
-      ],
+          ],
+        );
+
+        if (constraints.maxWidth < 480) {
+          return SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: SizedBox(
+              width: 480,
+              height: constraints.maxHeight,
+              child: content,
+            ),
+          );
+        }
+        return content;
+      },
     );
   }
 
@@ -1678,18 +1713,7 @@ ButtonStyle _macroOutlinedButtonStyle(BuildContext context) {
   );
 }
 
-ButtonStyle _macroPrimaryButtonStyle(BuildContext context) {
-  final theme = Theme.of(context);
-  return FilledButton.styleFrom(
-    backgroundColor: theme.colorScheme.primary,
-    foregroundColor: Colors.white,
-    minimumSize: const Size(80, 42),
-    elevation: 3,
-    shadowColor: theme.colorScheme.primary.withValues(alpha: 0.35),
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-  );
-}
+
 
 class _SelectableChip extends StatelessWidget {
   const _SelectableChip({
@@ -1707,58 +1731,27 @@ class _SelectableChip extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
+    return ChoiceChip(
+      label: Text(label),
+      selected: selected,
+      onSelected: (_) => onTap?.call(),
+      showCheckmark: false,
+      selectedColor: theme.colorScheme.primary,
+      backgroundColor: isDark ? const Color(0xFF26282E) : Colors.white,
+      labelStyle: theme.textTheme.bodySmall?.copyWith(
+        fontSize: 13,
+        fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+        color: selected
+            ? Colors.white
+            : (isDark ? const Color(0xFFE0E3EB) : const Color(0xFF344054)),
+      ),
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(10),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 160),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          decoration: BoxDecoration(
-            color: selected
-                ? theme.colorScheme.primary
-                : (isDark ? const Color(0xFF26282E) : Colors.white),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: selected
-                  ? theme.colorScheme.primary
-                  : (isDark
-                        ? const Color(0xFF3F424B)
-                        : const Color(0xFFD0D5DD)),
-              width: 1.0,
-            ),
-            boxShadow: selected
-                ? [
-                    BoxShadow(
-                      color: theme.colorScheme.primary.withValues(alpha: 0.35),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2.5),
-                    ),
-                  ]
-                : [
-                    BoxShadow(
-                      color: Colors.black.withValues(
-                        alpha: isDark ? 0.25 : 0.05,
-                      ),
-                      blurRadius: 4,
-                      offset: const Offset(0, 1.5),
-                    ),
-                  ],
-          ),
-          child: Text(
-            label,
-            style: theme.textTheme.bodySmall?.copyWith(
-              fontSize: 13,
-              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-              color: selected
-                  ? Colors.white
-                  : (isDark
-                        ? const Color(0xFFE0E3EB)
-                        : const Color(0xFF344054)),
-              letterSpacing: 0.1,
-            ),
-          ),
+        side: BorderSide(
+          color: selected
+              ? theme.colorScheme.primary
+              : (isDark ? const Color(0xFF3F424B) : const Color(0xFFD0D5DD)),
+          width: 1.0,
         ),
       ),
     );
@@ -1773,7 +1766,7 @@ class _EmptyMacroState extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Center(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -1785,14 +1778,14 @@ class _EmptyMacroState extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             Text(
-              'No macros configured',
+              t.macro.noMacrosConfigured,
               style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
             ),
             const SizedBox(height: 6),
             Text(
-              'Create a macro to record key sequences and mouse actions.',
+              t.macro.noMacrosConfiguredDesc,
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
@@ -1802,7 +1795,7 @@ class _EmptyMacroState extends StatelessWidget {
               onPressed: onCreate,
               icon: const Icon(Icons.add_rounded, size: 18),
               style: _macroOutlinedButtonStyle(context),
-              label: const Text('Create Macro'),
+              label: Text(t.macro.createMacro),
             ),
           ],
         ),
@@ -1820,7 +1813,7 @@ class _MacroSelectionEmptyState extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Center(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -1832,14 +1825,14 @@ class _MacroSelectionEmptyState extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             Text(
-              'Please select a shortcut to edit',
+              t.macro.selectShortcutEdit,
               style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
             ),
             const SizedBox(height: 6),
             Text(
-              'Choose a macro from the sidebar list or create a new one.',
+              t.macro.selectShortcutEditDesc,
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
@@ -1849,7 +1842,7 @@ class _MacroSelectionEmptyState extends StatelessWidget {
               onPressed: onNewMacro,
               icon: const Icon(Icons.add_rounded, size: 18),
               style: _macroOutlinedButtonStyle(context),
-              label: const Text('New Macro'),
+              label: Text(t.macro.newMacro),
             ),
           ],
         ),
@@ -1882,14 +1875,19 @@ class _MacroRow extends StatelessWidget {
               : (isDark ? const Color(0xFFE65100) : const Color(0xFFF57C00)));
 
     final eventTypeLabel = _isWheelOrTilt
-        ? 'Wheel'
-        : (action.isBreak ? 'Key Up' : 'Key Down');
+        ? t.macro.wheel
+        : (action.isBreak ? t.macro.keyUp : t.macro.keyDown);
 
     final eventIcon = _isWheelOrTilt
         ? Icons.mouse_rounded
         : (action.isBreak
               ? Icons.arrow_upward_rounded
               : Icons.arrow_downward_rounded);
+
+    final displayLabel = action.label != null
+        ? (CatalogLocalization.localizeLabelString(action.label!, t) ??
+            action.label!)
+        : '0x${action.keyCode.toRadixString(16)}';
 
     return Container(
       height: 44,
@@ -1908,10 +1906,10 @@ class _MacroRow extends StatelessWidget {
       child: Row(
         children: [
           // Key / Action Label on Left (width 130 ensures Wheel Down fits on one line)
-          SizedBox(
-            width: 130,
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 130),
             child: Text(
-              action.label ?? '0x${action.keyCode.toRadixString(16)}',
+              displayLabel,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
@@ -1921,12 +1919,13 @@ class _MacroRow extends StatelessWidget {
               ),
             ),
           ),
-          // Key Down / Key Up / Wheel Badge Centered in Middle (fixed 108x26 container)
+          // Key Down / Key Up / Wheel Badge Centered in Middle
           Expanded(
             child: Center(
               child: Container(
-                width: 108,
+                constraints: const BoxConstraints(minWidth: 70, maxWidth: 110),
                 height: 26,
+                padding: const EdgeInsets.symmetric(horizontal: 6),
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: badgeColor.withValues(alpha: 0.15),
@@ -1936,13 +1935,16 @@ class _MacroRow extends StatelessWidget {
                     width: 1,
                   ),
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                child: Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  alignment: WrapAlignment.center,
                   children: [
                     Icon(eventIcon, size: 13, color: badgeColor),
-                    const SizedBox(width: 5),
+                    const SizedBox(width: 4),
                     Text(
                       eventTypeLabel,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
@@ -1994,7 +1996,7 @@ class _MacroRow extends StatelessWidget {
             color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(),
-            tooltip: 'Remove Action',
+            tooltip: t.macro.removeAction,
           ),
         ],
       ),

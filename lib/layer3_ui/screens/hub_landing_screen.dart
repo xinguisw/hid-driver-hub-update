@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:driver_hub/layer2_capabilities/capabilities.dart';
 import 'package:driver_hub/layer3_ui/widgets/hub_backlight_panel.dart';
@@ -288,145 +289,157 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                           final display = view.displaySettings;
                           final buttons = display?.buttons ?? const [];
                           final bloc = context.read<DeviceSettingsBloc>();
-                          return Row(
-                            children: [
-                              Expanded(
-                                child: HubMouseCanvas(
-                                  imageLarge: selected.imageLarge,
-                                  buttons: buttons,
-                                  selectedButtonId: _selectedButtonId,
-                                  isDirty: view.isDirty,
-                                  committing: view.committing,
-                                  onButtonSelected: (id) {
-                                    setState(() => _selectedButtonId = id);
-                                  },
-                                  onBackgroundTap: () {
-                                    setState(() => _selectedButtonId = null);
-                                  },
-                                  onResetToDefault: () {
-                                    final t = context.t;
-                                    showDialog(
-                                      context: context,
-                                      builder: (ctx) => AlertDialog(
-                                        title: Text(t.common.tip),
-                                        content: Text(
-                                          t.mouseCanvas.restoreDefaultKeysTip,
-                                        ),
-                                        actions: [
-                                          TextButton(
-                                            onPressed: () =>
-                                                Navigator.of(ctx).pop(false),
-                                            child: Text(t.common.cancel),
+                          return LayoutBuilder(
+                            builder: (context, constraints) {
+                              final maxSidebarW = (constraints.maxWidth * 0.6)
+                                  .clamp(160.0, HubButtonMappingPanel.width);
+                              return Row(
+                                children: [
+                                  Expanded(
+                                    child: HubMouseCanvas(
+                                      imageLarge: selected.imageLarge,
+                                      buttons: buttons,
+                                      selectedButtonId: _selectedButtonId,
+                                      isDirty: view.isDirty,
+                                      committing: view.committing,
+                                      onButtonSelected: (id) {
+                                        setState(() => _selectedButtonId = id);
+                                      },
+                                      onBackgroundTap: () {
+                                        setState(() => _selectedButtonId = null);
+                                      },
+                                      onResetToDefault: () {
+                                        final t = context.t;
+                                        showDialog(
+                                          context: context,
+                                          builder: (ctx) => AlertDialog(
+                                            title: Text(t.common.tip),
+                                            content: Text(
+                                              t.mouseCanvas.restoreDefaultKeysTip,
+                                            ),
+                                            actions: [
+                                              TextButton(
+                                                onPressed: () =>
+                                                    Navigator.of(ctx).pop(false),
+                                                child: Text(t.common.cancel),
+                                              ),
+                                              TextButton(
+                                                onPressed: () {
+                                                  Navigator.of(ctx).pop(true);
+                                                  debugPrint(
+                                                    '[hub] ${widget.card.displayName}: dispatch reset',
+                                                  );
+                                                  bloc.add(
+                                                    const DeviceSettingsResetButtonMappingRequested(),
+                                                  );
+                                                },
+                                                child: Text(t.common.confirm),
+                                              ),
+                                            ],
                                           ),
-                                          TextButton(
-                                            onPressed: () {
-                                              Navigator.of(ctx).pop(true);
-                                              debugPrint(
-                                                '[hub] ${widget.card.displayName}: dispatch reset',
-                                              );
-                                              bloc.add(
-                                                const DeviceSettingsResetButtonMappingRequested(),
-                                              );
-                                            },
-                                            child: Text(t.common.confirm),
-                                          ),
-                                        ],
-                                      ),
-                                    );
-                                  },
-                                  onSave: () {
-                                    debugPrint(
-                                      '[hub] ${widget.card.displayName}: '
-                                      'dispatch save',
-                                    );
-                                    bloc.add(
-                                      const DeviceSettingsSaveRequested(),
-                                    );
-                                  },
-                                  onCancel: () {
-                                    debugPrint(
-                                      '[hub] ${widget.card.displayName}: '
-                                      'dispatch cancel',
-                                    );
-                                    setState(() => _selectedButtonId = null);
-                                    bloc.add(
-                                      const DeviceSettingsCancelRequested(),
-                                    );
-                                  },
-                                ),
-                              ),
-                              Builder(
-                                builder: (context) {
-                                  if (_selectedButtonId != null) {
-                                    _lastSelectedButtonId = _selectedButtonId;
-                                  }
-                                  final activeId =
-                                      _selectedButtonId ??
-                                      _lastSelectedButtonId;
-                                  final isOpen = _selectedButtonId != null;
+                                        );
+                                      },
+                                      onSave: () {
+                                        debugPrint(
+                                          '[hub] ${widget.card.displayName}: '
+                                          'dispatch save',
+                                        );
+                                        bloc.add(
+                                          const DeviceSettingsSaveRequested(),
+                                        );
+                                      },
+                                      onCancel: () {
+                                        debugPrint(
+                                          '[hub] ${widget.card.displayName}: '
+                                          'dispatch cancel',
+                                        );
+                                        setState(() => _selectedButtonId = null);
+                                        bloc.add(
+                                          const DeviceSettingsCancelRequested(),
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                  Builder(
+                                    builder: (context) {
+                                      if (_selectedButtonId != null) {
+                                        _lastSelectedButtonId =
+                                            _selectedButtonId;
+                                      }
+                                      final activeId =
+                                          _selectedButtonId ??
+                                          _lastSelectedButtonId;
+                                      final isOpen = _selectedButtonId != null;
 
-                                  return _AnimatedRightSidebar(
-                                    isOpen: isOpen,
-                                    child: activeId == null
-                                        ? const SizedBox.shrink()
-                                        : HubButtonMappingPanel(
-                                            selectedButtonId: _selectedButtonId,
-                                            buttons: buttons,
-                                            mouseActionCatalog:
-                                                display?.mouseActionCatalog,
-                                            keyboardActionCatalog:
-                                                display?.keyboardActionCatalog,
-                                            specialActionCatalog:
-                                                display?.specialActionCatalog,
-                                            onActionSelected: (catalogId) {
-                                              _settingsBloc.add(
-                                                DeviceSettingsButtonMappingSlotRequested(
-                                                  buttonId: activeId,
-                                                  catalogId: catalogId,
-                                                ),
-                                              );
-                                            },
-                                            onComboSelected:
-                                                (modifierIds, keyChar) {
+                                      return _AnimatedRightSidebar(
+                                        isOpen: isOpen,
+                                        targetWidth: maxSidebarW,
+                                        child: activeId == null
+                                            ? const SizedBox.shrink()
+                                            : HubButtonMappingPanel(
+                                                selectedButtonId:
+                                                    _selectedButtonId,
+                                                buttons: buttons,
+                                                mouseActionCatalog:
+                                                    display?.mouseActionCatalog,
+                                                keyboardActionCatalog: display
+                                                    ?.keyboardActionCatalog,
+                                                specialActionCatalog: display
+                                                    ?.specialActionCatalog,
+                                                onActionSelected: (catalogId) {
                                                   _settingsBloc.add(
-                                                    DeviceSettingsSpecialComboRequested(
+                                                    DeviceSettingsButtonMappingSlotRequested(
                                                       buttonId: activeId,
-                                                      modifierIds: modifierIds,
-                                                      keyChar: keyChar,
+                                                      catalogId: catalogId,
                                                     ),
                                                   );
                                                 },
-                                            macroSlots: widget.scope
-                                                .macrosFor(widget.card)
-                                                .indexed
-                                                .map(
-                                                  (entry) => MacroSlot(
-                                                    id: (entry.$1 + 1)
-                                                        .toString(),
-                                                    name: entry.$2.name,
-                                                  ),
-                                                )
-                                                .toList(),
-                                            onMacroSelected: (macroSlot) {
-                                              _settingsBloc.add(
-                                                DeviceSettingsMacroMappingRequested(
-                                                  buttonId: activeId,
-                                                  macroSlot:
-                                                      int.tryParse(macroSlot) ??
-                                                      0,
-                                                ),
-                                              );
-                                            },
-                                            onCollapse: () {
-                                              setState(() {
-                                                _selectedButtonId = null;
-                                              });
-                                            },
-                                          ),
-                                  );
-                                },
-                              ),
-                            ],
+                                                onComboSelected:
+                                                    (modifierIds, keyChar) {
+                                                      _settingsBloc.add(
+                                                        DeviceSettingsSpecialComboRequested(
+                                                          buttonId: activeId,
+                                                          modifierIds:
+                                                              modifierIds,
+                                                          keyChar: keyChar,
+                                                        ),
+                                                      );
+                                                    },
+                                                macroSlots: widget.scope
+                                                    .macrosFor(widget.card)
+                                                    .indexed
+                                                    .map(
+                                                      (entry) => MacroSlot(
+                                                        id: (entry.$1 + 1)
+                                                            .toString(),
+                                                        name: entry.$2.name,
+                                                      ),
+                                                    )
+                                                    .toList(),
+                                                onMacroSelected: (macroSlot) {
+                                                  _settingsBloc.add(
+                                                    DeviceSettingsMacroMappingRequested(
+                                                      buttonId: activeId,
+                                                      macroSlot:
+                                                          int.tryParse(
+                                                            macroSlot,
+                                                          ) ??
+                                                          0,
+                                                    ),
+                                                  );
+                                                },
+                                                onCollapse: () {
+                                                  setState(() {
+                                                    _selectedButtonId = null;
+                                                  });
+                                                },
+                                              ),
+                                      );
+                                    },
+                                  ),
+                                ],
+                              );
+                            },
                           );
                         },
                       ),
@@ -478,122 +491,118 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                                   );
                                 }).toList()
                               : baseStages;
-                          return Column(
-                            children: [
-                              Expanded(
-                                child: HubPerformancePanel(
-                                  // why: staged add/remove level list paints the
-                                  // rearranged containers live before Save.
-                                  dpiStages: resolvedStages,
-                                  dpiRgbPerStage:
-                                      display?.dpiRgbPerStage ?? false,
-                                  onDpiColorChanged: (change) {
-                                    bloc.add(
-                                      DeviceSettingsDpiColorRequested(
-                                        level: change.level,
-                                        color: _dpiColorHex(change.color),
-                                      ),
-                                    );
-                                  },
-                                  // why: highlight the user's UI selection; fall
-                                  // back to the device's active level initially.
-                                  dpiCurrentLevel:
-                                      view.dpiCurrentLevelStaging ??
-                                      _selectedDpiLevel ??
-                                      display?.dpiActiveIndex,
-                                  dpiCurrentLevelStaging:
-                                      view.dpiCurrentLevelStaging,
-                                  onDpiLevelSelected: (level) {
-                                    setState(() => _selectedDpiLevel = level);
-                                    bloc.add(
-                                      DeviceSettingsDpiLevelRequested(
-                                        level: level,
-                                      ),
-                                    );
-                                  },
-                                  dpiMin: display?.dpiMin,
-                                  dpiMax: display?.dpiMax,
-                                  dpiStep: display?.dpiStep,
-                                  dpiValueStaging: view.dpiValueStaging,
-                                  onDpiValueChanged: (pair) {
-                                    bloc.add(
-                                      DeviceSettingsDpiValueRequested(
-                                        level: pair.level,
-                                        value: pair.value,
-                                      ),
-                                    );
-                                  },
-                                  dpiActiveLevelCount:
-                                      display?.dpiActiveLevelCount,
-                                  dpiMaxLevels: display?.dpiMaxLevels,
-                                  onDpiStageAdd: () {
-                                    bloc.add(
-                                      const DeviceSettingsDpiStageAddRequested(),
-                                    );
-                                  },
-                                  // why: `x` only removes the user's clicked
-                                  // level; disabled until a level is selected.
-                                  dpiRemoveEnabled: _selectedDpiLevel != null,
-                                  onDpiStageRemove: (level) {
-                                    setState(() => _selectedDpiLevel = 1);
-                                    bloc.add(
-                                      DeviceSettingsDpiStageRemoveRequested(
-                                        level: level,
-                                      ),
-                                    );
-                                  },
-                                  reportRateOptions: display?.reportRateOptions,
-                                  reportRateHz: display?.reportRateHz,
-                                  reportRateStaging: view.reportRateStaging,
-                                  onReportRateChanged: (hz) {
-                                    bloc.add(
-                                      DeviceSettingsReportRateRequested(hz: hz),
-                                    );
-                                  },
-                                ),
-                              ),
-                              _PerformanceActionBar(
-                                isDirty: view.isDirty,
-                                committing: view.committing,
-                                onReset: () {
-                                  debugPrint(
-                                    '[hub] ${widget.card.displayName}: '
-                                    'dispatch reset DPI configuration',
-                                  );
-                                  setState(() => _selectedDpiLevel = null);
+                          return _buildScrollablePanel(
+                            panel: HubPerformancePanel(
+                              // why: staged add/remove level list paints the
+                              // rearranged containers live before Save.
+                              dpiStages: resolvedStages,
+                              dpiRgbPerStage:
+                                  display?.dpiRgbPerStage ?? false,
+                              onDpiColorChanged: (change) {
+                                bloc.add(
+                                  DeviceSettingsDpiColorRequested(
+                                    level: change.level,
+                                    color: _dpiColorHex(change.color),
+                                  ),
+                                );
+                              },
+                              // why: highlight the user's UI selection; fall
+                              // back to the device's active level initially.
+                              dpiCurrentLevel:
+                                  view.dpiCurrentLevelStaging ??
+                                  _selectedDpiLevel ??
+                                  display?.dpiActiveIndex,
+                              dpiCurrentLevelStaging:
+                                  view.dpiCurrentLevelStaging,
+                              onDpiLevelSelected: (level) {
+                                setState(() => _selectedDpiLevel = level);
+                                bloc.add(
+                                  DeviceSettingsDpiLevelRequested(
+                                    level: level,
+                                  ),
+                                );
+                              },
+                              dpiMin: display?.dpiMin,
+                              dpiMax: display?.dpiMax,
+                              dpiStep: display?.dpiStep,
+                              dpiValueStaging: view.dpiValueStaging,
+                              onDpiValueChanged: (pair) {
+                                bloc.add(
+                                  DeviceSettingsDpiValueRequested(
+                                    level: pair.level,
+                                    value: pair.value,
+                                  ),
+                                );
+                              },
+                              dpiActiveLevelCount:
+                                  display?.dpiActiveLevelCount,
+                              dpiMaxLevels: display?.dpiMaxLevels,
+                              onDpiStageAdd: () {
+                                bloc.add(
+                                  const DeviceSettingsDpiStageAddRequested(),
+                                );
+                              },
+                              // why: `x` only removes the user's clicked
+                              // level; disabled until a level is selected.
+                              dpiRemoveEnabled: _selectedDpiLevel != null,
+                              onDpiStageRemove: (level) {
+                                setState(() => _selectedDpiLevel = 1);
+                                bloc.add(
+                                  DeviceSettingsDpiStageRemoveRequested(
+                                    level: level,
+                                  ),
+                                );
+                              },
+                              reportRateOptions: display?.reportRateOptions,
+                              reportRateHz: display?.reportRateHz,
+                              reportRateStaging: view.reportRateStaging,
+                              onReportRateChanged: (hz) {
+                                bloc.add(
+                                  DeviceSettingsReportRateRequested(hz: hz),
+                                );
+                              },
+                            ),
+                            actionBar: _PerformanceActionBar(
+                              isDirty: view.isDirty,
+                              committing: view.committing,
+                              onReset: () {
+                                debugPrint(
+                                  '[hub] ${widget.card.displayName}: '
+                                  'dispatch reset DPI configuration',
+                                );
+                                setState(() => _selectedDpiLevel = null);
+                                bloc.add(
+                                  const DeviceSettingsResetDpiConfigurationRequested(),
+                                );
+                              },
+                              onSave: () {
+                                final hasDpiValueStaging =
+                                    view.dpiValueStaging != null &&
+                                    view.dpiValueStaging!.isNotEmpty;
+                                final hasDpiRgbStaging =
+                                    view.dpiRgbStaging != null &&
+                                    view.dpiRgbStaging!.isNotEmpty;
+                                final hasDpiStageStaging =
+                                    view.dpiStageAddStaging ||
+                                    view.dpiStageRemoveLevelStaging != null;
+                                if (view.reportRateStaging != null ||
+                                    view.dpiCurrentLevelStaging != null ||
+                                    hasDpiValueStaging ||
+                                    hasDpiRgbStaging ||
+                                    hasDpiStageStaging ||
+                                    view.dpiStageLevelsStaging != null) {
                                   bloc.add(
-                                    const DeviceSettingsResetDpiConfigurationRequested(),
+                                    const DeviceSettingsSaveDpiConfigurationRequested(),
                                   );
-                                },
-                                onSave: () {
-                                  final hasDpiValueStaging =
-                                      view.dpiValueStaging != null &&
-                                      view.dpiValueStaging!.isNotEmpty;
-                                  final hasDpiRgbStaging =
-                                      view.dpiRgbStaging != null &&
-                                      view.dpiRgbStaging!.isNotEmpty;
-                                  final hasDpiStageStaging =
-                                      view.dpiStageAddStaging ||
-                                      view.dpiStageRemoveLevelStaging != null;
-                                  if (view.reportRateStaging != null ||
-                                      view.dpiCurrentLevelStaging != null ||
-                                      hasDpiValueStaging ||
-                                      hasDpiRgbStaging ||
-                                      hasDpiStageStaging ||
-                                      view.dpiStageLevelsStaging != null) {
-                                    bloc.add(
-                                      const DeviceSettingsSaveDpiConfigurationRequested(),
-                                    );
-                                  }
-                                },
-                                onCancel: () {
-                                  setState(() => _selectedDpiLevel = null);
-                                  bloc.add(
-                                    const DeviceSettingsCancelRequested(),
-                                  );
-                                },
-                              ),
-                            ],
+                                }
+                              },
+                              onCancel: () {
+                                setState(() => _selectedDpiLevel = null);
+                                bloc.add(
+                                  const DeviceSettingsCancelRequested(),
+                                );
+                              },
+                            ),
                           );
                         },
                       ),
@@ -621,10 +630,8 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                         builder: (context, view) {
                           final synced = view.synced;
                           final bloc = context.read<DeviceSettingsBloc>();
-                          return Column(
-                            children: [
-                              Expanded(
-                                child: HubParameterPanel(
+                          return _buildScrollablePanel(
+                            panel: HubParameterPanel(
                                   hasSensorTuning:
                                       synced?.hasSensorTuning ?? false,
                                   hasLod: synced?.hasLod ?? false,
@@ -778,8 +785,7 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                                     }
                                   },
                                 ),
-                              ),
-                              _ParameterActionBar(
+                            actionBar: _ParameterActionBar(
                                 isDirty: view.isDirty,
                                 committing: view.committing,
                                 onSave: () {
@@ -793,7 +799,6 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                                   );
                                 },
                               ),
-                            ],
                           );
                         },
                       ),
@@ -822,10 +827,8 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                           final sleepOpts = DeviceCapabilityStore.forDevice(
                             widget.card.devId,
                           )?.rgbBacklight?.sleepTimeOptions;
-                          return Column(
-                            children: [
-                              Expanded(
-                                child: HubBacklightPanel(
+                          return _buildScrollablePanel(
+                            panel: HubBacklightPanel(
                                   rgbModes: synced?.rgbModes,
                                   // why: dropdown shows the human label (L5-owned),
                                   // not the raw localization key.
@@ -874,8 +877,7 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                                     ),
                                   ),
                                 ),
-                              ),
-                              _BacklightActionBar(
+                              actionBar: _BacklightActionBar(
                                 isDirty: view.isDirty,
                                 committing: view.committing,
                                 onSave: () {
@@ -889,7 +891,6 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                                   );
                                 },
                               ),
-                            ],
                           );
                         },
                       ),
@@ -1129,25 +1130,28 @@ class _ParameterActionBar extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
+      alignment: Alignment.centerRight,
+      child: Wrap(
+        alignment: WrapAlignment.end,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 12,
+        runSpacing: 8,
         children: [
           saveCanClick
               ? FilledButton(
                   onPressed: onSave,
                   style: primaryButtonStyle,
-                  child: const Text('Save'),
+                  child: Text(t.common.save),
                 )
               : OutlinedButton(
                   onPressed: null,
                   style: primaryButtonStyle,
-                  child: const Text('Save'),
+                  child: Text(t.common.save),
                 ),
-          const SizedBox(width: 12),
           OutlinedButton(
             onPressed: committing ? null : onCancel,
             style: outlinedButtonStyle,
-            child: const Text('Cancel'),
+            child: Text(t.common.cancel),
           ),
         ],
       ),
@@ -1157,6 +1161,35 @@ class _ParameterActionBar extends StatelessWidget {
 
 /// Bottom-right action bar for Backlight Setting.
 ///
+Widget _buildScrollablePanel({
+  required Widget panel,
+  required Widget actionBar,
+}) {
+  return LayoutBuilder(
+    builder: (context, constraints) {
+      if (constraints.maxHeight < 220) {
+        return SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              panel,
+              actionBar,
+            ],
+          ),
+        );
+      }
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(child: panel),
+          actionBar,
+        ],
+      );
+    },
+  );
+}
+
 /// Save/Cancel buttons docked right. No Reset — only Performance and Button
 /// Mapping offer reset-to-default for now.
 class _BacklightActionBar extends StatelessWidget {
@@ -1225,25 +1258,28 @@ class _BacklightActionBar extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
+      alignment: Alignment.centerRight,
+      child: Wrap(
+        alignment: WrapAlignment.end,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 12,
+        runSpacing: 8,
         children: [
           saveCanClick
               ? FilledButton(
                   onPressed: onSave,
                   style: primaryButtonStyle,
-                  child: const Text('Save'),
+                  child: Text(t.common.save),
                 )
               : OutlinedButton(
                   onPressed: null,
                   style: primaryButtonStyle,
-                  child: const Text('Save'),
+                  child: Text(t.common.save),
                 ),
-          const SizedBox(width: 12),
           OutlinedButton(
             onPressed: committing ? null : onCancel,
             style: outlinedButtonStyle,
-            child: const Text('Cancel'),
+            child: Text(t.common.cancel),
           ),
         ],
       ),
@@ -1322,31 +1358,33 @@ class _PerformanceActionBar extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
+      alignment: Alignment.centerRight,
+      child: Wrap(
+        alignment: WrapAlignment.end,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 12,
+        runSpacing: 8,
         children: [
           OutlinedButton(
             onPressed: committing ? null : onReset,
             style: outlinedButtonStyle,
-            child: const Text('Reset to Default'),
+            child: Text(t.common.resetToDefault),
           ),
-          const SizedBox(width: 12),
           saveCanClick
               ? FilledButton(
                   onPressed: onSave,
                   style: primaryButtonStyle,
-                  child: const Text('Save'),
+                  child: Text(t.common.save),
                 )
               : OutlinedButton(
                   onPressed: null,
                   style: primaryButtonStyle,
-                  child: const Text('Save'),
+                  child: Text(t.common.save),
                 ),
-          const SizedBox(width: 12),
           OutlinedButton(
             onPressed: committing ? null : onCancel,
             style: outlinedButtonStyle,
-            child: const Text('Cancel'),
+            child: Text(t.common.cancel),
           ),
         ],
       ),
@@ -1356,30 +1394,39 @@ class _PerformanceActionBar extends StatelessWidget {
 
 /// Smooth width slide animation wrapper for button mapping right panel matching left sidebar curves.
 class _AnimatedRightSidebar extends StatelessWidget {
-  const _AnimatedRightSidebar({required this.isOpen, required this.child});
+  const _AnimatedRightSidebar({
+    required this.isOpen,
+    required this.child,
+    this.targetWidth = HubButtonMappingPanel.width,
+  });
 
   final bool isOpen;
   final Widget child;
+  final double targetWidth;
 
   static const Duration _animationDuration = Duration(milliseconds: 250);
   static const Curve _animationCurve = Curves.easeInOutCubic;
 
   @override
   Widget build(BuildContext context) {
+    final effectiveW = math.min(HubButtonMappingPanel.width, targetWidth);
     return AnimatedContainer(
       duration: _animationDuration,
       curve: _animationCurve,
-      width: isOpen ? HubButtonMappingPanel.width : 0,
+      width: isOpen ? effectiveW : 0,
       child: ClipRect(
         child: OverflowBox(
           alignment: Alignment.centerLeft,
-          minWidth: HubButtonMappingPanel.width,
-          maxWidth: HubButtonMappingPanel.width,
-          child: Row(
-            children: [
-              const VerticalDivider(thickness: 1, width: 1),
-              Expanded(child: child),
-            ],
+          minWidth: 0,
+          maxWidth: effectiveW,
+          child: SizedBox(
+            width: effectiveW,
+            child: Row(
+              children: [
+                const VerticalDivider(thickness: 1, width: 1),
+                Expanded(child: child),
+              ],
+            ),
           ),
         ),
       ),

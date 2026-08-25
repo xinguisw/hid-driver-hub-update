@@ -1,4 +1,5 @@
 import 'package:driver_hub/layer4_domain/models/discovered_card_state.dart';
+import 'package:driver_hub/i18n/strings.g.dart';
 import 'package:flutter/material.dart';
 
 /// Device Setting page — device image (left) + firmware info (right).
@@ -22,7 +23,7 @@ class HubDeviceSettingPanel extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final isWide = constraints.maxWidth > 700;
+        final isWide = constraints.maxWidth >= 840;
         final children = [
           // Left: device image centered.
           if (card.imageLarge.isNotEmpty)
@@ -38,19 +39,19 @@ class HubDeviceSettingPanel extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               _FirmwareBox(
-                title: 'Mouse Firmware Version',
+                title: t.deviceSetting.mouseFirmwareVersion,
                 version: mouseVersion,
               ),
               const SizedBox(height: 16),
               _FirmwareBox(
-                title: 'Dongle Firmware Version',
+                title: t.deviceSetting.dongleFirmwareVersion,
                 version: dongleVersion,
               ),
               const SizedBox(height: 32),
               OutlinedButton.icon(
                 onPressed: () {}, // active UI state
                 icon: const Icon(Icons.restore_rounded, size: 18),
-                label: const Text('Reset to Default'),
+                label: Text(t.common.resetToDefault),
                 style: _devicePanelOutlinedButtonStyle(context),
               ),
             ],
@@ -95,7 +96,8 @@ class _FirmwareBox extends StatelessWidget {
     );
 
     return Container(
-      width: 400,
+      constraints: const BoxConstraints(maxWidth: 400),
+      width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: colorScheme.surface,
@@ -119,38 +121,49 @@ class _FirmwareBox extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          Row(
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 12,
+            runSpacing: 10,
             children: [
-              Text(
-                'Current Version',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: (isDark ? Colors.white : Colors.black).withValues(
-                    alpha: 0.08,
-                  ),
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(
-                    color: (isDark ? Colors.white : Colors.black).withValues(
-                      alpha: 0.15,
+              Wrap(
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 8,
+                runSpacing: 4,
+                children: [
+                  Text(
+                    t.deviceSetting.currentVersion,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
                     ),
-                    width: 1.0,
                   ),
-                ),
-                child: Text(
-                  version,
-                  style: TextStyle(
-                    color: colorScheme.onSurface,
-                    fontWeight: FontWeight.bold,
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: (isDark ? Colors.white : Colors.black).withValues(
+                        alpha: 0.08,
+                      ),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: (isDark ? Colors.white : Colors.black)
+                            .withValues(alpha: 0.15),
+                        width: 1.0,
+                      ),
+                    ),
+                    child: Text(
+                      version,
+                      style: TextStyle(
+                        color: colorScheme.onSurface,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
-              const Spacer(),
               OutlinedButton(
                 onPressed: () {},
                 style: _devicePanelOutlinedButtonStyle(context).copyWith(
@@ -158,9 +171,9 @@ class _FirmwareBox extends StatelessWidget {
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   ),
                 ),
-                child: const Text(
-                  'Check for Updates',
-                  style: TextStyle(fontSize: 12),
+                child: Text(
+                  t.deviceSetting.checkForUpdates,
+                  style: const TextStyle(fontSize: 12),
                 ),
               ),
             ],
@@ -171,7 +184,7 @@ class _FirmwareBox extends StatelessWidget {
             child: FilledButton.icon(
               onPressed: () {},
               icon: const Icon(Icons.system_update_alt_rounded, size: 18),
-              label: const Text('Update Firmware'),
+              label: Text(t.deviceSetting.updateFirmware),
               style: _devicePanelPrimaryButtonStyle(context),
             ),
           ),

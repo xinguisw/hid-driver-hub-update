@@ -251,7 +251,7 @@ class _AppTopBarState extends State<AppTopBar> with WindowListener {
           onPressed: () => window_controls.minimizeWindow(),
           padding: EdgeInsets.zero,
           constraints: const BoxConstraints(),
-          tooltip: 'Minimize',
+          tooltip: t.windowControls.minimize,
         ),
       ),
       const SizedBox(width: 8),
@@ -267,7 +267,9 @@ class _AppTopBarState extends State<AppTopBar> with WindowListener {
           onPressed: () => window_controls.toggleMaximizeWindow(),
           padding: EdgeInsets.zero,
           constraints: const BoxConstraints(),
-          tooltip: _isMaximized ? 'Restore' : 'Maximize',
+          tooltip: _isMaximized
+              ? t.windowControls.restore
+              : t.windowControls.maximize,
         ),
       ),
       const SizedBox(width: 8),
@@ -279,7 +281,7 @@ class _AppTopBarState extends State<AppTopBar> with WindowListener {
           onPressed: () => window_controls.closeWindow(),
           padding: EdgeInsets.zero,
           constraints: const BoxConstraints(),
-          tooltip: 'Close',
+          tooltip: t.windowControls.close,
         ),
       ),
       const SizedBox(width: 16),

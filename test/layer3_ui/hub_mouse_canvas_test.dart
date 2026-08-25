@@ -1,9 +1,11 @@
+import 'package:driver_hub/i18n/strings.g.dart';
+import 'package:driver_hub/i18n/catalog_localization.dart';
 import 'package:driver_hub/layer4_domain/models/device_settings_state.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   String mouseButtonCalloutLabel(ButtonData button) {
-    return button.actionLabel ?? button.buttonLabel ?? '';
+    return button.actionLabel ?? button.buttonLabel ?? 'B${button.id}';
   }
 
   group('mouseButtonCalloutLabel', () {
@@ -79,6 +81,23 @@ void main() {
       );
 
       expect(mouseButtonCalloutText(button), 'DPI cycle');
+    });
+
+    test('CatalogLocalization translates combo key callouts', () async {
+      const button = ButtonData(
+        id: 2,
+        labelKey: 'button.right',
+        remappable: true,
+        action: 0x12,
+        param1: 0xE3, // Left Win
+        param2: 0x19, // V
+        actionLabel: 'Left Win + V',
+      );
+
+      final en = await AppLocale.en.build();
+      final zh = await AppLocale.zh.build();
+      expect(CatalogLocalization.localizeButtonCallout(button, en), 'Left Win + V');
+      expect(CatalogLocalization.localizeButtonCallout(button, zh), '左 Win + V');
     });
   });
 }

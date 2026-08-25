@@ -1,4 +1,5 @@
 import 'package:driver_hub/layer4_domain/models/device_settings_state.dart';
+import 'package:driver_hub/i18n/strings.g.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -90,8 +91,8 @@ class HubBacklightPanel extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           _LevelBox(
-            title: 'Brightness',
-            description: 'Adjust the luminous intensity of the backlight LEDs.',
+            title: t.backlight.brightness,
+            description: t.backlight.brightnessDesc,
             icon: Icons.brightness_6_outlined,
             levels: rgbBrightnessLevels ?? 0,
             selected: rgbBrightness,
@@ -102,9 +103,8 @@ class HubBacklightPanel extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           _LevelBox(
-            title: 'Speed',
-            description:
-                'Adjust the animation cycle velocity for active dynamic effects.',
+            title: t.backlight.speed,
+            description: t.backlight.speedDesc,
             icon: Icons.speed_outlined,
             levels: rgbSpeedLevels ?? 0,
             selected: rgbSpeed,
@@ -114,9 +114,8 @@ class HubBacklightPanel extends StatelessWidget {
           // why: RGB power-saving is a chip row like brightness/speed (not a
           // dropdown) per request; options come from the capability schema.
           _LevelBox(
-            title: 'Power saving',
-            description:
-                'Inactivity timeout before turning off lighting to preserve battery.',
+            title: t.backlight.powerSaving,
+            description: t.backlight.powerSavingDesc,
             icon: Icons.bedtime_outlined,
             levels: rgbSleepOptions?.length ?? 0,
             selected: rgbSleepTime,
@@ -203,9 +202,35 @@ class _ModeBox extends StatelessWidget {
   final List<String>? rgbModeLabels;
   final ValueChanged<int>? onModeChanged;
 
-  String _labelAt(int i) => (rgbModeLabels != null && i < rgbModeLabels!.length)
-      ? rgbModeLabels![i]
-      : rgbModes[i].nameKey;
+  String _labelAt(int i) {
+    final raw = (rgbModeLabels != null && i < rgbModeLabels!.length)
+        ? rgbModeLabels![i]
+        : rgbModes[i].nameKey;
+    switch (raw.trim().toLowerCase()) {
+      case 'constant':
+      case 'rgb.mode.constant':
+        return t.backlight.modes.constant;
+      case 'single breathing':
+      case 'single_breathing':
+      case 'rgb.mode.single_breathing':
+        return t.backlight.modes.singleBreathing;
+      case 'multi breathing':
+      case 'multi_breathing':
+      case 'rgb.mode.multi_breathing':
+        return t.backlight.modes.multiBreathing;
+      case 'cycle':
+      case 'rgb.mode.cycle':
+        return t.backlight.modes.cycle;
+      case 'running':
+      case 'rgb.mode.running':
+        return t.backlight.modes.running;
+      case 'off':
+      case 'rgb.mode.off':
+        return t.backlight.modes.off;
+      default:
+        return raw;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -235,28 +260,30 @@ class _ModeBox extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 10),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'Mode',
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'Select dynamic lighting pattern or static illumination effect',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant.withValues(
-                        alpha: 0.75,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      t.backlight.mode,
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
                       ),
-                      fontSize: 11,
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 2),
+                    Text(
+                      t.backlight.modeDesc,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant.withValues(
+                          alpha: 0.75,
+                        ),
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           );
@@ -288,9 +315,9 @@ class _ModeBox extends StatelessWidget {
                     rgbModeId != null && rgbModes.any((m) => m.id == rgbModeId)
                     ? rgbModeId
                     : null,
-                hint: const Text(
-                  'Select Mode',
-                  style: TextStyle(fontSize: 13),
+                hint: Text(
+                  t.backlight.selectModeHint,
+                  style: const TextStyle(fontSize: 13),
                 ),
                 menuMaxHeight: 240,
                 borderRadius: BorderRadius.circular(10),
@@ -502,7 +529,7 @@ class _ColorBoxState extends State<_ColorBox> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        'Color',
+                        t.backlight.color,
                         style: theme.textTheme.titleSmall?.copyWith(
                           fontWeight: FontWeight.w600,
                           fontSize: 13,
@@ -535,8 +562,8 @@ class _ColorBoxState extends State<_ColorBox> {
                   const SizedBox(height: 2),
                   Text(
                     widget.enabled
-                        ? 'Fine-tune static color saturation, hue, and brightness'
-                        : 'Selected mode manages colors automatically',
+                        ? t.backlight.colorDescEnabled
+                        : t.backlight.colorDescDisabled,
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant.withValues(
                         alpha: 0.75,
@@ -908,30 +935,32 @@ class _LevelBox extends StatelessWidget {
                 ),
                 const SizedBox(width: 10),
               ],
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    title,
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13,
-                    ),
-                  ),
-                  if (description != null) ...[
-                    const SizedBox(height: 2),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
                     Text(
-                      description!,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant.withValues(
-                          alpha: 0.75,
-                        ),
-                        fontSize: 11,
+                      title,
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
                       ),
                     ),
+                    if (description != null) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        description!,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant.withValues(
+                            alpha: 0.75,
+                          ),
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
             ],
           );
@@ -952,7 +981,13 @@ class _LevelBox extends StatelessWidget {
           );
 
           if (isWide) {
-            return Row(children: [titleWidget, const Spacer(), pillsWidget]);
+            return Row(
+              children: [
+                Expanded(child: titleWidget),
+                const SizedBox(width: 16),
+                pillsWidget,
+              ],
+            );
           } else {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,

@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:driver_hub/layer4_domain/models/device_settings_state.dart';
+import 'package:driver_hub/layer3_ui/theme/app_theme.dart';
 import 'package:driver_hub/i18n/strings.g.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -624,6 +625,7 @@ class _ColorBoxState extends State<_ColorBox> {
                       ),
                       style: const TextStyle(
                         fontFamily: 'Poppins',
+                        fontFamilyFallback: AppTheme.fontFallbacks,
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                       ),

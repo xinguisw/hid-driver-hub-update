@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 abstract class AppTheme {
   // Brand accent colors
@@ -24,6 +23,7 @@ abstract class AppTheme {
   static ThemeData get lightTheme {
     final baseTheme = ThemeData(
       useMaterial3: true,
+      fontFamily: 'Poppins',
       brightness: Brightness.light,
       colorScheme: const ColorScheme.light(
         primary: brandPrimary,
@@ -63,6 +63,7 @@ abstract class AppTheme {
   static ThemeData get darkTheme {
     final baseTheme = ThemeData(
       useMaterial3: true,
+      fontFamily: 'Poppins',
       brightness: Brightness.dark,
       colorScheme: const ColorScheme.dark(
         primary: brandPrimary,
@@ -100,7 +101,7 @@ abstract class AppTheme {
 
   /// Applies Poppins font with proper typographic hierarchy weights
   static TextTheme _applyPoppinsHierarchy(TextTheme baseTheme) {
-    final poppinsTheme = GoogleFonts.poppinsTextTheme(baseTheme);
+    final poppinsTheme = baseTheme.apply(fontFamily: 'Poppins');
     return poppinsTheme.copyWith(
       // Headers get bold weights for strong contrast
       headlineLarge: poppinsTheme.headlineLarge?.copyWith(

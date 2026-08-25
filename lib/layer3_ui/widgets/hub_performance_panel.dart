@@ -294,15 +294,6 @@ class _DpiSettingsGroup extends StatelessWidget {
                             Icon(
                               Icons.add_rounded,
                               size: 14,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              'Add',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: canAdd
-                                    ? FontWeight.w700
-                                    : FontWeight.w600,
                               color: canAdd
                                   ? theme.colorScheme.onSurface
                                   : theme.colorScheme.onSurfaceVariant.withValues(

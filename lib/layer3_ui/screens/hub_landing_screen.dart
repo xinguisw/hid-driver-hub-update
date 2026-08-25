@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:driver_hub/layer2_capabilities/capabilities.dart';
 import 'package:driver_hub/layer3_ui/widgets/hub_backlight_panel.dart';
@@ -288,145 +289,157 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                           final display = view.displaySettings;
                           final buttons = display?.buttons ?? const [];
                           final bloc = context.read<DeviceSettingsBloc>();
-                          return Row(
-                            children: [
-                              Expanded(
-                                child: HubMouseCanvas(
-                                  imageLarge: selected.imageLarge,
-                                  buttons: buttons,
-                                  selectedButtonId: _selectedButtonId,
-                                  isDirty: view.isDirty,
-                                  committing: view.committing,
-                                  onButtonSelected: (id) {
-                                    setState(() => _selectedButtonId = id);
-                                  },
-                                  onBackgroundTap: () {
-                                    setState(() => _selectedButtonId = null);
-                                  },
-                                  onResetToDefault: () {
-                                    final t = context.t;
-                                    showDialog(
-                                      context: context,
-                                      builder: (ctx) => AlertDialog(
-                                        title: Text(t.common.tip),
-                                        content: Text(
-                                          t.mouseCanvas.restoreDefaultKeysTip,
-                                        ),
-                                        actions: [
-                                          TextButton(
-                                            onPressed: () =>
-                                                Navigator.of(ctx).pop(false),
-                                            child: Text(t.common.cancel),
+                          return LayoutBuilder(
+                            builder: (context, constraints) {
+                              final maxSidebarW = (constraints.maxWidth * 0.6)
+                                  .clamp(160.0, HubButtonMappingPanel.width);
+                              return Row(
+                                children: [
+                                  Expanded(
+                                    child: HubMouseCanvas(
+                                      imageLarge: selected.imageLarge,
+                                      buttons: buttons,
+                                      selectedButtonId: _selectedButtonId,
+                                      isDirty: view.isDirty,
+                                      committing: view.committing,
+                                      onButtonSelected: (id) {
+                                        setState(() => _selectedButtonId = id);
+                                      },
+                                      onBackgroundTap: () {
+                                        setState(() => _selectedButtonId = null);
+                                      },
+                                      onResetToDefault: () {
+                                        final t = context.t;
+                                        showDialog(
+                                          context: context,
+                                          builder: (ctx) => AlertDialog(
+                                            title: Text(t.common.tip),
+                                            content: Text(
+                                              t.mouseCanvas.restoreDefaultKeysTip,
+                                            ),
+                                            actions: [
+                                              TextButton(
+                                                onPressed: () =>
+                                                    Navigator.of(ctx).pop(false),
+                                                child: Text(t.common.cancel),
+                                              ),
+                                              TextButton(
+                                                onPressed: () {
+                                                  Navigator.of(ctx).pop(true);
+                                                  debugPrint(
+                                                    '[hub] ${widget.card.displayName}: dispatch reset',
+                                                  );
+                                                  bloc.add(
+                                                    const DeviceSettingsResetButtonMappingRequested(),
+                                                  );
+                                                },
+                                                child: Text(t.common.confirm),
+                                              ),
+                                            ],
                                           ),
-                                          TextButton(
-                                            onPressed: () {
-                                              Navigator.of(ctx).pop(true);
-                                              debugPrint(
-                                                '[hub] ${widget.card.displayName}: dispatch reset',
-                                              );
-                                              bloc.add(
-                                                const DeviceSettingsResetButtonMappingRequested(),
-                                              );
-                                            },
-                                            child: Text(t.common.confirm),
-                                          ),
-                                        ],
-                                      ),
-                                    );
-                                  },
-                                  onSave: () {
-                                    debugPrint(
-                                      '[hub] ${widget.card.displayName}: '
-                                      'dispatch save',
-                                    );
-                                    bloc.add(
-                                      const DeviceSettingsSaveRequested(),
-                                    );
-                                  },
-                                  onCancel: () {
-                                    debugPrint(
-                                      '[hub] ${widget.card.displayName}: '
-                                      'dispatch cancel',
-                                    );
-                                    setState(() => _selectedButtonId = null);
-                                    bloc.add(
-                                      const DeviceSettingsCancelRequested(),
-                                    );
-                                  },
-                                ),
-                              ),
-                              Builder(
-                                builder: (context) {
-                                  if (_selectedButtonId != null) {
-                                    _lastSelectedButtonId = _selectedButtonId;
-                                  }
-                                  final activeId =
-                                      _selectedButtonId ??
-                                      _lastSelectedButtonId;
-                                  final isOpen = _selectedButtonId != null;
+                                        );
+                                      },
+                                      onSave: () {
+                                        debugPrint(
+                                          '[hub] ${widget.card.displayName}: '
+                                          'dispatch save',
+                                        );
+                                        bloc.add(
+                                          const DeviceSettingsSaveRequested(),
+                                        );
+                                      },
+                                      onCancel: () {
+                                        debugPrint(
+                                          '[hub] ${widget.card.displayName}: '
+                                          'dispatch cancel',
+                                        );
+                                        setState(() => _selectedButtonId = null);
+                                        bloc.add(
+                                          const DeviceSettingsCancelRequested(),
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                  Builder(
+                                    builder: (context) {
+                                      if (_selectedButtonId != null) {
+                                        _lastSelectedButtonId =
+                                            _selectedButtonId;
+                                      }
+                                      final activeId =
+                                          _selectedButtonId ??
+                                          _lastSelectedButtonId;
+                                      final isOpen = _selectedButtonId != null;
 
-                                  return _AnimatedRightSidebar(
-                                    isOpen: isOpen,
-                                    child: activeId == null
-                                        ? const SizedBox.shrink()
-                                        : HubButtonMappingPanel(
-                                            selectedButtonId: _selectedButtonId,
-                                            buttons: buttons,
-                                            mouseActionCatalog:
-                                                display?.mouseActionCatalog,
-                                            keyboardActionCatalog:
-                                                display?.keyboardActionCatalog,
-                                            specialActionCatalog:
-                                                display?.specialActionCatalog,
-                                            onActionSelected: (catalogId) {
-                                              _settingsBloc.add(
-                                                DeviceSettingsButtonMappingSlotRequested(
-                                                  buttonId: activeId,
-                                                  catalogId: catalogId,
-                                                ),
-                                              );
-                                            },
-                                            onComboSelected:
-                                                (modifierIds, keyChar) {
+                                      return _AnimatedRightSidebar(
+                                        isOpen: isOpen,
+                                        targetWidth: maxSidebarW,
+                                        child: activeId == null
+                                            ? const SizedBox.shrink()
+                                            : HubButtonMappingPanel(
+                                                selectedButtonId:
+                                                    _selectedButtonId,
+                                                buttons: buttons,
+                                                mouseActionCatalog:
+                                                    display?.mouseActionCatalog,
+                                                keyboardActionCatalog: display
+                                                    ?.keyboardActionCatalog,
+                                                specialActionCatalog: display
+                                                    ?.specialActionCatalog,
+                                                onActionSelected: (catalogId) {
                                                   _settingsBloc.add(
-                                                    DeviceSettingsSpecialComboRequested(
+                                                    DeviceSettingsButtonMappingSlotRequested(
                                                       buttonId: activeId,
-                                                      modifierIds: modifierIds,
-                                                      keyChar: keyChar,
+                                                      catalogId: catalogId,
                                                     ),
                                                   );
                                                 },
-                                            macroSlots: widget.scope
-                                                .macrosFor(widget.card)
-                                                .indexed
-                                                .map(
-                                                  (entry) => MacroSlot(
-                                                    id: (entry.$1 + 1)
-                                                        .toString(),
-                                                    name: entry.$2.name,
-                                                  ),
-                                                )
-                                                .toList(),
-                                            onMacroSelected: (macroSlot) {
-                                              _settingsBloc.add(
-                                                DeviceSettingsMacroMappingRequested(
-                                                  buttonId: activeId,
-                                                  macroSlot:
-                                                      int.tryParse(macroSlot) ??
-                                                      0,
-                                                ),
-                                              );
-                                            },
-                                            onCollapse: () {
-                                              setState(() {
-                                                _selectedButtonId = null;
-                                              });
-                                            },
-                                          ),
-                                  );
-                                },
-                              ),
-                            ],
+                                                onComboSelected:
+                                                    (modifierIds, keyChar) {
+                                                      _settingsBloc.add(
+                                                        DeviceSettingsSpecialComboRequested(
+                                                          buttonId: activeId,
+                                                          modifierIds:
+                                                              modifierIds,
+                                                          keyChar: keyChar,
+                                                        ),
+                                                      );
+                                                    },
+                                                macroSlots: widget.scope
+                                                    .macrosFor(widget.card)
+                                                    .indexed
+                                                    .map(
+                                                      (entry) => MacroSlot(
+                                                        id: (entry.$1 + 1)
+                                                            .toString(),
+                                                        name: entry.$2.name,
+                                                      ),
+                                                    )
+                                                    .toList(),
+                                                onMacroSelected: (macroSlot) {
+                                                  _settingsBloc.add(
+                                                    DeviceSettingsMacroMappingRequested(
+                                                      buttonId: activeId,
+                                                      macroSlot:
+                                                          int.tryParse(
+                                                            macroSlot,
+                                                          ) ??
+                                                          0,
+                                                    ),
+                                                  );
+                                                },
+                                                onCollapse: () {
+                                                  setState(() {
+                                                    _selectedButtonId = null;
+                                                  });
+                                                },
+                                              ),
+                                      );
+                                    },
+                                  ),
+                                ],
+                              );
+                            },
                           );
                         },
                       ),
@@ -1374,30 +1387,39 @@ class _PerformanceActionBar extends StatelessWidget {
 
 /// Smooth width slide animation wrapper for button mapping right panel matching left sidebar curves.
 class _AnimatedRightSidebar extends StatelessWidget {
-  const _AnimatedRightSidebar({required this.isOpen, required this.child});
+  const _AnimatedRightSidebar({
+    required this.isOpen,
+    required this.child,
+    this.targetWidth = HubButtonMappingPanel.width,
+  });
 
   final bool isOpen;
   final Widget child;
+  final double targetWidth;
 
   static const Duration _animationDuration = Duration(milliseconds: 250);
   static const Curve _animationCurve = Curves.easeInOutCubic;
 
   @override
   Widget build(BuildContext context) {
+    final effectiveW = math.min(HubButtonMappingPanel.width, targetWidth);
     return AnimatedContainer(
       duration: _animationDuration,
       curve: _animationCurve,
-      width: isOpen ? HubButtonMappingPanel.width : 0,
+      width: isOpen ? effectiveW : 0,
       child: ClipRect(
         child: OverflowBox(
           alignment: Alignment.centerLeft,
-          minWidth: HubButtonMappingPanel.width,
-          maxWidth: HubButtonMappingPanel.width,
-          child: Row(
-            children: [
-              const VerticalDivider(thickness: 1, width: 1),
-              Expanded(child: child),
-            ],
+          minWidth: 0,
+          maxWidth: effectiveW,
+          child: SizedBox(
+            width: effectiveW,
+            child: Row(
+              children: [
+                const VerticalDivider(thickness: 1, width: 1),
+                Expanded(child: child),
+              ],
+            ),
           ),
         ),
       ),

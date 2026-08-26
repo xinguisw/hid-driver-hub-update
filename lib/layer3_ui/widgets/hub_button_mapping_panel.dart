@@ -572,6 +572,11 @@ class _SpecialCombinationBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final cardBorderColor = (isDark ? Colors.white : Colors.black).withValues(
+      alpha: 0.45,
+    );
+
     if (sections.isEmpty) return const SizedBox.expand();
     final section = sections.first;
     final mods = [
@@ -621,30 +626,56 @@ class _SpecialCombinationBody extends StatelessWidget {
                   runSpacing: 6,
                   children: [
                     for (final m in mods)
-                      Material(
-                        color: selectedMods.contains(m.id)
-                            ? theme.colorScheme.primary
-                            : theme.colorScheme.surfaceContainerHigh,
-                        borderRadius: BorderRadius.circular(6),
-                        child: InkWell(
-                          onTap: () => onToggleMod(m.id),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: selectedMods.contains(m.id)
+                              ? theme.colorScheme.primary
+                              : (isDark
+                                  ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.28)
+                                  : theme.colorScheme.surfaceContainerLowest),
                           borderRadius: BorderRadius.circular(6),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 6,
-                            ),
-                            child: Text(
-                              CatalogLocalization.localizeItemLabel(
-                                m.id,
-                                m.label,
-                                t,
+                          border: Border.all(
+                            color: selectedMods.contains(m.id)
+                                ? theme.colorScheme.primary
+                                : cardBorderColor,
+                            width: 1.0,
+                          ),
+                          boxShadow: selectedMods.contains(m.id)
+                              ? [
+                                  BoxShadow(
+                                    color: theme.colorScheme.primary.withValues(alpha: 0.35),
+                                    blurRadius: 6,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ]
+                              : null,
+                        ),
+                        child: Material(
+                          color: Colors.transparent,
+                          borderRadius: BorderRadius.circular(6),
+                          child: InkWell(
+                            onTap: () => onToggleMod(m.id),
+                            borderRadius: BorderRadius.circular(6),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 6,
                               ),
-                              style: theme.textTheme.labelMedium?.copyWith(
-                                color: selectedMods.contains(m.id)
-                                    ? theme.colorScheme.onPrimary
-                                    : theme.colorScheme.onSurface,
-                                fontSize: 12,
+                              child: Text(
+                                CatalogLocalization.localizeItemLabel(
+                                  m.id,
+                                  m.label,
+                                  t,
+                                ),
+                                style: theme.textTheme.labelMedium?.copyWith(
+                                  color: selectedMods.contains(m.id)
+                                      ? theme.colorScheme.onPrimary
+                                      : theme.colorScheme.onSurface,
+                                  fontSize: 12,
+                                  fontWeight: selectedMods.contains(m.id)
+                                      ? FontWeight.w700
+                                      : FontWeight.w500,
+                                ),
                               ),
                             ),
                           ),
@@ -680,17 +711,38 @@ class _SpecialCombinationBody extends StatelessWidget {
                 child: Focus(
                   focusNode: anyKeyFocus,
                   onKeyEvent: onAnyKeyEvent,
-                  child: Material(
-                    color: anyKeyListening
-                        ? theme.colorScheme.primaryContainer
-                        : theme.colorScheme.surfaceContainerHigh,
-                    borderRadius: BorderRadius.circular(6),
-                    child: InkWell(
-                      onTap: onAnyKeyTap,
-                      canRequestFocus: false,
+                  child: Container(
+                    height: 34,
+                    decoration: BoxDecoration(
+                      color: anyKeyListening
+                          ? theme.colorScheme.primaryContainer
+                          : (isDark
+                              ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.28)
+                              : theme.colorScheme.surfaceContainerLowest),
                       borderRadius: BorderRadius.circular(6),
-                      child: SizedBox(
-                        height: 32,
+                      border: Border.all(
+                        color: anyKeyListening
+                            ? theme.colorScheme.primary
+                            : cardBorderColor,
+                        width: anyKeyListening ? 1.5 : 1.0,
+                      ),
+                      boxShadow: anyKeyListening
+                          ? [
+                              BoxShadow(
+                                color: theme.colorScheme.primary.withValues(alpha: 0.35),
+                                blurRadius: 6,
+                                offset: const Offset(0, 2),
+                              ),
+                            ]
+                          : null,
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      borderRadius: BorderRadius.circular(6),
+                      child: InkWell(
+                        onTap: onAnyKeyTap,
+                        canRequestFocus: false,
+                        borderRadius: BorderRadius.circular(6),
                         child: Align(
                           alignment: Alignment.centerLeft,
                           child: Padding(
@@ -702,6 +754,9 @@ class _SpecialCombinationBody extends StatelessWidget {
                                     ? theme.colorScheme.onPrimaryContainer
                                     : theme.colorScheme.onSurface,
                                 fontSize: 12,
+                                fontWeight: anyKeyListening
+                                    ? FontWeight.w600
+                                    : FontWeight.normal,
                               ),
                             ),
                           ),

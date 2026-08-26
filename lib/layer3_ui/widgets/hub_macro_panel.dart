@@ -1386,11 +1386,20 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
                                 style: _macroOutlinedButtonStyle(context),
                                 child: Text(t.macro.reset),
                               ),
-                              OutlinedButton(
-                                onPressed: _loading || _recording ? null : _save,
-                                style: _macroOutlinedButtonStyle(context),
-                                child: Text(t.macro.save),
-                              ),
+                              () {
+                                final canSave = !_loading && !_recording;
+                                return canSave
+                                    ? FilledButton(
+                                        onPressed: _save,
+                                        style: _macroFilledSaveButtonStyle(context),
+                                        child: Text(t.macro.save),
+                                      )
+                                    : OutlinedButton(
+                                        onPressed: null,
+                                        style: _macroDimmedSaveButtonStyle(context),
+                                        child: Text(t.macro.save),
+                                      );
+                              }(),
                               OutlinedButton(
                                 onPressed: _loading ? null : _cancel,
                                 style: _macroOutlinedButtonStyle(context),
@@ -1709,6 +1718,38 @@ ButtonStyle _macroOutlinedButtonStyle(BuildContext context) {
     padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
     elevation: 1.5,
     shadowColor: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
+  );
+}
+
+/// Lit-up primary save button — mirrors the Parameter Setting panel style.
+ButtonStyle _macroFilledSaveButtonStyle(BuildContext context) {
+  final theme = Theme.of(context);
+  return FilledButton.styleFrom(
+    backgroundColor: theme.colorScheme.primary,
+    foregroundColor: Colors.white,
+    minimumSize: const Size(80, 42),
+    elevation: 3,
+    shadowColor: theme.colorScheme.primary.withValues(alpha: 0.35),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+  );
+}
+
+/// Dimmed save button when save is unavailable (loading / recording).
+ButtonStyle _macroDimmedSaveButtonStyle(BuildContext context) {
+  final theme = Theme.of(context);
+  final isDark = theme.brightness == Brightness.dark;
+  return OutlinedButton.styleFrom(
+    backgroundColor: isDark ? const Color(0xFF26282E) : Colors.white,
+    foregroundColor: theme.colorScheme.onSurface.withValues(alpha: 0.38),
+    minimumSize: const Size(80, 42),
+    side: BorderSide(
+      color: (isDark ? const Color(0xFF3F424B) : const Color(0xFFD0D5DD))
+          .withValues(alpha: 0.5),
+      width: 1.0,
+    ),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
   );
 }
 

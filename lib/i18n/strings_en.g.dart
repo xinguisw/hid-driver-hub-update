@@ -721,6 +721,39 @@ class Translations$actions$en {
 
 	/// en: 'Numpad /'
 	String get numpadDiv => 'Numpad /';
+
+	/// en: 'Numpad ='
+	String get numpadEq => 'Numpad =';
+
+	/// en: 'Numpad 0'
+	String get numpad0 => 'Numpad 0';
+
+	/// en: 'Numpad 1'
+	String get numpad1 => 'Numpad 1';
+
+	/// en: 'Numpad 2'
+	String get numpad2 => 'Numpad 2';
+
+	/// en: 'Numpad 3'
+	String get numpad3 => 'Numpad 3';
+
+	/// en: 'Numpad 4'
+	String get numpad4 => 'Numpad 4';
+
+	/// en: 'Numpad 5'
+	String get numpad5 => 'Numpad 5';
+
+	/// en: 'Numpad 6'
+	String get numpad6 => 'Numpad 6';
+
+	/// en: 'Numpad 7'
+	String get numpad7 => 'Numpad 7';
+
+	/// en: 'Numpad 8'
+	String get numpad8 => 'Numpad 8';
+
+	/// en: 'Numpad 9'
+	String get numpad9 => 'Numpad 9';
 }
 
 // Path: deviceSetting

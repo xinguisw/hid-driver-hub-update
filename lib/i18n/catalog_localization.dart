@@ -153,6 +153,34 @@ class CatalogLocalization {
         return t.actions.scrollLock;
       case 'key.nav.pause':
         return t.actions.pause;
+      case 'key.num.0':
+        return t.actions.numpad0;
+      case 'key.num.1':
+        return t.actions.numpad1;
+      case 'key.num.2':
+        return t.actions.numpad2;
+      case 'key.num.3':
+        return t.actions.numpad3;
+      case 'key.num.4':
+        return t.actions.numpad4;
+      case 'key.num.5':
+        return t.actions.numpad5;
+      case 'key.num.6':
+        return t.actions.numpad6;
+      case 'key.num.7':
+        return t.actions.numpad7;
+      case 'key.num.8':
+        return t.actions.numpad8;
+      case 'key.num.9':
+        return t.actions.numpad9;
+      case 'key.num.add':
+        return t.actions.numpadAdd;
+      case 'key.num.sub':
+        return t.actions.numpadSub;
+      case 'key.num.mul':
+        return t.actions.numpadMul;
+      case 'key.num.div':
+        return t.actions.numpadDiv;
       case 'key.num.enter':
         return t.actions.numpadEnter;
       case 'key.num.del':
@@ -392,6 +420,28 @@ class CatalogLocalization {
         return t.actions.numpadMul;
       case 'Numpad /':
         return t.actions.numpadDiv;
+      case 'Numpad =':
+        return t.actions.numpadEq;
+      case 'Numpad 0':
+        return t.actions.numpad0;
+      case 'Numpad 1':
+        return t.actions.numpad1;
+      case 'Numpad 2':
+        return t.actions.numpad2;
+      case 'Numpad 3':
+        return t.actions.numpad3;
+      case 'Numpad 4':
+        return t.actions.numpad4;
+      case 'Numpad 5':
+        return t.actions.numpad5;
+      case 'Numpad 6':
+        return t.actions.numpad6;
+      case 'Numpad 7':
+        return t.actions.numpad7;
+      case 'Numpad 8':
+        return t.actions.numpad8;
+      case 'Numpad 9':
+        return t.actions.numpad9;
       default:
         if (label.contains(' + ')) {
           final parts = label.split(' + ');

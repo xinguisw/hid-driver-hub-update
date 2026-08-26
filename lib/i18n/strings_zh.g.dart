@@ -343,6 +343,17 @@ class _Translations$actions$zh extends Translations$actions$en {
 	@override String get numpadSub => '小键盘 -';
 	@override String get numpadMul => '小键盘 *';
 	@override String get numpadDiv => '小键盘 /';
+	@override String get numpadEq => '小键盘 =';
+	@override String get numpad0 => '小键盘 0';
+	@override String get numpad1 => '小键盘 1';
+	@override String get numpad2 => '小键盘 2';
+	@override String get numpad3 => '小键盘 3';
+	@override String get numpad4 => '小键盘 4';
+	@override String get numpad5 => '小键盘 5';
+	@override String get numpad6 => '小键盘 6';
+	@override String get numpad7 => '小键盘 7';
+	@override String get numpad8 => '小键盘 8';
+	@override String get numpad9 => '小键盘 9';
 }
 
 // Path: deviceSetting

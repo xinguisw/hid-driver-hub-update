@@ -226,7 +226,18 @@
         "numpadAdd": "小键盘 +",
         "numpadSub": "小键盘 -",
         "numpadMul": "小键盘 *",
-        "numpadDiv": "小键盘 /"
+        "numpadDiv": "小键盘 /",
+        "numpadEq": "小键盘 =",
+        "numpad0": "小键盘 0",
+        "numpad1": "小键盘 1",
+        "numpad2": "小键盘 2",
+        "numpad3": "小键盘 3",
+        "numpad4": "小键盘 4",
+        "numpad5": "小键盘 5",
+        "numpad6": "小键盘 6",
+        "numpad7": "小键盘 7",
+        "numpad8": "小键盘 8",
+        "numpad9": "小键盘 9"
     },
     "deviceSetting": {
         "mouseFirmwareVersion": "鼠标固件版本",

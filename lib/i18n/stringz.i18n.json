@@ -226,7 +226,18 @@
         "numpadAdd": "Numpad +",
         "numpadSub": "Numpad -",
         "numpadMul": "Numpad *",
-        "numpadDiv": "Numpad /"
+        "numpadDiv": "Numpad /",
+        "numpadEq": "Numpad =",
+        "numpad0": "Numpad 0",
+        "numpad1": "Numpad 1",
+        "numpad2": "Numpad 2",
+        "numpad3": "Numpad 3",
+        "numpad4": "Numpad 4",
+        "numpad5": "Numpad 5",
+        "numpad6": "Numpad 6",
+        "numpad7": "Numpad 7",
+        "numpad8": "Numpad 8",
+        "numpad9": "Numpad 9"
     },
     "deviceSetting": {
         "mouseFirmwareVersion": "Mouse Firmware Version",

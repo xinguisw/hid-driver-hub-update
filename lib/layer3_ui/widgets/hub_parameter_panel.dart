@@ -292,9 +292,12 @@ class _GroupContainer extends StatelessWidget {
   }
 }
 
-/// Inner card container with elevated surface background and clean neutral border.
+/// Inner card container matching the unified card box style.
 class _CardBox extends StatelessWidget {
-  const _CardBox({required this.child, this.isActive = false});
+  const _CardBox({
+    required this.child,
+    this.isActive = false,
+  });
 
   final Widget child;
   final bool isActive;
@@ -304,24 +307,23 @@ class _CardBox extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    final borderColor = (isDark ? Colors.white : Colors.black).withValues(alpha: 0.12);
+    final bgColor = isDark
+        ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.28)
+        : theme.colorScheme.surfaceContainerLowest;
+
+    final borderColor = (isDark ? Colors.white : Colors.black).withValues(
+      alpha: 0.45,
+    );
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(14),
+        color: bgColor,
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(
           color: borderColor,
-          width: 1.0,
+          width: 1,
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
-          ),
-        ],
       ),
       child: child,
     );

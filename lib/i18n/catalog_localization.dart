@@ -154,33 +154,33 @@ class CatalogLocalization {
       case 'key.nav.pause':
         return t.actions.pause;
       case 'key.num.0':
-        return t.actions.numpad0;
+        return '0';
       case 'key.num.1':
-        return t.actions.numpad1;
+        return '1';
       case 'key.num.2':
-        return t.actions.numpad2;
+        return '2';
       case 'key.num.3':
-        return t.actions.numpad3;
+        return '3';
       case 'key.num.4':
-        return t.actions.numpad4;
+        return '4';
       case 'key.num.5':
-        return t.actions.numpad5;
+        return '5';
       case 'key.num.6':
-        return t.actions.numpad6;
+        return '6';
       case 'key.num.7':
-        return t.actions.numpad7;
+        return '7';
       case 'key.num.8':
-        return t.actions.numpad8;
+        return '8';
       case 'key.num.9':
-        return t.actions.numpad9;
+        return '9';
       case 'key.num.add':
-        return t.actions.numpadAdd;
+        return '+';
       case 'key.num.sub':
-        return t.actions.numpadSub;
+        return '-';
       case 'key.num.mul':
-        return t.actions.numpadMul;
+        return '*';
       case 'key.num.div':
-        return t.actions.numpadDiv;
+        return '/';
       case 'key.num.enter':
         return t.actions.numpadEnter;
       case 'key.num.del':

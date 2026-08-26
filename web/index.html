@@ -29,6 +29,11 @@
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
+  <!-- Web Fonts for CJK & Multi-language support -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+
   <title>driver_hub</title>
   <link rel="manifest" href="manifest.json">
 </head>
@@ -53,7 +58,15 @@
       window.addEventListener(type, preventMouseNav, true);
       document.addEventListener(type, preventMouseNav, true);
     });
+
+    // Ensure all web fonts are fully loaded before booting Flutter engine
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(function() {
+        {{flutter_bootstrap_js}}
+      });
+    } else {
+      {{flutter_bootstrap_js}}
+    }
   </script>
-  <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

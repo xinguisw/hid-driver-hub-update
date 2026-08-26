@@ -21,12 +21,12 @@ abstract class AppTheme {
 
   // Font Fallbacks for CJK / Multi-language support
   static const List<String> fontFallbacks = [
-    'Microsoft YaHei',
+    'Noto Sans SC',
+    'Noto Sans CJK SC',
     'PingFang SC',
+    'Microsoft YaHei',
     'SimHei',
     'Source Han Sans SC',
-    'Noto Sans CJK SC',
-    'Noto Sans SC',
     'sans-serif',
   ];
 

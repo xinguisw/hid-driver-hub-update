@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'package:driver_hub/layer3_ui/theme/app_theme.dart';
 import 'package:driver_hub/layer4_domain/models/device_settings_state.dart';
 import 'package:driver_hub/i18n/strings.g.dart';
 import 'package:flutter/material.dart';
@@ -167,6 +168,79 @@ class _HubMouseCanvasState extends State<HubMouseCanvas> {
                     ),
                   ),
                 ),
+                // Render callout labels as real Flutter Text widgets so Flutter's
+                // font subsystem handles loading & reactivity seamlessly (no CanvasKit tofu boxes)
+                ...targets.map((t) {
+                  final isSelected = t.id == widget.selectedButtonId;
+                  final isHovered = t.id == _hoveredButtonId;
+
+                  final Color boxFillColor;
+                  final Color boxBorderColor;
+                  final TextStyle textStyle;
+
+                  if (isSelected) {
+                    boxFillColor = Colors.orange;
+                    boxBorderColor = Colors.deepOrange;
+                    textStyle = _CalloutLayout.selectedLabelStyle;
+                  } else if (isHovered) {
+                    boxFillColor = isDark
+                        ? const Color(0xFF3E2723)
+                        : const Color(0xFFFFF3E0);
+                    boxBorderColor = Colors.orange;
+                    textStyle = isDark
+                        ? _CalloutLayout.selectedLabelStyle
+                        : _CalloutLayout.hoveredLabelStyle;
+                  } else {
+                    boxFillColor = isDark ? theme.cardColor : Colors.white;
+                    boxBorderColor = isDark
+                        ? theme.colorScheme.outline
+                        : const Color(0xFFD6D6D6);
+                    textStyle = isDark
+                        ? TextStyle(
+                            fontFamily: 'Poppins',
+                            fontFamilyFallback: AppTheme.fontFallbacks,
+                            color: theme.colorScheme.onSurface,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          )
+                        : _CalloutLayout.labelStyle;
+                  }
+
+                  return Positioned(
+                    left: t.boxRect.left,
+                    top: t.boxRect.top,
+                    width: t.boxRect.width,
+                    height: t.boxRect.height,
+                    child: IgnorePointer(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: boxFillColor,
+                          borderRadius: BorderRadius.circular(6.0),
+                          border: Border.all(
+                            color: boxBorderColor,
+                            width: isSelected ? 2.0 : (isHovered ? 1.8 : 1.2),
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(
+                                alpha: isSelected ? 0.2 : 0.08,
+                              ),
+                              blurRadius: 3.0,
+                              offset: const Offset(0, 1.5),
+                            ),
+                          ],
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          t.label,
+                          style: textStyle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
+                  );
+                }),
               ],
             ),
           ),
@@ -365,20 +439,26 @@ class _CalloutLayout {
   // why: leader length in px — edit here
   static const double stemLength = 40.0;
 
-  static const labelStyle = TextStyle(
+  static final labelStyle = TextStyle(
+    fontFamily: 'Poppins',
+    fontFamilyFallback: AppTheme.fontFallbacks,
     color: Colors.black87,
     fontSize: 12,
     fontWeight: FontWeight.w500,
   );
 
-  static const selectedLabelStyle = TextStyle(
+  static final selectedLabelStyle = TextStyle(
+    fontFamily: 'Poppins',
+    fontFamilyFallback: AppTheme.fontFallbacks,
     color: Colors.white,
     fontSize: 12,
     fontWeight: FontWeight.w500,
   );
 
-  static const hoveredLabelStyle = TextStyle(
-    color: Color(0xFFE65100),
+  static final hoveredLabelStyle = TextStyle(
+    fontFamily: 'Poppins',
+    fontFamilyFallback: AppTheme.fontFallbacks,
+    color: const Color(0xFFE65100),
     fontSize: 12,
     fontWeight: FontWeight.w600,
   );
@@ -540,41 +620,17 @@ class _HotspotPainter extends CustomPainter {
 
       final Color accent;
       final Color dotFillColor;
-      final Color boxFillColor;
-      final Color boxBorderColor;
-      final TextStyle textStyle;
 
       if (isSelected) {
         accent = Colors.orange;
         dotFillColor = Colors.orange;
-        boxFillColor = Colors.orange;
-        boxBorderColor = Colors.deepOrange;
-        textStyle = _CalloutLayout.selectedLabelStyle;
       } else if (isHovered) {
         accent = Colors.orange;
         dotFillColor = Colors.orange.withValues(alpha: 0.35);
-        boxFillColor = isDark
-            ? const Color(0xFF3E2723)
-            : const Color(0xFFFFF3E0);
-        boxBorderColor = Colors.orange;
-        textStyle = isDark
-            ? _CalloutLayout.selectedLabelStyle
-            : _CalloutLayout.hoveredLabelStyle;
       } else {
-        // why: Unselected callout pins and label boxes adapt to Dark/Light mode theme
+        // why: Unselected callout pins adapt to Dark/Light mode theme
         accent = isDark ? theme.colorScheme.onSurface : Colors.black87;
         dotFillColor = isDark ? theme.cardColor : Colors.white;
-        boxFillColor = isDark ? theme.cardColor : Colors.white;
-        boxBorderColor = isDark
-            ? theme.colorScheme.outline
-            : const Color(0xFFD6D6D6);
-        textStyle = isDark
-            ? TextStyle(
-                color: theme.colorScheme.onSurface,
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-              )
-            : _CalloutLayout.labelStyle;
       }
 
       final dotFill = Paint()..color = dotFillColor;
@@ -597,35 +653,6 @@ class _HotspotPainter extends CustomPainter {
 
       // 2. Draw stem line pointer
       canvas.drawLine(t.stemStart, t.stemEnd, linePaint);
-
-      // 3. Draw text container box with rounded corners and shadow
-      final rrect = RRect.fromRectAndRadius(
-        t.boxRect,
-        const Radius.circular(6.0),
-      );
-
-      final shadowPaint = Paint()
-        ..color = Colors.black.withValues(alpha: isSelected ? 0.2 : 0.08)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3.0);
-      canvas.drawRRect(rrect.shift(const Offset(0, 1.5)), shadowPaint);
-
-      final boxFill = Paint()..color = boxFillColor;
-      final boxBorder = Paint()
-        ..color = boxBorderColor
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = isSelected ? 2.0 : (isHovered ? 1.8 : 1.2);
-
-      canvas.drawRRect(rrect, boxFill);
-      canvas.drawRRect(rrect, boxBorder);
-
-      // 4. Paint text inside container box
-      final tp = TextPainter(
-        text: TextSpan(text: t.label, style: textStyle),
-        textDirection: TextDirection.ltr,
-        maxLines: 1,
-        ellipsis: '…',
-      )..layout(maxWidth: t.labelSize.width + 1);
-      tp.paint(canvas, t.textOrigin);
     }
   }
 

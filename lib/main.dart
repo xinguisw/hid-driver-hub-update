@@ -16,6 +16,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_single_instance/flutter_single_instance.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:window_manager/window_manager.dart';
 
 Future<void> main(List<String> args) async {
@@ -31,6 +32,15 @@ Future<void> main(List<String> args) async {
 
   // Initialize theme storage before running the app
   await ThemeController.instance.init();
+
+  // On Web, preload Chinese font so first paint does not show tofu boxes
+  if (kIsWeb) {
+    try {
+      await GoogleFonts.pendingFonts([
+        GoogleFonts.notoSansSc(),
+      ]);
+    } catch (_) {}
+  }
 
   // Set slang locale to device locale
   LocaleSettings.useDeviceLocale();

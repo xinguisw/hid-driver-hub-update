@@ -108,19 +108,23 @@ void main() {
     );
 
     // Tap brightness 75%
+    await tester.ensureVisible(find.text('75%'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('75%'));
     await tester.pumpAndSettle();
     expect(selectedBrightness, 3);
 
     // Tap speed pill
+    await tester.ensureVisible(find.text('100').first);
+    await tester.pumpAndSettle();
     await tester.tap(find.text('100').first);
     await tester.pumpAndSettle();
     expect(selectedSpeed, 2);
 
-    // Scroll and Tap sleep option 5m
-    await tester.ensureVisible(find.text('5m'));
+    // Scroll and Tap sleep option 5 min
+    await tester.ensureVisible(find.text('5 min'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('5m'));
+    await tester.tap(find.text('5 min'));
     await tester.pumpAndSettle();
     expect(selectedSleep, 2);
 

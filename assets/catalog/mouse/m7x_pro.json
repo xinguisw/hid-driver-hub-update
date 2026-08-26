@@ -79,7 +79,6 @@
     "maxLevels": 8,
     "activeLevelCount": 5,
     "defaultLevel": 2,
-    "wireProfile": "telink_b80_dpi16",
     "range": {
       "minDpi": 50,
       "maxDpi": 24000,
@@ -132,7 +131,6 @@
     ]
   },
   "sensor": {
-    "model": "PAW3395",
     "present": true,
     "sensorTuning": true,
     "angleTune": true,
@@ -140,26 +138,11 @@
       "present": true,
       "default": 2,
       "options": [
-        {
-          "wire": 0,
-          "label": "-30°"
-        },
-        {
-          "wire": 1,
-          "label": "-10°"
-        },
-        {
-          "wire": 2,
-          "label": "0°"
-        },
-        {
-          "wire": 3,
-          "label": "10°"
-        },
-        {
-          "wire": 4,
-          "label": "30°"
-        }
+        "-30°",
+        "-10°",
+        "0°",
+        "10°",
+        "30°"
       ]
     },
     "performance": {
@@ -173,14 +156,8 @@
     "liftOffDistance": {
       "present": true,
       "options": [
-        {
-          "wire": 0,
-          "mm": 1.0
-        },
-        {
-          "wire": 1,
-          "mm": 2.0
-        }
+        1.0,
+        2.0
       ]
     }
   },
@@ -189,64 +166,25 @@
     "buttonDebounce": {
       "present": false,
       "options": [
-        {
-          "wire": 0,
-          "label": "2ms"
-        },
-        {
-          "wire": 2,
-          "label": "4ms"
-        },
-        {
-          "wire": 3,
-          "label": "6ms"
-        },
-        {
-          "wire": 4,
-          "label": "8ms"
-        },
-        {
-          "wire": 5,
-          "label": "10ms"
-        },
-        {
-          "wire": 6,
-          "label": "12ms"
-        }
+        "2ms",
+        "4ms",
+        "6ms",
+        "8ms",
+        "10ms",
+        "12ms"
       ]
     },
     "sleepTime": {
       "present": true,
       "defaultWire": 4,
       "options": [
-        {
-          "wire": 0,
-          "label": "30 sec"
-        },
-        {
-          "wire": 1,
-          "label": "1 min"
-        },
-        {
-          "wire": 2,
-          "label": "2 min"
-        },
-        {
-          "wire": 3,
-          "label": "5 min"
-        },
-        {
-          "wire": 4,
-          "label": "10 min"
-        },
-        {
-          "wire": 5,
-          "label": "15 min"
-        },
-        {
-          "wire": 6,
-          "label": "30 min"
-        }
+        "30 sec",
+        "1 min",
+        "2 min",
+        "5 min",
+        "10 min",
+        "15 min",
+        "30 min"
       ]
     },
     "wheelDirectionInvert": false

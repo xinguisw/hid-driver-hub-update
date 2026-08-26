@@ -277,7 +277,7 @@ class _FieldTitle extends StatelessWidget {
   }
 }
 
-/// Outer group container with a subtle glass-card border and shadow.
+/// Outer group layout container (transparent & borderless to eliminate double-boxed framing).
 class _GroupContainer extends StatelessWidget {
   const _GroupContainer({required this.child});
 
@@ -285,20 +285,8 @@ class _GroupContainer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: isDark
-            ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5)
-            : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.8),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.15),
-        ),
-      ),
+    return Padding(
+      padding: EdgeInsets.zero,
       child: child,
     );
   }
@@ -316,7 +304,7 @@ class _CardBox extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    final borderColor = (isDark ? Colors.white : Colors.black).withValues(alpha: 0.45);
+    final borderColor = (isDark ? Colors.white : Colors.black).withValues(alpha: 0.12);
 
     return Container(
       padding: const EdgeInsets.all(16),

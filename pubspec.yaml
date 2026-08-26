@@ -117,7 +117,7 @@ flutter:
     - assets/catalog/supported_model.json
     # All per-mouse capability JSON under mouse/. No pubspec edit per mouse.
     - assets/catalog/mouse/
-    # Flat images (m7xse_small.png, …) — one wildcard covers all mice; no per-mouse entry.
+    # Flat images (m7xse.webp, …) — one wildcard covers all mice; no per-mouse entry.
     # Note: a directory entry bundles only its direct files (no recursion), so keep flat.
     - assets/images/
 

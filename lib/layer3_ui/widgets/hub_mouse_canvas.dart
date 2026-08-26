@@ -148,7 +148,7 @@ class _HubMouseCanvasState extends State<HubMouseCanvas> {
                       widget.imageLarge,
                       fit: BoxFit.fill,
                       errorBuilder: (_, _, _) => Image.asset(
-                        'assets/images/m7xse_large.png',
+                        'assets/images/m7xse.webp',
                         fit: BoxFit.fill,
                         errorBuilder: (_, _, _) =>
                             Text(t.mouseCanvas.imageMissing),

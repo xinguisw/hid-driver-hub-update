@@ -42,7 +42,7 @@ class DeviceCatalogEntry {
       deviceAttr: json['deviceAttr'] as String,
       interfaceId: json['interfaceId'] as int,
       usagePage: _parseHex(json['usagePage']),
-      image: DeviceImage.fromJson(json['image'] as Map<String, dynamic>),
+      image: DeviceImage.fromJson(json['image']),
       modes: (json['modes'] as List)
           .map((m) => DeviceMode.fromJson(m as Map<String, dynamic>))
           .toList(),
@@ -57,11 +57,19 @@ class DeviceImage {
 
   const DeviceImage({required this.small, required this.large});
 
-  factory DeviceImage.fromJson(Map<String, dynamic> json) {
-    return DeviceImage(
-      small: json['small'] as String,
-      large: json['large'] as String,
-    );
+  /// Single image constructor where both small and large point to the same asset.
+  const DeviceImage.single(String path) : small = path, large = path;
+
+  factory DeviceImage.fromJson(dynamic json) {
+    if (json is String) {
+      return DeviceImage.single(json);
+    }
+    if (json is Map<String, dynamic>) {
+      final s = json['small'] as String? ?? json['large'] as String? ?? '';
+      final l = json['large'] as String? ?? json['small'] as String? ?? '';
+      return DeviceImage(small: s, large: l);
+    }
+    return const DeviceImage(small: '', large: '');
   }
 }
 

@@ -42,7 +42,7 @@ class AppWindowAndTrayListener with WindowListener, TrayListener {
     if (!Platform.isWindows) {
       trayManager.addListener(this);
       try {
-        await trayManager.setIcon('assets/images/m7x_small.png');
+        await trayManager.setIcon('assets/images/m7x.webp');
         await trayManager.setToolTip('HID Driver Hub');
         final Menu menu = Menu(
           items: [

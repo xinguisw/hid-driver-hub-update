@@ -269,6 +269,46 @@ List<String> validateMacro(MacroDefinition macro) {
   return errors;
 }
 
+List<String> validateMacroLocalized(MacroDefinition macro, dynamic t) {
+  final errors = <String>[];
+  if (macro.slot < 1 || macro.slot > MacroDefinition.maxSlots) {
+    errors.add(t.macro.allSlotsUsed as String);
+  }
+  if (macro.loopTimes < 1 || macro.loopTimes > 0xFF) {
+    errors.add(t.macro.loopCountRange as String);
+  }
+  if (macro.name.length > MacroDefinition.maxNameLength) {
+    errors.add(
+      t.macro.nameTooLong(max: MacroDefinition.maxNameLength) as String,
+    );
+  }
+  if (macro.actions.isEmpty ||
+      macro.actions.length > MacroDefinition.maxActions) {
+    errors.add(t.macro.actionCountRange as String);
+  }
+  for (var i = 0; i < macro.actions.length; i++) {
+    final action = macro.actions[i];
+    if (action.delay < 0 || action.delay > 0x7F) {
+      errors.add(t.macro.delayRange(index: i + 1) as String);
+    }
+    final isKeyboard =
+        (action.keyCode >= 0x04 && action.keyCode <= 0xA4) ||
+        (action.keyCode >= 0xE0 && action.keyCode <= 0xE7);
+    final isMouseButton = action.keyCode >= 0xC1 && action.keyCode <= 0xC5;
+    final isMouseWheel =
+        action.keyCode == MacroWireActions.wheelUp ||
+        action.keyCode == MacroWireActions.wheelDown ||
+        action.keyCode == MacroWireActions.tiltLeft ||
+        action.keyCode == MacroWireActions.tiltRight;
+    final isMouse = isMouseButton || isMouseWheel;
+    final isTiming = action.keyCode >= 0x01 && action.keyCode <= 0x03;
+    if (!isKeyboard && !isMouse && !isTiming) {
+      errors.add(t.macro.unsupportedKey(index: i + 1) as String);
+    }
+  }
+  return errors;
+}
+
 int _asInt(Object? value, String field) {
   if (value is int) return value;
   throw FormatException('Macro $field must be an integer');

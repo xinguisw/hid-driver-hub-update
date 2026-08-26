@@ -250,6 +250,7 @@ class _Translations$backlight$zh extends Translations$backlight$en {
 	@override String get speedDesc => '调节动态灯效的动画变换速度。';
 	@override String get powerSaving => '省电';
 	@override String get powerSavingDesc => '关闭灯光以节省电量前的无操作超时时间。';
+	@override String get colorCode => '颜色代码';
 	@override late final _Translations$backlight$modes$zh modes = _Translations$backlight$modes$zh._(_root);
 }
 
@@ -316,6 +317,32 @@ class _Translations$actions$zh extends Translations$actions$en {
 	@override String get rightWin => '右 Win';
 	@override String get rightShift => '右 Shift';
 	@override String get anyKey => '任意按键';
+	@override String get capsLock => '大写锁定';
+	@override String get space => '空格';
+	@override String get enter => '回车';
+	@override String get esc => 'Esc';
+	@override String get backspace => '退格';
+	@override String get tab => 'Tab';
+	@override String get insert => '插入 (Insert)';
+	@override String get home => 'Home';
+	@override String get pageUp => '向上翻页';
+	@override String get pageDown => '向下翻页';
+	@override String get delete => '删除 (Delete)';
+	@override String get end => 'End';
+	@override String get upArrow => '向上箭头';
+	@override String get downArrow => '向下箭头';
+	@override String get leftArrow => '向左箭头';
+	@override String get rightArrow => '向右箭头';
+	@override String get printScreen => '截屏 (Print Screen)';
+	@override String get scrollLock => '滚动锁定';
+	@override String get pause => '暂停 (Pause)';
+	@override String get numLock => '数字锁定';
+	@override String get numpadEnter => '小键盘回车';
+	@override String get numpadDel => '小键盘删除';
+	@override String get numpadAdd => '小键盘 +';
+	@override String get numpadSub => '小键盘 -';
+	@override String get numpadMul => '小键盘 *';
+	@override String get numpadDiv => '小键盘 /';
 }
 
 // Path: deviceSetting
@@ -372,6 +399,14 @@ class _Translations$macro$zh extends Translations$macro$en {
 	@override String get removeAction => '移除操作';
 	@override String get savedSuccess => '宏保存成功';
 	@override String get savedFailed => '宏保存失败';
+	@override String get allSlotsUsed => '所有 16 个宏槽位均已被使用';
+	@override String get fixedDelayRange => '固定延迟必须在 0 到 100 毫秒之间';
+	@override String saveFailed({required Object error}) => '宏保存失败: ${error}';
+	@override String get loopCountRange => '循环次数必须在 1 到 255 之间';
+	@override String nameTooLong({required Object max}) => '宏名称长度不能超过 ${max} 个字符';
+	@override String get actionCountRange => '宏必须包含 1 到 30 个操作';
+	@override String delayRange({required Object index}) => '操作 ${index} 的延迟必须在 0 到 127 之间';
+	@override String unsupportedKey({required Object index}) => '操作 ${index} 包含不受支持的按键代码';
 	@override late final _Translations$macro$modes$zh modes = _Translations$macro$modes$zh._(_root);
 }
 
@@ -432,6 +467,9 @@ class _Translations$backlight$modes$zh extends Translations$backlight$modes$en {
 	@override String get constant => '常亮';
 	@override String get singleBreathing => '单色呼吸';
 	@override String get multiBreathing => '多色呼吸';
+	@override String get multiColor => '多色霓虹';
+	@override String get runningColor => '流光跑马';
+	@override String get cycleWave => '七彩波浪';
 	@override String get cycle => '光谱循环';
 	@override String get running => '跑马灯';
 	@override String get off => '关闭';

@@ -211,23 +211,48 @@ class _ModeBox extends StatelessWidget {
         : rgbModes[i].nameKey;
     switch (raw.trim().toLowerCase()) {
       case 'constant':
+      case 'light.constant':
       case 'rgb.mode.constant':
         return t.backlight.modes.constant;
       case 'single breathing':
       case 'single_breathing':
+      case 'light.single_breathing':
       case 'rgb.mode.single_breathing':
         return t.backlight.modes.singleBreathing;
       case 'multi breathing':
       case 'multi_breathing':
+      case 'light.multi_breathing':
       case 'rgb.mode.multi_breathing':
         return t.backlight.modes.multiBreathing;
+      case 'multi color':
+      case 'multi_color':
+      case 'light.multi_color':
+      case 'rgb.mode.multi_color':
+        return t.backlight.modes.multiColor;
+      case 'running color':
+      case 'running_color':
+      case 'light.running_color':
+      case 'rgb.mode.running_color':
+        return t.backlight.modes.runningColor;
+      case 'cycle wave':
+      case 'cycle_wave':
+      case 'light.cycle_wave':
+      case 'rgb.mode.cycle_wave':
+        return t.backlight.modes.cycleWave;
       case 'cycle':
+      case 'cycle color':
+      case 'cycle_color':
+      case 'light.cycle':
+      case 'light.cycle_color':
       case 'rgb.mode.cycle':
+      case 'rgb.mode.cycle_color':
         return t.backlight.modes.cycle;
       case 'running':
+      case 'light.running':
       case 'rgb.mode.running':
         return t.backlight.modes.running;
       case 'off':
+      case 'light.off':
       case 'rgb.mode.off':
         return t.backlight.modes.off;
       default:
@@ -589,7 +614,7 @@ class _ColorBoxState extends State<_ColorBox> {
                 children: [
                   Flexible(
                     child: Text(
-                      'Color code',
+                      t.backlight.colorCode,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 12,

@@ -142,7 +142,7 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
         ? widget.scope!.nextMacroSlot(widget.card!)
         : _firstUnusedSlot();
     if (slot == null) {
-      setState(() => _error = 'All 16 macro slots are already in use');
+      setState(() => _error = t.macro.allSlotsUsed);
       return;
     }
     setState(() {
@@ -489,11 +489,12 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
     final val = int.tryParse(value);
     if (val == null || val < 0 || val > 100) {
       setState(() {
-        _error = 'Fixed delay must be between 0 and 100 ms';
+        _error = t.macro.fixedDelayRange;
       });
       return false;
     } else if (_error != null &&
-        _error!.startsWith('Fixed delay must be between')) {
+        (_error == t.macro.fixedDelayRange ||
+            _error!.startsWith('Fixed delay must be between'))) {
       setState(() {
         _error = null;
       });
@@ -528,7 +529,7 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
     if (_delayMode == MacroDelayMode.fixed) {
       final fixedMs = int.tryParse(_fixedDelayController.text);
       if (fixedMs == null || fixedMs < 0 || fixedMs > 100) {
-        setState(() => _error = 'Fixed delay must be between 0 and 100 ms');
+        setState(() => _error = t.macro.fixedDelayRange);
         _showToast(message: t.macro.savedFailed, isSuccess: false);
         return;
       }
@@ -539,7 +540,7 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
     final macro = draft
         .copyWith(name: macroName, loopTimes: loopTimes)
         .toDefinition();
-    final errors = validateMacro(macro);
+    final errors = validateMacroLocalized(macro, t);
     if (errors.isNotEmpty) {
       setState(() => _error = errors.join('\n'));
       _showToast(message: t.macro.savedFailed, isSuccess: false);
@@ -576,8 +577,9 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _error =
-            'Macro save failed: ${e is FormatException ? e.message : 'device error or timeout'}';
+        _error = t.macro.saveFailed(
+          error: e is FormatException ? e.message : 'device error or timeout',
+        );
       });
       _showToast(message: t.macro.savedFailed, isSuccess: false);
     }
@@ -1086,13 +1088,20 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
                                   if (value.length >
                                       MacroDefinition.maxNameLength) {
                                     setState(() {
-                                      _error =
-                                          'Macro name must not exceed ${MacroDefinition.maxNameLength} characters';
+                                      _error = t.macro.nameTooLong(
+                                        max: MacroDefinition.maxNameLength,
+                                      );
                                     });
                                   } else if (_error != null &&
-                                      _error!.startsWith(
-                                        'Macro name must not exceed',
-                                      )) {
+                                      (_error ==
+                                              t.macro.nameTooLong(
+                                                max:
+                                                    MacroDefinition
+                                                        .maxNameLength,
+                                              ) ||
+                                          _error!.startsWith(
+                                            'Macro name must not exceed',
+                                          ))) {
                                     setState(() {
                                       _error = null;
                                     });

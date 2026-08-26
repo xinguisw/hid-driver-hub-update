@@ -115,8 +115,70 @@ class CatalogLocalization {
         return t.actions.leftShift;
       case 'special.any_key':
         return t.actions.anyKey;
+
+      // Keyboard action item IDs
+      case 'key.sym.space':
+        return t.actions.space;
+      case 'key.sym.enter':
+        return t.actions.enter;
+      case 'key.sym.esc':
+        return t.actions.esc;
+      case 'key.sym.backspace':
+        return t.actions.backspace;
+      case 'key.sym.tab':
+        return t.actions.tab;
+      case 'key.nav.insert':
+        return t.actions.insert;
+      case 'key.nav.home':
+        return t.actions.home;
+      case 'key.nav.pageup':
+        return t.actions.pageUp;
+      case 'key.nav.delete':
+        return t.actions.delete;
+      case 'key.nav.end':
+        return t.actions.end;
+      case 'key.nav.pagedown':
+        return t.actions.pageDown;
+      case 'key.nav.up':
+        return t.actions.upArrow;
+      case 'key.nav.down':
+        return t.actions.downArrow;
+      case 'key.nav.left':
+        return '向左 (Left)';
+      case 'key.nav.right':
+        return '向右 (Right)';
+      case 'key.nav.print':
+        return t.actions.printScreen;
+      case 'key.nav.scroll':
+        return t.actions.scrollLock;
+      case 'key.nav.pause':
+        return t.actions.pause;
+      case 'key.num.enter':
+        return t.actions.numpadEnter;
+      case 'key.num.del':
+        return t.actions.numpadDel;
+      case 'key.num.lock':
+        return t.actions.numLock;
+      case 'key.mod.capslk':
+        return t.actions.capsLock;
+      case 'key.mod.shift':
+        return t.actions.leftShift;
+      case 'key.mod.ctrl':
+        return t.actions.leftCtrl;
+      case 'key.mod.alt':
+        return t.actions.leftAlt;
+      case 'key.mod.win':
+        return t.actions.leftWin;
+      case 'key.mod.rshift':
+        return t.actions.rightShift;
+      case 'key.mod.rctrl':
+        return t.actions.rightCtrl;
+      case 'key.mod.ralt':
+        return t.actions.rightAlt;
+      case 'key.mod.rwin':
+        return t.actions.rightWin;
       default:
-        return rawLabel;
+        return localizeLabelString(rawLabel, t) ?? rawLabel;
     }
   }
 
@@ -276,6 +338,60 @@ class CatalogLocalization {
         return t.actions.rightShift;
       case 'Any key':
         return t.actions.anyKey;
+      case 'Caps Lock':
+        return t.actions.capsLock;
+      case 'Space':
+        return t.actions.space;
+      case 'Enter':
+        return t.actions.enter;
+      case 'Esc':
+        return t.actions.esc;
+      case 'Backspace':
+        return t.actions.backspace;
+      case 'Tab':
+        return t.actions.tab;
+      case 'Insert':
+        return t.actions.insert;
+      case 'Home':
+        return t.actions.home;
+      case 'Page Up':
+        return t.actions.pageUp;
+      case 'Page Down':
+        return t.actions.pageDown;
+      case 'Delete':
+        return t.actions.delete;
+      case 'End':
+        return t.actions.end;
+      case 'Up':
+      case 'Up Arrow':
+        return t.actions.upArrow;
+      case 'Down':
+      case 'Down Arrow':
+        return t.actions.downArrow;
+      case 'Left Arrow':
+        return t.actions.leftArrow;
+      case 'Right Arrow':
+        return t.actions.rightArrow;
+      case 'Print Screen':
+        return t.actions.printScreen;
+      case 'Scroll Lock':
+        return t.actions.scrollLock;
+      case 'Pause':
+        return t.actions.pause;
+      case 'Num Lock':
+        return t.actions.numLock;
+      case 'Numpad Enter':
+        return t.actions.numpadEnter;
+      case 'Numpad Del':
+        return t.actions.numpadDel;
+      case 'Numpad +':
+        return t.actions.numpadAdd;
+      case 'Numpad -':
+        return t.actions.numpadSub;
+      case 'Numpad *':
+        return t.actions.numpadMul;
+      case 'Numpad /':
+        return t.actions.numpadDiv;
       default:
         if (label.contains(' + ')) {
           final parts = label.split(' + ');

@@ -462,6 +462,9 @@ class Translations$backlight$en {
 	/// en: 'Inactivity timeout before turning off lighting to preserve battery.'
 	String get powerSavingDesc => 'Inactivity timeout before turning off lighting to preserve battery.';
 
+	/// en: 'Color code'
+	String get colorCode => 'Color code';
+
 	late final Translations$backlight$modes$en modes = Translations$backlight$modes$en.internal(_root);
 }
 
@@ -640,6 +643,84 @@ class Translations$actions$en {
 
 	/// en: 'Any key'
 	String get anyKey => 'Any key';
+
+	/// en: 'Caps Lock'
+	String get capsLock => 'Caps Lock';
+
+	/// en: 'Space'
+	String get space => 'Space';
+
+	/// en: 'Enter'
+	String get enter => 'Enter';
+
+	/// en: 'Esc'
+	String get esc => 'Esc';
+
+	/// en: 'Backspace'
+	String get backspace => 'Backspace';
+
+	/// en: 'Tab'
+	String get tab => 'Tab';
+
+	/// en: 'Insert'
+	String get insert => 'Insert';
+
+	/// en: 'Home'
+	String get home => 'Home';
+
+	/// en: 'Page Up'
+	String get pageUp => 'Page Up';
+
+	/// en: 'Page Down'
+	String get pageDown => 'Page Down';
+
+	/// en: 'Delete'
+	String get delete => 'Delete';
+
+	/// en: 'End'
+	String get end => 'End';
+
+	/// en: 'Up Arrow'
+	String get upArrow => 'Up Arrow';
+
+	/// en: 'Down Arrow'
+	String get downArrow => 'Down Arrow';
+
+	/// en: 'Left Arrow'
+	String get leftArrow => 'Left Arrow';
+
+	/// en: 'Right Arrow'
+	String get rightArrow => 'Right Arrow';
+
+	/// en: 'Print Screen'
+	String get printScreen => 'Print Screen';
+
+	/// en: 'Scroll Lock'
+	String get scrollLock => 'Scroll Lock';
+
+	/// en: 'Pause'
+	String get pause => 'Pause';
+
+	/// en: 'Num Lock'
+	String get numLock => 'Num Lock';
+
+	/// en: 'Numpad Enter'
+	String get numpadEnter => 'Numpad Enter';
+
+	/// en: 'Numpad Del'
+	String get numpadDel => 'Numpad Del';
+
+	/// en: 'Numpad +'
+	String get numpadAdd => 'Numpad +';
+
+	/// en: 'Numpad -'
+	String get numpadSub => 'Numpad -';
+
+	/// en: 'Numpad *'
+	String get numpadMul => 'Numpad *';
+
+	/// en: 'Numpad /'
+	String get numpadDiv => 'Numpad /';
 }
 
 // Path: deviceSetting
@@ -773,6 +854,30 @@ class Translations$macro$en {
 	/// en: 'Macro failed to save'
 	String get savedFailed => 'Macro failed to save';
 
+	/// en: 'All 16 macro slots are already in use'
+	String get allSlotsUsed => 'All 16 macro slots are already in use';
+
+	/// en: 'Fixed delay must be between 0 and 100 ms'
+	String get fixedDelayRange => 'Fixed delay must be between 0 and 100 ms';
+
+	/// en: 'Macro save failed: {error}'
+	String saveFailed({required Object error}) => 'Macro save failed: ${error}';
+
+	/// en: 'Loop count must be between 1 and 255'
+	String get loopCountRange => 'Loop count must be between 1 and 255';
+
+	/// en: 'Macro name must not exceed {max} characters'
+	String nameTooLong({required Object max}) => 'Macro name must not exceed ${max} characters';
+
+	/// en: 'Macro must contain between 1 and 30 actions'
+	String get actionCountRange => 'Macro must contain between 1 and 30 actions';
+
+	/// en: 'Action {index} delay must be between 0 and 127'
+	String delayRange({required Object index}) => 'Action ${index} delay must be between 0 and 127';
+
+	/// en: 'Action {index} has an unsupported key code'
+	String unsupportedKey({required Object index}) => 'Action ${index} has an unsupported key code';
+
 	late final Translations$macro$modes$en modes = Translations$macro$modes$en.internal(_root);
 }
 
@@ -879,6 +984,15 @@ class Translations$backlight$modes$en {
 
 	/// en: 'Multi breathing'
 	String get multiBreathing => 'Multi breathing';
+
+	/// en: 'Multi color'
+	String get multiColor => 'Multi color';
+
+	/// en: 'Running color'
+	String get runningColor => 'Running color';
+
+	/// en: 'Cycle wave'
+	String get cycleWave => 'Cycle wave';
 
 	/// en: 'Cycle'
 	String get cycle => 'Cycle';

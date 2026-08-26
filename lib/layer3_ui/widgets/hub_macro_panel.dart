@@ -75,7 +75,14 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
   void initState() {
     super.initState();
     if (_hasScope) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+      final cached = widget.scope!.macrosFor(widget.card!);
+      if (cached.isNotEmpty) {
+        _macros = cached;
+        _loading = false;
+      }
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _load(showSpinner: cached.isEmpty),
+      );
     } else {
       _loading = false;
     }
@@ -86,7 +93,14 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.card?.devId != widget.card?.devId) {
       if (_hasScope) {
-        WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+        final cached = widget.scope!.macrosFor(widget.card!);
+        if (cached.isNotEmpty) {
+          _macros = cached;
+          _loading = false;
+        }
+        WidgetsBinding.instance.addPostFrameCallback(
+          (_) => _load(showSpinner: cached.isEmpty),
+        );
       }
     }
   }
@@ -102,8 +116,10 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
     super.dispose();
   }
 
-  Future<void> _load() async {
-    setState(() => _loading = true);
+  Future<void> _load({bool showSpinner = true}) async {
+    if (showSpinner) {
+      setState(() => _loading = true);
+    }
     try {
       final loaded = await widget.scope!.loadMacros(widget.card!);
       if (!mounted) return;

@@ -704,5 +704,138 @@ void main() {
       expect(fixedChip.selected, isTrue);
     },
   );
+
+  testWidgets(
+    'creating a new macro resets delay mode to recorded and fixed delay to 10',
+    (tester) async {
+      final repository = InMemoryMacroRepository();
+      await repository.save('03AA', [
+        const MacroDefinition(
+          slot: 1,
+          name: 'M1',
+          mode: MacroMode.loop,
+          loopTimes: 1,
+          actions: [
+            MacroAction(keyCode: 0x04, isBreak: false, delay: 5, label: 'A'),
+            MacroAction(keyCode: 0x04, isBreak: true, delay: 5, label: 'A'),
+            MacroAction(keyCode: 0x05, isBreak: false, delay: 5, label: 'B'),
+          ],
+        ),
+      ]);
+      final scope = DeviceScope(
+        runtime: const FakeDeviceRuntime(),
+        macroRepository: repository,
+        appSettingsRepository: MemoryAppSettingsRepository(),
+      );
+      const card = DiscoveredCardState(
+        devId: '03AA',
+        displayName: 'M7X PRO',
+        connectionMode: 0,
+        firmwareVersion: '',
+        batteryPercentage: -1,
+        isCharging: false,
+        physicalHandle: null,
+        imageSmall: '',
+        imageLarge: '',
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: HubMacroPanel(scope: scope, card: card),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      // Open M1 which has fixed delay 50ms
+      await tester.tap(find.text('M1'));
+      await tester.pump();
+
+      final fixedChip = tester.widget<ChoiceChip>(
+        find.widgetWithText(ChoiceChip, 'Fixed Delay'),
+      );
+      expect(fixedChip.selected, isTrue);
+
+      // Now click + to create new macro
+      await tester.tap(find.byIcon(Icons.add_rounded));
+      await tester.pump();
+
+      // Should reset to Recorded Delay and 10ms
+      final recordedChip = tester.widget<ChoiceChip>(
+        find.widgetWithText(ChoiceChip, 'Recorded Delay'),
+      );
+      expect(recordedChip.selected, isTrue);
+
+      final fixedDelayField = tester.widget<TextField>(
+        find.byWidgetPredicate(
+          (w) => w is TextField && w.decoration?.labelText == 'Fixed Delay (ms)',
+        ),
+      );
+      expect(fixedDelayField.controller?.text, '10');
+    },
+  );
+
+  testWidgets(
+    'selecting a recorded macro with non-uniform delays defaults fixed field to 10 instead of first action delay',
+    (tester) async {
+      final repository = InMemoryMacroRepository();
+      await repository.save('03AA', [
+        const MacroDefinition(
+          slot: 1,
+          name: 'RecordedMacro',
+          mode: MacroMode.loop,
+          loopTimes: 1,
+          actions: [
+            MacroAction(keyCode: 0x04, isBreak: false, delay: 10, label: 'A'),
+            MacroAction(keyCode: 0x04, isBreak: true, delay: 0, label: 'A'),
+          ],
+        ),
+      ]);
+      final scope = DeviceScope(
+        runtime: const FakeDeviceRuntime(),
+        macroRepository: repository,
+        appSettingsRepository: MemoryAppSettingsRepository(),
+      );
+      const card = DiscoveredCardState(
+        devId: '03AA',
+        displayName: 'M7X PRO',
+        connectionMode: 0,
+        firmwareVersion: '',
+        batteryPercentage: -1,
+        isCharging: false,
+        physicalHandle: null,
+        imageSmall: '',
+        imageLarge: '',
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: HubMacroPanel(scope: scope, card: card),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      await tester.tap(find.text('RecordedMacro'));
+      await tester.pump();
+
+      final recordedChip = tester.widget<ChoiceChip>(
+        find.widgetWithText(ChoiceChip, 'Recorded Delay'),
+      );
+      expect(recordedChip.selected, isTrue);
+
+      // Fixed delay field should be '10', NOT '100'
+      final fixedDelayField = tester.widget<TextField>(
+        find.byWidgetPredicate(
+          (w) => w is TextField && w.decoration?.labelText == 'Fixed Delay (ms)',
+        ),
+      );
+      expect(fixedDelayField.controller?.text, '10');
+    },
+  );
 }
 

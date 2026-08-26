@@ -146,16 +146,16 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
     for (var i = 0; i < actions.length - 1; i++) {
       delays.add(actions[i].delay);
     }
-    if (delays.isEmpty) {
+    if (delays.length < 2) {
       return (mode: MacroDelayMode.recorded, fixedMs: 10);
     }
     final firstDelay = delays.first;
     final isFixed = firstDelay > 0 && delays.every((d) => d == firstDelay);
-    final fixedMs = (firstDelay * _macroDelayUnitMs).clamp(0, 100);
     if (isFixed) {
+      final fixedMs = (firstDelay * _macroDelayUnitMs).clamp(0, 100);
       return (mode: MacroDelayMode.fixed, fixedMs: fixedMs);
     }
-    return (mode: MacroDelayMode.recorded, fixedMs: fixedMs > 0 ? fixedMs : 10);
+    return (mode: MacroDelayMode.recorded, fixedMs: 10);
   }
 
   void _openCreation() {
@@ -170,9 +170,8 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
     setState(() {
       _error = null;
       _calibrationMode = false;
-      if (_fixedDelayController.text.isEmpty) {
-        _fixedDelayController.text = '10';
-      }
+      _delayMode = MacroDelayMode.recorded;
+      _fixedDelayController.text = '10';
       _selectedSlot = slot;
       _events.clear();
       _pressedKeyCodes.clear();
@@ -678,6 +677,9 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
       if (saved != null) {
         // Discard only the current editor buffer; restore the selected slot's
         // last saved definition, not the first macro in the list.
+        final detected = _detectDelayModeAndValue(saved.actions);
+        _delayMode = detected.mode;
+        _fixedDelayController.text = detected.fixedMs.toString();
         _events
           ..clear()
           ..addAll(saved.actions);
@@ -689,6 +691,8 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
         _events.clear();
         _draft = null;
         _selectedSlot = null;
+        _delayMode = MacroDelayMode.recorded;
+        _fixedDelayController.text = '10';
       }
       _error = null;
     });

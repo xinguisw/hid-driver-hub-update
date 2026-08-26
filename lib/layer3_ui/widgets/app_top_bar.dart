@@ -111,22 +111,24 @@ class _AppTopBarState extends State<AppTopBar> with WindowListener {
     if (widget.title != null) {
       leadingTitle = widget.title!;
     } else {
-      leadingTitle = Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Image.asset(
-            'assets/images/logo.png',
-            width: 30,
-            height: 30,
-            fit: BoxFit.contain,
-          ),
-          const SizedBox(width: 12),
-          Image.asset(
-            'assets/images/newmen_transparent_logo.png',
-            height: 14,
-            fit: BoxFit.contain,
-          ),
-        ],
+      leadingTitle = RepaintBoundary(
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Image.asset(
+              'assets/images/logo.png',
+              width: 30,
+              height: 30,
+              fit: BoxFit.contain,
+            ),
+            const SizedBox(width: 12),
+            Image.asset(
+              'assets/images/newmen_transparent_logo.png',
+              height: 14,
+              fit: BoxFit.contain,
+            ),
+          ],
+        ),
       );
     }
 

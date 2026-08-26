@@ -89,16 +89,18 @@ class DriverHubApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return ValueListenableBuilder<ThemeMode>(
       valueListenable: ThemeController.instance,
+      child: MainShell(scope: scope),
       builder: (context, themeMode, child) {
         return MaterialApp(
           title: 'driver_hub',
           themeMode: themeMode,
+          themeAnimationDuration: const Duration(milliseconds: 100),
           theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,
           locale: TranslationProvider.of(context).locale.flutterLocale,
           supportedLocales: AppLocaleUtils.supportedLocales,
           localizationsDelegates: GlobalMaterialLocalizations.delegates,
-          home: MainShell(scope: scope),
+          home: child,
         );
       },
     );

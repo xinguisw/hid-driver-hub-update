@@ -142,25 +142,29 @@ class _HubMouseCanvasState extends State<HubMouseCanvas> {
               children: [
                 Positioned.fromRect(
                   rect: imageRect,
-                  child: Image.asset(
-                    widget.imageLarge,
-                    fit: BoxFit.fill,
-                    errorBuilder: (_, _, _) => Image.asset(
-                      'assets/images/m7xse_large.png',
+                  child: RepaintBoundary(
+                    child: Image.asset(
+                      widget.imageLarge,
                       fit: BoxFit.fill,
-                      errorBuilder: (_, _, _) =>
-                          Text(t.mouseCanvas.imageMissing),
+                      errorBuilder: (_, _, _) => Image.asset(
+                        'assets/images/m7xse_large.png',
+                        fit: BoxFit.fill,
+                        errorBuilder: (_, _, _) =>
+                            Text(t.mouseCanvas.imageMissing),
+                      ),
                     ),
                   ),
                 ),
-                CustomPaint(
-                  size: paneSize,
-                  painter: _HotspotPainter(
-                    targets: targets,
-                    selectedButtonId: widget.selectedButtonId,
-                    hoveredButtonId: _hoveredButtonId,
-                    isDark: isDark,
-                    theme: theme,
+                RepaintBoundary(
+                  child: CustomPaint(
+                    size: paneSize,
+                    painter: _HotspotPainter(
+                      targets: targets,
+                      selectedButtonId: widget.selectedButtonId,
+                      hoveredButtonId: _hoveredButtonId,
+                      isDark: isDark,
+                      theme: theme,
+                    ),
                   ),
                 ),
               ],

@@ -30,8 +30,13 @@ abstract class AppTheme {
     'sans-serif',
   ];
 
-  /// Light Theme
-  static ThemeData get lightTheme {
+  /// Light Theme (cached to prevent runtime rebuild allocations)
+  static final ThemeData lightTheme = _buildLightTheme();
+
+  /// Dark Theme (cached to prevent runtime rebuild allocations)
+  static final ThemeData darkTheme = _buildDarkTheme();
+
+  static ThemeData _buildLightTheme() {
     final baseTheme = ThemeData(
       useMaterial3: true,
       fontFamily: 'Poppins',
@@ -71,8 +76,7 @@ abstract class AppTheme {
     );
   }
 
-  /// Dark Theme
-  static ThemeData get darkTheme {
+  static ThemeData _buildDarkTheme() {
     final baseTheme = ThemeData(
       useMaterial3: true,
       fontFamily: 'Poppins',

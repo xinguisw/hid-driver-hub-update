@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
@@ -43,11 +44,16 @@ class ThemeController extends ValueNotifier<ThemeMode> {
   }
 
   /// Sets specific ThemeMode and persists choice to storage.
-  /// why: Updates runtime theme state and syncs to Hive disk storage.
+  /// why: Updates runtime theme state immediately and syncs to Hive asynchronously.
   void setThemeMode(ThemeMode mode) {
     if (value == mode) return;
     value = mode;
-    _box?.put(_keyThemeMode, mode.index);
+    // Decouple disk I/O from UI frame dispatch to guarantee zero frame lag
+    scheduleMicrotask(() {
+      _box?.put(_keyThemeMode, mode.index).catchError((e) {
+        debugPrint('[ThemeController] Failed to persist theme: $e');
+      });
+    });
   }
 
   /// Helper to check if dark mode is currently active given context brightness or state.

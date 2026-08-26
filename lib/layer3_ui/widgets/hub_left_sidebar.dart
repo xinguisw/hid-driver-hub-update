@@ -50,9 +50,6 @@ class _HubLeftSidebarState extends State<HubLeftSidebar> {
     final width = _extended ? _extendedWidth : _collapsedWidth;
     final theme = Theme.of(context);
 
-    final isDark = theme.brightness == Brightness.dark;
-    final suffix = isDark ? 'white' : 'black';
-
     return TapRegion(
       groupId: hubButtonMappingTapRegionId,
       child: AnimatedContainer(
@@ -60,8 +57,9 @@ class _HubLeftSidebarState extends State<HubLeftSidebar> {
         curve: _animationCurve,
         width: width,
         child: ClipRect(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
+          child: RepaintBoundary(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
               final toggle = Align(
                 alignment: _extended ? Alignment.centerRight : Alignment.center,
                 child: Material(
@@ -98,7 +96,6 @@ class _HubLeftSidebarState extends State<HubLeftSidebar> {
                         context,
                         theme,
                         destination,
-                        suffix,
                       ),
                     toggle,
                   ],
@@ -124,7 +121,6 @@ class _HubLeftSidebarState extends State<HubLeftSidebar> {
                           context,
                           theme,
                           _destinations[index],
-                          suffix,
                         );
                       },
                     ),
@@ -138,14 +134,14 @@ class _HubLeftSidebarState extends State<HubLeftSidebar> {
           ),
         ),
       ),
-    );
+    ),
+  );
   }
 
   Widget _buildDestinationTile(
     BuildContext context,
     ThemeData theme,
     ({int index, String label, String iconName}) destination,
-    String suffix,
   ) {
     final selected = destination.index == widget.selectedIndex;
     final label = destination.label;
@@ -182,7 +178,6 @@ class _HubLeftSidebarState extends State<HubLeftSidebar> {
               child: _destinationRow(
                 label: label,
                 iconName: destination.iconName,
-                suffix: suffix,
                 theme: theme,
                 isSelected: selected,
               ),
@@ -329,10 +324,14 @@ class _HubLeftSidebarState extends State<HubLeftSidebar> {
   Widget _destinationRow({
     required String label,
     String? iconName,
-    required String suffix,
     required ThemeData theme,
     required bool isSelected,
   }) {
+    final isDark = theme.brightness == Brightness.dark;
+    final iconColor = isSelected
+        ? theme.colorScheme.onSurface
+        : (isDark ? Colors.white : const Color(0xFF111827));
+
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -341,9 +340,13 @@ class _HubLeftSidebarState extends State<HubLeftSidebar> {
           height: 24,
           child: Center(
             child: SvgPicture.asset(
-              'assets/images/${iconName}_$suffix.svg',
+              'assets/images/${iconName}_black.svg',
               width: 20,
               height: 20,
+              colorFilter: ColorFilter.mode(
+                iconColor,
+                BlendMode.srcIn,
+              ),
             ),
           ),
         ),

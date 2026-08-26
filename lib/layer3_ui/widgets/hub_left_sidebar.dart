@@ -2,7 +2,6 @@ import 'package:driver_hub/layer3_ui/widgets/hub_button_mapping_panel.dart';
 import 'package:driver_hub/layer4_domain/models/discovered_card_state.dart';
 import 'package:driver_hub/i18n/strings.g.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 
 /// Left hub nav — compact device header + destinations + collapse toggle.
 class HubLeftSidebar extends StatefulWidget {
@@ -34,15 +33,15 @@ class _HubLeftSidebarState extends State<HubLeftSidebar> {
   static const Duration _animationDuration = Duration(milliseconds: 250);
   static const Curve _animationCurve = Curves.easeInOutCubic;
 
-  List<({int index, String label, String iconName})> get _destinations => [
-    (index: 0, label: t.sidebar.buttonMapping, iconName: 'button_mapping'),
-    (index: 1, label: t.sidebar.macroSetting, iconName: 'macro'),
-    (index: 2, label: t.sidebar.performanceSetting, iconName: 'performance'),
-    (index: 3, label: t.sidebar.parameterSetting, iconName: 'parameter'),
+  List<({int index, String label, IconData icon})> get _destinations => [
+    (index: 0, label: t.sidebar.buttonMapping, icon: Icons.ads_click_outlined),
+    (index: 1, label: t.sidebar.macroSetting, icon: Icons.integration_instructions_outlined),
+    (index: 2, label: t.sidebar.performanceSetting, icon: Icons.speed_outlined),
+    (index: 3, label: t.sidebar.parameterSetting, icon: Icons.tune_outlined),
     if (widget.hasRgbBacklight)
-      (index: 4, label: t.sidebar.backlightSetting, iconName: 'backlight'),
-    (index: 5, label: t.sidebar.profileManagement, iconName: 'profile'),
-    (index: 6, label: t.sidebar.deviceSetting, iconName: 'setting'),
+      (index: 4, label: t.sidebar.backlightSetting, icon: Icons.lightbulb_outlined),
+    (index: 5, label: t.sidebar.profileManagement, icon: Icons.account_circle_outlined),
+    (index: 6, label: t.sidebar.deviceSetting, icon: Icons.settings_outlined),
   ];
 
   @override
@@ -141,7 +140,7 @@ class _HubLeftSidebarState extends State<HubLeftSidebar> {
   Widget _buildDestinationTile(
     BuildContext context,
     ThemeData theme,
-    ({int index, String label, String iconName}) destination,
+    ({int index, String label, IconData icon}) destination,
   ) {
     final selected = destination.index == widget.selectedIndex;
     final label = destination.label;
@@ -177,7 +176,7 @@ class _HubLeftSidebarState extends State<HubLeftSidebar> {
               physics: const NeverScrollableScrollPhysics(),
               child: _destinationRow(
                 label: label,
-                iconName: destination.iconName,
+                icon: destination.icon,
                 theme: theme,
                 isSelected: selected,
               ),
@@ -323,14 +322,14 @@ class _HubLeftSidebarState extends State<HubLeftSidebar> {
   /// Destination row with fixed icon slot and fading label
   Widget _destinationRow({
     required String label,
-    String? iconName,
+    required IconData icon,
     required ThemeData theme,
     required bool isSelected,
   }) {
     final isDark = theme.brightness == Brightness.dark;
     final iconColor = isSelected
         ? theme.colorScheme.onSurface
-        : (isDark ? Colors.white : const Color(0xFF111827));
+        : (isDark ? Colors.white70 : theme.colorScheme.onSurfaceVariant);
 
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -339,14 +338,10 @@ class _HubLeftSidebarState extends State<HubLeftSidebar> {
           width: 24,
           height: 24,
           child: Center(
-            child: SvgPicture.asset(
-              'assets/images/${iconName}_black.svg',
-              width: 20,
-              height: 20,
-              colorFilter: ColorFilter.mode(
-                iconColor,
-                BlendMode.srcIn,
-              ),
+            child: Icon(
+              icon,
+              size: 20,
+              color: iconColor,
             ),
           ),
         ),

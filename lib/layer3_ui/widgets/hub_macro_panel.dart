@@ -136,6 +136,28 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
     );
   }
 
+  ({MacroDelayMode mode, int fixedMs}) _detectDelayModeAndValue(
+    List<MacroAction> actions,
+  ) {
+    if (actions.length <= 1) {
+      return (mode: MacroDelayMode.recorded, fixedMs: 10);
+    }
+    final delays = <int>[];
+    for (var i = 0; i < actions.length - 1; i++) {
+      delays.add(actions[i].delay);
+    }
+    if (delays.isEmpty) {
+      return (mode: MacroDelayMode.recorded, fixedMs: 10);
+    }
+    final firstDelay = delays.first;
+    final isFixed = firstDelay > 0 && delays.every((d) => d == firstDelay);
+    final fixedMs = (firstDelay * _macroDelayUnitMs).clamp(0, 100);
+    if (isFixed) {
+      return (mode: MacroDelayMode.fixed, fixedMs: fixedMs);
+    }
+    return (mode: MacroDelayMode.recorded, fixedMs: fixedMs > 0 ? fixedMs : 10);
+  }
+
   void _openCreation() {
     if (_recording) return;
     final slot = _hasScope
@@ -148,8 +170,9 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
     setState(() {
       _error = null;
       _calibrationMode = false;
-      _delayMode = MacroDelayMode.recorded;
-      _fixedDelayController.text = '10';
+      if (_fixedDelayController.text.isEmpty) {
+        _fixedDelayController.text = '10';
+      }
       _selectedSlot = slot;
       _events.clear();
       _pressedKeyCodes.clear();
@@ -185,11 +208,12 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
 
   void _selectMacro(MacroDefinition macro) {
     if (_recording) return;
+    final detected = _detectDelayModeAndValue(macro.actions);
     setState(() {
       _error = null;
       _calibrationMode = _isTimingProbeMacro(macro);
-      _delayMode = MacroDelayMode.recorded;
-      _fixedDelayController.text = '10';
+      _delayMode = detected.mode;
+      _fixedDelayController.text = detected.fixedMs.toString();
       _events
         ..clear()
         ..addAll(macro.actions);
@@ -533,6 +557,7 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
         _showToast(message: t.macro.savedFailed, isSuccess: false);
         return;
       }
+      _applyFixedDelayToEvents();
     }
     final loopTimes = int.tryParse(_loopController.text) ?? 0;
     final nameInput = _nameController.text.trim();
@@ -567,10 +592,9 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _draft = null;
-        _events.clear();
         _error = null;
       });
+      _selectMacro(macro);
       _showToast(message: t.macro.savedSuccess, isSuccess: true);
       widget.onChanged?.call();
     } catch (e) {

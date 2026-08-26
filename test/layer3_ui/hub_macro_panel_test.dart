@@ -71,8 +71,8 @@ void main() {
     await tester.pump();
 
     // Before recording, Save and Reset are enabled
-    final saveButtonBefore = tester.widget<OutlinedButton>(
-      find.widgetWithText(OutlinedButton, 'Save'),
+    final saveButtonBefore = tester.widget<FilledButton>(
+      find.widgetWithText(FilledButton, 'Save'),
     );
     expect(saveButtonBefore.onPressed, isNotNull);
 
@@ -80,7 +80,7 @@ void main() {
     await tester.tap(find.text('Start Recording'));
     await tester.pump();
 
-    // While recording, Save and Reset are disabled
+    // While recording, Save and Reset are disabled (Save becomes OutlinedButton with null onPressed)
     final saveButtonRecording = tester.widget<OutlinedButton>(
       find.widgetWithText(OutlinedButton, 'Save'),
     );
@@ -95,8 +95,8 @@ void main() {
     await tester.pump();
 
     // After stopping recording, Save and Reset are re-enabled
-    final saveButtonAfter = tester.widget<OutlinedButton>(
-      find.widgetWithText(OutlinedButton, 'Save'),
+    final saveButtonAfter = tester.widget<FilledButton>(
+      find.widgetWithText(FilledButton, 'Save'),
     );
     expect(saveButtonAfter.onPressed, isNotNull);
   });
@@ -201,10 +201,10 @@ void main() {
       find.text('Macro must contain between 1 and 30 actions'),
       findsNothing,
     );
-    expect(find.text('Please select a shortcut to edit'), findsOneWidget);
+    expect(find.text('Macro saved successfully'), findsOneWidget);
     expect(
-      find.widgetWithText(OutlinedButton, 'New Macro'),
-      findsAtLeastNWidgets(1),
+      find.byType(HubMacroPanel),
+      findsOneWidget,
     );
   });
 

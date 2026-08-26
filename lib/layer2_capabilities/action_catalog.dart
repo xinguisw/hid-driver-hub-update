@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 /// One row in an action-catalog section (static product UI list).
 ///
 /// L2 blueprint only — ids are catalog keys, not HID frames.

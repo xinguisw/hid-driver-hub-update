@@ -182,7 +182,7 @@ class DpiCapabilities {
       maxLevels: json['maxLevels'] as int,
       activeLevelCount: json['activeLevelCount'] as int,
       defaultLevel: json['defaultLevel'] as int,
-      wireProfileKey: json['wireProfile'] as String,
+      wireProfileKey: (json['wireProfile'] as String?) ?? 'telink_b80_dpi16',
       range: DpiRange.fromJson(json['range'] as Map<String, dynamic>),
       independentXY: json['independentXY'] as bool,
       rgbPerStage: json['rgbPerStage'] as bool,
@@ -385,32 +385,36 @@ class AngleTuneCapabilities {
   });
 
   factory AngleTuneCapabilities.fromJson(Map<String, dynamic> json) {
+    final opts = json['options'] as List?;
     return AngleTuneCapabilities(
       present: json['present'] as bool,
-      defaultWire: json['default'] as int?,
-      options: json['options'] == null
-          ? null
-          : (json['options'] as List)
-                .map((e) => AngleTuneOption.fromJson(e as Map<String, dynamic>))
-                .toList(),
+      defaultWire: (json['defaultWire'] as int?) ?? (json['default'] as int?),
+      options: opts
+          ?.asMap()
+          .entries
+          .map((e) => AngleTuneOption.fromJson(e.value, e.key))
+          .toList(),
     );
   }
 }
 
 /// One wire→label mapping for discrete angle tune.
-///
-/// Mirrors [LodOption]: `wire` is the device byte, `label` is the display
-/// string (e.g. `-30°`). L5 owns the lookup logic, L2 owns the per-mouse list.
 class AngleTuneOption {
   final int wire;
   final String label;
   const AngleTuneOption({required this.wire, required this.label});
 
-  factory AngleTuneOption.fromJson(Map<String, dynamic> json) {
-    return AngleTuneOption(
-      wire: json['wire'] as int,
-      label: json['label'] as String,
-    );
+  factory AngleTuneOption.fromJson(dynamic json, [int defaultWire = 0]) {
+    if (json is Map<String, dynamic>) {
+      return AngleTuneOption(
+        wire: (json['wire'] as int?) ?? defaultWire,
+        label: json['label'] as String,
+      );
+    }
+    if (json is num) {
+      return AngleTuneOption(wire: defaultWire, label: '$json°');
+    }
+    return AngleTuneOption(wire: defaultWire, label: json.toString());
   }
 
   @override
@@ -440,11 +444,17 @@ class LodOption {
   final double mm;
   const LodOption({required this.wire, required this.mm});
 
-  factory LodOption.fromJson(Map<String, dynamic> json) {
-    return LodOption(
-      wire: json['wire'] as int,
-      mm: (json['mm'] as num).toDouble(),
-    );
+  factory LodOption.fromJson(dynamic json, [int defaultWire = 0]) {
+    if (json is Map<String, dynamic>) {
+      return LodOption(
+        wire: (json['wire'] as int?) ?? defaultWire,
+        mm: (json['mm'] as num).toDouble(),
+      );
+    }
+    if (json is num) {
+      return LodOption(wire: defaultWire, mm: json.toDouble());
+    }
+    return LodOption(wire: defaultWire, mm: 1.0);
   }
 
   @override
@@ -457,20 +467,19 @@ class LodOption {
 }
 
 /// One wire→label mapping for a fixed-index option list (debounce, sleep).
-///
-/// Mirrors [LodOption] / [AngleTuneOption]: `wire` is the device byte, `label`
-/// is the display string (e.g. `2ms`, `30 sec`). L2 owns the per-mouse list;
-/// L5 owns the generic lookup.
 class OptionPair {
   final int wire;
   final String label;
   const OptionPair({required this.wire, required this.label});
 
-  factory OptionPair.fromJson(Map<String, dynamic> json) {
-    return OptionPair(
-      wire: json['wire'] as int,
-      label: json['label'] as String,
-    );
+  factory OptionPair.fromJson(dynamic json, [int defaultWire = 0]) {
+    if (json is Map<String, dynamic>) {
+      return OptionPair(
+        wire: (json['wire'] as int?) ?? defaultWire,
+        label: json['label'] as String,
+      );
+    }
+    return OptionPair(wire: defaultWire, label: json.toString());
   }
 
   @override
@@ -488,10 +497,13 @@ class LiftOffDistance {
   const LiftOffDistance({required this.present, required this.options});
 
   factory LiftOffDistance.fromJson(Map<String, dynamic> json) {
+    final opts = json['options'] as List;
     return LiftOffDistance(
       present: json['present'] as bool,
-      options: (json['options'] as List)
-          .map((e) => LodOption.fromJson(e as Map<String, dynamic>))
+      options: opts
+          .asMap()
+          .entries
+          .map((e) => LodOption.fromJson(e.value, e.key))
           .toList(),
     );
   }
@@ -531,10 +543,13 @@ class ButtonDebounce {
   const ButtonDebounce({required this.present, required this.options});
 
   factory ButtonDebounce.fromJson(Map<String, dynamic> json) {
+    final opts = json['options'] as List;
     return ButtonDebounce(
       present: json['present'] as bool,
-      options: (json['options'] as List)
-          .map((e) => OptionPair.fromJson(e as Map<String, dynamic>))
+      options: opts
+          .asMap()
+          .entries
+          .map((e) => OptionPair.fromJson(e.value, e.key))
           .toList(),
     );
   }
@@ -553,11 +568,14 @@ class SleepTime {
   });
 
   factory SleepTime.fromJson(Map<String, dynamic> json) {
+    final opts = json['options'] as List;
     return SleepTime(
       present: json['present'] as bool,
-      defaultWire: json['defaultWire'] as int,
-      options: (json['options'] as List)
-          .map((e) => OptionPair.fromJson(e as Map<String, dynamic>))
+      defaultWire: (json['defaultWire'] as int?) ?? (json['default'] as int?) ?? 4,
+      options: opts
+          .asMap()
+          .entries
+          .map((e) => OptionPair.fromJson(e.value, e.key))
           .toList(),
     );
   }

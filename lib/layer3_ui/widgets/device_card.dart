@@ -89,18 +89,14 @@ class _DeviceCardState extends State<DeviceCard> {
                       child: Transform.scale(
                         scale: isKb ? 1.0 : 1.25,
                         child: Image.asset(
-                          widget.state.imageSmall,
+                          isKb ? widget.state.imageSmall : widget.state.imageLarge,
                           fit: BoxFit.contain,
                           errorBuilder: (context, error, stackTrace) {
                             if (!isKb) {
-                              return Image.asset(
-                                'assets/images/m7xse/small.png',
-                                fit: BoxFit.contain,
-                                errorBuilder: (_, _, _) => Icon(
-                                  Icons.mouse,
-                                  size: 90,
-                                  color: iconColor,
-                                ),
+                              return Icon(
+                                Icons.mouse,
+                                size: 90,
+                                color: iconColor,
                               );
                             }
                             return Icon(

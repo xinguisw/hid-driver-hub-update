@@ -7,7 +7,7 @@ void main() {
   setUp(ActionCatalogStore.clearCache);
 
   group('ActionCatalogStore mouse', () {
-    test('loads sections from assets/catalog/action/mouse.json', () async {
+    test('loads inlined mouse action catalog sections', () async {
       final tab = await ActionCatalogStore.load('mouse');
       expect(tab.tab, 'mouse');
       expect(tab.sections.length, 5);

@@ -63,7 +63,7 @@ build/installer/hid_driver_hub_installer.exe
 
 ## 3. Architecture & Execution Flows Documentation
 
-- **[End-to-End Application Flows (`app-execution-flows.html`)](file:///c:/Users/USER/Desktop/Software/hid-driver-hub/docs/flows/app-execution-flows.html)**: Detailed Web vs. Desktop execution lifecycles, discovery, coalescing, and commit flows.
+- **[Unified Architecture Dashboard (`index.html`)](file:///c:/Users/USER/Desktop/Software/hid-driver-hub/docs/flows/index.html)**: **Primary Interactive Hub** containing all 11 execution sequences, MVC overviews, settings communication, macro studio lifecycles, and layer-by-layer diagnostics.
 - **[System Architecture Documentation](file:///c:/Users/USER/Desktop/Software/hid-driver-hub/docs/Architecture_Documentation.md)**: Decoupled 6-layer architecture, BLoC state staging, and resilience matrix.
-- **[Flow Diagrams Index (`docs/flows/README.md`)](file:///c:/Users/USER/Desktop/Software/hid-driver-hub/docs/flows/README.md)**: Index of standalone layer and interactive workflow diagrams.
+- **[Flow Diagrams Index (`docs/flows/README.md`)](file:///c:/Users/USER/Desktop/Software/hid-driver-hub/docs/flows/README.md)**: Index and reconciliation logs for all diagrams.
 

@@ -837,5 +837,74 @@ void main() {
       expect(fixedDelayField.controller?.text, '10');
     },
   );
+
+  testWidgets(
+    'deleting a macro updates list optimistically without replacing UI with full-screen loading spinner',
+    (tester) async {
+      final repository = InMemoryMacroRepository();
+      await repository.save('03AA', [
+        const MacroDefinition(
+          slot: 1,
+          name: 'MacroOne',
+          mode: MacroMode.loop,
+          loopTimes: 1,
+          actions: [
+            MacroAction(keyCode: 0x04, isBreak: false, delay: 0, label: 'A'),
+          ],
+        ),
+        const MacroDefinition(
+          slot: 2,
+          name: 'MacroTwo',
+          mode: MacroMode.loop,
+          loopTimes: 1,
+          actions: [
+            MacroAction(keyCode: 0x05, isBreak: false, delay: 0, label: 'B'),
+          ],
+        ),
+      ]);
+      final scope = DeviceScope(
+        runtime: const FakeDeviceRuntime(),
+        macroRepository: repository,
+        appSettingsRepository: MemoryAppSettingsRepository(),
+      );
+      addTearDown(scope.dispose);
+      const card = DiscoveredCardState(
+        devId: '03AA',
+        displayName: 'M7X PRO',
+        connectionMode: 0,
+        firmwareVersion: '',
+        batteryPercentage: -1,
+        isCharging: false,
+        physicalHandle: null,
+        imageSmall: '',
+        imageLarge: '',
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: HubMacroPanel(scope: scope, card: card),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text('MacroOne'), findsOneWidget);
+      expect(find.text('MacroTwo'), findsOneWidget);
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+
+      // Tap delete on MacroOne
+      final deleteButtons = find.byIcon(Icons.delete_outline_rounded);
+      expect(deleteButtons, findsNWidgets(2));
+      await tester.tap(deleteButtons.first);
+      await tester.pump();
+
+      // MacroOne should immediately disappear without full-screen CircularProgressIndicator
+      expect(find.text('MacroOne'), findsNothing);
+      expect(find.text('MacroTwo'), findsOneWidget);
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+    },
+  );
 }
 

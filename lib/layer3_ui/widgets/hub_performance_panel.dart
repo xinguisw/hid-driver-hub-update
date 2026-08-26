@@ -209,15 +209,21 @@ class _DpiSettingsGroup extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
+    final bgColor = isDark
+        ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.28)
+        : theme.colorScheme.surfaceContainerLowest;
+
+    final borderColor = (isDark ? Colors.white : Colors.black).withValues(
+      alpha: 0.45,
+    );
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDark
-            ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.45)
-            : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.65),
-        borderRadius: BorderRadius.circular(12),
+        color: bgColor,
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.15),
+          color: borderColor,
           width: 1,
         ),
       ),
@@ -1169,15 +1175,21 @@ class _ReportRateGroup extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
+    final bgColor = isDark
+        ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.28)
+        : theme.colorScheme.surfaceContainerLowest;
+
+    final borderColor = (isDark ? Colors.white : Colors.black).withValues(
+      alpha: 0.45,
+    );
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDark
-            ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.45)
-            : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.65),
-        borderRadius: BorderRadius.circular(12),
+        color: bgColor,
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.15),
+          color: borderColor,
           width: 1,
         ),
       ),

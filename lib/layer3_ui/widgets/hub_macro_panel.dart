@@ -612,32 +612,43 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
     if (_recording) return;
     final devName = widget.card?.displayName ?? 'standalone';
     debugPrint('[hub] $devName: deleting macro M${macro.slot} (${macro.name})');
-    setState(() => _loading = true);
+
+    final previousMacros = _macros;
+    final previousDraft = _draft;
+    final previousSlot = _selectedSlot;
+    final previousEvents = List<MacroAction>.from(_events);
+
+    setState(() {
+      _macros = List.unmodifiable(_macros.where((m) => m.slot != macro.slot));
+      if (_selectedSlot == macro.slot) {
+        _draft = null;
+        _selectedSlot = null;
+        _events.clear();
+      }
+      _error = null;
+    });
+
     try {
       if (_hasScope) {
         await widget.scope!.deleteMacro(widget.card!, macro.slot);
+        if (!mounted) return;
         _macros = widget.scope!.macrosFor(widget.card!);
-      } else {
-        _macros = List.unmodifiable(_macros.where((m) => m.slot != macro.slot));
       }
       debugPrint('[hub] $devName: deleted macro M${macro.slot} successfully');
-      if (!mounted) return;
-      setState(() {
-        _loading = false;
-        if (_selectedSlot == macro.slot) {
-          _draft = null;
-          _selectedSlot = null;
-          _events.clear();
-        }
-      });
       widget.onChanged?.call();
     } catch (e) {
       debugPrint('[hub] $devName: macro deletion failed: $e');
       if (!mounted) return;
       setState(() {
-        _loading = false;
+        _macros = previousMacros;
+        _draft = previousDraft;
+        _selectedSlot = previousSlot;
+        _events
+          ..clear()
+          ..addAll(previousEvents);
         _error = e.toString();
       });
+      _showToast(message: t.macro.savedFailed, isSuccess: false);
     }
   }
 
@@ -701,7 +712,7 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
   @override
   Widget build(BuildContext context) {
     Widget content;
-    if (_loading && _draft == null) {
+    if (_loading && _macros.isEmpty && _draft == null) {
       content = const Center(
         key: ValueKey('loading'),
         child: CircularProgressIndicator(),

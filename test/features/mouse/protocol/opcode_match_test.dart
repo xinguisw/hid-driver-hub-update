@@ -11,15 +11,28 @@ void main() {
       expect(MouseProtocol.matchesOpcode(raw, 0xA1), isFalse);
     });
 
+    test('matches desktop-prefixed A3', () {
+      final raw = Uint8List.fromList([0x07, 0xA3, 0, 0, 0, 0x01]);
+      expect(MouseProtocol.matchesOpcode(raw, 0xA3), isTrue);
+      expect(MouseProtocol.matchesOpcode(raw, 0xA4), isFalse);
+    });
+
     test('matches web body without report id', () {
       final raw = Uint8List.fromList([0xA8, 0, 0, 0, 0, 1, 2, 3, 4]);
       expect(MouseProtocol.matchesOpcode(raw, 0xA8), isTrue);
       expect(MouseProtocol.matchesOpcode(raw, 0xA4), isFalse);
     });
 
+    test('matches web body A3 without report id', () {
+      final raw = Uint8List.fromList([0xA3, 0, 0, 0, 1, 1]);
+      expect(MouseProtocol.matchesOpcode(raw, 0xA3), isTrue);
+      expect(MouseProtocol.matchesOpcode(raw, 0xA1), isFalse);
+    });
+
     test('noise is not a match', () {
       final noise = Uint8List.fromList([0x07, 0xFF, 0, 0]);
       expect(MouseProtocol.matchesOpcode(noise, 0xA1), isFalse);
+      expect(MouseProtocol.matchesOpcode(noise, 0xA3), isFalse);
       expect(MouseProtocol.matchesOpcode(noise, 0xA4), isFalse);
     });
 

@@ -154,12 +154,10 @@ class _CardBox extends StatelessWidget {
   const _CardBox({
     required this.child,
     this.isActive = false,
-    this.padding = const EdgeInsets.all(16),
   });
 
   final Widget child;
   final bool isActive;
-  final EdgeInsetsGeometry padding;
 
   @override
   Widget build(BuildContext context) {
@@ -175,7 +173,7 @@ class _CardBox extends StatelessWidget {
     );
 
     return Container(
-      padding: padding,
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: bgColor,
         border: Border.all(color: borderColor, width: 1),
@@ -1008,13 +1006,11 @@ class _SelectableChip extends StatelessWidget {
   const _SelectableChip({
     required this.label,
     required this.selected,
-    this.icon,
     this.onTap,
   });
 
   final String label;
   final bool selected;
-  final IconData? icon;
   final VoidCallback? onTap;
 
   @override
@@ -1064,18 +1060,6 @@ class _SelectableChip extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (icon != null) ...[
-                Icon(
-                  icon,
-                  size: 15,
-                  color: selected
-                      ? Colors.white
-                      : (isDark
-                            ? const Color(0xFFE0E3EB)
-                            : const Color(0xFF344054)),
-                ),
-                const SizedBox(width: 6),
-              ],
               Flexible(
                 child: Text(
                   label,

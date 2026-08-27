@@ -35,10 +35,51 @@ void main() {
       expect(state.rawBlocks!.rgbBacklight, hasLength(8));
     },
   );
+
+  test(
+    'queryOnboardConfig aborts and returns error state when a query receives NAK',
+    () async {
+      final repository = _NakRepository();
+
+      final state = await queryOnboardConfig(repository, _card);
+
+      expect(state.error, isNotNull);
+      expect(state.error, contains('NAK'));
+      expect(state.loading, isFalse);
+    },
+  );
+  test(
+    'queryOnboardConfig soft-fails gracefully when rgbBacklight query receives NAK',
+    () async {
+      final repository = _BacklightNakRepository();
+
+      final state = await queryOnboardConfig(repository, _card);
+
+      expect(state.error, isNull);
+      expect(state.loading, isFalse);
+      expect(state.rawBlocks?.rgbBacklight, isNull);
+    },
+  );
+}
+
+class _NakRepository extends _CountingRepository {
+  @override
+  Future<ReportRateDpiInfoResult?> queryReportRateDpiInfo() async {
+    _count('reportRateDpi');
+    throw const FormatException('reportRateDpi NAK: NAK reason 0x01');
+  }
+}
+
+class _BacklightNakRepository extends _CountingRepository {
+  @override
+  Future<RgbBacklightResult?> queryRgbBacklight() async {
+    _count('rgbBacklight');
+    throw const FormatException('rgbBacklight NAK: NAK reason 0x02');
+  }
 }
 
 const _card = DiscoveredCardState(
-  devId: '03AA',
+  devId: '01_01',
   displayName: 'M7X PRO',
   connectionMode: 0,
   firmwareVersion: '',

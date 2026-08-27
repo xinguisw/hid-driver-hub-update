@@ -25,19 +25,20 @@ class DiscoveredCardState {
   /// 0..100, or -1 when unknown (A4 failed; may update via OSD/poll).
   final int batteryPercentage;
   final bool isCharging;
+
   final dynamic physicalHandle; // raw HID handle, for identity — not rendered
 
   /// Small image asset path — used by the card.
   final String imageSmall;
 
-  /// Large image asset path — used by the future canvas, not the card.
+  /// Large hero asset path — used by device setting hero.
   final String imageLarge;
 
   const DiscoveredCardState({
     required this.devId,
     required this.displayName,
     required this.connectionMode,
-    required this.firmwareVersion,
+    this.firmwareVersion = '',
     this.mouseFirmwareVersion = '',
     this.dongleFirmwareVersion = '',
     this.deviceKey = '',

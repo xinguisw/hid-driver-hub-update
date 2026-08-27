@@ -209,30 +209,37 @@ class DeviceScope {
       return;
     }
 
-    // Step 1: Immediately publish card shell so UI card mounts instantly.
-    _upsert(session, null, null);
+    // Step 1: Immediately publish card with initial battery, and firmware from start()
+    final initBattery = session.initialBattery;
+    final initFirmware = session.initialFirmware;
+    _upsert(session, initBattery, initFirmware);
+    if (initBattery != null) {
+      _evaluateLowBattery(session.info.deviceKey, initBattery);
+    }
     _startLiveBattery(session);
 
-    // Step 2: Hydrate telemetry (battery & firmware) in background.
-    try {
-      final battery = await _queryBattery(session);
-      final firmware = await _queryFirmware(session);
-      if (!session.isAlive) {
-        debugPrint(
-          '[scope] ${session.info.displayName} gone mid-query, skipping update',
-        );
-        return;
-      }
-      if (battery != null || firmware != null) {
-        _upsert(session, battery, firmware);
-        if (battery != null) {
-          _evaluateLowBattery(session.info.deviceKey, battery);
+    // Step 2: If either battery/firmware missing, query in background.
+    if (initBattery == null || initFirmware == null) {
+      try {
+        final battery = initBattery ?? await _queryBattery(session);
+        final firmware = initFirmware ?? await _queryFirmware(session);
+        if (!session.isAlive) {
+          debugPrint(
+            '[scope] ${session.info.displayName} gone mid-query, skipping update',
+          );
+          return;
         }
+        if (battery != null || firmware != null) {
+          _upsert(session, battery, firmware);
+          if (battery != null) {
+            _evaluateLowBattery(session.info.deviceKey, battery);
+          }
+        }
+      } catch (e) {
+        debugPrint(
+          '[scope] telemetry query failed for ${session.info.displayName}: $e',
+        );
       }
-    } catch (e) {
-      debugPrint(
-        '[scope] telemetry query failed for ${session.info.displayName}: $e',
-      );
     }
   }
 
@@ -1337,18 +1344,26 @@ class DeviceScope {
     FirmwareResult? firmware,
   ]) {
     final info = session.info;
+    final existingCard = _cards[info.deviceKey];
     return DiscoveredCardState(
       devId: info.devId,
       displayName: info.displayName,
       connectionMode: info.connectionMode,
       // The card keeps the historical mouse-only label; Device Setting renders
       // both A8 values independently.
-      firmwareVersion: _firmwareLabel(firmware),
-      mouseFirmwareVersion: firmware?.mouseVersionLabel ?? '',
-      dongleFirmwareVersion: firmware?.dongleVersionLabel ?? '',
+      firmwareVersion: _firmwareLabel(firmware).isNotEmpty
+          ? _firmwareLabel(firmware)
+          : (existingCard?.firmwareVersion ?? ''),
+      mouseFirmwareVersion: firmware?.mouseVersionLabel ??
+          existingCard?.mouseFirmwareVersion ??
+          '',
+      dongleFirmwareVersion: firmware?.dongleVersionLabel ??
+          existingCard?.dongleFirmwareVersion ??
+          '',
       deviceKey: info.deviceKey,
-      batteryPercentage: battery?.percent ?? -1,
-      isCharging: battery?.isCharging ?? false,
+      batteryPercentage:
+          battery?.percent ?? existingCard?.batteryPercentage ?? -1,
+      isCharging: battery?.isCharging ?? existingCard?.isCharging ?? false,
       physicalHandle: null,
       imageSmall: info.imageSmall,
       imageLarge: info.imageLarge,

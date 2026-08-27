@@ -1,6 +1,6 @@
 {
-  "devId": "02AA",
-  "displayNameKey": "device.m7x_se.name",
+  "devId": "01_03",
+  "displayNameKey": "mouse.m7x_se.name",
   "buttons": {
     "count": 6,
     "list": [

@@ -417,10 +417,8 @@ Future<DeviceSettingsState> queryOnboardConfig(
       debugPrint('[settings] config rgbBacklight $name: show=$showRgb $light');
     }
   } catch (e) {
-    final fatal = _settingsLoadFatal(e, name, 'rgbBacklight');
-    if (fatal != null) {
-      return state.copyWith(loading: false, error: fatal);
-    }
+    // Backlight NAK / failure is acceptable — soft-fail without aborting onboarding.
+    debugPrint('[settings] config rgbBacklight $name: soft-fail (NAK/unsupported): $e');
     state = _withDecodeError(state, e, 'rgbBacklight');
   }
 
@@ -441,13 +439,13 @@ Future<DeviceCapabilities?> _loadCapabilitiesForSession(
   return DeviceCapabilityStore.forDevice(card.devId);
 }
 
-/// Timeout → error string for [DeviceSettingsState.error]; other errors soft-fail (null).
+/// Returns error string for [DeviceSettingsState.error] on any query exception.
 String? _settingsLoadFatal(Object e, String name, String label) {
   debugPrint('[settings] config $label $name FAILED: $e');
   if (e is TimeoutException) {
     return 'timeout';
   }
-  return null;
+  return e.toString();
 }
 
 /// Marks [label] undecodable when L5 rejected the frame; other errors pass through.

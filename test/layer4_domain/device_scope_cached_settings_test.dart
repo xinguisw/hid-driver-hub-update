@@ -100,7 +100,7 @@ class _CountingGateway implements DeviceSettingsGateway {
   @override
   final info = const DeviceGatewayInfo(
     deviceKey: 'cached-settings-test',
-    devId: '03AA',
+    devId: '01_01',
     displayName: 'M7X PRO',
     connectionMode: 0,
     imageSmall: '',
@@ -109,6 +109,12 @@ class _CountingGateway implements DeviceSettingsGateway {
 
   @override
   bool get isAlive => true;
+
+  @override
+  BatteryResult? get initialBattery => null;
+
+  @override
+  FirmwareResult? get initialFirmware => null;
 
   @override
   Stream<BatteryResult> get batteryPushes => const Stream.empty();
@@ -122,14 +128,19 @@ class _CountingGateway implements DeviceSettingsGateway {
   Future<bool> rehandshake() async => true;
 
   @override
-  Future<BatteryResult?> queryBattery() async =>
-      const BatteryResult(percent: 80, isCharging: false);
+  Future<BatteryResult?> queryBattery() async {
+    _count('battery');
+    return const BatteryResult(percent: 80, isCharging: false);
+  }
 
   @override
-  Future<FirmwareResult?> queryFirmware() async => const FirmwareResult(
-    mouseVersion: [1, 2, 3, 4],
-    dongleVersion: [1, 2, 3, 4],
-  );
+  Future<FirmwareResult?> queryFirmware() async {
+    _count('firmware');
+    return const FirmwareResult(
+      mouseVersion: [1, 2, 3, 4],
+      dongleVersion: [1, 2, 3, 4],
+    );
+  }
 
   @override
   Future<ButtonMappingResult?> queryButtonMapping() async {

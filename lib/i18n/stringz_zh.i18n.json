@@ -15,7 +15,8 @@
         "bluetoothWarning": "该驱动程序无法识别蓝牙连接。请使用 2.4G 接收器或电缆连接",
         "noDevices": "未发现设备",
         "deviceStatus": "设备状态",
-        "batteryLow": "{deviceName}: 电量过低"
+        "batteryLow": "{deviceName}: 电量过低",
+        "sleeping": "休眠中"
     },
     "sidebar": {
         "buttonMapping": "按键映射",

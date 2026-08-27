@@ -578,7 +578,7 @@ class _LodBox extends StatelessWidget {
             children: [
               for (final opt in options)
                 _SelectableChip(
-                  label: '${opt.mm} mm',
+                  label: '${opt.mm.toStringAsFixed(1)} mm',
                   selected: lodMm == opt.wire,
                   onTap: onLodChanged == null
                       ? null

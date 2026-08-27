@@ -1,7 +1,9 @@
 {
   "devices": [
     {
-      "devId": "02AA",
+      "devId": "01_03",
+      "cid": 1,
+      "mid": 3,
       "deviceType": 1,
       "model": "M7X SE",
       "deviceAttr": "mouse_m7x_se",
@@ -14,7 +16,9 @@
       ]
     },
     {
-      "devId": "01AA",
+      "devId": "01_02",
+      "cid": 1,
+      "mid": 2,
       "deviceType": 1,
       "model": "M7X",
       "deviceAttr": "mouse_m7x",
@@ -27,7 +31,9 @@
       ]
     },
     {
-      "devId": "03AA",
+      "devId": "01_01",
+      "cid": 1,
+      "mid": 1,
       "deviceType": 1,
       "model": "M7X PRO",
       "deviceAttr": "mouse_m7x_pro",

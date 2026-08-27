@@ -693,10 +693,11 @@ class DeviceCapabilityStore {
     final raw = await rootBundle.loadString(assetPathForSlug(slug));
     final json = jsonDecode(raw) as Map<String, dynamic>;
     final caps = DeviceCapabilities.fromJson(json);
-    _byDevId[caps.devId] = caps;
+    _byDevId[caps.devId.toUpperCase()] = caps;
     _loadedSlugs.add(slug);
   }
 
   /// Returns the device capabilities for [devId], or null if unsupported / not loaded.
-  static DeviceCapabilities? forDevice(String devId) => _byDevId[devId];
+  static DeviceCapabilities? forDevice(String devId) =>
+      _byDevId[devId.toUpperCase()] ?? _byDevId[devId];
 }

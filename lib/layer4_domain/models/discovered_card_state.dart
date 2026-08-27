@@ -25,24 +25,29 @@ class DiscoveredCardState {
   /// 0..100, or -1 when unknown (A4 failed; may update via OSD/poll).
   final int batteryPercentage;
   final bool isCharging;
+
+  /// Whether the wireless peripheral is awake and active (A3 status).
+  final bool isAwake;
+
   final dynamic physicalHandle; // raw HID handle, for identity — not rendered
 
   /// Small image asset path — used by the card.
   final String imageSmall;
 
-  /// Large image asset path — used by the future canvas, not the card.
+  /// Large hero asset path — used by device setting hero.
   final String imageLarge;
 
   const DiscoveredCardState({
     required this.devId,
     required this.displayName,
     required this.connectionMode,
-    required this.firmwareVersion,
+    this.firmwareVersion = '',
     this.mouseFirmwareVersion = '',
     this.dongleFirmwareVersion = '',
     this.deviceKey = '',
     required this.batteryPercentage,
     required this.isCharging,
+    this.isAwake = true,
     required this.physicalHandle,
     required this.imageSmall,
     required this.imageLarge,
@@ -58,6 +63,7 @@ class DiscoveredCardState {
     String? deviceKey,
     int? batteryPercentage,
     bool? isCharging,
+    bool? isAwake,
     dynamic physicalHandle,
     String? imageSmall,
     String? imageLarge,
@@ -73,6 +79,7 @@ class DiscoveredCardState {
       deviceKey: deviceKey ?? this.deviceKey,
       batteryPercentage: batteryPercentage ?? this.batteryPercentage,
       isCharging: isCharging ?? this.isCharging,
+      isAwake: isAwake ?? this.isAwake,
       physicalHandle: physicalHandle ?? this.physicalHandle,
       imageSmall: imageSmall ?? this.imageSmall,
       imageLarge: imageLarge ?? this.imageLarge,
@@ -93,6 +100,7 @@ class DiscoveredCardState {
           deviceKey == other.deviceKey &&
           batteryPercentage == other.batteryPercentage &&
           isCharging == other.isCharging &&
+          isAwake == other.isAwake &&
           physicalHandle == other.physicalHandle &&
           imageSmall == other.imageSmall &&
           imageLarge == other.imageLarge;
@@ -108,6 +116,7 @@ class DiscoveredCardState {
       deviceKey.hashCode ^
       batteryPercentage.hashCode ^
       isCharging.hashCode ^
+      isAwake.hashCode ^
       physicalHandle.hashCode ^
       imageSmall.hashCode ^
       imageLarge.hashCode;

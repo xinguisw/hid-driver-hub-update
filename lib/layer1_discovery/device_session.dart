@@ -62,6 +62,7 @@ class DeviceSession implements DeviceSettingsGateway {
   final OsdCodec _osd = const OsdCodec();
 
   final _controller = StreamController<DeviceSessionState>.broadcast();
+  final _statusPushes = StreamController<DeviceStatusResult>.broadcast();
   final _batteryPushes = StreamController<BatteryResult>.broadcast();
   final _performancePushes = StreamController<OsdPerformanceResult>.broadcast();
   StreamSubscription<Uint8List>? _unsolicitedSub;
@@ -73,6 +74,22 @@ class DeviceSession implements DeviceSettingsGateway {
   });
 
   Stream<DeviceSessionState> get state => _controller.stream;
+
+  DeviceStatusResult? _cachedInitialDeviceStatus;
+  BatteryResult? _cachedInitialBattery;
+  FirmwareResult? _cachedInitialFirmware;
+
+  @override
+  DeviceStatusResult? get initialDeviceStatus => _cachedInitialDeviceStatus;
+
+  @override
+  BatteryResult? get initialBattery => _cachedInitialBattery;
+
+  @override
+  FirmwareResult? get initialFirmware => _cachedInitialFirmware;
+
+  @override
+  Stream<DeviceStatusResult> get statusPushes => _statusPushes.stream;
 
   /// OSD report 9 opcode 2 (and web short frames) parsed to battery.
   @override
@@ -97,6 +114,8 @@ class DeviceSession implements DeviceSettingsGateway {
   @override
   bool get isAlive => _session.isOpen;
 
+  String? _activeSessionToken;
+
   /// Re-run A1 handshake on an open session.
   ///
   /// Firmware NAKs onboard config (reason 0x01) if handshake is not fresh
@@ -114,12 +133,19 @@ class DeviceSession implements DeviceSettingsGateway {
         deviceId: device.entry.devId,
       );
       final typeMatch = hs.deviceType == device.entry.deviceType;
-      final idMatch = _deviceIdMatches(hs.deviceId, device.entry.devId);
+      final modelMatch =
+          hs.modelKey.toLowerCase() == device.entry.devId.toLowerCase();
+      final tokenOrIdValid = modelMatch ||
+          _deviceIdMatches(hs.sessionToken, device.entry.devId) ||
+          (hs.sessionToken.isNotEmpty && hs.sessionToken != '00000000');
       debugPrint(
-        '[session] rehandshake: type=${hs.deviceType?.name} '
-        'id="${hs.deviceId}" match=${typeMatch && idMatch}',
+        '[session] rehandshake: sessionToken="${hs.sessionToken}" '
+        'CID=0x${hs.cid?.toRadixString(16).padLeft(2, '0') ?? 'none'} '
+        'MID=0x${hs.mid?.toRadixString(16).padLeft(2, '0') ?? 'none'} '
+        'Type=${hs.profileType ?? 'none'} match=${typeMatch && tokenOrIdValid}',
       );
-      if (typeMatch && idMatch) {
+      if (typeMatch && tokenOrIdValid) {
+        _activeSessionToken = hs.sessionToken;
         return true;
       }
       _controller.add(DeviceSessionState.rejected(name, mode));
@@ -131,21 +157,31 @@ class DeviceSession implements DeviceSettingsGateway {
   }
 
   @override
+  Future<DeviceStatusResult?> queryDeviceStatus() async {
+    if (!isAlive) return null;
+    return _withSilentHandshakeRetry(
+      () => _protocol.queryDeviceStatus(_session),
+    );
+  }
+
+  @override
   Future<BatteryResult?> queryBattery() async {
     if (!isAlive) return null;
-    return _protocol.queryBattery(_session);
+    return _withSilentHandshakeRetry(() => _protocol.queryBattery(_session));
   }
 
   @override
   Future<FirmwareResult?> queryFirmware() async {
     if (!isAlive) return null;
-    return _protocol.queryFirmware(_session);
+    return _withSilentHandshakeRetry(() => _protocol.queryFirmware(_session));
   }
 
   @override
   Future<ButtonMappingResult?> queryButtonMapping() async {
     if (!isAlive) return null;
-    return _protocol.queryButtonMapping(_session);
+    return _withSilentHandshakeRetry(
+      () => _protocol.queryButtonMapping(_session),
+    );
   }
 
   /// Thin L1 forwarder for B2 SET (L5 encodes + CRC).
@@ -176,25 +212,27 @@ class DeviceSession implements DeviceSettingsGateway {
   @override
   Future<ReportRateDpiInfoResult?> queryReportRateDpiInfo() async {
     if (!isAlive) return null;
-    return _protocol.queryReportRateDpiInfo(_session);
+    return _withSilentHandshakeRetry(
+      () => _protocol.queryReportRateDpiInfo(_session),
+    );
   }
 
   @override
   Future<DpiTableResult?> queryDpiTable() async {
     if (!isAlive) return null;
-    return _protocol.queryDpiTable(_session);
+    return _withSilentHandshakeRetry(() => _protocol.queryDpiTable(_session));
   }
 
   @override
   Future<DpiRgbResult?> queryDpiRgb() async {
     if (!isAlive) return null;
-    return _protocol.queryDpiRgb(_session);
+    return _withSilentHandshakeRetry(() => _protocol.queryDpiRgb(_session));
   }
 
   @override
   Future<SensorOtherResult?> querySensorOther() async {
     if (!isAlive) return null;
-    return _protocol.querySensorOther(_session);
+    return _withSilentHandshakeRetry(() => _protocol.querySensorOther(_session));
   }
 
   /// Thin L1 forwarder for D4 SET (L5 encodes + CRC).
@@ -314,19 +352,19 @@ class DeviceSession implements DeviceSettingsGateway {
     await _withSilentHandshakeRetry(() => _protocol.setMacro(_session, macro));
   }
 
-  /// Executes a SET command with a silent re-handshake retry if the initial attempt
+  /// Executes a protocol command with a silent re-handshake retry if the initial attempt
   /// fails (e.g. handshake expired / NAK 0x01 or transport timeout).
   Future<T> _withSilentHandshakeRetry<T>(Future<T> Function() action) async {
     try {
       return await action();
     } catch (e) {
       debugPrint(
-        '[session] SET write failed ($e); attempting silent rehandshake...',
+        '[session] command failed ($e); attempting silent rehandshake...',
       );
       final ok = await rehandshake();
       if (ok && isAlive) {
         debugPrint(
-          '[session] Silent rehandshake succeeded! Retrying SET write...',
+          '[session] Silent rehandshake succeeded! Retrying command...',
         );
         return await action();
       }
@@ -337,7 +375,9 @@ class DeviceSession implements DeviceSettingsGateway {
   @override
   Future<RgbBacklightResult?> queryRgbBacklight() async {
     if (!isAlive) return null;
-    return _protocol.queryRgbBacklight(_session);
+    return _withSilentHandshakeRetry(
+      () => _protocol.queryRgbBacklight(_session),
+    );
   }
 
   /// Open (with retry) -> handshake -> verify. Starts OSD unsolicited when verified.
@@ -353,18 +393,60 @@ class DeviceSession implements DeviceSettingsGateway {
 
     try {
       await _openTransportWithRetry();
-      debugPrint('[session] opened, running handshake…');
+      debugPrint('[session] opened, querying status (0xA3), battery (0xA4) & firmware (0xA8)…');
+
+      // 0. Query Device Status (0xA3)
+      try {
+        _cachedInitialDeviceStatus = await _protocol.queryDeviceStatus(_session);
+        debugPrint(
+          '[session] device status (0xA3) queried: awake=${_cachedInitialDeviceStatus?.isAwake} statusCode=${_cachedInitialDeviceStatus?.statusCode}',
+        );
+      } catch (e) {
+        debugPrint('[session] initial device status query soft-fail: $e');
+      }
+
+      // 1. Query Battery (0xA4)
+      try {
+        _cachedInitialBattery = await _protocol.queryBattery(_session);
+        debugPrint(
+          '[session] battery (0xA4) queried: ${_cachedInitialBattery?.percent}% charging=${_cachedInitialBattery?.isCharging}',
+        );
+      } catch (e) {
+        debugPrint('[session] initial battery query soft-fail: $e');
+      }
+
+      // 2. Query Firmware Version (0xA8)
+      try {
+        _cachedInitialFirmware = await _protocol.queryFirmware(_session);
+        debugPrint(
+          '[session] firmware (0xA8) queried: mouse=${_cachedInitialFirmware?.mouseVersionLabel} dongle=${_cachedInitialFirmware?.dongleVersionLabel}',
+        );
+      } catch (e) {
+        debugPrint('[session] initial firmware query soft-fail: $e');
+      }
+
+      // 3. Proceed with Handshake (0xA1)
+      debugPrint('[session] proceeding with handshake (0xA1)…');
       final hs = await _handshakeWithRetry();
 
       final typeMatch = hs.deviceType == device.entry.deviceType;
-      final idMatch = _deviceIdMatches(hs.deviceId, device.entry.devId);
+      final modelMatch =
+          hs.modelKey.toLowerCase() == device.entry.devId.toLowerCase();
+      final tokenOrIdValid = modelMatch ||
+          _deviceIdMatches(hs.sessionToken, device.entry.devId) ||
+          (hs.sessionToken.isNotEmpty && hs.sessionToken != '00000000');
       debugPrint(
-        '[session] verify: reported type=${hs.deviceType?.name ?? 'unknown'} '
-        '(match=$typeMatch), reported id="${hs.deviceId}" (match=$idMatch)',
+        '[session] verify: sessionToken="${hs.sessionToken}" '
+        'CID=0x${hs.cid?.toRadixString(16).padLeft(2, '0') ?? 'none'} '
+        'MID=0x${hs.mid?.toRadixString(16).padLeft(2, '0') ?? 'none'} '
+        'Type=${hs.profileType ?? 'none'} (match=$typeMatch, authorized=$tokenOrIdValid)',
       );
 
-      if (typeMatch && idMatch) {
-        debugPrint('[session] VERIFIED');
+      if (typeMatch && tokenOrIdValid) {
+        _activeSessionToken = hs.sessionToken;
+        debugPrint(
+          '[session] VERIFIED (sessionToken=$_activeSessionToken, modelKey=${hs.modelKey})',
+        );
         _listenUnsolicited();
         _controller.add(DeviceSessionState.verified(name, mode));
         return true;
@@ -440,6 +522,13 @@ class DeviceSession implements DeviceSettingsGateway {
     _unsolicitedSub?.cancel();
     _unsolicitedSub = _session.unsolicitedReports.listen((raw) {
       debugPrint('[session] unsolicited ${_hex(raw)} (${raw.length}B)');
+      final status = _protocol.parseDeviceStatus(raw);
+      if (status != null && !_statusPushes.isClosed) {
+        debugPrint(
+          '[session] status push (0xA3): awake=${status.isAwake} statusCode=${status.statusCode} raw=${_hex(raw)}',
+        );
+        _statusPushes.add(status);
+      }
       final performance = _osd.parsePerformance(raw);
       if (performance != null && !_performancePushes.isClosed) {
         debugPrint(
@@ -473,6 +562,7 @@ class DeviceSession implements DeviceSettingsGateway {
     await _unsolicitedSub?.cancel();
     _unsolicitedSub = null;
     await _safeClose();
+    await _statusPushes.close();
     await _batteryPushes.close();
     await _performancePushes.close();
     await _controller.close();

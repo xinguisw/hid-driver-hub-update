@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:driver_hub/i18n/strings.g.dart';
 import 'package:driver_hub/layer4_domain/models/discovered_card_state.dart';
 
 /// Modern grid‑style device card with hover effects, keyboard detection,
@@ -35,6 +36,8 @@ class _DeviceCardState extends State<DeviceCard> {
   @override
   Widget build(BuildContext context) {
     final isKb = _isKeyboard;
+    final isInteractive = widget.state.isAwake;
+    final showHover = _isHovered && isInteractive;
 
     // Use passed dimensions, or fall back to default larger sizes
     final cardWidth = widget.width ?? (isKb ? 650.0 : 300.0);
@@ -42,25 +45,26 @@ class _DeviceCardState extends State<DeviceCard> {
 
     final theme = Theme.of(context);
 
-    final borderColor = _isHovered
+    final borderColor = showHover
         ? theme.colorScheme.primary
         : theme.colorScheme.outline;
     final textColor = theme.colorScheme.onSurface;
-    final iconColor = _isHovered
+    final iconColor = showHover
         ? theme.colorScheme.primary
         : theme.colorScheme.onSurfaceVariant;
 
     return MouseRegion(
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
+      cursor: isInteractive ? SystemMouseCursors.click : SystemMouseCursors.basic,
+      onEnter: isInteractive ? (_) => setState(() => _isHovered = true) : null,
+      onExit: isInteractive ? (_) => setState(() => _isHovered = false) : null,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
         constraints: BoxConstraints(maxWidth: cardWidth, maxHeight: cardHeight),
         decoration: BoxDecoration(
           color: theme.cardColor,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: borderColor, width: _isHovered ? 1.5 : 1.0),
-          boxShadow: _isHovered
+          border: Border.all(color: borderColor, width: showHover ? 1.5 : 1.0),
+          boxShadow: showHover
               ? [
                   BoxShadow(
                     color: theme.colorScheme.shadow.withValues(alpha: 0.08),
@@ -70,92 +74,110 @@ class _DeviceCardState extends State<DeviceCard> {
                 ]
               : [],
         ),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            borderRadius: BorderRadius.circular(20),
-            onTap: widget.onTap,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  // ---- Device image (centered) ----
-                  Expanded(
-                    child: Center(
-                      child: Transform.scale(
-                        scale: isKb ? 1.0 : 1.25,
-                        child: Image.asset(
-                          isKb
-                              ? widget.state.imageSmall
-                              : widget.state.imageLarge,
-                          fit: BoxFit.contain,
-                          errorBuilder: (context, error, stackTrace) {
-                            if (!isKb) {
+        child: AnimatedOpacity(
+          duration: const Duration(milliseconds: 180),
+          opacity: isInteractive ? 1.0 : 0.65,
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(20),
+              mouseCursor: isInteractive
+                  ? SystemMouseCursors.click
+                  : SystemMouseCursors.basic,
+              onTap: isInteractive ? widget.onTap : null,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    // ---- Device image (centered) ----
+                    Expanded(
+                      child: Center(
+                        child: Transform.scale(
+                          scale: isKb ? 1.0 : 1.25,
+                          child: Image.asset(
+                            isKb
+                                ? widget.state.imageSmall
+                                : widget.state.imageLarge,
+                            fit: BoxFit.contain,
+                            errorBuilder: (context, error, stackTrace) {
+                              if (!isKb) {
+                                return Icon(
+                                  Icons.mouse,
+                                  size: 90,
+                                  color: iconColor,
+                                );
+                              }
                               return Icon(
-                                Icons.mouse,
-                                size: 90,
+                                Icons.keyboard,
+                                size: 110,
                                 color: iconColor,
                               );
-                            }
-                            return Icon(
-                              Icons.keyboard,
-                              size: 110,
-                              color: iconColor,
-                            );
-                          },
+                            },
+                          ),
                         ),
                       ),
                     ),
-                  ),
 
-                  const SizedBox(height: 20),
+                    const SizedBox(height: 20),
 
-                  // ---- Device Model Name ----
-                  Text(
-                    widget.state.displayName,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: textColor,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 0.5,
+                    // ---- Device Model Name ----
+                    Text(
+                      widget.state.displayName,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: textColor,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 6),
+                    const SizedBox(height: 6),
 
-                  // ---- Status row: Mode icon + Battery icon + Battery text ----
-                  AnimatedDefaultTextStyle(
-                    duration: const Duration(milliseconds: 180),
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: iconColor,
-                      fontWeight: FontWeight.w500,
+                    // ---- Status row: Mode icon + Battery icon + Battery text ----
+                    AnimatedDefaultTextStyle(
+                      duration: const Duration(milliseconds: 180),
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: iconColor,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Connection mode icon (USB or 2.4G)
+                          Icon(
+                            widget.state.connectionMode == 0
+                                ? Icons.cable
+                                : Icons.wifi,
+                            size: 20,
+                            color: iconColor,
+                          ),
+                          if (!widget.state.isAwake) ...[
+                            const SizedBox(width: 14),
+                            Icon(
+                              Icons.bedtime_outlined,
+                              size: 18,
+                              color: iconColor,
+                            ),
+                            const SizedBox(width: 5),
+                            Text(t.devices.sleeping),
+                          ] else ...[
+                            const SizedBox(width: 14),
+
+                            // Battery status icon
+                            Icon(_batteryIcon, size: 20, color: iconColor),
+                            const SizedBox(width: 5),
+
+                            // Battery percentage text
+                            Text(_batteryLabel),
+                          ],
+                        ],
+                      ),
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Connection mode icon (USB or 2.4G)
-                        Icon(
-                          widget.state.connectionMode == 0
-                              ? Icons.cable
-                              : Icons.wifi,
-                          size: 20,
-                          color: iconColor,
-                        ),
-                        const SizedBox(width: 14),
-
-                        // Battery status icon
-                        Icon(_batteryIcon, size: 20, color: iconColor),
-                        const SizedBox(width: 5),
-
-                        // Battery percentage text
-                        Text(_batteryLabel),
-                      ],
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),

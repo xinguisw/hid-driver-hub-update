@@ -196,7 +196,7 @@ class HidSession implements ProtocolTransport {
     if (b0 == 0x07) return 32;
     if (b0 == 0x08) return 32;
     if (b0 == 0x09) return 8;
-    if (b0 == 0xA1 || b0 == 0xA4 || b0 == 0xA8) return 31;
+    if (b0 == 0xA1 || b0 == 0xA3 || b0 == 0xA4 || b0 == 0xA8) return 31;
     return null;
   }
 

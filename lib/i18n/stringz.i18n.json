@@ -15,7 +15,8 @@
         "bluetoothWarning": "The driver cannot recognize Bluetooth connection. Please use a 2.4G receiver or a cable connection",
         "noDevices": "No devices",
         "deviceStatus": "Device status",
-        "batteryLow": "{deviceName}: battery low"
+        "batteryLow": "{deviceName}: battery low",
+        "sleeping": "Sleeping"
     },
     "sidebar": {
         "buttonMapping": "Button Mapping",

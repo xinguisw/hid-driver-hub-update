@@ -50,6 +50,43 @@ void main() {
     expect(gateway.lastRgbBacklightSet, hasLength(8));
     await scope.dispose();
   });
+
+  test('incoming awake status push triggers card update and background re-query', () async {
+    final gateway = _CountingGateway(
+      initialStatus: DeviceStatusResult(
+        statusCode: 0x00,
+        isAwake: false,
+        raw: Uint8List(32),
+      ),
+    );
+    final scope = DeviceScope(
+      runtime: _Runtime(gateway),
+      macroRepository: InMemoryMacroRepository(),
+      appSettingsRepository: _AppSettingsRepository(),
+    );
+
+    await scope.start();
+    for (var i = 0; i < 5 && scope.cards.value.isEmpty; i++) {
+      await Future<void>.delayed(Duration.zero);
+    }
+    expect(scope.cards.value.single.isAwake, isFalse);
+
+    // Emit Awake status push from hardware interrupt
+    gateway.emitStatus(
+      DeviceStatusResult(
+        statusCode: 0x01,
+        isAwake: true,
+        raw: Uint8List(32),
+      ),
+    );
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+
+    expect(scope.cards.value.single.isAwake, isTrue);
+    expect(gateway.queryCounts['battery'], isNotNull);
+    expect(gateway.queryCounts['firmware'], isNotNull);
+
+    await scope.dispose();
+  });
 }
 
 class _Runtime implements DeviceRuntime {
@@ -97,10 +134,17 @@ class _CountingGateway implements DeviceSettingsGateway {
   Uint8List? lastSensorOtherSet;
   Uint8List? lastRgbBacklightSet;
 
+  final DeviceStatusResult? initialStatus;
+  final _statusController = StreamController<DeviceStatusResult>.broadcast();
+
+  _CountingGateway({this.initialStatus});
+
+  void emitStatus(DeviceStatusResult status) => _statusController.add(status);
+
   @override
   final info = const DeviceGatewayInfo(
     deviceKey: 'cached-settings-test',
-    devId: '03AA',
+    devId: '01_01',
     displayName: 'M7X PRO',
     connectionMode: 0,
     imageSmall: '',
@@ -109,6 +153,18 @@ class _CountingGateway implements DeviceSettingsGateway {
 
   @override
   bool get isAlive => true;
+
+  @override
+  DeviceStatusResult? get initialDeviceStatus => initialStatus;
+
+  @override
+  BatteryResult? get initialBattery => null;
+
+  @override
+  FirmwareResult? get initialFirmware => null;
+
+  @override
+  Stream<DeviceStatusResult> get statusPushes => _statusController.stream;
 
   @override
   Stream<BatteryResult> get batteryPushes => const Stream.empty();
@@ -122,14 +178,29 @@ class _CountingGateway implements DeviceSettingsGateway {
   Future<bool> rehandshake() async => true;
 
   @override
-  Future<BatteryResult?> queryBattery() async =>
-      const BatteryResult(percent: 80, isCharging: false);
+  Future<DeviceStatusResult?> queryDeviceStatus() async {
+    _count('deviceStatus');
+    return DeviceStatusResult(
+      statusCode: 0x01,
+      isAwake: true,
+      raw: Uint8List(0),
+    );
+  }
 
   @override
-  Future<FirmwareResult?> queryFirmware() async => const FirmwareResult(
-    mouseVersion: [1, 2, 3, 4],
-    dongleVersion: [1, 2, 3, 4],
-  );
+  Future<BatteryResult?> queryBattery() async {
+    _count('battery');
+    return const BatteryResult(percent: 80, isCharging: false);
+  }
+
+  @override
+  Future<FirmwareResult?> queryFirmware() async {
+    _count('firmware');
+    return const FirmwareResult(
+      mouseVersion: [1, 2, 3, 4],
+      dongleVersion: [1, 2, 3, 4],
+    );
+  }
 
   @override
   Future<ButtonMappingResult?> queryButtonMapping() async {

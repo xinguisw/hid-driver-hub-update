@@ -6,10 +6,10 @@ void main() {
 
   test('DeviceCapabilityStore loads m7x_se.json from product matrix', () async {
     await DeviceCapabilityStore.load('M7X SE');
-    final caps = DeviceCapabilityStore.forDevice('02AA');
+    final caps = DeviceCapabilityStore.forDevice('01_03');
     expect(caps, isNotNull);
-    expect(caps!.devId, '02AA');
-    expect(caps.displayNameKey, 'device.m7x_se.name');
+    expect(caps!.devId, '01_03');
+    expect(caps.displayNameKey, 'mouse.m7x_se.name');
     expect(caps.buttons!.count, 6);
     expect(caps.buttons!.list.length, 6);
     expect(caps.buttons!.list.every((b) => b.remappable), isTrue);
@@ -79,9 +79,9 @@ void main() {
     'DeviceCapabilityStore loads m7x.json (M7X, PAW3311, DPI RGB)',
     () async {
       await DeviceCapabilityStore.load('m7x');
-      final caps = DeviceCapabilityStore.forDevice('01AA');
+      final caps = DeviceCapabilityStore.forDevice('01_02');
       expect(caps, isNotNull);
-      expect(caps!.devId, '01AA');
+      expect(caps!.devId, '01_02');
       expect(caps.displayNameKey, 'device.m7x.name');
       expect(caps.reportRate!.options, [1000, 500, 250, 125]);
       expect(caps.dpi!.range.maxDpi, 12000);
@@ -106,9 +106,9 @@ void main() {
     'DeviceCapabilityStore loads m7x_pro.json (M7X PRO, PAW3395, backlight)',
     () async {
       await DeviceCapabilityStore.load('m7x pro');
-      final caps = DeviceCapabilityStore.forDevice('03AA');
+      final caps = DeviceCapabilityStore.forDevice('01_01');
       expect(caps, isNotNull);
-      expect(caps!.devId, '03AA');
+      expect(caps!.devId, '01_01');
       expect(caps.displayNameKey, 'device.m7x_pro.name');
       expect(caps.reportRate!.options, [1000, 500, 250, 125]);
       expect(caps.dpi!.range.maxDpi, 24000);
@@ -134,7 +134,7 @@ void main() {
       for (final model in ['m7x se', 'm7x', 'm7x pro']) {
         await DeviceCapabilityStore.load(model);
       }
-      for (final devId in ['02AA', '01AA', '03AA']) {
+      for (final devId in ['01_03', '01_02', '01_01']) {
         final caps = DeviceCapabilityStore.forDevice(devId);
         expect(caps, isNotNull);
         expect(caps!.macro, isNotNull);
@@ -156,7 +156,7 @@ void main() {
       await DeviceCapabilityStore.load(model);
     }
 
-    for (final devId in ['02AA', '01AA', '03AA']) {
+    for (final devId in ['01_03', '01_02', '01_01']) {
       final caps = DeviceCapabilityStore.forDevice(devId);
       expect(caps, isNotNull);
       final buttons = caps!.buttons!.list;

@@ -63,6 +63,12 @@ class DeviceScope {
   /// OSD battery subscriptions per device path.
   final _batterySubs = <String, StreamSubscription<BatteryResult>>{};
 
+  /// Device status subscriptions per device path.
+  final _statusSubs = <String, StreamSubscription<DeviceStatusResult>>{};
+
+  /// In-flight wake re-query locks per device path to prevent concurrent bus flooding.
+  final _reQueryingPaths = <String>{};
+
   /// OSD performance subscriptions per device path.
   final _performanceSubs = <String, StreamSubscription<OsdPerformanceResult>>{};
 
@@ -209,30 +215,39 @@ class DeviceScope {
       return;
     }
 
-    // Step 1: Immediately publish card shell so UI card mounts instantly.
-    _upsert(session, null, null);
+    // Step 1: Immediately publish card with initial status, battery, and firmware from start()
+    final initStatus = session.initialDeviceStatus;
+    final initBattery = session.initialBattery;
+    final initFirmware = session.initialFirmware;
+    _upsert(session, initBattery, initFirmware, initStatus);
+    if (initBattery != null) {
+      _evaluateLowBattery(session.info.deviceKey, initBattery);
+    }
     _startLiveBattery(session);
+    _startLiveStatus(session);
 
-    // Step 2: Hydrate telemetry (battery & firmware) in background.
-    try {
-      final battery = await _queryBattery(session);
-      final firmware = await _queryFirmware(session);
-      if (!session.isAlive) {
-        debugPrint(
-          '[scope] ${session.info.displayName} gone mid-query, skipping update',
-        );
-        return;
-      }
-      if (battery != null || firmware != null) {
-        _upsert(session, battery, firmware);
-        if (battery != null) {
-          _evaluateLowBattery(session.info.deviceKey, battery);
+    // Step 2: If status indicates asleep, or either battery/firmware missing, query in background.
+    if (initBattery == null || initFirmware == null) {
+      try {
+        final battery = initBattery ?? await _queryBattery(session);
+        final firmware = initFirmware ?? await _queryFirmware(session);
+        if (!session.isAlive) {
+          debugPrint(
+            '[scope] ${session.info.displayName} gone mid-query, skipping update',
+          );
+          return;
         }
+        if (battery != null || firmware != null) {
+          _upsert(session, battery, firmware);
+          if (battery != null) {
+            _evaluateLowBattery(session.info.deviceKey, battery);
+          }
+        }
+      } catch (e) {
+        debugPrint(
+          '[scope] telemetry query failed for ${session.info.displayName}: $e',
+        );
       }
-    } catch (e) {
-      debugPrint(
-        '[scope] telemetry query failed for ${session.info.displayName}: $e',
-      );
     }
   }
 
@@ -1185,6 +1200,69 @@ class DeviceScope {
   //   }
   // }
 
+  void _startLiveStatus(DeviceSettingsGateway session) {
+    final path = session.info.deviceKey;
+    _statusSubs[path]?.cancel();
+    _statusSubs[path] = session.statusPushes.listen((s) {
+      _patchDeviceStatus(path, s, session);
+    });
+  }
+
+  void _patchDeviceStatus(
+    String deviceKey,
+    DeviceStatusResult s,
+    DeviceSettingsGateway session,
+  ) {
+    final list = List<DiscoveredCardState>.from(cards.value);
+    final i = list.indexWhere(
+      (c) =>
+          c.deviceKey.toLowerCase() == deviceKey.toLowerCase() ||
+          c.devId.toLowerCase() == deviceKey.toLowerCase(),
+    );
+    if (i < 0) return;
+    final old = list[i];
+    final wasAsleep = !old.isAwake;
+    final updated = old.copyWith(
+      isAwake: s.isAwake,
+    );
+    list[i] = updated;
+    _cards[deviceKey] = updated;
+    cards.value = List.unmodifiable(list);
+    debugPrint(
+      '[scope] patched card status ${updated.displayName}: '
+      'isAwake=${s.isAwake} (wasAsleep=$wasAsleep)',
+    );
+
+    // Trigger auto-requery if transitioning from asleep -> awake
+    if (s.isAwake && wasAsleep) {
+      _triggerWakeRequery(session);
+    }
+  }
+
+  Future<void> _triggerWakeRequery(DeviceSettingsGateway session) async {
+    final path = session.info.deviceKey;
+    if (_reQueryingPaths.contains(path)) return;
+    _reQueryingPaths.add(path);
+    debugPrint(
+      '[scope] waking up: triggering background telemetry re-query for ${session.info.displayName}',
+    );
+    try {
+      final battery = await _queryBattery(session);
+      final firmware = await _queryFirmware(session);
+      if (!session.isAlive) return;
+      if (battery != null || firmware != null) {
+        _upsert(session, battery, firmware);
+        if (battery != null) {
+          _evaluateLowBattery(session.info.deviceKey, battery);
+        }
+      }
+    } catch (e) {
+      debugPrint('[scope] wake re-query soft-fail: $e');
+    } finally {
+      _reQueryingPaths.remove(path);
+    }
+  }
+
   void _patchBattery(
     String deviceKey,
     BatteryResult b, {
@@ -1306,6 +1384,7 @@ class DeviceScope {
     DeviceSettingsGateway session,
     BatteryResult? battery, [
     FirmwareResult? firmware,
+    DeviceStatusResult? status,
   ]) {
     final path = session.info.deviceKey;
     if (battery == null) {
@@ -1314,12 +1393,14 @@ class DeviceScope {
         '— card shown with Battery —',
       );
     }
-    _cards[path] = _cardStateFor(session, battery, firmware);
+    _cards[path] = _cardStateFor(session, battery, firmware, status);
     cards.value = List.unmodifiable(_cards.values);
   }
 
   void _remove(String path) {
     _batterySubs.remove(path)?.cancel();
+    _statusSubs.remove(path)?.cancel();
+    _reQueryingPaths.remove(path);
     _performanceSubs.remove(path)?.cancel();
     _sessions.remove(path);
     _settings.remove(path);
@@ -1330,25 +1411,39 @@ class DeviceScope {
     cards.value = List.unmodifiable(_cards.values);
   }
 
-  /// L1 → L3 bridge: catalog + optional A4/A8. Unknown battery → -1 ("—").
+  /// L1 → L3 bridge: catalog + optional A4/A8/A3. Unknown battery → -1 ("—").
   DiscoveredCardState _cardStateFor(
     DeviceSettingsGateway session,
     BatteryResult? battery, [
     FirmwareResult? firmware,
+    DeviceStatusResult? status,
   ]) {
     final info = session.info;
+    final existingCard = _cards[info.deviceKey];
+    final isAwake = status?.isAwake ??
+        existingCard?.isAwake ??
+        session.initialDeviceStatus?.isAwake ??
+        true;
     return DiscoveredCardState(
       devId: info.devId,
       displayName: info.displayName,
       connectionMode: info.connectionMode,
       // The card keeps the historical mouse-only label; Device Setting renders
       // both A8 values independently.
-      firmwareVersion: _firmwareLabel(firmware),
-      mouseFirmwareVersion: firmware?.mouseVersionLabel ?? '',
-      dongleFirmwareVersion: firmware?.dongleVersionLabel ?? '',
+      firmwareVersion: _firmwareLabel(firmware).isNotEmpty
+          ? _firmwareLabel(firmware)
+          : (existingCard?.firmwareVersion ?? ''),
+      mouseFirmwareVersion: firmware?.mouseVersionLabel ??
+          existingCard?.mouseFirmwareVersion ??
+          '',
+      dongleFirmwareVersion: firmware?.dongleVersionLabel ??
+          existingCard?.dongleFirmwareVersion ??
+          '',
       deviceKey: info.deviceKey,
-      batteryPercentage: battery?.percent ?? -1,
-      isCharging: battery?.isCharging ?? false,
+      batteryPercentage:
+          battery?.percent ?? existingCard?.batteryPercentage ?? -1,
+      isCharging: battery?.isCharging ?? existingCard?.isCharging ?? false,
+      isAwake: isAwake,
       physicalHandle: null,
       imageSmall: info.imageSmall,
       imageLarge: info.imageLarge,
@@ -1369,6 +1464,11 @@ class DeviceScope {
       await sub.cancel();
     }
     _batterySubs.clear();
+    for (final sub in _statusSubs.values) {
+      await sub.cancel();
+    }
+    _statusSubs.clear();
+    _reQueryingPaths.clear();
     for (final sub in _performanceSubs.values) {
       await sub.cancel();
     }

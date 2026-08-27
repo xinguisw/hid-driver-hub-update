@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'device_type.dart';
 import 'package:driver_hub/layer5_codec/codec_exception.dart';
 import 'package:driver_hub/layer5_codec/button_mapping_wire_order.dart';
@@ -7,15 +8,67 @@ import 'package:driver_hub/layer5_codec/macro_codec.dart';
 import 'package:driver_hub/layer5_codec/protocol_transport.dart';
 import 'package:flutter/foundation.dart';
 
-/// Handshake result: the device type and id reported by the device.
+/// Handshake result: the device type, dynamic session token, and hardware identity
+/// (CID, MID, Type) reported by the device.
 class DeviceHandshake {
   /// Device type reported by the device, parsed from its wire byte.
   final DeviceType? deviceType;
 
-  /// Device id reported by the device, comparable to the catalog `devId`.
-  final String deviceId;
+  /// The 4-byte session token issued by the device upon successful handshake.
+  final String sessionToken;
 
-  const DeviceHandshake({required this.deviceType, required this.deviceId});
+  /// Customer/Brand ID (e.g. 0x01 = Esmart, 0x02 = ATK).
+  final int? cid;
+
+  /// Hardware Model ID (e.g. 0x01 = M7X PRO, 0x02 = M7X, 0x03 = M7X SE).
+  final int? mid;
+
+  /// Capability Profile Type (e.g. 0x05 = 8K Wireless, 0x00 = 1K Wireless).
+  final int? profileType;
+
+  /// Backwards-compatible alias for [sessionToken].
+  String get deviceId => sessionToken;
+
+  /// Composite identifier for catalog/blueprint lookup: e.g. "01_01" (CID_MID).
+  String get modelKey {
+    if (cid != null && mid != null) {
+      return '${cid!.toRadixString(16).padLeft(2, '0')}_${mid!.toRadixString(16).padLeft(2, '0')}';
+    }
+    return sessionToken;
+  }
+
+  const DeviceHandshake({
+    this.deviceType = DeviceType.mouse,
+    required this.sessionToken,
+    this.cid,
+    this.mid,
+    this.profileType,
+  });
+}
+
+/// Device status query result: awake / asleep / power state (A3 reply).
+class DeviceStatusResult {
+  /// Raw status byte returned by the device (e.g. 0x01 = awake, 0x00 = asleep).
+  final int statusCode;
+
+  /// True if the device is awake and active.
+  final bool isAwake;
+
+  /// True if the device is in sleep/standby mode.
+  bool get isAsleep => !isAwake;
+
+  /// Raw ACK payload.
+  final Uint8List raw;
+
+  const DeviceStatusResult({
+    required this.statusCode,
+    required this.isAwake,
+    required this.raw,
+  });
+
+  @override
+  String toString() =>
+      'DeviceStatusResult(statusCode=0x${statusCode.toRadixString(16)}, isAwake=$isAwake)';
 }
 
 /// Battery query result: charge level and charging state.
@@ -223,6 +276,8 @@ abstract class DeviceProtocol {
     required int deviceType,
     required String deviceId,
   });
+  Future<DeviceStatusResult> queryDeviceStatus(ProtocolTransport session);
+  DeviceStatusResult? parseDeviceStatus(Uint8List raw);
   Future<BatteryResult> queryBattery(ProtocolTransport session);
   Future<FirmwareResult> queryFirmware(ProtocolTransport session);
 
@@ -302,6 +357,7 @@ class MouseProtocol implements DeviceProtocol {
   static const int _frameLength = 32;
   static const int _askOpcode = 0xA1;
   static const int _ackOpcode = 0xA1;
+  static const int _deviceStatusOpcode = 0xA3;
   static const int _batteryOpcode = 0xA4;
   static const int _firmwareOpcode = 0xA8;
 
@@ -336,12 +392,14 @@ class MouseProtocol implements DeviceProtocol {
   // Payload offsets (report id stripped). hid_tool keeps the report id on
   // desktop and drops it on web (WebHID oninputreport has no report id prefix).
   static const int _ackOpcodeOffset = 0;
-  static const int _ackDeviceTypeOffset = 5;
-  static const int _ackDeviceIdOffset = 6;
-  // why: A1 ack payload is len 5: [deviceType][idLo][idHi][0][0]. The device
-  // id is 2 bytes (idLo + idHi), already in catalog order on the wire (the
-  // mock doc's "AA02" is the customer's display; the device sends 02AA).
-  static const int _deviceIdLength = 2;
+  static const int _ackTokenOffset = 5;
+  static const int _sessionTokenLength = 4;
+  static const int _ackCidOffset = 9;
+  static const int _ackMidOffset = 10;
+  static const int _ackTypeOffset = 11;
+
+  // A3 device status ack offsets (report id stripped).
+  static const int _statusByteOffset = 5;
 
   // A4 battery ack offsets (report id stripped).
   static const int _batteryPercentOffset = 5; // 0..100
@@ -376,35 +434,32 @@ class MouseProtocol implements DeviceProtocol {
     final result = _parseAck(ack);
     debugPrint(
       '[proto] handshake: deviceType=${result.deviceType} '
-      'deviceId="${result.deviceId}"',
+      'sessionToken="${result.sessionToken}" modelKey="${result.modelKey}"',
     );
     return result;
   }
 
-  /// Builds the A1 handshake ask with the expected device type + id.
+  /// Builds the A1 handshake ask with a 4-byte random challenge nonce.
   ///
-  /// why: the firmware echoes the sent type/id back; an all-zero probe makes
-  /// it reply all zeros (no match). Offsets after report-id strip:
-  /// `[A1][0][0][0][len][deviceType][idLo][idHi]` — type at 5, id at 6-7.
+  /// Offsets after report-id strip:
+  /// `[A1][0][0][0][len=4][nonceB0][nonceB1][nonceB2][nonceB3]...`
   Uint8List _buildAskFrame({
     required int deviceType,
     required String deviceId,
   }) {
     final frame = Uint8List(_frameLength);
     frame[0] = _askOpcode;
-    frame[5] = deviceType;
-    // deviceId is a 4-hex-char catalog form (e.g. "02AA"): byte 0 = 0x02,
-    // byte 1 = 0xAA, sent in that order per "the id, 02 AA".
-    if (deviceId.length == 4) {
-      frame[6] = int.parse(deviceId.substring(0, 2), radix: 16);
-      frame[7] = int.parse(deviceId.substring(2, 4), radix: 16);
+    frame[4] = 0x04; // 4-byte challenge nonce payload length
+    final rand = Random.secure();
+    for (var i = 0; i < 4; i++) {
+      frame[5 + i] = rand.nextInt(256);
     }
     return frame;
   }
 
   DeviceHandshake _parseAck(Uint8List raw) {
     final ack = _stripReportId(raw);
-    if (ack.length < _ackDeviceIdOffset + _deviceIdLength) {
+    if (ack.length < 9) {
       throw FormatException('Handshake ack too short: ${ack.length} bytes');
     }
     final opcode = ack[_ackOpcodeOffset];
@@ -413,14 +468,95 @@ class MouseProtocol implements DeviceProtocol {
         'Unexpected handshake ack opcode: 0x${opcode.toRadixString(16)}',
       );
     }
-    final idBytes = ack.sublist(
-      _ackDeviceIdOffset,
-      _ackDeviceIdOffset + _deviceIdLength,
-    );
+
+    final payloadLen = (ack.length > _lenOff) ? ack[_lenOff] : 0;
+
+    // Modern ATK/Pulsar-style Handshake (len >= 7):
+    // Layout: [A1][0..3][len=7][tok0][tok1][tok2][tok3][CID][MID][Type]
+    if (payloadLen >= 7 && ack.length >= 12) {
+      final tokenBytes = ack.sublist(
+        _ackTokenOffset,
+        _ackTokenOffset + _sessionTokenLength,
+      );
+      final parsedToken = tokenBytes.reversed
+          .map((b) => b.toRadixString(16).padLeft(2, '0'))
+          .join();
+      final cid = ack[_ackCidOffset];
+      final mid = ack[_ackMidOffset];
+      final profileType = ack[_ackTypeOffset];
+      return DeviceHandshake(
+        deviceType: DeviceType.mouse,
+        sessionToken: parsedToken,
+        cid: cid,
+        mid: mid,
+        profileType: profileType,
+      );
+    }
+
+    // Legacy Telink Handshake fallback:
+    // Layout: [A1][0..3][len=5][devType][tok0][tok1][tok2][tok3]
+    final availTokenLen = (ack.length >= 10) ? _sessionTokenLength : 2;
+    final tokenBytes = ack.sublist(6, 6 + availTokenLen);
+    final parsedToken = tokenBytes.reversed
+        .map((b) => b.toRadixString(16).padLeft(2, '0'))
+        .join();
     return DeviceHandshake(
-      deviceType: DeviceType.fromCode(ack[_ackDeviceTypeOffset]),
-      deviceId: idBytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join(),
+      deviceType: DeviceType.fromCode(ack[5]),
+      sessionToken: parsedToken,
     );
+  }
+
+  @override
+  Future<DeviceStatusResult> queryDeviceStatus(ProtocolTransport session) async {
+    final ask = _buildDeviceStatusFrame();
+    debugPrint('[proto] device status: sending ask ${_hex(ask)}');
+    final ack = await session.sendAndWait(
+      data: ask,
+      reportId: _reportId,
+      reportLength: _frameLength,
+      match: (raw) => matchesOpcode(raw, _deviceStatusOpcode),
+      timeout: _sendTimeout,
+    );
+    debugPrint('[proto] device status: received ack ${_hex(ack)} (${ack.length}B)');
+    return _parseDeviceStatus(ack);
+  }
+
+  Uint8List _buildDeviceStatusFrame() {
+    final frame = Uint8List(_frameLength); // 32 bytes, all 00
+    frame[0] = _deviceStatusOpcode; // A3, report id 7, rest 00 — no CRC
+    return frame;
+  }
+
+  DeviceStatusResult _parseDeviceStatus(Uint8List raw) {
+    final ack = _stripReportId(raw);
+    if (ack.isEmpty) {
+      throw FormatException('Device status ack empty');
+    }
+    final opcode = ack[0];
+    if (opcode != _deviceStatusOpcode) {
+      throw FormatException(
+        'Unexpected device status ack opcode: 0x${opcode.toRadixString(16)}',
+      );
+    }
+    final statusCode = ack.length > _statusByteOffset
+        ? ack[_statusByteOffset]
+        : (ack.length > 1 ? ack[1] : 0);
+    final isAwake = statusCode != 0x00;
+    return DeviceStatusResult(
+      statusCode: statusCode,
+      isAwake: isAwake,
+      raw: ack,
+    );
+  }
+
+  @override
+  DeviceStatusResult? parseDeviceStatus(Uint8List raw) {
+    if (!matchesOpcode(raw, _deviceStatusOpcode)) return null;
+    try {
+      return _parseDeviceStatus(raw);
+    } catch (_) {
+      return null;
+    }
   }
 
   @override
@@ -1323,6 +1459,7 @@ class MouseProtocol implements DeviceProtocol {
 
   static bool _isBodyOpcode(int b) =>
       b == _askOpcode ||
+      b == _deviceStatusOpcode ||
       b == _batteryOpcode ||
       b == _firmwareOpcode ||
       b == _getOpcode ||

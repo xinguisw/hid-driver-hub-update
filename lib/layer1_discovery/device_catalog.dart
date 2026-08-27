@@ -22,6 +22,8 @@ class DeviceCatalogEntry {
   final int usagePage;
   final DeviceImage image;
   final List<DeviceMode> modes;
+  final int? cid;
+  final int? mid;
 
   const DeviceCatalogEntry({
     required this.devId,
@@ -32,6 +34,8 @@ class DeviceCatalogEntry {
     required this.usagePage,
     required this.image,
     required this.modes,
+    this.cid,
+    this.mid,
   });
 
   factory DeviceCatalogEntry.fromJson(Map<String, dynamic> json) {
@@ -46,6 +50,8 @@ class DeviceCatalogEntry {
       modes: (json['modes'] as List)
           .map((m) => DeviceMode.fromJson(m as Map<String, dynamic>))
           .toList(),
+      cid: json['cid'] as int?,
+      mid: json['mid'] as int?,
     );
   }
 }

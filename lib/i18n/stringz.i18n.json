@@ -83,7 +83,7 @@
         "levels": "Levels",
         "dpiLevel": "DPI {level}",
         "dpiStageColor": "DPI stage color",
-        "addStage": "Add Stage",
+        "addStage": "Add",
         "removeStage": "Remove Stage",
         "deleteStage": "Delete DPI stage {level}"
     },

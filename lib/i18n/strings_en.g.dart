@@ -312,8 +312,8 @@ class Translations$performance$en {
 	/// en: 'DPI stage color'
 	String get dpiStageColor => 'DPI stage color';
 
-	/// en: 'Add Stage'
-	String get addStage => 'Add Stage';
+	/// en: 'Add'
+	String get addStage => 'Add';
 
 	/// en: 'Remove Stage'
 	String get removeStage => 'Remove Stage';
@@ -1128,7 +1128,7 @@ extension on Translations {
 			'performance.levels' => 'Levels',
 			'performance.dpiLevel' => ({required Object level}) => 'DPI ${level}',
 			'performance.dpiStageColor' => 'DPI stage color',
-			'performance.addStage' => 'Add Stage',
+			'performance.addStage' => 'Add',
 			'performance.removeStage' => 'Remove Stage',
 			'performance.deleteStage' => ({required Object level}) => 'Delete DPI stage ${level}',
 			'parameter.sensorFeature' => 'Sensor features',

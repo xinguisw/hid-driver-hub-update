@@ -112,16 +112,16 @@ class _HubLeftSidebarState extends State<HubLeftSidebar> {
 
                   // ---- Destination List ----
                   Expanded(
-                    child: ListView.builder(
+                    child: ListView(
                       padding: const EdgeInsets.symmetric(vertical: 4),
-                      itemCount: _destinations.length,
-                      itemBuilder: (context, index) {
-                        return _buildDestinationTile(
-                          context,
-                          theme,
-                          _destinations[index],
-                        );
-                      },
+                      children: [
+                        for (final destination in _destinations)
+                          _buildDestinationTile(
+                            context,
+                            theme,
+                            destination,
+                          ),
+                      ],
                     ),
                   ),
 

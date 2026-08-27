@@ -68,7 +68,7 @@ class HubBacklightPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -78,7 +78,7 @@ class HubBacklightPanel extends StatelessWidget {
             rgbModeId: rgbModeId,
             onModeChanged: onModeChanged,
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 14),
           // why: FR-RGB-003 — the color palette only applies to color modes
           // (constant / single breathing). For modes whose supportsColor is
           // false (off / multi / running / cycle) the device ignores R/G/B, so
@@ -90,7 +90,7 @@ class HubBacklightPanel extends StatelessWidget {
             enabled: _selectedModeSupportsColor(),
             onColorChanged: onColorChanged,
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 14),
           _LevelBox(
             title: t.backlight.brightness,
             description: t.backlight.brightnessDesc,
@@ -102,7 +102,7 @@ class HubBacklightPanel extends StatelessWidget {
             // the same table) — not the generic 0..100% percent-of-index.
             labels: const ['0%', '25%', '50%', '75%', '100%'],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 14),
           _LevelBox(
             title: t.backlight.speed,
             description: t.backlight.speedDesc,
@@ -111,7 +111,7 @@ class HubBacklightPanel extends StatelessWidget {
             selected: rgbSpeed,
             onChanged: onSpeedChanged,
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 14),
           // why: RGB power-saving is a chip row like brightness/speed (not a
           // dropdown) per request; options come from the capability schema.
           _LevelBox(
@@ -154,7 +154,7 @@ class _CardBox extends StatelessWidget {
   const _CardBox({
     required this.child,
     this.isActive = false,
-    this.padding = const EdgeInsets.all(12),
+    this.padding = const EdgeInsets.all(16),
   });
 
   final Widget child;
@@ -267,57 +267,19 @@ class _ModeBox extends StatelessWidget {
 
     return _CardBox(
       isActive: rgbModeId != null,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       child: LayoutBuilder(
         builder: (context, constraints) {
           final isWide = constraints.maxWidth >= 640;
 
-          final titleSection = Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.primary.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Icon(
-                  Icons.lightbulb_outline,
-                  size: 16,
-                  color: theme.colorScheme.primary,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      t.backlight.mode,
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      t.backlight.modeDesc,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant.withValues(
-                          alpha: 0.75,
-                        ),
-                        fontSize: 11,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+          final titleSection = _FieldTitle(
+            title: t.backlight.mode,
+            description: t.backlight.modeDesc,
+            icon: Icons.lightbulb_outline,
           );
 
           final dropdownWidget = Container(
-            height: 38,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
+            height: 42,
+            padding: const EdgeInsets.symmetric(horizontal: 14),
             decoration: BoxDecoration(
               color: isDark ? const Color(0xFF26282E) : Colors.white,
               borderRadius: BorderRadius.circular(10),
@@ -343,7 +305,10 @@ class _ModeBox extends StatelessWidget {
                     : null,
                 hint: Text(
                   t.backlight.selectModeHint,
-                  style: const TextStyle(fontSize: 13),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
                 menuMaxHeight: 240,
                 borderRadius: BorderRadius.circular(10),
@@ -356,8 +321,8 @@ class _ModeBox extends StatelessWidget {
                       value: rgbModes[i].id,
                       child: Text(
                         _labelAt(i),
-                        style: const TextStyle(
-                          fontSize: 12.5,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontSize: 13,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -383,7 +348,7 @@ class _ModeBox extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 titleSection,
-                const SizedBox(height: 10),
+                const SizedBox(height: 12),
                 dropdownWidget,
               ],
             );
@@ -531,82 +496,38 @@ class _ColorBoxState extends State<_ColorBox> {
 
     final body = _CardBox(
       isActive: widget.enabled,
-      padding: const EdgeInsets.all(14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           LayoutBuilder(
             builder: (context, constraints) {
               final isWide = constraints.maxWidth >= 640;
-              final titleSection = Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.primary.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(6),
+              final titleSection = _FieldTitle(
+                title: t.backlight.color,
+                description: widget.enabled
+                    ? t.backlight.colorDescEnabled
+                    : t.backlight.colorDescDisabled,
+                icon: Icons.color_lens_outlined,
+                trailing: Container(
+                  width: 20,
+                  height: 20,
+                  decoration: BoxDecoration(
+                    color: color,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: theme.colorScheme.outline.withValues(
+                        alpha: 0.4,
+                      ),
+                      width: 1.5,
                     ),
-                    child: Icon(
-                      Icons.color_lens_outlined,
-                      size: 16,
-                      color: theme.colorScheme.primary,
-                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: color.withValues(alpha: 0.35),
+                        blurRadius: 4,
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              t.backlight.color,
-                              style: theme.textTheme.titleSmall?.copyWith(
-                                fontWeight: FontWeight.w600,
-                                fontSize: 13,
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            // Live Color Swatch preview
-                            Container(
-                              width: 20,
-                              height: 20,
-                              decoration: BoxDecoration(
-                                color: color,
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: theme.colorScheme.outline.withValues(
-                                    alpha: 0.4,
-                                  ),
-                                  width: 1.5,
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: color.withValues(alpha: 0.35),
-                                    blurRadius: 4,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          widget.enabled
-                              ? t.backlight.colorDescEnabled
-                              : t.backlight.colorDescDisabled,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant
-                                .withValues(alpha: 0.75),
-                            fontSize: 11,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+                ),
               );
 
               final hexFieldWidget = Row(
@@ -616,18 +537,18 @@ class _ColorBoxState extends State<_ColorBox> {
                     child: Text(
                       t.backlight.colorCode,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
+                      style: theme.textTheme.bodySmall?.copyWith(
                         fontSize: 12,
                         color: theme.colorScheme.onSurfaceVariant.withValues(
-                          alpha: 0.8,
+                          alpha: 0.85,
                         ),
                       ),
                     ),
                   ),
                   const SizedBox(width: 8),
                   SizedBox(
-                    width: 84,
-                    height: 32,
+                    width: 90,
+                    height: 34,
                     child: TextField(
                       controller: _hexController,
                       enabled: widget.enabled,
@@ -640,7 +561,7 @@ class _ColorBoxState extends State<_ColorBox> {
                       decoration: InputDecoration(
                         isDense: true,
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(6),
+                          borderRadius: BorderRadius.circular(8),
                         ),
                         prefixText: '#',
                         contentPadding: const EdgeInsets.symmetric(
@@ -651,7 +572,7 @@ class _ColorBoxState extends State<_ColorBox> {
                       style: const TextStyle(
                         fontFamily: 'Poppins',
                         fontFamilyFallback: AppTheme.fontFallbacks,
-                        fontSize: 12,
+                        fontSize: 12.5,
                         fontWeight: FontWeight.w600,
                       ),
                       onChanged: _onHexChanged,
@@ -674,7 +595,7 @@ class _ColorBoxState extends State<_ColorBox> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     titleSection,
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 12),
                     hexFieldWidget,
                   ],
                 );
@@ -947,7 +868,80 @@ class _PresetColorSwatch extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Compact Level Box with Description (Brightness, Speed, Power Saving)
+// Unified Field Title Helper
+// ---------------------------------------------------------------------------
+
+class _FieldTitle extends StatelessWidget {
+  const _FieldTitle({
+    required this.title,
+    this.description,
+    this.icon,
+    this.trailing,
+  });
+
+  final String title;
+  final String? description;
+  final IconData? icon;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          children: [
+            if (icon != null) ...[
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, size: 16, color: theme.colorScheme.primary),
+              ),
+              const SizedBox(width: 10),
+            ],
+            Expanded(
+              child: Row(
+                children: [
+                  Text(
+                    title,
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: theme.colorScheme.onSurface,
+                      fontSize: 14,
+                    ),
+                  ),
+                  if (trailing != null) ...[
+                    const SizedBox(width: 10),
+                    trailing!,
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+        if (description != null) ...[
+          const SizedBox(height: 6),
+          Text(
+            description!,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.85),
+              height: 1.35,
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Unified Level Box with Description (Brightness, Speed, Power Saving)
 // ---------------------------------------------------------------------------
 
 class _LevelBox extends StatelessWidget {
@@ -976,66 +970,26 @@ class _LevelBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final pctDenom = levels > 1 ? (levels - 1) : 1;
     final useLabels = labels != null && labels!.length == levels;
 
     return _CardBox(
       isActive: selected != null,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final isWide = constraints.maxWidth >= 640;
-
-          final titleWidget = Row(
-            children: [
-              if (icon != null) ...[
-                Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.primary.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Icon(icon, size: 16, color: theme.colorScheme.primary),
-                ),
-                const SizedBox(width: 10),
-              ],
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      title,
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13,
-                      ),
-                    ),
-                    if (description != null) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        description!,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant.withValues(
-                            alpha: 0.75,
-                          ),
-                          fontSize: 11,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ],
-          );
-
-          final pillsWidget = Wrap(
-            spacing: 6,
-            runSpacing: 6,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _FieldTitle(
+            title: title,
+            description: description,
+            icon: icon,
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
             children: [
               for (var i = 0; i < levels; i++)
-                _SelectablePill(
+                _SelectableChip(
                   label: useLabels
                       ? labels![i]
                       : '${(100 * i / pctDenom).round()}',
@@ -1043,37 +997,24 @@ class _LevelBox extends StatelessWidget {
                   onTap: onChanged == null ? null : () => onChanged!(i),
                 ),
             ],
-          );
-
-          if (isWide) {
-            return Row(
-              children: [
-                Expanded(child: titleWidget),
-                const SizedBox(width: 16),
-                pillsWidget,
-              ],
-            );
-          } else {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [titleWidget, const SizedBox(height: 10), pillsWidget],
-            );
-          }
-        },
+          ),
+        ],
       ),
     );
   }
 }
 
-class _SelectablePill extends StatelessWidget {
-  const _SelectablePill({
+class _SelectableChip extends StatelessWidget {
+  const _SelectableChip({
     required this.label,
     required this.selected,
+    this.icon,
     this.onTap,
   });
 
   final String label;
   final bool selected;
+  final IconData? icon;
   final VoidCallback? onTap;
 
   @override
@@ -1085,17 +1026,15 @@ class _SelectablePill extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(10),
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 140),
-          constraints: const BoxConstraints(minWidth: 46),
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          alignment: Alignment.center,
+          duration: const Duration(milliseconds: 160),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           decoration: BoxDecoration(
             color: selected
                 ? theme.colorScheme.primary
                 : (isDark ? const Color(0xFF26282E) : Colors.white),
-            borderRadius: BorderRadius.circular(6),
+            borderRadius: BorderRadius.circular(10),
             border: Border.all(
               color: selected
                   ? theme.colorScheme.primary
@@ -1108,8 +1047,8 @@ class _SelectablePill extends StatelessWidget {
                 ? [
                     BoxShadow(
                       color: theme.colorScheme.primary.withValues(alpha: 0.35),
-                      blurRadius: 6,
-                      offset: const Offset(0, 2),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2.5),
                     ),
                   ]
                 : [
@@ -1117,23 +1056,43 @@ class _SelectablePill extends StatelessWidget {
                       color: Colors.black.withValues(
                         alpha: isDark ? 0.25 : 0.05,
                       ),
-                      blurRadius: 3,
-                      offset: const Offset(0, 1),
+                      blurRadius: 4,
+                      offset: const Offset(0, 1.5),
                     ),
                   ],
           ),
-          child: Text(
-            label,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-              color: selected
-                  ? Colors.white
-                  : (isDark
-                        ? const Color(0xFFE0E3EB)
-                        : const Color(0xFF344054)),
-            ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (icon != null) ...[
+                Icon(
+                  icon,
+                  size: 15,
+                  color: selected
+                      ? Colors.white
+                      : (isDark
+                            ? const Color(0xFFE0E3EB)
+                            : const Color(0xFF344054)),
+                ),
+                const SizedBox(width: 6),
+              ],
+              Flexible(
+                child: Text(
+                  label,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    fontSize: 13,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                    color: selected
+                        ? Colors.white
+                        : (isDark
+                              ? const Color(0xFFE0E3EB)
+                              : const Color(0xFF344054)),
+                    letterSpacing: 0.1,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -1141,13 +1100,13 @@ class _SelectablePill extends StatelessWidget {
   }
 }
 
-/// Backlight power-saving timeout is now rendered as a chip row via
+/// Backlight power-saving timeout is rendered as a chip row via
 /// [_LevelBox] (see build), options sourced from the capability schema.
-/// Formats a sleep timeout (seconds) for a chip label.
+/// Formats a sleep timeout (seconds) for a chip label matching parameter panel style.
 String _sleepLabel(int seconds) {
   if (seconds >= 60 && seconds % 60 == 0) {
     final m = seconds ~/ 60;
-    return '${m}m';
+    return '$m min';
   }
-  return '${seconds}s';
+  return '$seconds sec';
 }

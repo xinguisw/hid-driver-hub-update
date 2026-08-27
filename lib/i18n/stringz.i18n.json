@@ -313,6 +313,6 @@
         "officialWebsite": "Official Website: {url}",
         "lightTheme": "Light Mode",
         "darkTheme": "Dark Mode",
-        "systemTheme": "Follow System"
+        "systemTheme": "System Mode"
     }
 }

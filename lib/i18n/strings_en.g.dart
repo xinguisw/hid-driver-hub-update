@@ -976,8 +976,8 @@ class Translations$appSettings$en {
 	/// en: 'Dark Mode'
 	String get darkTheme => 'Dark Mode';
 
-	/// en: 'Follow System'
-	String get systemTheme => 'Follow System';
+	/// en: 'System Mode'
+	String get systemTheme => 'System Mode';
 }
 
 // Path: views.login
@@ -1302,7 +1302,7 @@ extension on Translations {
 			'appSettings.officialWebsite' => ({required Object url}) => 'Official Website: ${url}',
 			'appSettings.lightTheme' => 'Light Mode',
 			'appSettings.darkTheme' => 'Dark Mode',
-			'appSettings.systemTheme' => 'Follow System',
+			'appSettings.systemTheme' => 'System Mode',
 			_ => null,
 		};
 	}

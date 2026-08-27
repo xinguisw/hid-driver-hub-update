@@ -55,12 +55,12 @@ void main() {
     await tester.tap(find.byKey(const Key('app-setting-threshold')));
     await tester.pumpAndSettle();
 
-    expect(find.text('10%'), findsOneWidget);
-    expect(find.text('20%'), findsAtLeastNWidgets(1));
-    expect(find.text('30%'), findsOneWidget);
-    expect(find.text('40%'), findsOneWidget);
+    expect(find.text('10%'), findsWidgets);
+    expect(find.text('20%'), findsWidgets);
+    expect(find.text('30%'), findsWidgets);
+    expect(find.text('40%'), findsWidgets);
 
-    await tester.tap(find.text('30%').last);
+    await tester.tap(find.text('30%').first);
     await tester.pump();
     expect(threshold.value, 30);
   });

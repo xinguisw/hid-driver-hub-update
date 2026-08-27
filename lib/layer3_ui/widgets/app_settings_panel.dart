@@ -354,32 +354,13 @@ class _AppSettingsPanelState extends State<AppSettingsPanel> {
   Widget _buildPerformanceContent(BuildContext context) {
     return _SettingFieldRow(
       label: t.appSettings.lowBatteryThreshold,
+      expandControl: true,
       control: ValueListenableBuilder<int>(
         valueListenable: widget.lowBatteryThreshold,
-        builder: (ctx, threshold, _) => _SettingsDropdownContainer<int>(
+        builder: (ctx, threshold, _) => _ThresholdSliderControl(
           key: const Key('app-setting-threshold'),
           value: threshold,
-          items: const [
-            DropdownMenuItem(
-              value: 10,
-              child: Text('10%', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
-            ),
-            DropdownMenuItem(
-              value: 20,
-              child: Text('20%', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
-            ),
-            DropdownMenuItem(
-              value: 30,
-              child: Text('30%', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
-            ),
-            DropdownMenuItem(
-              value: 40,
-              child: Text('40%', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
-            ),
-          ],
-          onChanged: (value) {
-            if (value != null) widget.onLowBatteryThresholdChanged(value);
-          },
+          onChanged: widget.onLowBatteryThresholdChanged,
         ),
       ),
     );
@@ -413,10 +394,15 @@ class _AppSettingsPanelState extends State<AppSettingsPanel> {
 
 /// Setting field with a fixed-width left label and aligned control on the right.
 class _SettingFieldRow extends StatelessWidget {
-  const _SettingFieldRow({required this.label, required this.control});
+  const _SettingFieldRow({
+    required this.label,
+    required this.control,
+    this.expandControl = false,
+  });
 
   final String label;
   final Widget control;
+  final bool expandControl;
 
   @override
   Widget build(BuildContext context) {
@@ -435,7 +421,10 @@ class _SettingFieldRow extends StatelessWidget {
             ),
           ),
         ),
-        control,
+        if (expandControl)
+          Expanded(child: control)
+        else
+          control,
       ],
     );
   }
@@ -713,6 +702,133 @@ class _SettingsDropdownContainer<T> extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Continuous slider control with preset tick marks and dynamic percentage label for battery threshold.
+class _ThresholdSliderControl extends StatelessWidget {
+  const _ThresholdSliderControl({
+    super.key,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final int value;
+  final ValueChanged<int> onChanged;
+
+  static const List<int> presetTicks = [10, 20, 30, 40];
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final clampedValue = value.clamp(10, 40).toDouble();
+
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 520),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: SliderTheme(
+                  data: SliderTheme.of(context).copyWith(
+                    trackHeight: 3,
+                    activeTrackColor: theme.colorScheme.primary,
+                    inactiveTrackColor: (isDark ? Colors.white : Colors.black)
+                        .withValues(alpha: 0.15),
+                    thumbColor: theme.colorScheme.primary,
+                    overlayColor: theme.colorScheme.primary.withValues(alpha: 0.15),
+                    thumbShape: const RoundSliderThumbShape(
+                      enabledThumbRadius: 6,
+                      elevation: 2,
+                    ),
+                    overlayShape: const RoundSliderOverlayShape(
+                      overlayRadius: 14,
+                    ),
+                  ),
+                  child: Slider(
+                    value: clampedValue,
+                    min: 10,
+                    max: 40,
+                    onChanged: (v) {
+                      // Find closest preset or continuous value snapped to nearest 10%
+                      final round10 = (v / 10).round() * 10;
+                      final finalVal = round10.clamp(10, 40);
+                      if (finalVal != value) {
+                        onChanged(finalVal);
+                      }
+                    },
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              // Dynamic percentage badge
+              Container(
+                width: 48,
+                height: 28,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF1B1C20) : Colors.white,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                    color: (isDark
+                        ? const Color(0xFF3F424B)
+                        : const Color(0xFFD0D5DD)),
+                    width: 1.0,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
+                      blurRadius: 3,
+                      offset: const Offset(0, 1),
+                    ),
+                  ],
+                ),
+                child: Text(
+                  '$value%',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12,
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          // Preset tick marks row
+          Padding(
+            padding: const EdgeInsets.only(left: 12, right: 64, top: 2),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: presetTicks.map((tick) {
+                final isSelected = tick == value;
+                return InkWell(
+                  onTap: () => onChanged(tick),
+                  borderRadius: BorderRadius.circular(4),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                    child: Text(
+                      '$tick%',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        fontSize: 11,
+                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                        color: isSelected
+                            ? theme.colorScheme.primary
+                            : theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.65),
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+        ],
       ),
     );
   }

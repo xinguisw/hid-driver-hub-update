@@ -953,7 +953,7 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
                     child: Row(
                       children: [
                         Icon(
-                          Icons.extension_rounded,
+                          Icons.format_list_bulleted_rounded,
                           size: 18,
                           color: theme.colorScheme.primary,
                         ),

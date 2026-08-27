@@ -69,8 +69,6 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
 
   bool get _hasScope => widget.scope != null && widget.card != null;
 
-
-
   @override
   void initState() {
     super.initState();
@@ -791,7 +789,7 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
                     child: Row(
                       children: [
                         Icon(
-                          Icons.extension_rounded,
+                          Icons.format_list_bulleted_rounded,
                           size: 18,
                           color: theme.colorScheme.primary,
                         ),
@@ -1034,16 +1032,21 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
                                         alpha: 0.12,
                                       )
                                     : (isDark
-                                          ? theme.colorScheme
+                                          ? theme
+                                                .colorScheme
                                                 .surfaceContainerHighest
                                                 .withValues(alpha: 0.2)
-                                          : Colors.grey.withValues(alpha: 0.05)),
+                                          : Colors.grey.withValues(
+                                              alpha: 0.05,
+                                            )),
                                 borderRadius: BorderRadius.circular(10),
                                 border: Border.all(
                                   color: isSelected
                                       ? theme.colorScheme.primary
                                       : (isDark
-                                            ? Colors.white.withValues(alpha: 0.1)
+                                            ? Colors.white.withValues(
+                                                alpha: 0.1,
+                                              )
                                             : Colors.black.withValues(
                                                 alpha: 0.08,
                                               )),
@@ -1150,9 +1153,8 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
                                   } else if (_error != null &&
                                       (_error ==
                                               t.macro.nameTooLong(
-                                                max:
-                                                    MacroDefinition
-                                                        .maxNameLength,
+                                                max: MacroDefinition
+                                                    .maxNameLength,
                                               ) ||
                                           _error!.startsWith(
                                             'Macro name must not exceed',
@@ -1257,15 +1259,17 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
                                           mode == MacroMode.loop
                                               ? t.macro.modes.loop
                                               : (mode == MacroMode.stopOnAnyKey
-                                                  ? t.macro.modes.stopOnAnyKey
-                                                  : t.macro.modes.playOnHold),
+                                                    ? t.macro.modes.stopOnAnyKey
+                                                    : t.macro.modes.playOnHold),
                                           overflow: TextOverflow.ellipsis,
                                         ),
                                       ),
                                   ],
                                   onChanged: (mode) {
                                     if (mode != null) {
-                                      _updateDraft((d) => d.copyWith(mode: mode));
+                                      _updateDraft(
+                                        (d) => d.copyWith(mode: mode),
+                                      );
                                     }
                                   },
                                 ),
@@ -1316,10 +1320,12 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
                                       _SelectableChip(
                                         label: t.macro.recordedDelay,
                                         selected:
-                                            _delayMode == MacroDelayMode.recorded,
+                                            _delayMode ==
+                                            MacroDelayMode.recorded,
                                         onTap: () {
                                           setState(() {
-                                            _delayMode = MacroDelayMode.recorded;
+                                            _delayMode =
+                                                MacroDelayMode.recorded;
                                             if (_error != null &&
                                                 _error!.startsWith(
                                                   'Fixed delay must be between',
@@ -1419,7 +1425,9 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
                                 )
                               else
                                 ConstrainedBox(
-                                  constraints: const BoxConstraints(maxHeight: 280),
+                                  constraints: const BoxConstraints(
+                                    maxHeight: 280,
+                                  ),
                                   child: ListView.builder(
                                     controller: _recordScrollController,
                                     shrinkWrap: true,
@@ -1446,7 +1454,9 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
                             runSpacing: 8,
                             children: [
                               OutlinedButton(
-                                onPressed: _loading || _recording ? null : _reset,
+                                onPressed: _loading || _recording
+                                    ? null
+                                    : _reset,
                                 style: _macroOutlinedButtonStyle(context),
                                 child: Text(t.macro.reset),
                               ),
@@ -1455,12 +1465,16 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
                                 return canSave
                                     ? FilledButton(
                                         onPressed: _save,
-                                        style: _macroFilledSaveButtonStyle(context),
+                                        style: _macroFilledSaveButtonStyle(
+                                          context,
+                                        ),
                                         child: Text(t.macro.save),
                                       )
                                     : OutlinedButton(
                                         onPressed: null,
-                                        style: _macroDimmedSaveButtonStyle(context),
+                                        style: _macroDimmedSaveButtonStyle(
+                                          context,
+                                        ),
                                         child: Text(t.macro.save),
                                       );
                               }(),
@@ -1817,8 +1831,6 @@ ButtonStyle _macroDimmedSaveButtonStyle(BuildContext context) {
   );
 }
 
-
-
 class _SelectableChip extends StatelessWidget {
   const _SelectableChip({
     required this.label,
@@ -1990,7 +2002,7 @@ class _MacroRow extends StatelessWidget {
 
     final displayLabel = action.label != null
         ? (CatalogLocalization.localizeLabelString(action.label!, t) ??
-            action.label!)
+              action.label!)
         : '0x${action.keyCode.toRadixString(16)}';
 
     return Container(

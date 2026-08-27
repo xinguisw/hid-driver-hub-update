@@ -3,9 +3,10 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('LowBatteryAlertPolicy', () {
-    test('notifies once per device while it remains low', () {
+    test('notifies on threshold and re-emits on every 10% step below threshold', () {
       final policy = LowBatteryAlertPolicy();
 
+      // Alert at 20%
       expect(
         policy.shouldNotify(
           devicePath: 'mouse-a',
@@ -15,6 +16,7 @@ void main() {
         ),
         isTrue,
       );
+      // Same tier (15% is in the same tier 10-19% or between milestones), does not spam
       expect(
         policy.shouldNotify(
           devicePath: 'mouse-a',
@@ -24,6 +26,27 @@ void main() {
         ),
         isFalse,
       );
+      // Drops to next 10% milestone (10%) -> notifies again
+      expect(
+        policy.shouldNotify(
+          devicePath: 'mouse-a',
+          batteryPercent: 10,
+          isCharging: false,
+          thresholdPercent: 20,
+        ),
+        isTrue,
+      );
+      // Drops to 5% (tier 0) -> notifies again
+      expect(
+        policy.shouldNotify(
+          devicePath: 'mouse-a',
+          batteryPercent: 5,
+          isCharging: false,
+          thresholdPercent: 20,
+        ),
+        isTrue,
+      );
+      // Separate device
       expect(
         policy.shouldNotify(
           devicePath: 'mouse-b',

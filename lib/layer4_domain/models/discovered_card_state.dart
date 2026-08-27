@@ -26,6 +26,9 @@ class DiscoveredCardState {
   final int batteryPercentage;
   final bool isCharging;
 
+  /// Whether the wireless peripheral is awake and active (A3 status).
+  final bool isAwake;
+
   final dynamic physicalHandle; // raw HID handle, for identity — not rendered
 
   /// Small image asset path — used by the card.
@@ -44,6 +47,7 @@ class DiscoveredCardState {
     this.deviceKey = '',
     required this.batteryPercentage,
     required this.isCharging,
+    this.isAwake = true,
     required this.physicalHandle,
     required this.imageSmall,
     required this.imageLarge,
@@ -59,6 +63,7 @@ class DiscoveredCardState {
     String? deviceKey,
     int? batteryPercentage,
     bool? isCharging,
+    bool? isAwake,
     dynamic physicalHandle,
     String? imageSmall,
     String? imageLarge,
@@ -74,6 +79,7 @@ class DiscoveredCardState {
       deviceKey: deviceKey ?? this.deviceKey,
       batteryPercentage: batteryPercentage ?? this.batteryPercentage,
       isCharging: isCharging ?? this.isCharging,
+      isAwake: isAwake ?? this.isAwake,
       physicalHandle: physicalHandle ?? this.physicalHandle,
       imageSmall: imageSmall ?? this.imageSmall,
       imageLarge: imageLarge ?? this.imageLarge,
@@ -94,6 +100,7 @@ class DiscoveredCardState {
           deviceKey == other.deviceKey &&
           batteryPercentage == other.batteryPercentage &&
           isCharging == other.isCharging &&
+          isAwake == other.isAwake &&
           physicalHandle == other.physicalHandle &&
           imageSmall == other.imageSmall &&
           imageLarge == other.imageLarge;
@@ -109,6 +116,7 @@ class DiscoveredCardState {
       deviceKey.hashCode ^
       batteryPercentage.hashCode ^
       isCharging.hashCode ^
+      isAwake.hashCode ^
       physicalHandle.hashCode ^
       imageSmall.hashCode ^
       imageLarge.hashCode;

@@ -66,4 +66,5 @@ build/installer/hid_driver_hub_installer.exe
 - **[Unified Architecture Dashboard (`index.html`)](file:///c:/Users/USER/Desktop/Software/hid-driver-hub/docs/flows/index.html)**: **Primary Interactive Hub** containing all 11 execution sequences, MVC overviews, settings communication, macro studio lifecycles, and layer-by-layer diagnostics.
 - **[System Architecture Documentation](file:///c:/Users/USER/Desktop/Software/hid-driver-hub/docs/Architecture_Documentation.md)**: Decoupled 6-layer architecture, BLoC state staging, and resilience matrix.
 - **[Flow Diagrams Index (`docs/flows/README.md`)](file:///c:/Users/USER/Desktop/Software/hid-driver-hub/docs/flows/README.md)**: Index and reconciliation logs for all diagrams.
+- **[Protocol Engineering & ATK/Telink Reference](file:///c:/Users/USER/Desktop/Software/hid-driver-hub/docs/PROTOCOL_HANDSHAKE_AND_ATK_REFERENCE.md)**: Comprehensive packet breakdown, challenge-response handshake dynamics, CID/MID/Type mappings, opcode references, and write error handling for Telink B80 and ATK (Compx) protocols.
 

@@ -62,6 +62,7 @@ class DeviceSession implements DeviceSettingsGateway {
   final OsdCodec _osd = const OsdCodec();
 
   final _controller = StreamController<DeviceSessionState>.broadcast();
+  final _statusPushes = StreamController<DeviceStatusResult>.broadcast();
   final _batteryPushes = StreamController<BatteryResult>.broadcast();
   final _performancePushes = StreamController<OsdPerformanceResult>.broadcast();
   StreamSubscription<Uint8List>? _unsolicitedSub;
@@ -74,14 +75,21 @@ class DeviceSession implements DeviceSettingsGateway {
 
   Stream<DeviceSessionState> get state => _controller.stream;
 
+  DeviceStatusResult? _cachedInitialDeviceStatus;
   BatteryResult? _cachedInitialBattery;
   FirmwareResult? _cachedInitialFirmware;
+
+  @override
+  DeviceStatusResult? get initialDeviceStatus => _cachedInitialDeviceStatus;
 
   @override
   BatteryResult? get initialBattery => _cachedInitialBattery;
 
   @override
   FirmwareResult? get initialFirmware => _cachedInitialFirmware;
+
+  @override
+  Stream<DeviceStatusResult> get statusPushes => _statusPushes.stream;
 
   /// OSD report 9 opcode 2 (and web short frames) parsed to battery.
   @override
@@ -146,6 +154,14 @@ class DeviceSession implements DeviceSettingsGateway {
       debugPrint('[session] rehandshake ERROR: $e');
       return false;
     }
+  }
+
+  @override
+  Future<DeviceStatusResult?> queryDeviceStatus() async {
+    if (!isAlive) return null;
+    return _withSilentHandshakeRetry(
+      () => _protocol.queryDeviceStatus(_session),
+    );
   }
 
   @override
@@ -377,7 +393,17 @@ class DeviceSession implements DeviceSettingsGateway {
 
     try {
       await _openTransportWithRetry();
-      debugPrint('[session] opened, querying battery (0xA4) & firmware (0xA8)…');
+      debugPrint('[session] opened, querying status (0xA3), battery (0xA4) & firmware (0xA8)…');
+
+      // 0. Query Device Status (0xA3)
+      try {
+        _cachedInitialDeviceStatus = await _protocol.queryDeviceStatus(_session);
+        debugPrint(
+          '[session] device status (0xA3) queried: awake=${_cachedInitialDeviceStatus?.isAwake} statusCode=${_cachedInitialDeviceStatus?.statusCode}',
+        );
+      } catch (e) {
+        debugPrint('[session] initial device status query soft-fail: $e');
+      }
 
       // 1. Query Battery (0xA4)
       try {
@@ -496,6 +522,13 @@ class DeviceSession implements DeviceSettingsGateway {
     _unsolicitedSub?.cancel();
     _unsolicitedSub = _session.unsolicitedReports.listen((raw) {
       debugPrint('[session] unsolicited ${_hex(raw)} (${raw.length}B)');
+      final status = _protocol.parseDeviceStatus(raw);
+      if (status != null && !_statusPushes.isClosed) {
+        debugPrint(
+          '[session] status push (0xA3): awake=${status.isAwake} statusCode=${status.statusCode} raw=${_hex(raw)}',
+        );
+        _statusPushes.add(status);
+      }
       final performance = _osd.parsePerformance(raw);
       if (performance != null && !_performancePushes.isClosed) {
         debugPrint(
@@ -529,6 +562,7 @@ class DeviceSession implements DeviceSettingsGateway {
     await _unsolicitedSub?.cancel();
     _unsolicitedSub = null;
     await _safeClose();
+    await _statusPushes.close();
     await _batteryPushes.close();
     await _performancePushes.close();
     await _controller.close();

@@ -46,6 +46,31 @@ class DeviceHandshake {
   });
 }
 
+/// Device status query result: awake / asleep / power state (A3 reply).
+class DeviceStatusResult {
+  /// Raw status byte returned by the device (e.g. 0x01 = awake, 0x00 = asleep).
+  final int statusCode;
+
+  /// True if the device is awake and active.
+  final bool isAwake;
+
+  /// True if the device is in sleep/standby mode.
+  bool get isAsleep => !isAwake;
+
+  /// Raw ACK payload.
+  final Uint8List raw;
+
+  const DeviceStatusResult({
+    required this.statusCode,
+    required this.isAwake,
+    required this.raw,
+  });
+
+  @override
+  String toString() =>
+      'DeviceStatusResult(statusCode=0x${statusCode.toRadixString(16)}, isAwake=$isAwake)';
+}
+
 /// Battery query result: charge level and charging state.
 class BatteryResult {
   /// 0..100, or -1 when unknown.
@@ -251,6 +276,8 @@ abstract class DeviceProtocol {
     required int deviceType,
     required String deviceId,
   });
+  Future<DeviceStatusResult> queryDeviceStatus(ProtocolTransport session);
+  DeviceStatusResult? parseDeviceStatus(Uint8List raw);
   Future<BatteryResult> queryBattery(ProtocolTransport session);
   Future<FirmwareResult> queryFirmware(ProtocolTransport session);
 
@@ -330,6 +357,7 @@ class MouseProtocol implements DeviceProtocol {
   static const int _frameLength = 32;
   static const int _askOpcode = 0xA1;
   static const int _ackOpcode = 0xA1;
+  static const int _deviceStatusOpcode = 0xA3;
   static const int _batteryOpcode = 0xA4;
   static const int _firmwareOpcode = 0xA8;
 
@@ -369,6 +397,9 @@ class MouseProtocol implements DeviceProtocol {
   static const int _ackCidOffset = 9;
   static const int _ackMidOffset = 10;
   static const int _ackTypeOffset = 11;
+
+  // A3 device status ack offsets (report id stripped).
+  static const int _statusByteOffset = 5;
 
   // A4 battery ack offsets (report id stripped).
   static const int _batteryPercentOffset = 5; // 0..100
@@ -473,6 +504,59 @@ class MouseProtocol implements DeviceProtocol {
       deviceType: DeviceType.fromCode(ack[5]),
       sessionToken: parsedToken,
     );
+  }
+
+  @override
+  Future<DeviceStatusResult> queryDeviceStatus(ProtocolTransport session) async {
+    final ask = _buildDeviceStatusFrame();
+    debugPrint('[proto] device status: sending ask ${_hex(ask)}');
+    final ack = await session.sendAndWait(
+      data: ask,
+      reportId: _reportId,
+      reportLength: _frameLength,
+      match: (raw) => matchesOpcode(raw, _deviceStatusOpcode),
+      timeout: _sendTimeout,
+    );
+    debugPrint('[proto] device status: received ack ${_hex(ack)} (${ack.length}B)');
+    return _parseDeviceStatus(ack);
+  }
+
+  Uint8List _buildDeviceStatusFrame() {
+    final frame = Uint8List(_frameLength); // 32 bytes, all 00
+    frame[0] = _deviceStatusOpcode; // A3, report id 7, rest 00 — no CRC
+    return frame;
+  }
+
+  DeviceStatusResult _parseDeviceStatus(Uint8List raw) {
+    final ack = _stripReportId(raw);
+    if (ack.isEmpty) {
+      throw FormatException('Device status ack empty');
+    }
+    final opcode = ack[0];
+    if (opcode != _deviceStatusOpcode) {
+      throw FormatException(
+        'Unexpected device status ack opcode: 0x${opcode.toRadixString(16)}',
+      );
+    }
+    final statusCode = ack.length > _statusByteOffset
+        ? ack[_statusByteOffset]
+        : (ack.length > 1 ? ack[1] : 0);
+    final isAwake = statusCode != 0x00;
+    return DeviceStatusResult(
+      statusCode: statusCode,
+      isAwake: isAwake,
+      raw: ack,
+    );
+  }
+
+  @override
+  DeviceStatusResult? parseDeviceStatus(Uint8List raw) {
+    if (!matchesOpcode(raw, _deviceStatusOpcode)) return null;
+    try {
+      return _parseDeviceStatus(raw);
+    } catch (_) {
+      return null;
+    }
   }
 
   @override
@@ -1375,6 +1459,7 @@ class MouseProtocol implements DeviceProtocol {
 
   static bool _isBodyOpcode(int b) =>
       b == _askOpcode ||
+      b == _deviceStatusOpcode ||
       b == _batteryOpcode ||
       b == _firmwareOpcode ||
       b == _getOpcode ||

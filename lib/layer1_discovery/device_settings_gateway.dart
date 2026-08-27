@@ -39,15 +39,21 @@ abstract interface class DeviceSettingsGateway {
 
   bool get isAlive;
 
+  DeviceStatusResult? get initialDeviceStatus;
+
   BatteryResult? get initialBattery;
 
   FirmwareResult? get initialFirmware;
+
+  Stream<DeviceStatusResult> get statusPushes;
 
   Stream<BatteryResult> get batteryPushes;
 
   Stream<OsdPerformanceResult> get performancePushes;
 
   Future<bool> rehandshake();
+
+  Future<DeviceStatusResult?> queryDeviceStatus();
 
   Future<BatteryResult?> queryBattery();
 

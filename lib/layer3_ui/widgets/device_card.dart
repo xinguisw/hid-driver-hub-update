@@ -145,14 +145,25 @@ class _DeviceCardState extends State<DeviceCard> {
                           size: 20,
                           color: iconColor,
                         ),
-                        const SizedBox(width: 14),
+                        if (!widget.state.isAwake) ...[
+                          const SizedBox(width: 14),
+                          Icon(
+                            Icons.bedtime_outlined,
+                            size: 18,
+                            color: iconColor,
+                          ),
+                          const SizedBox(width: 5),
+                          const Text('Sleeping'),
+                        ] else ...[
+                          const SizedBox(width: 14),
 
-                        // Battery status icon
-                        Icon(_batteryIcon, size: 20, color: iconColor),
-                        const SizedBox(width: 5),
+                          // Battery status icon
+                          Icon(_batteryIcon, size: 20, color: iconColor),
+                          const SizedBox(width: 5),
 
-                        // Battery percentage text
-                        Text(_batteryLabel),
+                          // Battery percentage text
+                          Text(_batteryLabel),
+                        ],
                       ],
                     ),
                   ),

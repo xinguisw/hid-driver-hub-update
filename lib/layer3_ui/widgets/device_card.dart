@@ -55,10 +55,7 @@ class _DeviceCardState extends State<DeviceCard> {
       onExit: (_) => setState(() => _isHovered = false),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
-        constraints: BoxConstraints(
-          maxWidth: cardWidth,
-          maxHeight: cardHeight,
-        ),
+        constraints: BoxConstraints(maxWidth: cardWidth, maxHeight: cardHeight),
         decoration: BoxDecoration(
           color: theme.cardColor,
           borderRadius: BorderRadius.circular(20),
@@ -89,7 +86,9 @@ class _DeviceCardState extends State<DeviceCard> {
                       child: Transform.scale(
                         scale: isKb ? 1.0 : 1.25,
                         child: Image.asset(
-                          isKb ? widget.state.imageSmall : widget.state.imageLarge,
+                          isKb
+                              ? widget.state.imageSmall
+                              : widget.state.imageLarge,
                           fit: BoxFit.contain,
                           errorBuilder: (context, error, stackTrace) {
                             if (!isKb) {
@@ -171,11 +170,11 @@ class _DeviceCardState extends State<DeviceCard> {
       return Icons.battery_charging_full;
     }
     final pct = widget.state.batteryPercentage;
-    if (pct < 0) return Icons.battery_alert;
-    if (pct >= 85) return Icons.battery_full;
-    if (pct >= 60) return Icons.battery_5_bar;
-    if (pct >= 35) return Icons.battery_3_bar;
-    if (pct >= 15) return Icons.battery_1_bar;
+    if (pct < 10) return Icons.battery_alert;
+    if (pct >= 100) return Icons.battery_full;
+    if (pct >= 75) return Icons.battery_5_bar;
+    if (pct >= 50) return Icons.battery_3_bar;
+    if (pct >= 25) return Icons.battery_1_bar;
     return Icons.battery_alert;
   }
 

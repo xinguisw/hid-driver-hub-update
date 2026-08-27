@@ -355,12 +355,16 @@ class _AppSettingsPanelState extends State<AppSettingsPanel> {
     return _SettingFieldRow(
       label: t.appSettings.lowBatteryThreshold,
       expandControl: true,
-      control: ValueListenableBuilder<int>(
-        valueListenable: widget.lowBatteryThreshold,
-        builder: (ctx, threshold, _) => _ThresholdSliderControl(
-          key: const Key('app-setting-threshold'),
-          value: threshold,
-          onChanged: widget.onLowBatteryThresholdChanged,
+      control: FractionallySizedBox(
+        widthFactor: 0.5,
+        alignment: Alignment.centerLeft,
+        child: ValueListenableBuilder<int>(
+          valueListenable: widget.lowBatteryThreshold,
+          builder: (ctx, threshold, _) => _ThresholdSliderControl(
+            key: const Key('app-setting-threshold'),
+            value: threshold,
+            onChanged: widget.onLowBatteryThresholdChanged,
+          ),
         ),
       ),
     );
@@ -728,7 +732,7 @@ class _ThresholdSliderControl extends StatelessWidget {
     final clampedValue = value.clamp(10, 40).toDouble();
 
     return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 520),
+      constraints: const BoxConstraints(minWidth: 220),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,

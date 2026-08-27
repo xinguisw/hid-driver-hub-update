@@ -1,6 +1,7 @@
 import 'package:driver_hub/layer3_ui/screens/app_settings_screen.dart';
 import 'package:driver_hub/layer3_ui/widgets/hub_button_mapping_panel.dart';
 import 'package:driver_hub/layer3_ui/theme/theme_controller.dart';
+import 'package:driver_hub/layer4_domain/device_scope.dart';
 import 'package:driver_hub/i18n/strings.g.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -21,6 +22,7 @@ class AppTopBar extends StatefulWidget implements PreferredSizeWidget {
     this.title,
     this.showBackButton = false,
     this.onSettingsPressed,
+    this.scope,
   });
 
   /// Optional title widget (e.g. text). If null, defaults to showing the Newmen brand logos.
@@ -31,6 +33,9 @@ class AppTopBar extends StatefulWidget implements PreferredSizeWidget {
 
   /// Optional callback when the settings button is pressed.
   final VoidCallback? onSettingsPressed;
+
+  /// Optional [DeviceScope] passed when navigating to settings.
+  final DeviceScope? scope;
 
   @override
   State<AppTopBar> createState() => _AppTopBarState();
@@ -215,7 +220,7 @@ class _AppTopBarState extends State<AppTopBar> with WindowListener {
                   Navigator.of(context).push(
                     MaterialPageRoute(
                       settings: const RouteSettings(name: '/app_settings'),
-                      builder: (_) => const AppSettingsScreen(),
+                      builder: (_) => AppSettingsScreen(scope: widget.scope),
                     ),
                   );
                 },

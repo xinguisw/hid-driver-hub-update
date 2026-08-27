@@ -969,6 +969,15 @@ class Translations$appSettings$en {
 
 	/// en: 'Official Website: {url}'
 	String officialWebsite({required Object url}) => 'Official Website: ${url}';
+
+	/// en: 'Light Mode'
+	String get lightTheme => 'Light Mode';
+
+	/// en: 'Dark Mode'
+	String get darkTheme => 'Dark Mode';
+
+	/// en: 'Follow System'
+	String get systemTheme => 'Follow System';
 }
 
 // Path: views.login
@@ -1291,6 +1300,9 @@ extension on Translations {
 			'appSettings.about' => 'About NEWMEN HUB',
 			'appSettings.currentVersion' => ({required Object version}) => 'Current Version: ${version}',
 			'appSettings.officialWebsite' => ({required Object url}) => 'Official Website: ${url}',
+			'appSettings.lightTheme' => 'Light Mode',
+			'appSettings.darkTheme' => 'Dark Mode',
+			'appSettings.systemTheme' => 'Follow System',
 			_ => null,
 		};
 	}

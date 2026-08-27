@@ -125,11 +125,11 @@ void main() {
       await tester.tap(find.byIcon(Icons.settings_outlined));
       await tester.pumpAndSettle();
 
-      expect(find.text('App Setting'), findsOneWidget);
-      expect(find.byIcon(Icons.arrow_back), findsOneWidget);
+      expect(find.text('System'), findsWidgets);
+      expect(find.text('Back'), findsOneWidget);
 
-      // Tap back button in top left corner to return
-      await tester.tap(find.byIcon(Icons.arrow_back));
+      // Tap back button in the left sidebar to return
+      await tester.tap(find.text('Back'));
       await tester.pumpAndSettle();
 
       expect(find.text('Main Page'), findsOneWidget);

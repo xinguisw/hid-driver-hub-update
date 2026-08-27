@@ -310,6 +310,9 @@
         "lowBatteryThreshold": "Low Battery Alert Threshold",
         "about": "About NEWMEN HUB",
         "currentVersion": "Current Version: {version}",
-        "officialWebsite": "Official Website: {url}"
+        "officialWebsite": "Official Website: {url}",
+        "lightTheme": "Light Mode",
+        "darkTheme": "Dark Mode",
+        "systemTheme": "Follow System"
     }
 }

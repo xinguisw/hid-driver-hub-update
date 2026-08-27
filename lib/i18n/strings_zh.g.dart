@@ -444,6 +444,9 @@ class _Translations$appSettings$zh extends Translations$appSettings$en {
 	@override String get about => '关于 NEWMEN HUB';
 	@override String currentVersion({required Object version}) => '当前版本: ${version}';
 	@override String officialWebsite({required Object url}) => '官方网站: ${url}';
+	@override String get lightTheme => '浅色模式';
+	@override String get darkTheme => '深色模式';
+	@override String get systemTheme => '跟随系统';
 }
 
 // Path: views.login
@@ -734,6 +737,9 @@ extension on TranslationsZh {
 			'appSettings.about' => '关于 NEWMEN HUB',
 			'appSettings.currentVersion' => ({required Object version}) => '当前版本: ${version}',
 			'appSettings.officialWebsite' => ({required Object url}) => '官方网站: ${url}',
+			'appSettings.lightTheme' => '浅色模式',
+			'appSettings.darkTheme' => '深色模式',
+			'appSettings.systemTheme' => '跟随系统',
 			_ => null,
 		};
 	}

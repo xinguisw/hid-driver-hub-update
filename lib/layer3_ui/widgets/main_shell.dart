@@ -11,7 +11,7 @@ class MainShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const AppTopBar(),
+      appBar: AppTopBar(scope: scope),
       body: Navigator(
         onGenerateRoute: (settings) {
           return MaterialPageRoute(builder: (_) => DevicesScreen(scope: scope));

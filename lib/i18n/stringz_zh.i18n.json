@@ -310,6 +310,9 @@
         "lowBatteryThreshold": "低电量提醒阈值",
         "about": "关于 NEWMEN HUB",
         "currentVersion": "当前版本: {version}",
-        "officialWebsite": "官方网站: {url}"
+        "officialWebsite": "官方网站: {url}",
+        "lightTheme": "浅色模式",
+        "darkTheme": "深色模式",
+        "systemTheme": "跟随系统"
     }
 }

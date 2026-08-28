@@ -1057,20 +1057,26 @@ class _SelectableChip extends StatelessWidget {
                     ),
                   ],
           ),
-          child: Center(
-            child: Text(
-              label,
-              overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.bodySmall?.copyWith(
-                fontSize: 13,
-                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                color: selected
-                    ? Colors.white
-                    : (isDark
-                          ? const Color(0xFFE0E3EB)
-                          : const Color(0xFF344054)),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Flexible(
+                child: Text(
+                  label,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    fontSize: 13,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                    color: selected
+                        ? Colors.white
+                        : (isDark
+                              ? const Color(0xFFE0E3EB)
+                              : const Color(0xFF344054)),
+                    letterSpacing: 0.1,
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
         ),
       ),

@@ -665,7 +665,7 @@ void main() {
       await tester.pump();
 
       expect(
-        find.text('Fixed delay must be between 0 and 100 ms'),
+        find.text('Fixed delay must be between 1 and 100 ms'),
         findsOneWidget,
       );
 

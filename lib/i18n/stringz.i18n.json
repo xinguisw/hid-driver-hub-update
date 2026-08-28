@@ -282,7 +282,7 @@
         "savedSuccess": "Macro saved successfully",
         "savedFailed": "Macro failed to save",
         "allSlotsUsed": "All 16 macro slots are already in use",
-        "fixedDelayRange": "Fixed delay must be between 0 and 100 ms",
+        "fixedDelayRange": "Fixed delay must be between 1 and 100 ms",
         "saveFailed": "Macro save failed: {error}",
         "loopCountRange": "Loop count must be between 1 and 255",
         "nameTooLong": "Macro name must not exceed {max} characters",

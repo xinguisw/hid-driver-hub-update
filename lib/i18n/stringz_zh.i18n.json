@@ -282,7 +282,7 @@
         "savedSuccess": "宏保存成功",
         "savedFailed": "宏保存失败",
         "allSlotsUsed": "所有 16 个宏槽位均已被使用",
-        "fixedDelayRange": "固定延迟必须在 0 到 100 毫秒之间",
+        "fixedDelayRange": "固定延迟必须在 1 到 100 毫秒之间",
         "saveFailed": "宏保存失败: {error}",
         "loopCountRange": "循环次数必须在 1 到 255 之间",
         "nameTooLong": "宏名称长度不能超过 {max} 个字符",

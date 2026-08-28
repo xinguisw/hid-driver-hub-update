@@ -524,7 +524,7 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
   bool _validateFixedDelay(String value) {
     if (_delayMode != MacroDelayMode.fixed) return true;
     final val = int.tryParse(value);
-    if (val == null || val < 0 || val > 100) {
+    if (val == null || val < 1 || val > 100) {
       setState(() {
         _error = t.macro.fixedDelayRange;
       });
@@ -565,7 +565,7 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
     if (draft == null) return;
     if (_delayMode == MacroDelayMode.fixed) {
       final fixedMs = int.tryParse(_fixedDelayController.text);
-      if (fixedMs == null || fixedMs < 0 || fixedMs > 100) {
+      if (fixedMs == null || fixedMs < 1 || fixedMs > 100) {
         setState(() => _error = t.macro.fixedDelayRange);
         _showToast(message: t.macro.savedFailed, isSuccess: false);
         return;

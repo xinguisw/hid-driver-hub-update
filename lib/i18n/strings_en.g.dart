@@ -893,8 +893,8 @@ class Translations$macro$en {
 	/// en: 'All 16 macro slots are already in use'
 	String get allSlotsUsed => 'All 16 macro slots are already in use';
 
-	/// en: 'Fixed delay must be between 0 and 100 ms'
-	String get fixedDelayRange => 'Fixed delay must be between 0 and 100 ms';
+	/// en: 'Fixed delay must be between 1 and 100 ms'
+	String get fixedDelayRange => 'Fixed delay must be between 1 and 100 ms';
 
 	/// en: 'Macro save failed: {error}'
 	String saveFailed({required Object error}) => 'Macro save failed: ${error}';
@@ -1327,7 +1327,7 @@ extension on Translations {
 			'macro.savedSuccess' => 'Macro saved successfully',
 			'macro.savedFailed' => 'Macro failed to save',
 			'macro.allSlotsUsed' => 'All 16 macro slots are already in use',
-			'macro.fixedDelayRange' => 'Fixed delay must be between 0 and 100 ms',
+			'macro.fixedDelayRange' => 'Fixed delay must be between 1 and 100 ms',
 			'macro.saveFailed' => ({required Object error}) => 'Macro save failed: ${error}',
 			'macro.loopCountRange' => 'Loop count must be between 1 and 255',
 			'macro.nameTooLong' => ({required Object max}) => 'Macro name must not exceed ${max} characters',

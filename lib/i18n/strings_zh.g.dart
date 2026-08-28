@@ -412,7 +412,7 @@ class _Translations$macro$zh extends Translations$macro$en {
 	@override String get savedSuccess => '宏保存成功';
 	@override String get savedFailed => '宏保存失败';
 	@override String get allSlotsUsed => '所有 16 个宏槽位均已被使用';
-	@override String get fixedDelayRange => '固定延迟必须在 0 到 100 毫秒之间';
+	@override String get fixedDelayRange => '固定延迟必须在 1 到 100 毫秒之间';
 	@override String saveFailed({required Object error}) => '宏保存失败: ${error}';
 	@override String get loopCountRange => '循环次数必须在 1 到 255 之间';
 	@override String nameTooLong({required Object max}) => '宏名称长度不能超过 ${max} 个字符';
@@ -762,7 +762,7 @@ extension on TranslationsZh {
 			'macro.savedSuccess' => '宏保存成功',
 			'macro.savedFailed' => '宏保存失败',
 			'macro.allSlotsUsed' => '所有 16 个宏槽位均已被使用',
-			'macro.fixedDelayRange' => '固定延迟必须在 0 到 100 毫秒之间',
+			'macro.fixedDelayRange' => '固定延迟必须在 1 到 100 毫秒之间',
 			'macro.saveFailed' => ({required Object error}) => '宏保存失败: ${error}',
 			'macro.loopCountRange' => '循环次数必须在 1 到 255 之间',
 			'macro.nameTooLong' => ({required Object max}) => '宏名称长度不能超过 ${max} 个字符',

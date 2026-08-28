@@ -156,10 +156,10 @@ class _DeviceCardState extends State<DeviceCard> {
                           ),
                           if (!widget.state.isAwake) ...[
                             const SizedBox(width: 14),
-                            Icon(
+                            const Icon(
                               Icons.bedtime_outlined,
                               size: 18,
-                              color: iconColor,
+                              color: Colors.amber,
                             ),
                             const SizedBox(width: 5),
                             Text(t.devices.sleeping),

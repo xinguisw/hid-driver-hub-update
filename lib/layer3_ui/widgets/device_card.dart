@@ -9,12 +9,14 @@ class DeviceCard extends StatefulWidget {
     super.key,
     required this.state,
     this.onTap,
+    this.onHover,
     this.width,
     this.height,
   });
 
   final DiscoveredCardState state;
   final VoidCallback? onTap;
+  final void Function(DiscoveredCardState card)? onHover;
   final double? width;
   final double? height;
 
@@ -36,10 +38,10 @@ class _DeviceCardState extends State<DeviceCard> {
   @override
   Widget build(BuildContext context) {
     final isKb = _isKeyboard;
+    final isSleeping = !widget.state.isAwake;
     final isInteractive = widget.state.isAwake;
     final showHover = _isHovered && isInteractive;
 
-    // Use passed dimensions, or fall back to default larger sizes
     final cardWidth = widget.width ?? (isKb ? 650.0 : 300.0);
     final cardHeight = widget.height ?? 450.0;
 
@@ -69,11 +71,18 @@ class _DeviceCardState extends State<DeviceCard> {
         : iconColor;
 
     return MouseRegion(
-      cursor: isInteractive
-          ? SystemMouseCursors.click
-          : SystemMouseCursors.basic,
-      onEnter: isInteractive ? (_) => setState(() => _isHovered = true) : null,
-      onExit: isInteractive ? (_) => setState(() => _isHovered = false) : null,
+      cursor: isInteractive ? SystemMouseCursors.click : SystemMouseCursors.basic,
+      onEnter: (_) {
+        if (isInteractive) {
+          setState(() => _isHovered = true);
+        }
+        widget.onHover?.call(widget.state);
+      },
+      onExit: (_) {
+        if (isInteractive) {
+          setState(() => _isHovered = false);
+        }
+      },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
         constraints: BoxConstraints(maxWidth: cardWidth, maxHeight: cardHeight),
@@ -154,7 +163,7 @@ class _DeviceCardState extends State<DeviceCard> {
                     ),
                     const SizedBox(height: 6),
 
-                    // ---- Status row: Mode icon + Battery icon + Battery text ----
+                    // ---- Status row: mode + sleep state only ----
                     AnimatedDefaultTextStyle(
                       duration: const Duration(milliseconds: 180),
                       style: TextStyle(
@@ -166,7 +175,6 @@ class _DeviceCardState extends State<DeviceCard> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          // Connection mode icon (USB or 2.4G)
                           Icon(
                             widget.state.connectionMode == 0
                                 ? Icons.cable
@@ -174,7 +182,7 @@ class _DeviceCardState extends State<DeviceCard> {
                             size: 20,
                             color: iconColor,
                           ),
-                          if (!widget.state.isAwake) ...[
+                          if (isSleeping) ...[
                             const SizedBox(width: 14),
                             const Icon(
                               Icons.bedtime_outlined,
@@ -184,13 +192,9 @@ class _DeviceCardState extends State<DeviceCard> {
                             const SizedBox(width: 5),
                             Text(t.devices.sleeping),
                           ] else ...[
-                            const SizedBox(width: 14),
-
-                            // Battery status icon
-                            Icon(_batteryIcon, size: 20, color: batteryColor),
+                            const SizedBox(width: 12),
+                            Icon(_batteryIcon, size: 18, color: batteryColor),
                             const SizedBox(width: 5),
-
-                            // Battery percentage text
                             Text(
                               _batteryLabel,
                               style: TextStyle(color: batteryColor),

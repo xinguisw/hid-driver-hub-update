@@ -114,6 +114,11 @@ class DeviceSession implements DeviceSettingsGateway {
   @override
   bool get isAlive => _session.isOpen;
 
+  bool _identityVerified = false;
+
+  @override
+  bool get isIdentityVerified => _identityVerified;
+
   String? _activeSessionToken;
 
   /// Re-run A1 handshake on an open session.
@@ -135,17 +140,16 @@ class DeviceSession implements DeviceSettingsGateway {
       final typeMatch = hs.deviceType == device.entry.deviceType;
       final modelMatch =
           hs.modelKey.toLowerCase() == device.entry.devId.toLowerCase();
-      final tokenOrIdValid = modelMatch ||
-          _deviceIdMatches(hs.sessionToken, device.entry.devId) ||
-          (hs.sessionToken.isNotEmpty && hs.sessionToken != '00000000');
+      final identityMatch = modelMatch;
       debugPrint(
         '[session] rehandshake: sessionToken="${hs.sessionToken}" '
         'CID=0x${hs.cid?.toRadixString(16).padLeft(2, '0') ?? 'none'} '
         'MID=0x${hs.mid?.toRadixString(16).padLeft(2, '0') ?? 'none'} '
-        'Type=${hs.profileType ?? 'none'} match=${typeMatch && tokenOrIdValid}',
+        'Type=${hs.profileType ?? 'none'} match=${typeMatch && identityMatch}',
       );
-      if (typeMatch && tokenOrIdValid) {
+      if (typeMatch && identityMatch) {
         _activeSessionToken = hs.sessionToken;
+        _identityVerified = true;
         return true;
       }
       _controller.add(DeviceSessionState.rejected(name, mode));
@@ -393,19 +397,9 @@ class DeviceSession implements DeviceSettingsGateway {
 
     try {
       await _openTransportWithRetry();
-      debugPrint('[session] opened, querying status (0xA3), battery (0xA4) & firmware (0xA8)…');
+      debugPrint('[session] opened: begin A4/A8/A3/A1 query sequence…');
+      _listenUnsolicited();
 
-      // 0. Query Device Status (0xA3)
-      try {
-        _cachedInitialDeviceStatus = await _protocol.queryDeviceStatus(_session);
-        debugPrint(
-          '[session] device status (0xA3) queried: awake=${_cachedInitialDeviceStatus?.isAwake} statusCode=${_cachedInitialDeviceStatus?.statusCode}',
-        );
-      } catch (e) {
-        debugPrint('[session] initial device status query soft-fail: $e');
-      }
-
-      // 1. Query Battery (0xA4)
       try {
         _cachedInitialBattery = await _protocol.queryBattery(_session);
         debugPrint(
@@ -415,7 +409,6 @@ class DeviceSession implements DeviceSettingsGateway {
         debugPrint('[session] initial battery query soft-fail: $e');
       }
 
-      // 2. Query Firmware Version (0xA8)
       try {
         _cachedInitialFirmware = await _protocol.queryFirmware(_session);
         debugPrint(
@@ -425,40 +418,27 @@ class DeviceSession implements DeviceSettingsGateway {
         debugPrint('[session] initial firmware query soft-fail: $e');
       }
 
-      // 3. Proceed with Handshake (0xA1)
-      debugPrint('[session] proceeding with handshake (0xA1)…');
-      final hs = await _handshakeWithRetry();
-
-      final typeMatch = hs.deviceType == device.entry.deviceType;
-      final modelMatch =
-          hs.modelKey.toLowerCase() == device.entry.devId.toLowerCase();
-      final tokenOrIdValid = modelMatch ||
-          _deviceIdMatches(hs.sessionToken, device.entry.devId) ||
-          (hs.sessionToken.isNotEmpty && hs.sessionToken != '00000000');
-      debugPrint(
-        '[session] verify: sessionToken="${hs.sessionToken}" '
-        'CID=0x${hs.cid?.toRadixString(16).padLeft(2, '0') ?? 'none'} '
-        'MID=0x${hs.mid?.toRadixString(16).padLeft(2, '0') ?? 'none'} '
-        'Type=${hs.profileType ?? 'none'} (match=$typeMatch, authorized=$tokenOrIdValid)',
-      );
-
-      if (typeMatch && tokenOrIdValid) {
-        _activeSessionToken = hs.sessionToken;
+      try {
+        _cachedInitialDeviceStatus = await _protocol.queryDeviceStatus(_session);
         debugPrint(
-          '[session] VERIFIED (sessionToken=$_activeSessionToken, modelKey=${hs.modelKey})',
+          '[session] device status (0xA3) queried: awake=${_cachedInitialDeviceStatus?.isAwake} statusCode=${_cachedInitialDeviceStatus?.statusCode}',
         );
-        _listenUnsolicited();
+      } catch (e) {
+        debugPrint('[session] initial device status query soft-fail: $e');
+      }
+
+      // A1 verification is deferred to settings access, not startup card loading.
+      // A3 decides whether the card is shown as active or sleeping.
+      debugPrint('[session] startup complete; A1 verification deferred to settings entry');
+      _controller.add(DeviceSessionState.verified(name, mode));
+      return true;
+    } catch (e) {
+      debugPrint('[session] ERROR: $e');
+      if (isAlive) {
+        debugPrint('[session] retaining unverified session for A3 status');
         _controller.add(DeviceSessionState.verified(name, mode));
         return true;
       }
-      debugPrint('[session] REJECTED — closing');
-      // why: a throwing close() here would fall into the catch below and
-      // downgrade this to error, losing the "wrong device" signal.
-      await _safeClose();
-      _controller.add(DeviceSessionState.rejected(name, mode));
-      return false;
-    } catch (e) {
-      debugPrint('[session] ERROR: $e');
       await _safeClose();
       _controller.add(DeviceSessionState.error(name, mode, e.toString()));
       return false;
@@ -552,11 +532,6 @@ class DeviceSession implements DeviceSettingsGateway {
 
   String _hex(List<int> bytes) =>
       bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join(' ');
-
-  /// Case-insensitive device-id match between the handshake-reported id
-  /// (lowercase hex from L5 parse) and the catalog `devId` (uppercase in JSON).
-  static bool _deviceIdMatches(String reported, String catalog) =>
-      reported.toLowerCase() == catalog.toLowerCase();
 
   Future<void> dispose() async {
     await _unsolicitedSub?.cancel();

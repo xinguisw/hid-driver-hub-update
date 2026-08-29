@@ -104,6 +104,7 @@ class _DevicesScreenState extends State<DevicesScreen> {
                           : DeviceCardGrid(
                               cards: cards,
                               onCardTap: _openHubLanding,
+                              onCardHover: _refreshDeviceOnHover,
                             ),
                       if (kIsWeb && cards.isNotEmpty) _addDeviceBar,
                     ],
@@ -124,6 +125,7 @@ class _DevicesScreenState extends State<DevicesScreen> {
                         : DeviceCardGrid(
                             cards: cards,
                             onCardTap: _openHubLanding,
+                            onCardHover: _refreshDeviceOnHover,
                           ),
                   ),
                   if (kIsWeb && cards.isNotEmpty) _addDeviceBar,
@@ -151,6 +153,10 @@ class _DevicesScreenState extends State<DevicesScreen> {
         _openingDevice = false;
       }
     });
+  }
+
+  void _refreshDeviceOnHover(DiscoveredCardState card) {
+    unawaited(_scope.refreshOnDeviceHover(card));
   }
 
   /// Always-visible on web so a second device can be added. Disabled while a

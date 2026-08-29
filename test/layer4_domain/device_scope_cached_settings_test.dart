@@ -51,7 +51,7 @@ void main() {
     await scope.dispose();
   });
 
-  test('incoming awake status push triggers card update and background re-query', () async {
+  test('status pushes no longer auto-awake the card; hover refresh performs the full query', () async {
     final gateway = _CountingGateway(
       initialStatus: DeviceStatusResult(
         statusCode: 0x00,
@@ -69,9 +69,9 @@ void main() {
     for (var i = 0; i < 5 && scope.cards.value.isEmpty; i++) {
       await Future<void>.delayed(Duration.zero);
     }
-    expect(scope.cards.value.single.isAwake, isFalse);
+    final card = scope.cards.value.single;
+    expect(card.isAwake, isFalse);
 
-    // Emit Awake status push from hardware interrupt
     gateway.emitStatus(
       DeviceStatusResult(
         statusCode: 0x01,
@@ -81,9 +81,48 @@ void main() {
     );
     await Future<void>.delayed(const Duration(milliseconds: 10));
 
+    expect(scope.cards.value.single.isAwake, isFalse);
+    expect(gateway.queryCounts['battery'], isNull);
+    expect(gateway.queryCounts['firmware'], isNull);
+
+    await scope.refreshOnDeviceHover(card);
+
     expect(scope.cards.value.single.isAwake, isTrue);
     expect(gateway.queryCounts['battery'], isNotNull);
     expect(gateway.queryCounts['firmware'], isNotNull);
+    expect(gateway.queryCounts['deviceStatus'], isNotNull);
+
+    await scope.dispose();
+  });
+
+  test('hovering a sleeping card triggers the full wake query without showing battery', () async {
+    final gateway = _CountingGateway(
+      initialStatus: DeviceStatusResult(
+        statusCode: 0x00,
+        isAwake: false,
+        raw: Uint8List(32),
+      ),
+    );
+    final scope = DeviceScope(
+      runtime: _Runtime(gateway),
+      macroRepository: InMemoryMacroRepository(),
+      appSettingsRepository: _AppSettingsRepository(),
+    );
+
+    await scope.start();
+    for (var i = 0; i < 5 && scope.cards.value.isEmpty; i++) {
+      await Future<void>.delayed(Duration.zero);
+    }
+    final card = scope.cards.value.single;
+    expect(card.isAwake, isFalse);
+
+    await scope.refreshOnDeviceHover(card);
+
+    expect(scope.cards.value.single.isAwake, isTrue);
+    expect(gateway.queryCounts['battery'], isNotNull);
+    expect(gateway.queryCounts['firmware'], isNotNull);
+    expect(gateway.queryCounts['deviceStatus'], isNotNull);
+    expect(gateway.queryCounts['rehandshake'], isNotNull);
 
     await scope.dispose();
   });
@@ -155,6 +194,9 @@ class _CountingGateway implements DeviceSettingsGateway {
   bool get isAlive => true;
 
   @override
+  bool get isIdentityVerified => true;
+
+  @override
   DeviceStatusResult? get initialDeviceStatus => initialStatus;
 
   @override
@@ -175,7 +217,10 @@ class _CountingGateway implements DeviceSettingsGateway {
   void _count(String key) => queryCounts[key] = (queryCounts[key] ?? 0) + 1;
 
   @override
-  Future<bool> rehandshake() async => true;
+  Future<bool> rehandshake() async {
+    _count('rehandshake');
+    return true;
+  }
 
   @override
   Future<DeviceStatusResult?> queryDeviceStatus() async {

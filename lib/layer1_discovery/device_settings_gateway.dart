@@ -39,6 +39,9 @@ abstract interface class DeviceSettingsGateway {
 
   bool get isAlive;
 
+  /// True only after A1 identity verification against the catalog succeeds.
+  bool get isIdentityVerified;
+
   DeviceStatusResult? get initialDeviceStatus;
 
   BatteryResult? get initialBattery;

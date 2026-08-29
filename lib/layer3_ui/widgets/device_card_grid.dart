@@ -7,12 +7,20 @@ import 'package:driver_hub/layer3_ui/widgets/device_card.dart';
 /// Renders one [DeviceCard] per entry. No lifecycle, no watcher, no HID. The
 /// parent owns the list and passes it in; this widget only lays it out.
 class DeviceCardGrid extends StatelessWidget {
-  const DeviceCardGrid({super.key, required this.cards, this.onCardTap});
+  const DeviceCardGrid({
+    super.key,
+    required this.cards,
+    this.onCardTap,
+    this.onCardHover,
+  });
 
   final List<DiscoveredCardState> cards;
 
   /// Called when a card is tapped; parent navigates (e.g. settings).
   final void Function(DiscoveredCardState card)? onCardTap;
+
+  /// Called when the pointer enters a card; used for a one-shot wake requery.
+  final void Function(DiscoveredCardState card)? onCardHover;
 
   @override
   Widget build(BuildContext context) {
@@ -30,6 +38,7 @@ class DeviceCardGrid extends StatelessWidget {
               DeviceCard(
                 state: state,
                 onTap: onCardTap == null ? null : () => onCardTap!(state),
+                onHover: onCardHover,
               ),
           ],
         ),

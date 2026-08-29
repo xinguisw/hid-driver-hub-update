@@ -69,6 +69,9 @@ class DeviceScope {
   /// In-flight wake re-query locks per device path to prevent concurrent bus flooding.
   final _reQueryingPaths = <String>{};
 
+  /// In-flight A1 identity recovery attempts per device path.
+  final _identityRecoveringPaths = <String>{};
+
   /// OSD performance subscriptions per device path.
   final _performanceSubs = <String, StreamSubscription<OsdPerformanceResult>>{};
 
@@ -207,7 +210,10 @@ class DeviceScope {
   /// Mounts card immediately upon verification, then asynchronously hydrates
   /// battery (A4) and firmware (A8) telemetry. Called from [_startAndRegister]
   /// (launch/scan) and watcher [onConnect] (hot-plug).
-  Future<void> _publishCard(DeviceSettingsGateway session) async {
+  Future<void> _publishCard(
+    DeviceSettingsGateway session, {
+    DeviceStatusResult? status,
+  }) async {
     if (!session.isAlive) {
       debugPrint(
         '[scope] ${session.info.displayName} not alive, skipping publish',
@@ -215,40 +221,61 @@ class DeviceScope {
       return;
     }
 
-    // Step 1: Immediately publish card with initial status, battery, and firmware from start()
-    final initStatus = session.initialDeviceStatus;
+    final initStatus = status ?? session.initialDeviceStatus;
     final initBattery = session.initialBattery;
     final initFirmware = session.initialFirmware;
-    _upsert(session, initBattery, initFirmware, initStatus);
-    if (initBattery != null) {
-      _evaluateLowBattery(session.info.deviceKey, initBattery);
+
+    final activeStatus = initStatus ?? await _queryDeviceStatus(session);
+    if (activeStatus == null) {
+      _upsert(session, initBattery, initFirmware, null);
+      _startLiveBattery(session);
+      _startLiveStatus(session);
+      return;
+    }
+
+    if (!activeStatus.isAwake) {
+      _upsert(session, initBattery, initFirmware, activeStatus);
+      if (initBattery != null) {
+        _evaluateLowBattery(session.info.deviceKey, initBattery);
+      }
+      _startLiveBattery(session);
+      _startLiveStatus(session);
+      return;
+    }
+
+    BatteryResult? battery = initBattery;
+    FirmwareResult? firmware = initFirmware;
+    try {
+      battery = initBattery ?? await _queryBattery(session);
+      firmware = initFirmware ?? await _queryFirmware(session);
+      if (!session.isAlive) {
+        debugPrint(
+          '[scope] ${session.info.displayName} gone mid-query, skipping update',
+        );
+        return;
+      }
+    } on Object catch (e) {
+      if (_isNakError(e)) {
+        debugPrint(
+          '[scope] hard reject ${session.info.displayName}: active state refused after NAK on A4/A8',
+        );
+        _cards.remove(session.info.deviceKey);
+        cards.value = List.unmodifiable(_cards.values);
+        return;
+      }
+      debugPrint(
+        '[scope] telemetry query timed out for ${session.info.displayName}: $e',
+      );
+      battery = initBattery;
+      firmware = initFirmware;
+    }
+
+    _upsert(session, battery, firmware, activeStatus);
+    if (battery != null) {
+      _evaluateLowBattery(session.info.deviceKey, battery);
     }
     _startLiveBattery(session);
     _startLiveStatus(session);
-
-    // Step 2: If status indicates asleep, or either battery/firmware missing, query in background.
-    if (initBattery == null || initFirmware == null) {
-      try {
-        final battery = initBattery ?? await _queryBattery(session);
-        final firmware = initFirmware ?? await _queryFirmware(session);
-        if (!session.isAlive) {
-          debugPrint(
-            '[scope] ${session.info.displayName} gone mid-query, skipping update',
-          );
-          return;
-        }
-        if (battery != null || firmware != null) {
-          _upsert(session, battery, firmware);
-          if (battery != null) {
-            _evaluateLowBattery(session.info.deviceKey, battery);
-          }
-        }
-      } catch (e) {
-        debugPrint(
-          '[scope] telemetry query failed for ${session.info.displayName}: $e',
-        );
-      }
-    }
   }
 
   /// Whether this card still has a live session (for L3 disconnect / load guards).
@@ -1204,62 +1231,99 @@ class DeviceScope {
     final path = session.info.deviceKey;
     _statusSubs[path]?.cancel();
     _statusSubs[path] = session.statusPushes.listen((s) {
-      _patchDeviceStatus(path, s, session);
+      debugPrint(
+        '[scope] A3 status push ignored for ${session.info.displayName}: '
+        'awake=${s.isAwake}; wake state is refreshed only on hover.',
+      );
     });
   }
 
-  void _patchDeviceStatus(
-    String deviceKey,
-    DeviceStatusResult s,
-    DeviceSettingsGateway session,
-  ) {
-    final list = List<DiscoveredCardState>.from(cards.value);
-    final i = list.indexWhere(
-      (c) =>
-          c.deviceKey.toLowerCase() == deviceKey.toLowerCase() ||
-          c.devId.toLowerCase() == deviceKey.toLowerCase(),
-    );
-    if (i < 0) return;
-    final old = list[i];
-    final wasAsleep = !old.isAwake;
-    final updated = old.copyWith(
-      isAwake: s.isAwake,
-    );
-    list[i] = updated;
-    _cards[deviceKey] = updated;
-    cards.value = List.unmodifiable(list);
-    debugPrint(
-      '[scope] patched card status ${updated.displayName}: '
-      'isAwake=${s.isAwake} (wasAsleep=$wasAsleep)',
-    );
+  Future<void> refreshOnDeviceHover(DiscoveredCardState card) async {
+    final session = _sessionForCard(card);
+    if (session == null || !session.isAlive) return;
+    final path = _pathForCard(card);
+    if (path == null) return;
+    if (_reQueryingPaths.contains(path)) return;
 
-    // Trigger auto-requery if transitioning from asleep -> awake
-    if (s.isAwake && wasAsleep) {
-      _triggerWakeRequery(session);
+    _reQueryingPaths.add(path);
+    try {
+      BatteryResult? battery;
+      FirmwareResult? firmware;
+      DeviceStatusResult? status;
+      bool? identityOk;
+
+      try {
+        battery = await _queryBattery(session);
+        firmware = await _queryFirmware(session);
+        status = await session.queryDeviceStatus();
+        identityOk = await session.rehandshake();
+      } on Object catch (e) {
+        if (_isNakError(e)) {
+          debugPrint(
+            '[scope] hover refresh: hard reject ${session.info.displayName} after NAK on A4/A8/A3/A1',
+          );
+          _cards.remove(path);
+          cards.value = List.unmodifiable(_cards.values);
+          return;
+        }
+        debugPrint(
+          '[scope] hover refresh: timeout while requerying ${session.info.displayName}; keeping current card state',
+        );
+        return;
+      }
+
+      if (status == null) {
+        debugPrint('[scope] hover refresh: no A3 reply for ${session.info.displayName}');
+        return;
+      }
+
+      if (!status.isAwake || identityOk == false) {
+        final current = _cards[path] ?? _cardStateFor(session, battery, firmware, status);
+        final asleep = current.copyWith(isAwake: false);
+        _cards[path] = asleep;
+        cards.value = List.unmodifiable(_cards.values);
+        return;
+      }
+
+      _upsert(session, battery, firmware, status);
+      if (battery != null) {
+        _evaluateLowBattery(path, battery);
+      }
+    } catch (e) {
+      debugPrint('[scope] hover refresh failed for ${session.info.displayName}: $e');
+    } finally {
+      _reQueryingPaths.remove(path);
     }
   }
 
-  Future<void> _triggerWakeRequery(DeviceSettingsGateway session) async {
-    final path = session.info.deviceKey;
-    if (_reQueryingPaths.contains(path)) return;
-    _reQueryingPaths.add(path);
-    debugPrint(
-      '[scope] waking up: triggering background telemetry re-query for ${session.info.displayName}',
-    );
+  bool _isNakError(Object error) {
+    final message = error.toString();
+    return message.contains('NAK') || message.contains('nak');
+  }
+
+  Future<DeviceStatusResult?> _queryDeviceStatus(
+    DeviceSettingsGateway session,
+  ) async {
     try {
-      final battery = await _queryBattery(session);
-      final firmware = await _queryFirmware(session);
-      if (!session.isAlive) return;
-      if (battery != null || firmware != null) {
-        _upsert(session, battery, firmware);
-        if (battery != null) {
-          _evaluateLowBattery(session.info.deviceKey, battery);
-        }
+      final result = await session.queryDeviceStatus();
+      if (result == null) {
+        debugPrint(
+          '[scope] device status skipped: ${session.info.displayName} '
+          'no longer alive',
+        );
+        return null;
       }
+      debugPrint(
+        '[scope] device status for ${session.info.displayName}: '
+        'awake=${result.isAwake} statusCode=${result.statusCode}',
+      );
+      return result;
     } catch (e) {
-      debugPrint('[scope] wake re-query soft-fail: $e');
-    } finally {
-      _reQueryingPaths.remove(path);
+      debugPrint(
+        '[scope] device status query failed for '
+        '${session.info.displayName}: $e',
+      );
+      return null;
     }
   }
 
@@ -1344,6 +1408,9 @@ class DeviceScope {
       );
       return result;
     } catch (e) {
+      if (_isNakError(e)) {
+        rethrow;
+      }
       debugPrint(
         '[scope] battery query failed for '
         '${session.info.displayName}: $e',
@@ -1370,6 +1437,9 @@ class DeviceScope {
       );
       return result;
     } catch (e) {
+      if (_isNakError(e)) {
+        rethrow;
+      }
       debugPrint(
         '[scope] firmware query failed for '
         '${session.info.displayName}: $e',
@@ -1401,6 +1471,7 @@ class DeviceScope {
     _batterySubs.remove(path)?.cancel();
     _statusSubs.remove(path)?.cancel();
     _reQueryingPaths.remove(path);
+    _identityRecoveringPaths.remove(path);
     _performanceSubs.remove(path)?.cancel();
     _sessions.remove(path);
     _settings.remove(path);

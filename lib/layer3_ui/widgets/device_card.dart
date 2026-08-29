@@ -53,8 +53,25 @@ class _DeviceCardState extends State<DeviceCard> {
         ? theme.colorScheme.primary
         : theme.colorScheme.onSurfaceVariant;
 
+    final isLowBattery =
+        widget.state.isAwake &&
+        !widget.state.isCharging &&
+        widget.state.batteryPercentage >= 0 &&
+        widget.state.batteryPercentage < 10;
+    final batteryColor = widget.state.isCharging
+        ? (theme.brightness == Brightness.dark
+              ? const Color(0xFF4ADE80) // Vibrant green for dark mode
+              : const Color(0xFF16A34A)) // Deep green for light mode
+        : isLowBattery
+        ? (theme.brightness == Brightness.dark
+              ? const Color(0xFFFF3333)
+              : theme.colorScheme.error)
+        : iconColor;
+
     return MouseRegion(
-      cursor: isInteractive ? SystemMouseCursors.click : SystemMouseCursors.basic,
+      cursor: isInteractive
+          ? SystemMouseCursors.click
+          : SystemMouseCursors.basic,
       onEnter: isInteractive ? (_) => setState(() => _isHovered = true) : null,
       onExit: isInteractive ? (_) => setState(() => _isHovered = false) : null,
       child: AnimatedContainer(
@@ -86,7 +103,10 @@ class _DeviceCardState extends State<DeviceCard> {
                   : SystemMouseCursors.basic,
               onTap: isInteractive ? widget.onTap : null,
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 28,
+                ),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -167,11 +187,14 @@ class _DeviceCardState extends State<DeviceCard> {
                             const SizedBox(width: 14),
 
                             // Battery status icon
-                            Icon(_batteryIcon, size: 20, color: iconColor),
+                            Icon(_batteryIcon, size: 20, color: batteryColor),
                             const SizedBox(width: 5),
 
                             // Battery percentage text
-                            Text(_batteryLabel),
+                            Text(
+                              _batteryLabel,
+                              style: TextStyle(color: batteryColor),
+                            ),
                           ],
                         ],
                       ),
@@ -196,8 +219,8 @@ class _DeviceCardState extends State<DeviceCard> {
     if (pct >= 100) return Icons.battery_full;
     if (pct >= 75) return Icons.battery_5_bar;
     if (pct >= 50) return Icons.battery_3_bar;
-    if (pct >= 25) return Icons.battery_1_bar;
-    return Icons.battery_alert;
+    if (pct >= 25) return Icons.battery_2_bar;
+    return Icons.battery_1_bar;
   }
 
   /// Battery percentage text label

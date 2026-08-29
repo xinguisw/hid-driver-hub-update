@@ -216,9 +216,29 @@ class _HubLeftSidebarState extends State<HubLeftSidebar> {
 
   /// Expanded Header View
   Widget _expandedHeaderContent(ThemeData theme) {
+    final defaultSubColor = theme.colorScheme.onSurfaceVariant;
+    final isLowBattery =
+        widget.card.isAwake &&
+        !widget.card.isCharging &&
+        widget.card.batteryPercentage >= 0 &&
+        widget.card.batteryPercentage < 10;
+    final batteryColor = widget.card.isCharging
+        ? (theme.brightness == Brightness.dark
+              ? const Color(0xFF4ADE80)
+              : const Color(0xFF16A34A))
+        : isLowBattery
+        ? (theme.brightness == Brightness.dark
+              ? const Color(0xFFFF3333)
+              : theme.colorScheme.error)
+        : defaultSubColor;
+
     final subStyle = theme.textTheme.bodySmall?.copyWith(
-      color: theme.colorScheme.onSurfaceVariant,
+      color: defaultSubColor,
     );
+    final batterySubStyle = theme.textTheme.bodySmall?.copyWith(
+      color: batteryColor,
+    );
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
@@ -232,7 +252,7 @@ class _HubLeftSidebarState extends State<HubLeftSidebar> {
               Icon(
                 widget.card.connectionMode == 0 ? Icons.cable : Icons.wifi,
                 size: 16,
-                color: theme.colorScheme.onSurfaceVariant,
+                color: defaultSubColor,
               ),
               const SizedBox(width: 4),
               Text(_modeLabel, style: subStyle),
@@ -240,10 +260,10 @@ class _HubLeftSidebarState extends State<HubLeftSidebar> {
               Icon(
                 _batteryIcon,
                 size: 16,
-                color: theme.colorScheme.onSurfaceVariant,
+                color: batteryColor,
               ),
               const SizedBox(width: 4),
-              Text(_batteryLabel, style: subStyle),
+              Text(_batteryLabel, style: batterySubStyle),
             ],
           ),
         ),
@@ -301,22 +321,12 @@ class _HubLeftSidebarState extends State<HubLeftSidebar> {
       return Icons.battery_charging_full;
     }
     final pct = widget.card.batteryPercentage;
-    if (pct < 0) {
-      return Icons.battery_alert;
-    }
-    if (pct >= 85) {
-      return Icons.battery_full;
-    }
-    if (pct >= 60) {
-      return Icons.battery_5_bar;
-    }
-    if (pct >= 35) {
-      return Icons.battery_3_bar;
-    }
-    if (pct >= 15) {
-      return Icons.battery_1_bar;
-    }
-    return Icons.battery_alert;
+    if (pct < 10) return Icons.battery_alert;
+    if (pct >= 100) return Icons.battery_full;
+    if (pct >= 75) return Icons.battery_5_bar;
+    if (pct >= 50) return Icons.battery_3_bar;
+    if (pct >= 25) return Icons.battery_2_bar;
+    return Icons.battery_1_bar;
   }
 
   /// Destination row with fixed icon slot and fading label

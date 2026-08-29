@@ -86,7 +86,7 @@ class HidSession implements ProtocolTransport {
     required bool Function(Uint8List raw) match,
     required Duration timeout,
     int maxRetries = 1,
-    Duration retryDelay = const Duration(milliseconds: 120),
+    Duration retryDelay = const Duration(milliseconds: 80),
   }) async {
     Object? lastError;
     StackTrace? lastStackTrace;

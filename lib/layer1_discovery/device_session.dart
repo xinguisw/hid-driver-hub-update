@@ -121,10 +121,16 @@ class DeviceSession implements DeviceSettingsGateway {
 
   String? _activeSessionToken;
 
+  /// The session token returned by the most recent successful A1 handshake.
+  String? get sessionToken => _activeSessionToken;
+
   /// Re-run A1 handshake on an open session.
   ///
   /// Firmware NAKs onboard config (reason 0x01) if handshake is not fresh
   /// when settings opens later. Does not re-open the device.
+  ///
+  /// Delegates to [_handshakeWithRetry] so transient I/O failures are retried
+  /// before the identity check is evaluated.
   @override
   Future<bool> rehandshake() async {
     if (!isAlive) return false;
@@ -132,11 +138,7 @@ class DeviceSession implements DeviceSettingsGateway {
     final mode = device.mode.desc;
     try {
       debugPrint('[session] rehandshake: $name…');
-      final hs = await _protocol.handshake(
-        _session,
-        deviceType: device.entry.deviceType.code,
-        deviceId: device.entry.devId,
-      );
+      final hs = await _handshakeWithRetry();
       final typeMatch = hs.deviceType == device.entry.deviceType;
       final modelMatch =
           hs.modelKey.toLowerCase() == device.entry.devId.toLowerCase();

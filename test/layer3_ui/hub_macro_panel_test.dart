@@ -60,6 +60,31 @@ void main() {
     expect(find.byType(ListTile), findsNothing);
   });
 
+  testWidgets('macro draft is cleared when the panel becomes inactive', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(body: HubMacroPanel(isActive: true)),
+      ),
+    );
+
+    await tester.tap(find.text('Create Macro'));
+    await tester.pump();
+
+    expect(find.text('M1'), findsAtLeastNWidgets(1));
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(body: HubMacroPanel(isActive: false)),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('Create Macro'), findsOneWidget);
+    expect(find.text('M1'), findsNothing);
+  });
+
   testWidgets('save and reset buttons are disabled while recording is active', (
     tester,
   ) async {

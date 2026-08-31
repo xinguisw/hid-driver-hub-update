@@ -452,6 +452,7 @@ class _HubLandingScreenState extends State<HubLandingScreen> {
                             return HubMacroPanel(
                               scope: widget.scope,
                               card: widget.card,
+                              isActive: _selectedIndex == _macroIndex,
                               onChanged: () => setState(() {}),
                             );
                           case _performanceIndex:

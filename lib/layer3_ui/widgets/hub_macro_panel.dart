@@ -22,11 +22,18 @@ enum MacroDelayMode { recorded, fixed }
 /// L3 owns only editor presentation and input capture. Device writes and
 /// persistence stay behind [DeviceScope].
 class HubMacroPanel extends StatefulWidget {
-  const HubMacroPanel({super.key, this.scope, this.card, this.onChanged});
+  const HubMacroPanel({
+    super.key,
+    this.scope,
+    this.card,
+    this.onChanged,
+    this.isActive = true,
+  });
 
   final DeviceScope? scope;
   final DiscoveredCardState? card;
   final VoidCallback? onChanged;
+  final bool isActive;
 
   @override
   State<HubMacroPanel> createState() => _HubMacroPanelState();
@@ -89,6 +96,9 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
   @override
   void didUpdateWidget(HubMacroPanel oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.isActive != widget.isActive && !widget.isActive) {
+      _clearDraft();
+    }
     if (oldWidget.card?.devId != widget.card?.devId) {
       if (_hasScope) {
         final cached = widget.scope!.macrosFor(widget.card!);
@@ -101,6 +111,26 @@ class _HubMacroPanelState extends State<HubMacroPanel> {
         );
       }
     }
+  }
+
+  void _clearDraft() {
+    if (_recording || _draft == null && _events.isEmpty) return;
+    setState(() {
+      _recording = false;
+      _calibrationMode = false;
+      _events.clear();
+      _pressedKeyCodes.clear();
+      _pressedKeyLabels.clear();
+      _activePointerCode = null;
+      _activePointerLabel = null;
+      _draft = null;
+      _selectedSlot = null;
+      _loopController.text = '1';
+      _nameController.clear();
+      _fixedDelayController.text = '10';
+      _delayMode = MacroDelayMode.recorded;
+      _error = null;
+    });
   }
 
   @override

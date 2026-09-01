@@ -210,9 +210,6 @@ class _AppTopBarState extends State<AppTopBar> with WindowListener {
             icon: Icon(Icons.settings_outlined, size: 20, color: iconColor),
             onPressed: widget.onSettingsPressed ??
                 () {
-                  if (context.findAncestorWidgetOfExactType<AppSettingsScreen>() != null) {
-                    return;
-                  }
                   final route = ModalRoute.of(context);
                   if (route?.settings.name == '/app_settings') {
                     return;

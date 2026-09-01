@@ -4,8 +4,8 @@
 /// and re-emits on subsequent 10% milestone drops below the threshold
 /// (e.g. at 20%, 10%, etc.). Charging or recovering above the threshold re-arms.
 class LowBatteryAlertPolicy {
-  // Map of devicePath to the last notified battery tier (or last notified percentage)
-  final _lastWarnedTier = <String, int>{};
+  // Map of devicePath to the last notified battery percentage
+  final _lastWarnedPercent = <String, int>{};
 
   bool shouldNotify({
     required String devicePath,
@@ -16,22 +16,29 @@ class LowBatteryAlertPolicy {
     if (batteryPercent < 0) return false;
     final isLow = !isCharging && batteryPercent <= thresholdPercent;
     if (!isLow) {
-      _lastWarnedTier.remove(devicePath);
+      _lastWarnedPercent.remove(devicePath);
       return false;
     }
 
-    // Determine current 10% tier (e.g. 20% -> tier 20, 19%..10% -> tier 10, 9%..0% -> tier 0)
-    // Or milestone drop: (batteryPercent ~/ 10) * 10
-    final currentTier = (batteryPercent ~/ 10) * 10;
-    final lastTier = _lastWarnedTier[devicePath];
-
-    if (lastTier == null) {
-      // First time reaching/falling below threshold
-      _lastWarnedTier[devicePath] = currentTier;
+    final lastPercent = _lastWarnedPercent[devicePath];
+    if (lastPercent == null) {
+      // First time reaching or falling below threshold
+      _lastWarnedPercent[devicePath] = batteryPercent;
       return true;
-    } else if (currentTier < lastTier) {
-      // Crossed another 10% boundary downwards
-      _lastWarnedTier[devicePath] = currentTier;
+    }
+
+    // Determine if we crossed a 10% milestone or dropped by >= 10% or reached <= 5% tier 0
+    final lastTier = (lastPercent ~/ 10) * 10;
+    final currentTier = (batteryPercent ~/ 10) * 10;
+
+    // If battery drops across a 10% boundary or from 10% to 5% (tier 0)
+    if (batteryPercent <= 5 && lastPercent > 5) {
+      _lastWarnedPercent[devicePath] = batteryPercent;
+      return true;
+    }
+
+    if (currentTier < lastTier && batteryPercent <= currentTier) {
+      _lastWarnedPercent[devicePath] = batteryPercent;
       return true;
     }
 
@@ -39,10 +46,10 @@ class LowBatteryAlertPolicy {
   }
 
   void removeDevice(String devicePath) {
-    _lastWarnedTier.remove(devicePath);
+    _lastWarnedPercent.remove(devicePath);
   }
 
   void clear() {
-    _lastWarnedTier.clear();
+    _lastWarnedPercent.clear();
   }
 }

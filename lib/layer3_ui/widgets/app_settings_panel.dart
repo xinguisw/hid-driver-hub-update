@@ -355,8 +355,7 @@ class _AppSettingsPanelState extends State<AppSettingsPanel> {
     return _SettingFieldRow(
       label: t.appSettings.lowBatteryThreshold,
       expandControl: true,
-      control: FractionallySizedBox(
-        widthFactor: 0.5,
+      control: Align(
         alignment: Alignment.centerLeft,
         child: ValueListenableBuilder<int>(
           valueListenable: widget.lowBatteryThreshold,
@@ -396,7 +395,7 @@ class _AppSettingsPanelState extends State<AppSettingsPanel> {
   }
 }
 
-/// Setting field with a fixed-width left label and aligned control on the right.
+/// Setting field with a left label and aligned control on the right.
 class _SettingFieldRow extends StatelessWidget {
   const _SettingFieldRow({
     required this.label,
@@ -412,24 +411,43 @@ class _SettingFieldRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        SizedBox(
-          width: 230,
-          child: Text(
-            label,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w500,
-              fontSize: 13,
-            ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isVeryNarrow = constraints.maxWidth < 460;
+        final labelWidget = Text(
+          label,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            fontWeight: FontWeight.w500,
+            fontSize: 13,
           ),
-        ),
-        if (expandControl)
-          Expanded(child: control)
-        else
-          control,
-      ],
+        );
+
+        if (isVeryNarrow) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              labelWidget,
+              const SizedBox(height: 8),
+              control,
+            ],
+          );
+        }
+
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            ConstrainedBox(
+              constraints: const BoxConstraints(minWidth: 160, maxWidth: 230),
+              child: labelWidget,
+            ),
+            const SizedBox(width: 16),
+            if (expandControl)
+              Expanded(child: control)
+            else
+              control,
+          ],
+        );
+      },
     );
   }
 }
@@ -732,7 +750,7 @@ class _ThresholdSliderControl extends StatelessWidget {
     final clampedValue = value.clamp(10, 40).toDouble();
 
     return ConstrainedBox(
-      constraints: const BoxConstraints(minWidth: 220),
+      constraints: const BoxConstraints(maxWidth: 320),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
@@ -807,7 +825,7 @@ class _ThresholdSliderControl extends StatelessWidget {
           ),
           // Preset tick marks row
           Padding(
-            padding: const EdgeInsets.only(left: 12, right: 64, top: 2),
+            padding: const EdgeInsets.only(left: 8, right: 60, top: 2),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: presetTicks.map((tick) {
@@ -816,7 +834,7 @@ class _ThresholdSliderControl extends StatelessWidget {
                   onTap: () => onChanged(tick),
                   borderRadius: BorderRadius.circular(4),
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                    padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
                     child: Text(
                       '$tick%',
                       style: theme.textTheme.bodySmall?.copyWith(

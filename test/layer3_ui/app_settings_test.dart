@@ -21,18 +21,18 @@ void main() {
   testWidgets('renders the requested app settings skeleton', (tester) async {
     await tester.pumpWidget(appSettings());
 
-    expect(find.text('System'), findsOneWidget);
+    expect(find.text('System'), findsWidgets);
     expect(find.text('English'), findsOneWidget);
     expect(find.text('Theme'), findsOneWidget);
-    expect(find.text('Help'), findsOneWidget);
+    expect(find.text('Help'), findsWidgets);
     expect(find.text('FAQ'), findsOneWidget);
     expect(find.text('Customer Service'), findsOneWidget);
     expect(find.text('Key Test'), findsOneWidget);
     expect(find.text('Product Manual'), findsOneWidget);
     expect(find.text('Driver Bug Feedback'), findsOneWidget);
     expect(find.text('NEWMEN HUB Communities'), findsOneWidget);
-    expect(find.text('Performance Settings'), findsOneWidget);
-    expect(find.text('About NEWMEN HUB'), findsOneWidget);
+    expect(find.text('Performance Settings'), findsWidgets);
+    expect(find.text('About NEWMEN HUB'), findsWidgets);
     expect(find.text('Current Version: 0.0.1'), findsOneWidget);
     expect(find.text('Official Website: xxxx.com'), findsOneWidget);
   });

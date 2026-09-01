@@ -3,6 +3,7 @@ class UpdaterConfig {
   const UpdaterConfig({
     this.owner = 'sumanram23',
     this.repo = 'hid-driver-hub',
+    this.feedUrl,
     this.assetPattern = r'hid_driver_hub_installer\.exe$',
     this.requestTimeout = const Duration(seconds: 15),
     this.downloadTimeout = const Duration(seconds: 60),
@@ -14,6 +15,10 @@ class UpdaterConfig {
 
   /// GitHub repository name.
   final String repo;
+
+  /// Explicit feed URL for Sparkle / WinSparkle appcast.xml.
+  /// If omitted, defaults to GitHub raw or releases latest.
+  final String? feedUrl;
 
   /// Regular expression pattern string to identify the target executable installer asset.
   final String assetPattern;
@@ -27,6 +32,12 @@ class UpdaterConfig {
   /// Optional override URL for self-hosted or Web version checking (e.g. `/version.json`).
   final String? customFeedUrl;
 
+  /// Effective AppCast XML feed URL for auto_updater.
+  String get effectiveFeedUrl =>
+      feedUrl ??
+      customFeedUrl ??
+      'https://raw.githubusercontent.com/$owner/$repo/main/dist/appcast.xml';
+
   /// Compiled RegExp from [assetPattern].
   RegExp get assetRegExp => RegExp(assetPattern, caseSensitive: false);
 
@@ -36,5 +47,5 @@ class UpdaterConfig {
 
   @override
   String toString() =>
-      'UpdaterConfig(owner: $owner, repo: $repo, assetPattern: $assetPattern)';
+      'UpdaterConfig(owner: $owner, repo: $repo, feedUrl: $effectiveFeedUrl)';
 }

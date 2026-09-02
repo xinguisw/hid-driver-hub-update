@@ -2,6 +2,7 @@ import 'package:driver_hub/app_updater/bloc/app_update_bloc.dart';
 import 'package:driver_hub/app_updater/bloc/app_update_event.dart';
 import 'package:driver_hub/app_updater/bloc/app_update_state.dart';
 import 'package:driver_hub/i18n/strings.g.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -9,6 +10,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 /// and renders a progress spinner while checking.
 ///
 /// Strictly uses vector icons and avoids emojis for visual consistency.
+/// Automatically hides itself on Web via [kIsWeb] guard.
 class UpdaterActionButton extends StatelessWidget {
   const UpdaterActionButton({
     super.key,
@@ -20,6 +22,10 @@ class UpdaterActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Hide updater button entirely in web browser sandbox
+    if (kIsWeb) {
+      return const SizedBox.shrink();
+    }
     if (appUpdateBloc != null) {
       return BlocProvider<AppUpdateBloc>.value(
         value: appUpdateBloc!,

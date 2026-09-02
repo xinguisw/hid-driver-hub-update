@@ -18,7 +18,7 @@ class AppSettingsPanel extends StatefulWidget {
     required this.lowBatteryThreshold,
     required this.onLowBatteryThresholdChanged,
     this.appUpdateBloc,
-    this.version = '0.0.1',
+    this.version = '1.0.0',
     super.key,
   });
 
@@ -44,13 +44,21 @@ class _AppSettingsPanelState extends State<AppSettingsPanel> {
   @override
   void initState() {
     super.initState();
-    // Only attempt platform channel lookup if running on real desktop app and not in widget test
-    if (!kIsWeb && !Platform.environment.containsKey('FLUTTER_TEST')) {
-      PackageInfo.fromPlatform().then((info) {
-        if (info.version.isNotEmpty && mounted) {
-          setState(() => _displayVersion = info.version);
-        }
-      }).catchError((_) {});
+    // Fetch live version asynchronously from PackageInfo on both Web and Desktop
+    _loadLiveVersion();
+  }
+
+  Future<void> _loadLiveVersion() async {
+    try {
+      if (!kIsWeb && Platform.environment.containsKey('FLUTTER_TEST')) {
+        return;
+      }
+      final info = await PackageInfo.fromPlatform();
+      if (info.version.isNotEmpty && mounted) {
+        setState(() => _displayVersion = info.version);
+      }
+    } catch (_) {
+      // Retains default fallback version
     }
   }
 
@@ -409,9 +417,10 @@ class _AppSettingsPanelState extends State<AppSettingsPanel> {
                 fontSize: 13,
               ),
             ),
-            UpdaterActionButton(
-              appUpdateBloc: widget.appUpdateBloc,
-            ),
+            if (!kIsWeb)
+              UpdaterActionButton(
+                appUpdateBloc: widget.appUpdateBloc,
+              ),
           ],
         ),
         const SizedBox(height: 12),

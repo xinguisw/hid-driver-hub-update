@@ -33,7 +33,7 @@ void main() {
     expect(find.text('NEWMEN HUB Communities'), findsOneWidget);
     expect(find.text('Performance Settings'), findsWidgets);
     expect(find.text('About NEWMEN HUB'), findsWidgets);
-    expect(find.text('Current Version: 0.0.1'), findsOneWidget);
+    expect(find.text('Current Version: 1.0.0'), findsOneWidget);
     expect(find.text('Official Website: xxxx.com'), findsOneWidget);
   });
 

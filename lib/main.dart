@@ -8,6 +8,8 @@ import 'package:driver_hub/layer3_ui/theme/app_theme.dart';
 import 'package:driver_hub/layer3_ui/theme/theme_controller.dart';
 import 'package:driver_hub/layer1_discovery/device_runtime.dart';
 import 'package:driver_hub/layer4_domain/device_scope.dart';
+import 'package:driver_hub/app_updater/models/updater_config.dart';
+import 'package:driver_hub/app_updater/services/auto_updater_service.dart';
 import 'package:driver_hub/layer3_ui/widgets/main_shell.dart';
 import 'package:driver_hub/layer6_transport/app_settings_storage.dart';
 import 'package:driver_hub/layer6_transport/macro_storage.dart';
@@ -66,8 +68,17 @@ Future<void> main(List<String> args) async {
 
     await window_bootstrap.setupDesktopWindowAndTray();
     await window_bootstrap.configureDesktopWindow();
-    // Removed the duplicate call to configureDesktopWindow() inside post-frame callback
-    // to avoid resetting window size and layout immediately after app launch.
+
+    // Initialize Auto Updater on Desktop and schedule periodic checks every 24 hours
+    try {
+      final autoUpdater = AutoUpdaterService();
+      await autoUpdater.initialize(const UpdaterConfig());
+      await autoUpdater.setScheduledCheckInterval(86400); // 24 hours
+      // Trigger a silent background check on startup (inBackground: true)
+      await autoUpdater.checkForUpdates(isManual: false);
+    } catch (e) {
+      debugPrint('[AutoUpdater] Startup update check failed: $e');
+    }
   }
   runApp(TranslationProvider(child: DriverHubApp(scope: _createDeviceScope())));
 }

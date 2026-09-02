@@ -4,6 +4,7 @@ import 'package:driver_hub/i18n/strings.g.dart';
 import 'package:driver_hub/layer3_ui/theme/theme_controller.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 /// App Settings page matching the UI specification.
 ///
@@ -32,11 +33,31 @@ class AppSettingsPanel extends StatefulWidget {
 class _AppSettingsPanelState extends State<AppSettingsPanel> {
   int _selectedSectionIndex = 0;
   final ScrollController _scrollController = ScrollController();
+  late String _displayVersion = widget.version;
 
   final GlobalKey _systemKey = GlobalKey();
   final GlobalKey _helpKey = GlobalKey();
   final GlobalKey _performanceKey = GlobalKey();
   final GlobalKey _aboutKey = GlobalKey();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAppVersion();
+  }
+
+  Future<void> _loadAppVersion() async {
+    try {
+      final info = await PackageInfo.fromPlatform();
+      if (info.version.isNotEmpty && mounted) {
+        setState(() {
+          _displayVersion = info.version;
+        });
+      }
+    } catch (_) {
+      // Fallback stays as widget.version (e.g. in widget tests)
+    }
+  }
 
   void _scrollToSection(int index) {
     setState(() => _selectedSectionIndex = index);
@@ -387,7 +408,7 @@ class _AppSettingsPanelState extends State<AppSettingsPanel> {
           runSpacing: 8,
           children: [
             Text(
-              t.appSettings.currentVersion(version: widget.version),
+              t.appSettings.currentVersion(version: _displayVersion),
               style: theme.textTheme.bodyMedium?.copyWith(
                 fontWeight: FontWeight.w500,
                 fontSize: 13,

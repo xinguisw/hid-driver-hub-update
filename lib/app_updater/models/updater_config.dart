@@ -3,7 +3,7 @@ class UpdaterConfig {
   const UpdaterConfig({
     this.owner = 'sumanram23',
     this.repo = 'hid-driver-hub',
-    this.feedUrl,
+    this.feedUrl = 'http://localhost:8080/appcast.xml',
     this.assetPattern = r'hid_driver_hub_installer\.exe$',
     this.requestTimeout = const Duration(seconds: 15),
     this.downloadTimeout = const Duration(seconds: 60),

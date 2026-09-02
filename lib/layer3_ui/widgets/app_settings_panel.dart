@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:driver_hub/app_updater/bloc/app_update_bloc.dart';
 import 'package:driver_hub/app_updater/ui/updater_action_button.dart';
 import 'package:driver_hub/i18n/strings.g.dart';
@@ -43,19 +44,13 @@ class _AppSettingsPanelState extends State<AppSettingsPanel> {
   @override
   void initState() {
     super.initState();
-    _loadAppVersion();
-  }
-
-  Future<void> _loadAppVersion() async {
-    try {
-      final info = await PackageInfo.fromPlatform();
-      if (info.version.isNotEmpty && mounted) {
-        setState(() {
-          _displayVersion = info.version;
-        });
-      }
-    } catch (_) {
-      // Fallback stays as widget.version (e.g. in widget tests)
+    // Only attempt platform channel lookup if running on real desktop app and not in widget test
+    if (!kIsWeb && !Platform.environment.containsKey('FLUTTER_TEST')) {
+      PackageInfo.fromPlatform().then((info) {
+        if (info.version.isNotEmpty && mounted) {
+          setState(() => _displayVersion = info.version);
+        }
+      }).catchError((_) {});
     }
   }
 

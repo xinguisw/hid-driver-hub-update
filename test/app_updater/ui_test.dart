@@ -8,6 +8,7 @@ import 'package:driver_hub/layer3_ui/widgets/app_settings_panel.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 class MockAutoUpdaterService implements AutoUpdaterService {
   bool _initialized = true;
@@ -38,6 +39,13 @@ class MockAutoUpdaterService implements AutoUpdaterService {
 void main() {
   setUp(() {
     LocaleSettings.setLocale(AppLocale.en);
+    PackageInfo.setMockInitialValues(
+      appName: 'driver_hub',
+      packageName: 'com.driver_hub',
+      version: '1.0.0',
+      buildNumber: '1',
+      buildSignature: '',
+    );
   });
 
   Widget buildTestApp({required Widget child, AppUpdateBloc? bloc}) {
@@ -78,6 +86,7 @@ void main() {
 
       await tester.tap(find.text('Check for Updates'));
       await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
 
       expect(mockService.checkCount, equals(1));
 
@@ -94,6 +103,7 @@ void main() {
       await tester.pumpWidget(buildTestApp(
         child: UpdaterActionButton(appUpdateBloc: bloc),
       ));
+      await tester.pump();
 
       expect(find.text('Checking for updates...'), findsOneWidget);
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
@@ -115,6 +125,7 @@ void main() {
         isManual: true,
       ));
       await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
 
       expect(find.textContaining('Failed to check for updates'), findsOneWidget);
       expect(find.textContaining('No internet connection'), findsOneWidget);

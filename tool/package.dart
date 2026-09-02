@@ -2,8 +2,70 @@ import 'dart:io';
 import 'package:innosetup/innosetup.dart';
 import 'package:version/version.dart';
 
+/// Signs a Windows PE binary (.exe) using Windows SDK signtool.exe and a code signing certificate.
+Future<void> signBinary(String filePath) async {
+  final targetFile = File(filePath);
+  if (!targetFile.existsSync()) {
+    stdout.writeln('[SignTool] Target file not found: $filePath (skipping)');
+    return;
+  }
+
+  // Paths can be configured via environment variables or fallback to standard paths
+  final certPath = Platform.environment['DRIVER_HUB_CERT_PATH'] ?? r'C:\certs\driver_hub_cert.pfx';
+  final certPassword = Platform.environment['DRIVER_HUB_CERT_PASS'] ?? 'HubPass123';
+
+  if (!File(certPath).existsSync()) {
+    stdout.writeln('[SignTool] Certificate not found at $certPath. Skipping signing.');
+    return;
+  }
+
+  // Locate signtool.exe from Windows SDK installations
+  String? signtoolPath = Platform.environment['SIGNTOOL_PATH'];
+  if (signtoolPath == null || !File(signtoolPath).existsSync()) {
+    final candidatePaths = [
+      r'C:\Program Files (x86)\Windows Kits\10\bin\10.0.26100.0\x64\signtool.exe',
+      r'C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x64\signtool.exe',
+      r'C:\Program Files (x86)\Windows Kits\10\bin\10.0.22000.0\x64\signtool.exe',
+      r'C:\Program Files (x86)\Windows Kits\10\bin\10.0.19041.0\x64\signtool.exe',
+      r'C:\Program Files (x86)\Windows Kits\10\bin\x64\signtool.exe',
+    ];
+    for (final p in candidatePaths) {
+      if (File(p).existsSync()) {
+        signtoolPath = p;
+        break;
+      }
+    }
+  }
+
+  signtoolPath ??= 'signtool';
+
+  stdout.writeln('[SignTool] Signing $filePath with $signtoolPath...');
+  try {
+    final result = await Process.run(signtoolPath, [
+      'sign',
+      '/f', certPath,
+      '/p', certPassword,
+      '/tr', 'http://timestamp.digicert.com',
+      '/td', 'sha256',
+      '/fd', 'sha256',
+      filePath,
+    ]);
+
+    if (result.exitCode == 0) {
+      stdout.writeln('[SignTool] Successfully signed: $filePath');
+    } else {
+      stderr.writeln('[SignTool] Signing failed for $filePath with exit code ${result.exitCode}:\n${result.stderr}');
+    }
+  } catch (e) {
+    stdout.writeln('[SignTool] Could not invoke signtool: $e (skipping signing)');
+  }
+}
+
 void main() async {
-  // 1. Generate build/innosetup.iss script via innosetup package
+  // 1. Sign the compiled Flutter binary first if available
+  await signBinary('build/windows/x64/runner/Release/driver_hub.exe');
+
+  // 2. Generate build/innosetup.iss script via innosetup package
   try {
     await InnoSetup(
       name: const InnoSetupName('hid_driver_hub_installer'),
@@ -30,7 +92,7 @@ void main() async {
     // If ISCC.exe is not in PATH, InnoSetup.make() generates .iss before throwing
   }
 
-  // 2. Ensure executable target in generated iss script is correct
+  // 3. Ensure executable target in generated iss script is correct
   final issFile = File('build/innosetup.iss');
   if (issFile.existsSync()) {
     var content = issFile.readAsStringSync();
@@ -41,7 +103,7 @@ void main() async {
     issFile.writeAsStringSync(content);
   }
 
-  // 3. Locate ISCC executable on Windows
+  // 4. Locate ISCC executable on Windows
   String? isccPath;
   for (final path in [
     r'C:\Program Files\Inno Setup 7\ISCC.exe',
@@ -63,10 +125,13 @@ void main() async {
 
   if (result.exitCode == 0) {
     stdout.writeln('\n[InnoSetup] Success! Installer built at: build/installer/hid_driver_hub_installer.exe');
+    // 5. Sign the final generated installer
+    await signBinary('build/installer/hid_driver_hub_installer.exe');
   } else {
     stderr.writeln('\n[InnoSetup] Compilation failed with exit code ${result.exitCode}');
     exitCode = result.exitCode;
   }
 }
+
 
 

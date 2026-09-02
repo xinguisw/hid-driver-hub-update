@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+  <channel>
+    <title>HID Driver Hub Updates</title>
+    <link>https://github.com/sumanram23/hid-driver-hub</link>
+    <description>Latest updates and improvements for HID Driver Hub</description>
+    <language>en</language>
+    <item>
+      <title>Version 0.0.1</title>
+      <sparkle:releaseNotesLink>
+        https://github.com/sumanram23/hid-driver-hub/releases/tag/v0.0.1
+      </sparkle:releaseNotesLink>
+      <pubDate>Wed, 02 Sep 2026 02:42:18 +0000</pubDate>
+      <enclosure
+        url="https://github.com/sumanram23/hid-driver-hub/releases/download/v0.0.1/hid_driver_hub_installer.exe"
+        sparkle:version="0.0.1"
+        sparkle:os="windows"
+        length="36951926"
+        type="application/octet-stream" />
+    </item>
+  </channel>
+</rss>

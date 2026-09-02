@@ -981,6 +981,15 @@ class Translations$appSettings$en {
 
 	/// en: 'System Mode'
 	String get systemTheme => 'System Mode';
+
+	/// en: 'Check for Updates'
+	String get checkForUpdates => 'Check for Updates';
+
+	/// en: 'Checking for updates...'
+	String get checkingForUpdates => 'Checking for updates...';
+
+	/// en: 'Failed to check for updates: {error}'
+	String updateCheckFailed({required Object error}) => 'Failed to check for updates: ${error}';
 }
 
 // Path: views.login
@@ -1356,6 +1365,9 @@ extension on Translations {
 			'appSettings.lightTheme' => 'Light Mode',
 			'appSettings.darkTheme' => 'Dark Mode',
 			'appSettings.systemTheme' => 'System Mode',
+			'appSettings.checkForUpdates' => 'Check for Updates',
+			'appSettings.checkingForUpdates' => 'Checking for updates...',
+			'appSettings.updateCheckFailed' => ({required Object error}) => 'Failed to check for updates: ${error}',
 			_ => null,
 		};
 	}

@@ -448,6 +448,9 @@ class _Translations$appSettings$zh extends Translations$appSettings$en {
 	@override String get lightTheme => '浅色模式';
 	@override String get darkTheme => '深色模式';
 	@override String get systemTheme => '跟随系统';
+	@override String get checkForUpdates => '检查更新';
+	@override String get checkingForUpdates => '正在检查更新...';
+	@override String updateCheckFailed({required Object error}) => '检查更新失败: ${error}';
 }
 
 // Path: views.login
@@ -791,6 +794,9 @@ extension on TranslationsZh {
 			'appSettings.lightTheme' => '浅色模式',
 			'appSettings.darkTheme' => '深色模式',
 			'appSettings.systemTheme' => '跟随系统',
+			'appSettings.checkForUpdates' => '检查更新',
+			'appSettings.checkingForUpdates' => '正在检查更新...',
+			'appSettings.updateCheckFailed' => ({required Object error}) => '检查更新失败: ${error}',
 			_ => null,
 		};
 	}

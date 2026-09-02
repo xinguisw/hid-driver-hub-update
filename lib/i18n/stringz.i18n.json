@@ -314,6 +314,9 @@
         "officialWebsite": "Official Website: {url}",
         "lightTheme": "Light Mode",
         "darkTheme": "Dark Mode",
-        "systemTheme": "System Mode"
+        "systemTheme": "System Mode",
+        "checkForUpdates": "Check for Updates",
+        "checkingForUpdates": "Checking for updates...",
+        "updateCheckFailed": "Failed to check for updates: {error}"
     }
 }

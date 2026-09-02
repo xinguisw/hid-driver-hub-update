@@ -1,3 +1,5 @@
+import 'package:driver_hub/app_updater/bloc/app_update_bloc.dart';
+import 'package:driver_hub/app_updater/ui/updater_action_button.dart';
 import 'package:driver_hub/i18n/strings.g.dart';
 import 'package:driver_hub/layer3_ui/theme/theme_controller.dart';
 import 'package:flutter/foundation.dart';
@@ -13,11 +15,15 @@ class AppSettingsPanel extends StatefulWidget {
   const AppSettingsPanel({
     required this.lowBatteryThreshold,
     required this.onLowBatteryThresholdChanged,
+    this.appUpdateBloc,
+    this.version = '0.0.1',
     super.key,
   });
 
   final ValueListenable<int> lowBatteryThreshold;
   final ValueChanged<int> onLowBatteryThresholdChanged;
+  final AppUpdateBloc? appUpdateBloc;
+  final String version;
 
   @override
   State<AppSettingsPanel> createState() => _AppSettingsPanelState();
@@ -375,14 +381,24 @@ class _AppSettingsPanelState extends State<AppSettingsPanel> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          t.appSettings.currentVersion(version: '0.0.1'),
-          style: theme.textTheme.bodyMedium?.copyWith(
-            fontWeight: FontWeight.w500,
-            fontSize: 13,
-          ),
+        Wrap(
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 12,
+          runSpacing: 8,
+          children: [
+            Text(
+              t.appSettings.currentVersion(version: widget.version),
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w500,
+                fontSize: 13,
+              ),
+            ),
+            UpdaterActionButton(
+              appUpdateBloc: widget.appUpdateBloc,
+            ),
+          ],
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 12),
         Text(
           t.appSettings.officialWebsite(url: 'xxxx.com'),
           style: theme.textTheme.bodyMedium?.copyWith(

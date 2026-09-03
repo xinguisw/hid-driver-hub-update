@@ -82,9 +82,40 @@ Options:
     <language>en</language>
     <item>
       <title>Version $version</title>
-      <sparkle:releaseNotesLink>
-        $notesUrl
-      </sparkle:releaseNotesLink>
+      <description><![CDATA[
+        <style>
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            padding: 12px;
+            color: #222;
+            background-color: #ffffff;
+            margin: 0;
+          }
+          h2 {
+            color: #1976D2;
+            font-size: 16px;
+            margin-top: 0;
+            margin-bottom: 8px;
+            font-weight: 600;
+          }
+          ul {
+            margin: 0;
+            padding-left: 20px;
+            line-height: 1.6;
+            font-size: 13px;
+          }
+          li {
+            margin-bottom: 4px;
+          }
+        </style>
+        <h2>What's New in v$version</h2>
+        <ul>
+          <li>Official Initial Release of NEWMEN Driver Hub.</li>
+          <li>High-speed USB and 2.4G wireless HID device support.</li>
+          <li>Custom macro recorder and ultra-low latency playback.</li>
+          <li>Seamless background automatic update subsystem.</li>
+        </ul>
+      ]]></description>
       <pubDate>$pubDate</pubDate>
       <enclosure
         url="$downloadUrl"

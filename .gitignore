@@ -55,3 +55,8 @@ app.*.map.json
 /.agent/
 /docs/
 /review/
+
+# Code Signing & Sparkle Keys (CRITICAL: Never commit private keys!)
+dsa_priv.pem
+*.pfx
+*.pem.backup

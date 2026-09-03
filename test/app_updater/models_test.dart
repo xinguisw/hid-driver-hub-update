@@ -7,13 +7,13 @@ void main() {
   group('UpdaterConfig', () {
     test('provides defaults and compiles asset regex', () {
       const config = UpdaterConfig();
-      expect(config.owner, equals('sumanram23'));
-      expect(config.repo, equals('hid-driver-hub'));
+      expect(config.owner, equals('xinguisw'));
+      expect(config.repo, equals('hid-driver-hub-update'));
       expect(config.assetRegExp.hasMatch('hid_driver_hub_installer.exe'), isTrue);
       expect(config.assetRegExp.hasMatch('other_file.zip'), isFalse);
       expect(
         config.githubLatestReleaseUrl,
-        equals('https://api.github.com/repos/sumanram23/hid-driver-hub/releases/latest'),
+        equals('https://api.github.com/repos/xinguisw/hid-driver-hub-update/releases/latest'),
       );
     });
 

@@ -1,9 +1,9 @@
 /// Configuration options for the App Updater subsystem.
 class UpdaterConfig {
   const UpdaterConfig({
-    this.owner = 'sumanram23',
-    this.repo = 'hid-driver-hub',
-    this.feedUrl = 'http://localhost:8080/appcast.xml',
+    this.owner = 'xinguisw',
+    this.repo = 'hid-driver-hub-update',
+    this.feedUrl,
     this.assetPattern = r'hid_driver_hub_installer\.exe$',
     this.requestTimeout = const Duration(seconds: 15),
     this.downloadTimeout = const Duration(seconds: 60),

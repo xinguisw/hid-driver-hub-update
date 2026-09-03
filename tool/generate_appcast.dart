@@ -34,8 +34,8 @@ Options:
   // Parse CLI args
   String? versionArg = _getArg(args, '--version');
   final installerPath = _getArg(args, '--installer') ?? 'build/installer/hid_driver_hub_installer.exe';
-  final owner = _getArg(args, '--owner') ?? 'sumanram23';
-  final repo = _getArg(args, '--repo') ?? 'hid-driver-hub';
+  final owner = _getArg(args, '--owner') ?? 'xinguisw';
+  final repo = _getArg(args, '--repo') ?? 'hid-driver-hub-update';
   final dsaSignature = _getArg(args, '--dsa') ?? '';
   final outputPath = _getArg(args, '--output') ?? 'dist/appcast.xml';
 

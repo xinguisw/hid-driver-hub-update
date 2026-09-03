@@ -38,27 +38,25 @@ Options:
   final repo = _getArg(args, '--repo') ?? 'hid-driver-hub-update';
   final dsaSignature = _getArg(args, '--dsa') ?? '';
   final outputPath = _getArg(args, '--output') ?? 'dist/appcast.xml';
+  final notesArg = _getArg(args, '--notes');
 
   // Read version from pubspec.yaml if not provided
   if (versionArg == null) {
     final pubspecFile = File('pubspec.yaml');
     if (pubspecFile.existsSync()) {
-      final lines = pubspecFile.readAsLinesSync();
-      for (final line in lines) {
-        if (line.startsWith('version:')) {
-          final raw = line.replaceFirst('version:', '').trim();
-          versionArg = raw.split('+').first;
-          break;
-        }
+      final content = pubspecFile.readAsStringSync();
+      final match = RegExp(r'^version:\s*([0-9]+\.[0-9]+\.[0-9]+)', multiLine: true).firstMatch(content);
+      if (match != null) {
+        versionArg = match.group(1);
       }
     }
   }
 
   final version = versionArg ?? '1.0.0';
 
-  // Check installer size
+  // Check installer file
+  int fileSize = 35000000;
   final installerFile = File(installerPath);
-  int fileSize = 50000000; // default estimated 50MB
   if (installerFile.existsSync()) {
     fileSize = installerFile.lengthSync();
     stdout.writeln('[AppCast] Found installer: $installerPath (${(fileSize / (1024 * 1024)).toStringAsFixed(2)} MB)');
@@ -69,9 +67,20 @@ Options:
   final now = DateTime.now().toUtc();
   final pubDate = _formatRssDate(now);
   final downloadUrl = 'https://github.com/$owner/$repo/releases/download/v$version/hid_driver_hub_installer.exe';
-  final notesUrl = 'https://github.com/$owner/$repo/releases/tag/v$version';
 
   final dsaAttr = dsaSignature.isNotEmpty ? ' sparkle:dsaSignature="$dsaSignature"' : '';
+
+  // Generate release notes bullet items
+  final List<String> notesList = notesArg != null && notesArg.isNotEmpty
+      ? notesArg.split(';').map((s) => s.trim()).where((s) => s.isNotEmpty).toList()
+      : [
+          'Official Initial Release of NEWMEN Driver Hub.',
+          'High-speed USB and 2.4G wireless HID device support.',
+          'Custom macro recorder and ultra-low latency playback.',
+          'Seamless background automatic update subsystem.',
+        ];
+
+  final notesHtml = notesList.map((n) => '          <li>$n</li>').join('\n');
 
   final appcastContent = '''<?xml version="1.0" encoding="utf-8"?>
 <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
@@ -110,10 +119,7 @@ Options:
         </style>
         <h2>What's New in v$version</h2>
         <ul>
-          <li>Official Initial Release of NEWMEN Driver Hub.</li>
-          <li>High-speed USB and 2.4G wireless HID device support.</li>
-          <li>Custom macro recorder and ultra-low latency playback.</li>
-          <li>Seamless background automatic update subsystem.</li>
+$notesHtml
         </ul>
       ]]></description>
       <pubDate>$pubDate</pubDate>

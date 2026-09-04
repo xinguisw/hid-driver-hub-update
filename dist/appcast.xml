@@ -6,7 +6,7 @@
     <description>Latest updates and improvements for HID Driver Hub</description>
     <language>en</language>
     <item>
-      <title>Version 1.0.0</title>
+      <title>Version 1.0.1</title>
       <description><![CDATA[
         <style>
           body {
@@ -33,7 +33,7 @@
             margin-bottom: 4px;
           }
         </style>
-        <h2>What's New in v1.0.0</h2>
+        <h2>What's New in v1.0.1</h2>
         <ul>
           <li>Official Initial Release of NEWMEN Driver Hub.</li>
           <li>High-speed USB and 2.4G wireless HID device support.</li>
@@ -41,12 +41,12 @@
           <li>Seamless background automatic update subsystem.</li>
         </ul>
       ]]></description>
-      <pubDate>Thu, 03 Sep 2026 07:50:46 +0000</pubDate>
+      <pubDate>Fri, 04 Sep 2026 01:12:22 +0000</pubDate>
       <enclosure
-        url="https://github.com/xinguisw/hid-driver-hub-update/releases/download/v1.0.0/hid_driver_hub_installer.exe"
-        sparkle:version="1.0.0"
-        sparkle:os="windows" sparkle:dsaSignature="MD4CHQCKIaF2d+BUBWMLR1wR9KHXWKYa77GeLdBMEgoyAh0AuMlEm8Mr6l3yQQG5RA1OW3640zo7rf7K/DTFvA=="
-        length="36966784"
+        url="https://github.com/xinguisw/hid-driver-hub-update/releases/download/v1.0.1/hid_driver_hub_installer_v1.0.1.exe"
+        sparkle:version="1.0.1"
+        sparkle:os="windows" sparkle:dsaSignature="MD4CHQCfiJNefNfhy4uarjkxcpRsh9g1rB2VjGlf66VMAh0AjXB1KcxxL5hPoKJ2 & C:\Users\rd02e\Flutter\flutter/bin/internal/exit_with_errorlevel.bat"
+        length="40013952"
         type="application/octet-stream" />
     </item>
   </channel>

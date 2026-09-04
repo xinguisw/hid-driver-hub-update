@@ -4,7 +4,7 @@ class UpdaterConfig {
     this.owner = 'xinguisw',
     this.repo = 'hid-driver-hub-update',
     this.feedUrl,
-    this.assetPattern = r'hid_driver_hub_installer\.exe$',
+    this.assetPattern = r'hid_driver_hub_installer.*\.exe$',
     this.requestTimeout = const Duration(seconds: 15),
     this.downloadTimeout = const Duration(seconds: 60),
     this.customFeedUrl,

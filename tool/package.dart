@@ -62,16 +62,30 @@ Future<void> signBinary(String filePath) async {
 }
 
 void main() async {
+  // Read current version from pubspec.yaml
+  String appVersion = '1.0.0';
+  final pubspecFile = File('pubspec.yaml');
+  if (pubspecFile.existsSync()) {
+    final content = pubspecFile.readAsStringSync();
+    final match = RegExp(r'^version:\s*([0-9]+\.[0-9]+\.[0-9]+)', multiLine: true).firstMatch(content);
+    if (match != null) {
+      appVersion = match.group(1)!;
+    }
+  }
+
+  final installerBaseName = 'hid_driver_hub_installer_v$appVersion';
+  final installerExePath = 'build/installer/$installerBaseName.exe';
+
   // 1. Sign the compiled Flutter binary first if available
   await signBinary('build/windows/x64/runner/Release/driver_hub.exe');
 
   // 2. Generate build/innosetup.iss script via innosetup package
   try {
     await InnoSetup(
-      name: const InnoSetupName('hid_driver_hub_installer'),
+      name: InnoSetupName(installerBaseName),
       app: InnoSetupApp(
         name: 'HID Driver Hub',
-        version: Version.parse('1.0.0'),
+        version: Version.parse(appVersion),
         publisher: 'Driver Hub Team',
         urls: InnoSetupAppUrls(
           homeUrl: Uri.parse('https://example.com/'),
@@ -124,8 +138,14 @@ void main() async {
   stderr.write(result.stderr);
 
   if (result.exitCode == 0) {
-    stdout.writeln('\n[InnoSetup] Success! Installer built at: build/installer/hid_driver_hub_installer.exe');
+    stdout.writeln('\n[InnoSetup] Success! Installer built at: $installerExePath');
+    // Also maintain unversioned copy for backwards compatibility if needed
+    final targetFile = File(installerExePath);
+    if (targetFile.existsSync()) {
+      targetFile.copySync('build/installer/hid_driver_hub_installer.exe');
+    }
     // 5. Sign the final generated installer
+    await signBinary(installerExePath);
     await signBinary('build/installer/hid_driver_hub_installer.exe');
   } else {
     stderr.writeln('\n[InnoSetup] Compilation failed with exit code ${result.exitCode}');

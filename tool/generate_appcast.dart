@@ -33,7 +33,6 @@ Options:
 
   // Parse CLI args
   String? versionArg = _getArg(args, '--version');
-  final installerPath = _getArg(args, '--installer') ?? 'build/installer/hid_driver_hub_installer.exe';
   final owner = _getArg(args, '--owner') ?? 'xinguisw';
   final repo = _getArg(args, '--repo') ?? 'hid-driver-hub-update';
   final dsaSignature = _getArg(args, '--dsa') ?? '';
@@ -54,9 +53,23 @@ Options:
 
   final version = versionArg ?? '1.0.0';
 
-  // Check installer file
-  int fileSize = 35000000;
+  // Detect or resolve installer path
+  String? installerPath = _getArg(args, '--installer');
+  if (installerPath == null) {
+    final candidateVersioned = 'build/installer/hid_driver_hub_installer_v$version.exe';
+    final candidateDefault = 'build/installer/hid_driver_hub_installer.exe';
+    if (File(candidateVersioned).existsSync()) {
+      installerPath = candidateVersioned;
+    } else {
+      installerPath = candidateDefault;
+    }
+  }
+
   final installerFile = File(installerPath);
+  final installerFileName = installerFile.uri.pathSegments.last;
+
+  // Check installer file size
+  int fileSize = 35000000;
   if (installerFile.existsSync()) {
     fileSize = installerFile.lengthSync();
     stdout.writeln('[AppCast] Found installer: $installerPath (${(fileSize / (1024 * 1024)).toStringAsFixed(2)} MB)');
@@ -66,7 +79,7 @@ Options:
 
   final now = DateTime.now().toUtc();
   final pubDate = _formatRssDate(now);
-  final downloadUrl = 'https://github.com/$owner/$repo/releases/download/v$version/hid_driver_hub_installer.exe';
+  final downloadUrl = 'https://github.com/$owner/$repo/releases/download/v$version/$installerFileName';
 
   final dsaAttr = dsaSignature.isNotEmpty ? ' sparkle:dsaSignature="$dsaSignature"' : '';
 

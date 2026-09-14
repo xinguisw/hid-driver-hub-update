@@ -6,6 +6,50 @@
     <description>Latest updates and improvements for HID Driver Hub</description>
     <language>en</language>
     <item>
+      <title>Version 1.0.4</title>
+      <description><![CDATA[
+        <style>
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            padding: 12px;
+            color: #222;
+            background-color: #ffffff;
+            margin: 0;
+          }
+          h2 {
+            color: #1976D2;
+            font-size: 16px;
+            margin-top: 0;
+            margin-bottom: 8px;
+            font-weight: 600;
+          }
+          ul {
+            margin: 0;
+            padding-left: 20px;
+            line-height: 1.6;
+            font-size: 13px;
+          }
+          li {
+            margin-bottom: 4px;
+          }
+        </style>
+        <h2>What's New in v1.0.4</h2>
+        <ul>
+          <li>Added "Run in Background" toggle in App Settings (System) to control close-to-tray window behavior</li>
+          <li>Redesigned App Settings System layout with unified vertical toggle and dropdown alignment</li>
+          <li>Renamed update toggle to "Auto-Update" for improved clarity</li>
+          <li>Optimized automated test suite performance and stability</li>
+        </ul>
+      ]]></description>
+      <pubDate>Mon, 14 Sep 2026 10:24:41 +0800</pubDate>
+      <enclosure
+        url="https://github.com/xinguisw/hid-driver-hub-update/releases/download/v1.0.4/hid_driver_hub_installer_v1.0.4.exe"
+        sparkle:version="1.0.4"
+        sparkle:os="windows"
+        length="40227104"
+        type="application/octet-stream" />
+    </item>
+    <item>
       <title>Version 1.0.3</title>
       <description><![CDATA[
         <style>

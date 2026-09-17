@@ -6,6 +6,50 @@
     <description>Latest updates and improvements for HID Driver Hub</description>
     <language>en</language>
     <item>
+      <title>Version 1.0.6</title>
+      <description><![CDATA[
+        <style>
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            padding: 12px;
+            color: #222;
+            background-color: #ffffff;
+            margin: 0;
+          }
+          h2 {
+            color: #1976D2;
+            font-size: 16px;
+            margin-top: 0;
+            margin-bottom: 8px;
+            font-weight: 600;
+          }
+          ul {
+            margin: 0;
+            padding-left: 20px;
+            line-height: 1.6;
+            font-size: 13px;
+          }
+          li {
+            margin-bottom: 4px;
+          }
+        </style>
+        <h2>What's New in v1.0.6</h2>
+        <ul>
+          <li>Fixed update check notification flow so the up-to-date toast only appears when already on latest version</li>
+          <li>Resolved conflicting update dialogs and toasts during manual update checks</li>
+          <li>Synchronized native background check interval with user's auto-update preference</li>
+          <li>All features and improvements from v1.0.5 included</li>
+        </ul>
+      ]]></description>
+      <pubDate>Thu, 17 Sep 2026 11:30:00 +0800</pubDate>
+      <enclosure
+        url="https://github.com/xinguisw/hid-driver-hub-update/releases/download/v1.0.6/hid_driver_hub_installer_v1.0.6.exe"
+        sparkle:version="1.0.6"
+        sparkle:os="windows"
+        length="40288025"
+        type="application/octet-stream" />
+    </item>
+    <item>
       <title>Version 1.0.5</title>
       <description><![CDATA[
         <style>

@@ -35,10 +35,10 @@
         </style>
         <h2>What's New in v1.0.6</h2>
         <ul>
-          <li>Fixed update check notification flow so the up-to-date toast only appears when already on latest version</li>
-          <li>Resolved conflicting update dialogs and toasts during manual update checks</li>
-          <li>Synchronized native background check interval with user's auto-update preference</li>
-          <li>All features and improvements from v1.0.5 included</li>
+          <li>Fixed update notification: "You are on the latest version" toast now only shows when already up to date</li>
+          <li>Fixed update dialog: No conflicting popups when an update is available</li>
+          <li>Fixed auto-update toggle: Turning off Automatic Updates properly stops background checks</li>
+          <li>Includes all v1.0.5 improvements: Low Battery Warning toggle and navigation key translations</li>
         </ul>
       ]]></description>
       <pubDate>Thu, 17 Sep 2026 11:30:00 +0800</pubDate>

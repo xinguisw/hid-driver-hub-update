@@ -6,6 +6,50 @@
     <description>Latest updates and improvements for HID Driver Hub</description>
     <language>en</language>
     <item>
+      <title>Version 1.0.7</title>
+      <description><![CDATA[
+        <style>
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            padding: 12px;
+            color: #222;
+            background-color: #ffffff;
+            margin: 0;
+          }
+          h2 {
+            color: #1976D2;
+            font-size: 16px;
+            margin-top: 0;
+            margin-bottom: 8px;
+            font-weight: 600;
+          }
+          ul {
+            margin: 0;
+            padding-left: 20px;
+            line-height: 1.6;
+            font-size: 13px;
+          }
+          li {
+            margin-bottom: 4px;
+          }
+        </style>
+        <h2>What's New in v1.0.7</h2>
+        <ul>
+          <li>Fixed update toast: "You are on the latest version" now only appears when confirmed up to date</li>
+          <li>Fixed race condition between WinSparkle update dialog and Flutter toast notification</li>
+          <li>Improved update check reliability on slow network connections</li>
+          <li>Faster test execution for update-related unit and integration tests</li>
+        </ul>
+      ]]></description>
+      <pubDate>Wed, 17 Sep 2026 13:12:00 +0800</pubDate>
+      <enclosure
+        url="https://github.com/xinguisw/hid-driver-hub-update/releases/download/v1.0.7/hid_driver_hub_installer_v1.0.7.exe"
+        sparkle:version="1.0.7"
+        sparkle:os="windows"
+        length="40288021"
+        type="application/octet-stream" />
+    </item>
+    <item>
       <title>Version 1.0.6</title>
       <description><![CDATA[
         <style>

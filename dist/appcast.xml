@@ -6,7 +6,7 @@
     <description>Latest updates and improvements for HID Driver Hub</description>
     <language>en</language>
     <item>
-      <title>Version 1.0.10</title>
+      <title>Version 1.0.11</title>
       <description><![CDATA[
         <style>
           body {
@@ -33,18 +33,18 @@
             margin-bottom: 4px;
           }
         </style>
-        <h2>What's New in v1.0.10</h2>
+        <h2>What's New in v1.0.11</h2>
         <ul>
           <li>Updated default settings for Run in Background and Low Battery Warning to disabled</li>
           <li>Seamless update checks and toast notifications</li>
         </ul>
       ]]></description>
-      <pubDate>Sat, 19 Sep 2026 00:42:30 +0000</pubDate>
+      <pubDate>Sat, 19 Sep 2026 01:29:12 +0000</pubDate>
       <enclosure
-        url="https://github.com/xinguisw/hid-driver-hub-update/releases/download/v1.0.10/hid_driver_hub_installer_v1.0.10.exe"
-        sparkle:version="1.0.10"
+        url="https://github.com/xinguisw/hid-driver-hub-update/releases/download/v1.0.11/hid_driver_hub_installer_v1.0.11.exe"
+        sparkle:version="1.0.11"
         sparkle:os="windows"
-        length="40302880"
+        length="40302888"
         type="application/octet-stream" />
     </item>
   </channel>

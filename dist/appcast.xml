@@ -6,7 +6,7 @@
     <description>Latest updates and improvements for HID Driver Hub</description>
     <language>en</language>
     <item>
-      <title>Version 1.0.11</title>
+      <title>Version 1.0.12</title>
       <description><![CDATA[
         <style>
           body {
@@ -33,18 +33,18 @@
             margin-bottom: 4px;
           }
         </style>
-        <h2>What's New in v1.0.11</h2>
+        <h2>What's New in v1.0.12</h2>
         <ul>
-          <li>Automatic and background update prompt fixes</li>
-          <li>Disabled run in background and low battery warning by default</li>
+          <li>Synchronized auto-updater toggle with WinSparkle automatic check dialog</li>
+          <li>First-run WinSparkle prompt display and subsequent suppression</li>
         </ul>
       ]]></description>
-      <pubDate>Mon, 21 Sep 2026 00:41:07 +0000</pubDate>
+      <pubDate>Tue, 22 Sep 2026 05:42:00 +0000</pubDate>
       <enclosure
-        url="https://github.com/xinguisw/hid-driver-hub-update/releases/download/v1.0.11/hid_driver_hub_installer_v1.0.11.exe"
-        sparkle:version="1.0.11"
+        url="https://github.com/xinguisw/hid-driver-hub-update/releases/download/v1.0.12/hid_driver_hub_installer_v1.0.12.exe"
+        sparkle:version="1.0.12"
         sparkle:os="windows"
-        length="40302880"
+        length="40299608"
         type="application/octet-stream" />
     </item>
   </channel>

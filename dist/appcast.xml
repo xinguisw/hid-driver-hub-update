@@ -6,7 +6,7 @@
     <description>Latest updates and improvements for HID Driver Hub</description>
     <language>en</language>
     <item>
-      <title>Version 1.0.13</title>
+      <title>Version 1.0.14</title>
       <description><![CDATA[
         <style>
           body {
@@ -33,16 +33,16 @@
             margin-bottom: 4px;
           }
         </style>
-        <h2>What's New in v1.0.13</h2>
+        <h2>What's New in v1.0.14</h2>
         <ul>
           <li>Synchronized WinSparkle updater dialog language with app language settings (English / 简体中文)</li>
-          <li>WinSparkle first-run prompt and update dialog localization support</li>
+          <li>Dynamic runtime language switching for updater dialogs and prompts</li>
         </ul>
       ]]></description>
-      <pubDate>Wed, 23 Sep 2026 05:55:00 +0000</pubDate>
+      <pubDate>Wed, 23 Sep 2026 06:27:00 +0000</pubDate>
       <enclosure
-        url="https://github.com/xinguisw/hid-driver-hub-update/releases/download/v1.0.13/hid_driver_hub_installer_v1.0.13.exe"
-        sparkle:version="1.0.13"
+        url="https://github.com/xinguisw/hid-driver-hub-update/releases/download/v1.0.14/hid_driver_hub_installer_v1.0.14.exe"
+        sparkle:version="1.0.14"
         sparkle:os="windows"
         length="40315976"
         type="application/octet-stream" />

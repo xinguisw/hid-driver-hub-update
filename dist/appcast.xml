@@ -37,15 +37,16 @@
         <ul>
           <li>Added failure toast notification when update checks fail (e.g. Wi-Fi disconnected)</li>
           <li>Interactive retry error state for updater action button</li>
+          <li>Accurate network connectivity detection and seamless reconnection recovery</li>
           <li>Localized network error feedback in both English and Simplified Chinese (简体中文)</li>
         </ul>
       ]]></description>
-      <pubDate>Wed, 23 Sep 2026 08:04:00 +0000</pubDate>
+      <pubDate>Wed, 23 Sep 2026 08:45:00 +0000</pubDate>
       <enclosure
         url="https://github.com/xinguisw/hid-driver-hub-update/releases/download/v1.0.15/hid_driver_hub_installer_v1.0.15.exe"
         sparkle:version="1.0.15"
         sparkle:os="windows"
-        length="40315976"
+        length="40332360"
         type="application/octet-stream" />
     </item>
   </channel>

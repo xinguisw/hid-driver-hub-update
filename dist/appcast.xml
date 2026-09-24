@@ -6,7 +6,7 @@
     <description>Latest updates and improvements for HID Driver Hub</description>
     <language>en</language>
     <item>
-      <title>Version 1.0.16</title>
+      <title>Version 1.0.17</title>
       <description><![CDATA[
         <style>
           body {
@@ -33,18 +33,17 @@
             margin-bottom: 4px;
           }
         </style>
-        <h2>What's New in v1.0.16</h2>
+        <h2>What's New in v1.0.17</h2>
         <ul>
-          <li>Fixed native event channel and WinSparkle state handling on network reconnection</li>
-          <li>Added direct feed verification fast-path for instantaneous up-to-date checks</li>
-          <li>Preserved event listener across UI language switches and update retries</li>
-          <li>Enhanced network error detection and recovery</li>
+          <li>Dynamic language switching for WinSparkle update prompts without app restart</li>
+          <li>Seamless wxWidgets UI thread translation reload via pure FFI</li>
+          <li>All network resilience and fast-path feed verification enhancements</li>
         </ul>
       ]]></description>
-      <pubDate>Thu, 24 Sep 2026 02:15:00 +0000</pubDate>
+      <pubDate>Thu, 24 Sep 2026 03:25:00 +0000</pubDate>
       <enclosure
-        url="https://github.com/xinguisw/hid-driver-hub-update/releases/download/v1.0.16/hid_driver_hub_installer_v1.0.16.exe"
-        sparkle:version="1.0.16"
+        url="https://github.com/xinguisw/hid-driver-hub-update/releases/download/v1.0.17/hid_driver_hub_installer_v1.0.17.exe"
+        sparkle:version="1.0.17"
         sparkle:os="windows"
         length="40496200"
         type="application/octet-stream" />

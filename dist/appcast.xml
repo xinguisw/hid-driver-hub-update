@@ -6,7 +6,7 @@
     <description>Latest updates and improvements for HID Driver Hub</description>
     <language>en</language>
     <item>
-      <title>Version 1.0.15</title>
+      <title>Version 1.0.16</title>
       <description><![CDATA[
         <style>
           body {
@@ -33,18 +33,18 @@
             margin-bottom: 4px;
           }
         </style>
-        <h2>What's New in v1.0.15</h2>
+        <h2>What's New in v1.0.16</h2>
         <ul>
-          <li>Added failure toast notification when update checks fail (e.g. Wi-Fi disconnected)</li>
-          <li>Interactive retry error state for updater action button</li>
-          <li>Accurate network connectivity detection and seamless reconnection recovery</li>
-          <li>Localized network error feedback in both English and Simplified Chinese (简体中文)</li>
+          <li>Fixed native event channel and WinSparkle state handling on network reconnection</li>
+          <li>Added direct feed verification fast-path for instantaneous up-to-date checks</li>
+          <li>Preserved event listener across UI language switches and update retries</li>
+          <li>Enhanced network error detection and recovery</li>
         </ul>
       ]]></description>
-      <pubDate>Wed, 23 Sep 2026 08:45:00 +0000</pubDate>
+      <pubDate>Thu, 24 Sep 2026 02:15:00 +0000</pubDate>
       <enclosure
-        url="https://github.com/xinguisw/hid-driver-hub-update/releases/download/v1.0.15/hid_driver_hub_installer_v1.0.15.exe"
-        sparkle:version="1.0.15"
+        url="https://github.com/xinguisw/hid-driver-hub-update/releases/download/v1.0.16/hid_driver_hub_installer_v1.0.16.exe"
+        sparkle:version="1.0.16"
         sparkle:os="windows"
         length="40496200"
         type="application/octet-stream" />
